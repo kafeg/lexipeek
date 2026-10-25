@@ -9,7 +9,7 @@
     "zstd",
     "utf8proc",
     "doctest",
-    { "name": "openblas", "platform": "!osx" },
+    { "name": "openblas", "platform": "!osx", "features": [{ "name": "dynamic-arch", "platform": "linux" }] },
     { "name": "clapack", "platform": "!osx" }
   ]
 }

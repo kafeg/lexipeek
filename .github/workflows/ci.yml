@@ -63,6 +63,11 @@ jobs:
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - name: Test
         run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure
+      - name: Backtrace
+        if: failure() && runner.os == 'Linux'
+        run: |
+          grep -m1 -o 'avx[^ ]*' /proc/cpuinfo | sort -u | tr '\n' ' '; lscpu | grep 'Model name'
+          sudo apt-get install -y gdb >/dev/null && gdb -batch -ex run -ex bt --args build/tests/lexipeek_tests -tc='fast*' 2>&1 | tail -30
       - name: Translate
         if: matrix.models != ''
         shell: bash
