@@ -9,3 +9,6 @@ cmake-build-*/
 .vscode/
 CMakeUserPresets.json
 compile_commands.json
+build*/
+models/
+.vcpkg-cache/

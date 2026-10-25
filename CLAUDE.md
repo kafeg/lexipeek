@@ -11,7 +11,28 @@ nlohmann/json, libcurl, zstd, utf8proc, doctest; facade `core/include/lexipeek/`
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp. macOS 14+, Apple Silicon only.
 
 ## Build and run
-Not set up yet (milestone M0): `make build`, `make test`, `make install` are the planned commands.
+Submodules: `vcpkg/` (manifest mode, `vcpkg.json`, toolchain set in `CMakeLists.txt`), `engines/` (Bergamot,
+fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test data and the engine pins).
+- `make deps` — submodules (Bergamot recursively; not `--recursive` at the root: InkPeek's own engines are not needed).
+- `make build` — CMake + Ninja into `build/`; the first build compiles the vcpkg ports and the engines (~8 min).
+- `make test` — ctest: `core` (doctest, `tests/*_test.cpp`), `engine-pins`, `cli-usage`. Model tests run when
+  `LEXIPEEK_MODELS` names a data dir with the models, else they say "skipped".
+- `make asan` — the same with ASan + UBSan on our code (`build-asan/`). `make bench` — `lexipeek-cli bench`.
+- Models (M0, by hand; M1: the pack manager): `scripts/fetch-models.sh <data-dir> <id>…` from InkPeek's `packs`
+  release, sha256 checked; layout as InkPeek's (`models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`, `langid.ftz`).
+  Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
+- CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`.
+
+## Code layout and gotchas
+- `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`); `core/src/<module>/` — one folder per
+  module of the spec's Architecture, empty ones are stubs for their milestone.
+- `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
+  thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).
+- Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
+- Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
+- Marian needs BLAS: Accelerate on macOS, OpenBLAS (vcpkg) elsewhere. Windows: static CRT (`/MT`, Bergamot's
+  choice) everywhere, triplet `x64-windows-static`; macOS: overlay triplets in `cmake/triplets/` (macOS 14).
+- Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 
 ## Rules
 - Branch model: `main` only, commit and push to `main`.

@@ -1,0 +1,67 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core:
+    name: core ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
+          - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
+          - { name: windows-x64, os: windows-2025, models: "" }
+          - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
+    runs-on: ${{ matrix.os }}
+    env:
+      TYPE: ${{ matrix.type || 'Release' }}
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules
+        shell: bash
+        run: |
+          git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
+          git submodule update --init --recursive engines/bergamot
+          echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
+          mkdir -p .vcpkg-cache
+      - uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
+          restore-keys: vcpkg-${{ matrix.name }}-
+      - name: Tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
+      - name: Tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja zstd || true
+      - uses: actions/cache@v4
+        if: matrix.models != ''
+        with:
+          path: models
+          key: models-${{ hashFiles('scripts/fetch-models.sh') }}-${{ matrix.models }}
+      - name: Models
+        if: matrix.models != ''
+        run: scripts/fetch-models.sh models ${{ matrix.models }} && echo "LEXIPEEK_MODELS=$PWD/models" >> "$GITHUB_ENV"
+      - name: Configure
+        shell: bash
+        run: |
+          gen=""; [ "$RUNNER_OS" != Windows ] && gen="-G Ninja"
+          cmake -S . -B build $gen -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
+      - name: Build
+        run: cmake --build build --config ${{ env.TYPE }} --parallel
+      - name: Test
+        run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure
+      - name: Translate
+        if: matrix.models != ''
+        shell: bash
+        run: |
+          cli=build/cli/lexipeek-cli
+          $cli --data models langid "Das Haus am Ende der Straße ist alt."
+          $cli --data models translate --from de --to en "Das Haus am Ende der Straße ist alt."
+          if [ -d models/opus ]; then $cli --data models translate --from de --to ru --method direct "Das Haus ist alt. Der Garten ist klein."; fi

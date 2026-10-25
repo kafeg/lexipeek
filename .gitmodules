@@ -1,0 +1,18 @@
+[submodule "engines/bergamot"]
+	path = engines/bergamot
+	url = https://github.com/niedev/bergamot-translator.git
+[submodule "engines/fasttext"]
+	path = engines/fasttext
+	url = https://github.com/facebookresearch/fastText.git
+[submodule "engines/llama"]
+	path = engines/llama
+	url = https://github.com/ggml-org/llama.cpp
+[submodule "engines/pcre2"]
+	path = engines/pcre2
+	url = https://github.com/PCRE2Project/pcre2.git
+[submodule "vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg
+[submodule "tests/inkpeek"]
+	path = tests/inkpeek
+	url = https://github.com/kafeg/inkpeek.git

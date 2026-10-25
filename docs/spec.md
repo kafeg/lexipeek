@@ -88,6 +88,25 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
   that needs an unloaded model shows the card at once (dictionary), the translation comes when the model is back.
   `lexipeek-cli bench` measures cold load, first and next translations, unload, reload and peak memory per method;
   numbers go to the spec, a test fails when reload gets slower than its budget.
+- **M0 bench** (`lexipeek-cli bench`, de → ru, Release, median of 3 runs; Apple M2 Pro, 32 GB, macOS 15; model files
+  in the file cache). "first" is one sentence, "next" a paragraph of three; MB loaded / working: the footprint after
+  the load / after both translations; peak: the process's peak resident set.
+
+  | method | load | first | next | unload | reload | first after reload | MB loaded | MB working | peak MB |
+  |---|---|---|---|---|---|---|---|---|---|
+  | fast (Mozilla de-en + en-ru) | 83 ms | 213 ms | 114 ms | 20 ms | 100 ms | 265 ms | 102 | 425 | 814 |
+  | direct (OPUS-MT `deu_eng_fra_por_spa-sla`) | 134 ms | 1110 ms | 1520 ms | 40 ms | 134 ms | 905 ms | 252 | 1163 | 2074 |
+  | llm (Hy-MT2 1.8B Q4, Metal) | 474 ms | 269 ms | 871 ms | 27 ms | 149 ms | 249 ms | 200 | 217 | 283 |
+
+  - Reload from the file cache is ≤ 0.15 s for every method, so idle unload costs little: InkPeek's times are kept.
+    The reload test's budgets (`tests/models_test.cpp`) are about 7× these numbers.
+  - Hy-MT2's 1.1 GB of weights are mapped file pages that the GPU reads: they are not in the footprint or the
+    resident set, but they take that memory as file cache. The very first run after a build took ~15 s (Metal
+    compiles its shaders; macOS caches them).
+  - OPUS-MT (no shortlist, a bigger model) is ~5–10× slower than Mozilla and needs ~1.2 GB while it translates;
+    its peak (2 GB) is while loading. Mozilla's peak (0.8 GB) is loading both steps.
+  - **Open question answered:** InkPeek's converted OPUS-MT int8 models load and translate correctly on Apple
+    Silicon (marian with ruy, `gemm-precision: int8shiftAll`). x86-64 (intgemm): see CI, job `linux-x64`.
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
   is a setting (M8). Windows: `%APPDATA%\\LexiPeek`, Linux: XDG dirs.

@@ -1,0 +1,7 @@
+add_executable(lexipeek_tests main.cpp core_test.cpp models_test.cpp)
+target_include_directories(lexipeek_tests PRIVATE ${PROJECT_SOURCE_DIR}/core/src)
+target_link_libraries(lexipeek_tests PRIVATE lexipeek_core doctest::doctest)
+lexipeek_flags(lexipeek_tests)
+add_test(NAME core COMMAND lexipeek_tests)
+add_test(NAME engine-pins COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/pins.cmake)
+add_test(NAME cli-usage COMMAND lexipeek-cli help)

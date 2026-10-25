@@ -1,0 +1,53 @@
+cmake_minimum_required(VERSION 3.25)
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake CACHE FILEPATH "")
+endif()
+set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/triplets CACHE STRING "")
+if(WIN32)
+  # Bergamot builds with the static CRT (/MT): everything does.
+  set(VCPKG_TARGET_TRIPLET x64-windows-static CACHE STRING "")
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  cmake_policy(SET CMP0091 NEW)
+endif()
+if(APPLE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "")
+endif()
+project(lexipeek C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
+
+option(LEXIPEEK_WERROR "Warnings as errors (our code only)" ON)
+option(LEXIPEEK_SANITIZE "ASan + UBSan (our code only)" OFF)
+
+find_package(SQLite3 REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(CURL REQUIRED)
+find_package(zstd CONFIG REQUIRED)
+find_package(utf8proc CONFIG REQUIRED)
+find_package(doctest CONFIG REQUIRED)
+
+include(cmake/engines.cmake)
+
+# Flags for LexiPeek's own targets; engines keep theirs.
+function(lexipeek_flags target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /utf-8 /permissive- $<$<BOOL:${LEXIPEEK_WERROR}>:/WX>)
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wshadow $<$<BOOL:${LEXIPEEK_WERROR}>:-Werror>)
+  endif()
+  if(LEXIPEEK_SANITIZE)
+    target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined)
+    target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+  endif()
+endfunction()
+
+add_subdirectory(core)
+add_subdirectory(cli)
+
+enable_testing()
+add_subdirectory(tests)
