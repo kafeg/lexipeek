@@ -1,0 +1,11 @@
+build/
+cmake-build-*/
+.cache/
+*.app
+*.dmg
+*.zip
+.DS_Store
+.idea/
+.vscode/
+CMakeUserPresets.json
+compile_commands.json
