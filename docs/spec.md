@@ -106,7 +106,8 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
   - OPUS-MT (no shortlist, a bigger model) is ~5–10× slower than Mozilla and needs ~1.2 GB while it translates;
     its peak (2 GB) is while loading. Mozilla's peak (0.8 GB) is loading both steps.
   - **Open question answered:** InkPeek's converted OPUS-MT int8 models load and translate correctly on Apple
-    Silicon (marian with ruy, `gemm-precision: int8shiftAll`). x86-64 (intgemm): see CI, job `linux-x64`.
+    Silicon (marian with ruy, `gemm-precision: int8shiftAll`) and on x86-64 (intgemm; CI job `linux-x64` translates
+    de → ru with `opus-deu_eng_fra_por_spa-sla` and runs the model tests).
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
   is a setting (M8). Windows: `%APPDATA%\\LexiPeek`, Linux: XDG dirs.
