@@ -1,4 +1,6 @@
-add_executable(lexipeek_tests main.cpp core_test.cpp models_test.cpp)
+file(GLOB LEXIPEEK_TEST_SOURCES CONFIGURE_DEPENDS *_test.cpp)
+add_executable(lexipeek_tests main.cpp ${LEXIPEEK_TEST_SOURCES})
+target_compile_definitions(lexipeek_tests PRIVATE LEXIPEEK_INKPEEK="${PROJECT_SOURCE_DIR}/tests/inkpeek")
 target_include_directories(lexipeek_tests PRIVATE ${PROJECT_SOURCE_DIR}/core/src)
 target_link_libraries(lexipeek_tests PRIVATE lexipeek_core doctest::doctest)
 lexipeek_flags(lexipeek_tests)

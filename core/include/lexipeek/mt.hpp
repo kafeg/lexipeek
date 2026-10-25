@@ -43,6 +43,8 @@ class Translator {
 
   // Blocking.
   Translation translate(const std::string &from, const std::string &to, const std::string &text, Method m);
+  // Why the method cannot translate from → to here ("" = it can): a missing model, a missing pack.
+  std::string why_not(const std::string &from, const std::string &to, Method m);
   // Loads the method's model for from → to without translating; "" or the error.
   std::string load(const std::string &from, const std::string &to, Method m);
   std::vector<Language> langid(const std::string &text, int k = 3);

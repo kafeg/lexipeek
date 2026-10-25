@@ -29,6 +29,8 @@ find_package(CURL REQUIRED)
 find_package(zstd CONFIG REQUIRED)
 find_package(utf8proc CONFIG REQUIRED)
 find_package(doctest CONFIG REQUIRED)
+find_package(LibArchive REQUIRED)
+find_package(unofficial-hash-library CONFIG REQUIRED)
 
 include(cmake/engines.cmake)
 set(CMAKE_CXX_STANDARD 20)

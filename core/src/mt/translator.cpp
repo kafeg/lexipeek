@@ -134,6 +134,10 @@ Translator::Translator(TranslatorOptions o) : impl_(std::make_unique<Impl>()) {
 
 Translator::~Translator() = default;
 
+std::string Translator::why_not(const std::string &from, const std::string &to, Method m) {
+  return from == to ? "" : impl_->plan(from, to, m).error;
+}
+
 std::string Translator::load(const std::string &from, const std::string &to, Method m) {
   auto p = impl_->plan(from, to, m);
   if (!p.error.empty()) return p.error;

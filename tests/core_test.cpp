@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 #include <fstream>
 #include <thread>
+#include "lexipeek/core.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
 #include "mt/model_host.hpp"
@@ -122,4 +123,17 @@ TEST_CASE("model host: one model, idle unload") {
   host.with("d", 1h, load, [](mt::Held &) {});
   host.release();
   CHECK(alive == 0);
+}
+
+TEST_CASE("core: an empty data dir gives a card without methods") {
+  CoreOptions o;
+  o.data = fs::temp_directory_path() / "lexipeek-empty";
+  Core core(o);
+  CHECK(core.lookup(Request{.text = "  "}).kind == Card::Kind::empty);
+  auto c = core.lookup(Request{.text = "Das Haus"});
+  CHECK(c.kind == Card::Kind::phrase);
+  CHECK(c.text == "Das Haus");
+  CHECK(c.answer == "ru");
+  CHECK(!c.method);
+  CHECK(!core.translate(c).ok());
 }
