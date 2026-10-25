@@ -30,7 +30,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).
 - Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
-- Marian needs BLAS: Accelerate on macOS, OpenBLAS (vcpkg) elsewhere. Windows: static CRT (`/MT`, Bergamot's
+- Marian needs BLAS and LAPACK: Accelerate on macOS, OpenBLAS + clapack (vcpkg, no Fortran) elsewhere. Windows: static CRT (`/MT`, Bergamot's
   choice) everywhere, triplet `x64-windows-static`; macOS: overlay triplets in `cmake/triplets/` (macOS 14).
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 

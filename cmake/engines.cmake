@@ -40,6 +40,10 @@ endif()
 add_subdirectory(${E}/bergamot ${CMAKE_BINARY_DIR}/engines/bergamot EXCLUDE_FROM_ALL SYSTEM)
 # Marian builds with -Werror; newer clang warns on its variable-length arrays.
 target_compile_options(marian PRIVATE $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option -Wno-vla-cxx-extension>)
+if(NOT APPLE)
+  find_package(LAPACK REQUIRED) # marian's faiss part; Accelerate has it on macOS
+  target_link_libraries(marian ${LAPACK_LIBRARIES})
+endif()
 if(APPLE)
   target_compile_definitions(zlib PRIVATE fdopen=fdopen) # its old zutil.h turns fdopen into NULL on newer SDKs
 endif()
