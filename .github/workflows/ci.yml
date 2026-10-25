@@ -29,7 +29,8 @@ jobs:
           git submodule update --init --recursive engines/bergamot
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: vcpkg
         with:
           path: .vcpkg-cache
           key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
@@ -53,6 +54,11 @@ jobs:
         run: |
           gen=""; [ "$RUNNER_OS" != Windows ] && gen="-G Ninja"
           cmake -S . -B build $gen -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
+      - uses: actions/cache/save@v4
+        if: steps.vcpkg.outputs.cache-hit != 'true'
+        with:
+          path: .vcpkg-cache
+          key: ${{ steps.vcpkg.outputs.cache-primary-key }}
       - name: Build
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - name: Test

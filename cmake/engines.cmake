@@ -1,6 +1,7 @@
 # Engines from engines/ (submodules at InkPeek's commits), configured as in InkPeek's app/src/main/cpp/CMakeLists.txt.
 set(E ${PROJECT_SOURCE_DIR}/engines)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # old sub-projects under CMake 4
+set(CMAKE_CXX_STANDARD 17) # their own standard: as C++20, MSVC breaks llama.cpp (char8_t) and libc++ marian (result_of)
 string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" LEXIPEEK_CPU)
 if(APPLE AND CMAKE_OSX_ARCHITECTURES)
   string(TOLOWER "${CMAKE_OSX_ARCHITECTURES}" LEXIPEEK_CPU)

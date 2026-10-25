@@ -14,7 +14,6 @@ if(APPLE)
 endif()
 project(lexipeek C CXX)
 
-set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -32,6 +31,7 @@ find_package(utf8proc CONFIG REQUIRED)
 find_package(doctest CONFIG REQUIRED)
 
 include(cmake/engines.cmake)
+set(CMAKE_CXX_STANDARD 20)
 
 # Flags for LexiPeek's own targets; engines keep theirs.
 function(lexipeek_flags target)
