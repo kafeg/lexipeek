@@ -56,25 +56,10 @@ to match it and is checked against it.
 - The two apps link to each other in their READMEs.
 
 ## Records and the sync log
-v1 shows no records, but writes the history in the sync log format from the start. The format is InkPeek's (see
-Relation); until InkPeek's docs have it, this is the draft:
-- SQLite (`saved`, `history`, `ai`, the schema of InkPeek's `Store`) is built from the logs.
-- Log: `<folder>/log/<device>.jsonl`; only its own device writes it, only appends. `device` = a random id made on
-  first run + a name ("mac-91c0").
-- A line: `{"v":1,"t":[ms,n],"d":"mac-91c0","op":"…", …fields}`; `t` is a hybrid logical clock; order (`ms`, `n`, `d`).
-
-| op | fields | merge |
-|---|---|---|
-| `saved.put` | `text, kind, lang, meaning` | last `t` wins, key `text` |
-| `saved.del` | `text` | tombstone, same rule |
-| `history.seen` | `text, kind, lang, base, meaning, c` (`c`: this device's count) | count = Σ over devices of max(`c`) |
-| `history.del` | `text` | removes the entry if newer than its last `seen` |
-| `ai.put` | `text, lang, section, ver, model, answer` | union by (`text, lang, section, ver`) |
-
-- A cut last line and unknown `op` / `v` are skipped. Compaction: a device replaces its own log with a snapshot of
-  its own operations; it never touches other files.
-- Transport later, in layers: a folder synced by Syncthing or a cloud → mDNS in the home network → iroh (optional).
-  No servers of ours.
+v1 shows no records, but writes the history in the sync log format from the start. The format (records schema,
+per-device JSONL log, merge rules) is InkPeek's [`docs/formats.md`](https://github.com/kafeg/inkpeek/blob/main/docs/formats.md);
+its cases are `tests/sync/` there, run here through `tests/inkpeek`. Transport later, in layers: a folder synced by
+Syncthing or a cloud → mDNS in the home network → iroh (optional). No servers of ours.
 
 ## Card and screens
 Mockups come before M2, from a study of how other desktop translators work (popup, placement, tabs, settings,
