@@ -34,11 +34,12 @@ the selected text); the first run asks for it and explains why.
 |---|---|
 | `core/` | C++20, CMake, **no Qt**: std, sqlite3, nlohmann/json, libcurl, zstd. Built and tested on its own (`lexipeek-cli`). The UI layer can be replaced without touching it |
 | engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp |
-| `app/` | Qt 6 Quick / QML (LGPL, dynamic linking), tray via `QSystemTrayIcon` |
-| `app/platform/mac/` | Objective-C++: hotkey (Carbon `RegisterEventHotKey`), selected text (AX `kAXSelectedTextAttribute`, else Cmd+C and the clipboard restored), non-activating `NSPanel`, Accessibility prompt |
+| `app/` | Qt 6 Widgets (LGPL, dynamic linking): native look on every OS and Linux desktop (macOS style, Windows 11 style, the KDE / GTK platform theme); tray via `QSystemTrayIcon` |
+| `app/platform/mac/` | Objective-C++: hotkey (Carbon `RegisterEventHotKey`), selected text (AX `kAXSelectedTextAttribute`; Cmd+C with the clipboard restored only when turned on), non-activating `NSPanel` with a system material, Accessibility prompt, memory-pressure signal |
 | build | CMake + `make build/test/install`; GitHub Actions; `.app` signed with Developer ID, notarized, on GitHub Releases |
 
-Not used: Qt HTTP Server (GPL-3; the extension later uses cpp-httplib, MIT), Electron, Tauri, JVM.
+Why Widgets, not QML: settings must look native on every OS and on the current Linux desktop; Qt Quick has native
+styles only for macOS and Windows. Not used: Qt HTTP Server (GPL-3; the extension later uses cpp-httplib, MIT), Electron, Tauri, JVM.
 
 ## Relation to InkPeek
 Two projects, **no shared code**. **InkPeek is the reference** for behaviour and data formats; LexiPeek is written
@@ -55,6 +56,36 @@ to match it and is checked against it.
   `*_jni.cpp` without JNI; later `ai/` and `Store`.
 - The two apps link to each other in their READMEs.
 
+## Architecture
+Laid out for every milestone now; a milestone fills a module, it does not reshape them.
+
+```
+app/ (Qt Widgets)  tray · card · settings · onboarding · server/ (M6, 127.0.0.1 + token)
+  └ platform/ mac · win · linux: hotkey, selected text, panel, permission, memory pressure
+core/ (C++, no Qt)
+  lookup   Request{text, source} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
+           the input field, the CLI and later the extension
+  dict     Library, StarDict (.syn), header, gloss, separable verbs
+  packs    manifest, resumable download, sha256, install, requirements → reasons
+  mt       Translator (Bergamot: fast, direct; Llm: Hy-MT2), LangId, ModelHost, method choice
+  store    sync log (append, HLC), merge, SQLite view; history, saved, ai answers
+  ai       (M4) Provider: HTTP (Anthropic, OpenAI-compatible) and CLI (claude -p, codex exec); modules, prompts
+  settings one JSON for the app and the CLI
+cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
+```
+- **Offline core, optional AI** (as in InkPeek): `lookup` never depends on `ai`. A card is complete without it; AI
+  is a marked tab that asks only when opened, answers go to the store (`ai.put`) and come back offline.
+- **Models in memory** (`ModelHost`): one heavy model at a time; idle unload — Hy-MT2 after 2 min, Bergamot after
+  5 min (InkPeek's values, tuned by M0 numbers) and at once on the platform's memory-pressure signal. A request
+  that needs an unloaded model shows the card at once (dictionary), the translation comes when the model is back.
+  `lexipeek-cli bench` measures cold load, first and next translations, unload, reload and peak memory per method;
+  numbers go to the spec, a test fails when reload gets slower than its budget.
+- **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
+- **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
+  is a setting (M9).
+- **Platform layer** is an interface; macOS first, Windows and Linux add implementations, not branches in shared code.
+- **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), the records UI is M5.
+
 ## Records and the sync log
 v1 shows no records, but writes the history in the sync log format from the start. The format (records schema,
 per-device JSONL log, merge rules) is InkPeek's [`docs/formats.md`](https://github.com/kafeg/inkpeek/blob/main/docs/formats.md);
@@ -62,25 +93,40 @@ its cases are `tests/sync/` there, run here through `tests/inkpeek`. Transport l
 Syncthing or a cloud → mDNS in the home network → iroh (optional). No servers of ours.
 
 ## Card and screens
-Mockups come before M2, from a study of how other desktop translators work (popup, placement, tabs, settings,
-downloads, permissions). Until then: the card has Dictionary and Translate tabs; Esc or a click outside closes it.
-Settings: packs (download, remove, sizes), languages, translation method, hotkey, appearance.
+From the study of other translators (private research): the most common complaints are a pop-up that takes focus,
+a window on the wrong screen, and a clipboard overwritten by Cmd+C.
+- **Look:** system on every OS — fonts, light / dark, accent; on Linux the current desktop's theme. Settings are a
+  plain native window. The card: a non-activating panel with the system's material, like Look Up or Spotlight.
+- **Card:** under the selection, on the screen with the cursor, kept inside its edges; no remembered coordinates.
+  Tabs Dictionary · Translate. Translate shows one method with its name; the others are a switch (a switch
+  translates again), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
+  No selection → an input field in the card (it takes focus only on a click).
+- **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc, a click
+  outside, the hotkey again close it.
+- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
+- **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
+  method with sizes; download with progress, remove) · Translation (method) · Permissions (status, how to re-add).
+- **First run:** why Accessibility → open System Settings → continue by itself when granted (no restart) → pick the
+  first pair and download it → "select a word and press ⌥D".
+- Not done: an icon at the selection, a global event tap, Cmd+C by default, all methods at once.
 
 ## Milestones (each: spec → code → check → commit, stop)
 v1:
 - **M0 Engines.** CMake, submodules, Bergamot, fastText, llama.cpp (Metal) for macOS arm64; `lexipeek-cli translate`
-  on InkPeek's pack models. Check: InkPeek's converted OPUS-MT int8 models load on Apple Silicon; speed and memory
-  of the three methods.
+  on InkPeek's pack models; `lexipeek-cli bench`. Check: InkPeek's converted OPUS-MT int8 models load on Apple
+  Silicon; load, reload, speed and memory of the three methods.
 - **M1 Core.** Packs (manifest, resumable download, sha256, install), StarDict with `.syn`, header, word-by-word
   gloss, separable verbs, language id, method choice with reasons, the log and SQLite. Cross-tests green.
 - **M2 macOS shell.** Mockups first. Menu bar, hotkey, selected text, non-activating card at the cursor
-  (Dictionary, Translate), settings, Accessibility onboarding. A build for daily use.
+  (Dictionary, Translate), input field, Recents, settings, Accessibility onboarding. Check the selection in Safari,
+  Chrome, Firefox, Vivaldi and native apps. A build for daily use.
 - **M3 Release 0.1.** Signing, notarization, GitHub Releases, update check.
 
 Later, in this order: M4 AI (API providers as in InkPeek; CLI providers `claude -p`, `codex exec`; modules,
 prompts, cache through `ai.put`) · M5 records in the UI (☆, history, TSV for Anki, export / import) · M6 browser
-extension for Chromium and Firefox: selection → card (link to the app: localhost with a token or native messaging)
-· M7 whole-page translation · M8 Windows · M9 sync folder (InkPeek too) · M10 Linux (X11; Wayland partly).
+extension for Chromium and Firefox: whole-page translation through the app's `server/`; selection in the browser
+only if M2 shows the system hotkey misses it there
+· M7 Windows · M8 sync folder (InkPeek too) · M9 Linux (X11; Wayland partly).
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0).

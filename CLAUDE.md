@@ -6,7 +6,7 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 
 ## Stack
 C++20 + CMake. `core/` — no Qt (std, sqlite3, nlohmann/json, libcurl, zstd), tested through `lexipeek-cli`.
-`app/` — Qt 6 Quick / QML; `app/platform/mac/` — Objective-C++ (hotkey, selected text, non-activating panel).
+`app/` — Qt 6 Widgets (native look everywhere); `app/platform/mac/` — Objective-C++ (hotkey, selected text, non-activating panel).
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp. macOS 14+, Apple Silicon only.
 
 ## Build and run
@@ -23,3 +23,5 @@ Not set up yet (milestone M0): `make build`, `make test`, `make install` are the
 - **An app, not a machine.** Everything comes from the app's own downloads (InkPeek's `packs` release, sha256).
 - `core/` never includes Qt or platform headers. KISS; comments — one line at most.
 - The API key never goes to logs, UI or commits.
+- **Nothing of the author's infrastructure** in the repo: no host or VM names, IPs, runner labels, paths. Build
+  scripts and CI are generic (GitHub-hosted runners); building on private machines is documented outside this repo.
