@@ -63,7 +63,7 @@ Laid out for every milestone now; a milestone fills a module, it does not reshap
 app/ (Qt Widgets)  tray · card · settings · onboarding · server/ (M6, 127.0.0.1 + token)
   └ platform/ mac · win · linux: hotkey, selected text, panel, permission, memory pressure
 core/ (C++, no Qt)
-  lookup   Request{text, source} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
+  lookup   Request{text, source: hotkey | input | service | url | extension} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
            the input field, the CLI and later the extension
   dict     Library, StarDict (.syn), header, gloss, separable verbs
   packs    manifest, resumable download, sha256, install, requirements → reasons
@@ -103,9 +103,15 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   No selection → an input field in the card (it takes focus only on a click).
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc, a click
   outside, the hotkey again close it.
+  In the card: ←/→ switch tabs, Return opens the full entry.
+- **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
+  system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
+  one-line PopClip extension uses it).
+- **Per-app rules:** apps where the hotkey does nothing, apps where Cmd+C is allowed (off by default).
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
 - **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
-  method with sizes; download with progress, remove) · Translation (method) · Permissions (status, how to re-add).
+  method with sizes; download with progress, remove) · Translation (method) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
+  again; run from `/Applications`).
 - **First run:** why Accessibility → open System Settings → continue by itself when granted (no restart) → pick the
   first pair and download it → "select a word and press ⌥D".
 - Not done: an icon at the selection, a global event tap, Cmd+C by default, all methods at once.
@@ -118,7 +124,7 @@ v1:
 - **M1 Core.** Packs (manifest, resumable download, sha256, install), StarDict with `.syn`, header, word-by-word
   gloss, separable verbs, language id, method choice with reasons, the log and SQLite. Cross-tests green.
 - **M2 macOS shell.** Mockups first. Menu bar, hotkey, selected text, non-activating card at the cursor
-  (Dictionary, Translate), input field, Recents, settings, Accessibility onboarding. Check the selection in Safari,
+  (Dictionary, Translate), input field, Service and URL scheme, per-app rules, Recents, settings, Accessibility onboarding. Check the selection in Safari,
   Chrome, Firefox, Vivaldi and native apps. A build for daily use.
 - **M3 Release 0.1.** Signing, notarization, GitHub Releases, update check.
 
