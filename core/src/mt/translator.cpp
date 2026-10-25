@@ -186,7 +186,11 @@ Translation Translator::translate(const std::string &from, const std::string &to
           return;
         }
         std::string out;
-        for (auto &s : sentences(text)) out += (out.empty() ? "" : " ") + model.translate(p.tag + " " + s);
+        bool first = true;
+        for (auto &s : sentences(text)) {
+          out += (first ? "" : " ") + (trim(s).empty() ? s : model.translate(p.tag + " " + s));
+          first = false;
+        }
         r.text = trim(out);
         return;
       }

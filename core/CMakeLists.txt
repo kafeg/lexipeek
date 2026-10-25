@@ -5,7 +5,7 @@ add_library(lexipeek_core STATIC ${LEXIPEEK_CORE_SOURCES})
 target_include_directories(lexipeek_core PUBLIC include PRIVATE src)
 target_link_libraries(lexipeek_core
   PUBLIC Threads::Threads
-  PRIVATE lexipeek_bergamot ssplit fasttext_lib llama pcre2-8-static nlohmann_json::nlohmann_json utf8proc::utf8proc
+  PRIVATE lexipeek_bergamot fasttext_lib llama pcre2-8-static nlohmann_json::nlohmann_json utf8proc::utf8proc
           SQLite::SQLite3 CURL::libcurl LibArchive::LibArchive unofficial::hash-library $<IF:$<TARGET_EXISTS:zstd::libzstd_static>,zstd::libzstd_static,zstd::libzstd_shared>)
 lexipeek_flags(lexipeek_core)
 
