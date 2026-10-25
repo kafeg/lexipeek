@@ -26,6 +26,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 ## Code layout and gotchas
 - `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`); `core/src/<module>/` — one folder per
   module of the spec's Architecture, empty ones are stubs for their milestone.
+- `core/src/dict/` (InkPeek's `stardict/`): `stardict` (own sorted index in `<data>/index/<id>/`, `.dict.dz` by dictzip
+  chunks), `library` (lookup across packs, heads, gloss, separable verbs, rank). `core/src/text/`: PCRE2 wrapper, InkPeek's
+  lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card`, language by
+  the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv`.
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
   thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).
 - Sentences: `mt/sentences.cpp`, UAX #29 as ICU without suppressions; table `mt/sentence_break.inc` from

@@ -11,6 +11,7 @@
     "doctest",
     { "name": "libarchive", "default-features": false, "features": ["zstd"] },
     "hash-library",
+    "zlib",
     { "name": "openblas", "platform": "!osx", "features": [{ "name": "dynamic-arch", "platform": "linux" }] },
     { "name": "clapack", "platform": "!osx" }
   ]
