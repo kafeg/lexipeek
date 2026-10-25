@@ -15,10 +15,17 @@ foreach(opt COMPILE_CUDA USE_TCMALLOC BUILD_SHARED_LIBS USE_WASM_COMPATIBLE_SOUR
     PCRE2_BUILD_TESTS SSPLIT_USE_INTERNAL_PCRE2 USE_DOXYGEN COMPILE_PYTHON)
   set(${opt} OFF CACHE BOOL "" FORCE)
 endforeach()
-foreach(opt USE_STATIC_LIBS THREADS_PREFER_PTHREAD_FLAG USE_PATHIECPP PCRE2_SUPPORT_JIT PCRE2_STATIC_PIC COMPILE_LIBRARY_ONLY
+foreach(opt THREADS_PREFER_PTHREAD_FLAG USE_PATHIECPP PCRE2_SUPPORT_JIT PCRE2_STATIC_PIC COMPILE_LIBRARY_ONLY
     SSPLIT_COMPILE_LIBRARY_ONLY)
   set(${opt} ON CACHE BOOL "" FORCE)
 endforeach()
+
+# Marian's static lookup would take glibc's libm.a on Linux, which cannot be linked statically.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set(USE_STATIC_LIBS OFF CACHE BOOL "" FORCE)
+else()
+  set(USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
+endif()
 
 # PCRE2 (BSD): ssplit's sentence splitting and the core's regex; ssplit takes it as a found library.
 add_subdirectory(${E}/pcre2 ${CMAKE_BINARY_DIR}/engines/pcre2 EXCLUDE_FROM_ALL SYSTEM)
