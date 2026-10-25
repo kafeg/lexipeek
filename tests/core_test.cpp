@@ -5,6 +5,7 @@
 #include "lexipeek/core.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
+#include "lexipeek/settings.hpp"
 #include "mt/model_host.hpp"
 #include "mt/text.hpp"
 
@@ -136,4 +137,29 @@ TEST_CASE("core: an empty data dir gives a card without methods") {
   CHECK(c.answer == "ru");
   CHECK(!c.method);
   CHECK(!core.translate(c).ok());
+}
+
+TEST_CASE("settings: defaults, round trip, unknown fields kept") {
+  auto d = fs::temp_directory_path() / "lexipeek-settings-test";
+  fs::remove_all(d);
+  auto s = load_settings(d);
+  CHECK(s.answer == "ru");
+  CHECK(s.lookup.key == "D");
+  CHECK(s.input.key == "A");
+  fs::create_directories(d);
+  std::ofstream(d / "settings.json") << R"({"future": 1, "answer": "en"})";
+  s = load_settings(d);
+  CHECK(s.answer == "en");
+  s.method = Method::direct;
+  s.copy_apps = {"com.example.app"};
+  CHECK(save_settings(d, s).empty());
+  auto t = load_settings(d);
+  CHECK(t.method == Method::direct);
+  CHECK(t.copy_apps.size() == 1);
+  std::ifstream f(d / "settings.json");
+  std::string all((std::istreambuf_iterator<char>(f)), {});
+  CHECK(all.find("future") != std::string::npos);
+  std::ofstream(d / "settings.json") << "{broken";
+  CHECK(load_settings(d).answer == "ru");
+  fs::remove_all(d);
 }
