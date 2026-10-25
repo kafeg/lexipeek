@@ -48,6 +48,7 @@ TEST_CASE("fast: Mozilla de → en") {
   if (!has("models/deen/set")) return;
   Translator tr({models()});
   auto r = tr.translate("de", "en", "Das Haus ist groß.", Method::fast);
+  INFO(r.error);
   REQUIRE(r.ok());
   CHECK(r.text.find("house") != std::string::npos);
   CHECK(tr.held() == "fast:de-en");
@@ -59,6 +60,7 @@ TEST_CASE("fast: Mozilla de → ru through English") {
   if (!has("models/deen/set") || !has("models/enru/set")) return;
   Translator tr({models()});
   auto r = tr.translate("de", "ru", "Das Haus ist groß.", Method::fast);
+  INFO(r.error);
   REQUIRE(r.ok());
   CHECK(r.english.find("house") != std::string::npos);
   CHECK(cyrillic(r.text));
@@ -68,6 +70,7 @@ TEST_CASE("direct: OPUS-MT int8 de → ru, the target tag per sentence") {
   if (!has("opus/opus-deu_eng_fra_por_spa-sla")) return;
   Translator tr({models()});
   auto r = tr.translate("de", "ru", "Das Haus ist groß. Der Garten ist klein.", Method::direct);
+  INFO(r.error);
   REQUIRE(r.ok());
   CHECK(r.by == "OPUS-MT");
   CHECK(cyrillic(r.text));
@@ -78,6 +81,7 @@ TEST_CASE("llm: Hy-MT2 de → ru") {
   if (!has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
   Translator tr({models()});
   auto r = tr.translate("de", "ru", "Das Haus ist groß.", Method::llm);
+  INFO(r.error);
   REQUIRE(r.ok());
   CHECK(cyrillic(r.text));
   CHECK(r.by == "Hy-MT2 1.8B");

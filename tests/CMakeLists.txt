@@ -5,3 +5,7 @@ lexipeek_flags(lexipeek_tests)
 add_test(NAME core COMMAND lexipeek_tests)
 add_test(NAME engine-pins COMMAND ${CMAKE_COMMAND} -DROOT=${PROJECT_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/pins.cmake)
 add_test(NAME cli-usage COMMAND lexipeek-cli help)
+if(LEXIPEEK_SANITIZE)
+  # Engines are not instrumented: libc++'s container annotations would see false overflows across the boundary.
+  set_tests_properties(core cli-usage PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_container_overflow=0")
+endif()

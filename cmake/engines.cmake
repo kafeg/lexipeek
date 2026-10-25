@@ -30,7 +30,14 @@ if(LEXIPEEK_ARM)
 else()
   set(BUILD_ARCH x86-64-v2 CACHE STRING "" FORCE)
 endif()
+if(NOT APPLE)
+  # Marian's FindCBLAS looks for cblas.h next to the library; vcpkg's OpenBLAS has it in include/openblas.
+  find_path(LEXIPEEK_CBLAS_INCLUDE cblas.h PATH_SUFFIXES openblas REQUIRED)
+  set(CBLAS_openblas_INCLUDE ${LEXIPEEK_CBLAS_INCLUDE} CACHE PATH "" FORCE)
+endif()
 add_subdirectory(${E}/bergamot ${CMAKE_BINARY_DIR}/engines/bergamot EXCLUDE_FROM_ALL SYSTEM)
+# Marian builds with -Werror; newer clang warns on its variable-length arrays.
+target_compile_options(marian PRIVATE $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option -Wno-vla-cxx-extension>)
 
 # fastText (MIT): its library sources only (no main.cc).
 file(GLOB FASTTEXT_SOURCES ${E}/fasttext/src/*.cc)
