@@ -32,6 +32,7 @@ struct Core::Impl {
   CoreOptions o;
   std::unique_ptr<Translator> tr;
   std::unique_ptr<dict::Library> lib;
+  std::unique_ptr<Store> store;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
 
   // The text's language among the packs' book languages into answer (InkPeek's LangId.source): (lang, other).
@@ -69,6 +70,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   o.translator.data = o.data;
   impl_->tr = std::make_unique<Translator>(o.translator);
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index");
+  impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
   impl_->o = std::move(o);
 }
 
@@ -77,6 +79,7 @@ Core::~Core() = default;
 Card Core::lookup(const Request &r) {
   std::lock_guard g(impl_->mu);
   Card c;
+  c.source = r.source;
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);
   if (raw.empty()) return c;
@@ -107,6 +110,12 @@ Card Core::lookup(const Request &r) {
   } catch (const std::exception &e) {
     c.error = e.what();
   }
+  // Every card counts as a look (history.seen), not the CLI's.
+  if (r.source != Source::cli && c.error.empty()) {
+    auto kind = c.kind == Card::Kind::word ? "word" : "phrase";
+    impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
+  }
+  c.looks = impl_->store->looks(c.base.empty() ? c.text : c.base);
   if (c.lang.empty() || c.lang == c.answer) return c;
   for (auto m : {Method::fast, Method::direct, Method::llm}) {
     MethodState s{m, method_title(m), false, impl_->tr->why_not(c.lang, c.answer, m)};
@@ -122,8 +131,18 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   auto method = m ? m : card.method;
   if (card.lang == card.answer && !card.lang.empty()) return {card.text, "", "", ""};
   if (!method || card.lang.empty()) return {"", "", "", "No method can translate this text here"};
-  return impl_->tr->translate(card.lang, card.answer, card.text, *method);
+  // Kept per method as InkPeek's offline answers (section offline-<from>); ver tells the methods apart.
+  auto section = "offline-" + card.lang;
+  auto ver = static_cast<std::int64_t>(*method) + 1;
+  if (auto a = impl_->store->answer(card.text, card.answer, section, ver)) return {*a, "", method_title(*method), ""};
+  auto t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
+  if (t.ok() && card.source != Source::cli) impl_->store->put_answer(card.text, card.answer, section, ver, std::string(method_name(*method)), t.text);
+  return t;
 }
+
+std::vector<Seen> Core::recents(int n) { return impl_->store->recents(n); }
+
+Store &Core::store() { return *impl_->store; }
 
 LanguageGuess Core::language(const std::string &text, const std::string &answer) {
   std::lock_guard g(impl_->mu);

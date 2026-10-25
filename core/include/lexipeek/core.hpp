@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "lexipeek/mt.hpp"
+#include "lexipeek/store.hpp"
 
 namespace lexipeek {
 
@@ -39,6 +40,7 @@ struct MethodState {
 struct Card {
   enum class Kind { empty, word, phrase };
   Kind kind = Kind::empty;
+  Source source = Source::input;
   std::string text;    // as asked, trimmed
   std::string lang;    // the text's language, "" = unknown
   std::string other;   // a language named by language id that has no pack
@@ -49,6 +51,7 @@ struct Card {
   std::vector<Gloss> gloss;
   std::vector<Gloss> separable;  // separable verbs written apart: word "mache … zu", base "zumachen"
   int rank = 0;                  // the word's rank in its language's frequency list (0: not in it)
+  std::int64_t looks = 0;        // looks of the word here, across its forms (this one included)
   std::vector<MethodState> methods;
   std::optional<Method> method;  // the one to translate with (the setting, else the first available)
   std::string error;
@@ -76,10 +79,13 @@ class Core {
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);
   LanguageGuess language(const std::string &text, const std::string &answer);
-  // Slow: the card's text with a method (default: card.method).
+  // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
   // Memory pressure, idle: frees the held model.
   void release();
+  // The newest looks, one per word (the menu's Recents).
+  std::vector<Seen> recents(int n);
+  Store &store();
   // Builds the dictionaries' indexes and loads language id: at launch, off the main thread (slow once per pack).
   void prepare();
   // The packs changed on disk (installed, removed): look at the dictionaries again.

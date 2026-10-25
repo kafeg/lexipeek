@@ -163,3 +163,22 @@ TEST_CASE("settings: defaults, round trip, unknown fields kept") {
   CHECK(load_settings(d).answer == "ru");
   fs::remove_all(d);
 }
+
+TEST_CASE("core: a card is a look in the history, not the CLI's") {
+  auto d = fs::temp_directory_path() / "lexipeek-core-store";
+  fs::remove_all(d);
+  {
+    CoreOptions o;
+    o.data = d;
+    Core core(o);
+    core.lookup(Request{.text = "Haus", .source = Source::hotkey});
+    core.lookup(Request{.text = "Haus", .source = Source::hotkey});
+    core.lookup(Request{.text = "Baum", .source = Source::cli});
+    auto r = core.recents(5);
+    REQUIRE(r.size() == 1);
+    CHECK(r[0].text == "Haus");
+    CHECK(r[0].count == 2);
+    CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).looks == 2);
+  }
+  fs::remove_all(d);
+}
