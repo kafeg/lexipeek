@@ -80,6 +80,8 @@ class Core {
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
   // Memory pressure, idle: frees the held model.
   void release();
+  // Builds the dictionaries' indexes and loads language id: at launch, off the main thread (slow once per pack).
+  void prepare();
   // The packs changed on disk (installed, removed): look at the dictionaries again.
   void reload();
   Translator &translator();

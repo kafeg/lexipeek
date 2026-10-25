@@ -133,6 +133,17 @@ LanguageGuess Core::language(const std::string &text, const std::string &answer)
 
 void Core::release() { impl_->tr->release(); }
 
+void Core::prepare() {
+  std::lock_guard g(impl_->mu);
+  for (auto *d : impl_->lib->all()) {
+    try {
+      d->prepare();
+    } catch (const std::exception &) {
+    }
+  }
+  impl_->tr->langid("Haus", 1);
+}
+
 void Core::reload() {
   std::lock_guard g(impl_->mu);
   impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index");

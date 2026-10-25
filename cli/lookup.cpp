@@ -1,4 +1,5 @@
 // lookup: the card as the app shows it, in text.
+#include <chrono>
 #include <iostream>
 #include "command.hpp"
 #include "lexipeek/core.hpp"
@@ -8,12 +9,18 @@ namespace lexipeek::cli {
 namespace {
 
 const Register lookup{{"lookup", "[--to ru] [--translate] [--full] TEXT...   (the card: header, dictionary, gloss, methods)",
-                       {"--translate", "--full"}, [](const Args &a) {
+                       {"--translate", "--full", "--time"}, [](const Args &a) {
                          CoreOptions o;
                          o.data = a.data;
                          o.answer = a.opt("--to", "ru");
                          Core core(o);
-                         auto c = core.lookup({a.text(), Source::cli, o.answer});
+                         auto text = a.text();
+                         auto c = core.lookup({text, Source::cli, o.answer});
+                         if (a.has("--time")) {
+                           auto t = std::chrono::steady_clock::now();
+                           for (int i = 0; i < 10; i++) core.lookup({text, Source::cli, o.answer});
+                           std::cout << "lookup: " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count() / 10 << " ms (warm)\n";
+                         }
                          if (c.kind == Card::Kind::empty) return std::cerr << "nothing to look up\n", 1;
                          std::cout << "text: " << c.text << "\nlang: " << (c.lang.empty() ? "?" : c.lang)
                                    << (c.other.empty() ? "" : " (no pack: " + c.other + ")") << " → " << c.answer << "\n";
