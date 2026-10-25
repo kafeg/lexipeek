@@ -98,7 +98,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Look:** system on every OS — fonts, light / dark, accent; on Linux the current desktop's theme. Settings are a
   plain native window. The card: a non-activating panel with the system's material, like Look Up or Spotlight.
 - **Card:** under the selection, on the screen with the cursor, kept inside its edges; no remembered coordinates.
-  Tabs Dictionary · Translate. Translate shows one method with its name; the others are a switch (a switch
+  Tabs Dictionary · Translate (· AI from M4: Analysis, Context — marked, asks only when opened). Translate shows one method with its name; the others are a switch (a switch
   translates again), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
   No selection → an input field in the card (it takes focus only on a click).
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc, a click
@@ -122,8 +122,9 @@ v1:
   Chrome, Firefox, Vivaldi and native apps. A build for daily use.
 - **M3 Release 0.1.** Signing, notarization, GitHub Releases, update check.
 
-Later, in this order: M4 AI (API providers as in InkPeek; CLI providers `claude -p`, `codex exec`; modules,
-prompts, cache through `ai.put`) · M5 records in the UI (☆, history, TSV for Anki, export / import) · M6 browser
+Later, in this order: M4 AI — the extra value, as in InkPeek: the AI tab with **Analysis** (Grammar, Words)
+and **Context** (Explanation, Examples), AI translation; modules and parts with editable prompts; API providers
+as in InkPeek and CLI providers (`claude -p`, `codex exec`); answers cached through `ai.put` · M5 records in the UI (☆, history, TSV for Anki, export / import) · M6 browser
 extension for Chromium and Firefox: whole-page translation through the app's `server/`; selection in the browser
 only if M2 shows the system hotkey misses it there
 · M7 Windows · M8 sync folder (InkPeek too) · M9 Linux (X11; Wayland partly).
