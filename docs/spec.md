@@ -1,6 +1,6 @@
 # LexiPeek — spec
 
-A pop-up dictionary and offline translator for macOS. Select text in any app, press a hotkey: a card opens next to
+A pop-up dictionary and offline translator for the desktop, macOS first, then Windows and Linux. Select text in any app, press a hotkey: a card opens next to
 the cursor with the dictionary entry and a translation made on this Mac. Close it and you are back where you were.
 LexiPeek is the desktop sibling of [InkPeek](https://github.com/kafeg/inkpeek) (Android e-ink readers) and uses its
 language packs.
@@ -16,7 +16,8 @@ language packs.
 - Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256.
 
 ## Non-goals (v1)
-AI tab, saved words and history in the UI, browser extension, whole-page translation, Windows, Linux, sync.
+AI tab, saved words and history in the UI, browser extension, whole-page translation, Linux, sync
+(Windows comes right after v1, M4).
 They are planned — see Milestones.
 
 ## Principles
@@ -30,16 +31,22 @@ macOS 14+, Apple Silicon only. A menu-bar app (`LSUIElement`). Needs Accessibili
 the selected text); the first run asks for it and explains why.
 
 ## Stack
+One C++ core with all the logic; a thin native shell per OS that only draws what the core gives it.
+
 | part | what |
 |---|---|
-| `core/` | C++20, CMake, **no Qt**: std, sqlite3, nlohmann/json, libcurl, zstd. Built and tested on its own (`lexipeek-cli`). The UI layer can be replaced without touching it |
-| engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp |
-| `app/` | Qt 6 Widgets (LGPL, dynamic linking): native look on every OS and Linux desktop (macOS style, Windows 11 style, the KDE / GTK platform theme); tray via `QSystemTrayIcon` |
-| `app/platform/mac/` | Objective-C++: hotkey (Carbon `RegisterEventHotKey`), selected text (AX `kAXSelectedTextAttribute`; Cmd+C with the clipboard restored only when turned on), non-activating `NSPanel` with a system material, Accessibility prompt, memory-pressure signal |
-| build | CMake + `make build/test/install`; GitHub Actions; `.app` signed with Developer ID, notarized, on GitHub Releases |
+| `core/` | C++20, CMake, no UI and no OS headers. Libraries (vcpkg manifest, the same on every OS): sqlite3, nlohmann/json, libcurl, zstd, **utf8proc** (NFC, case folding — strings are UTF-8 `std::string` everywhere), doctest. Regex — PCRE2 (never `std::regex`); formatting — `std::format`. Built and tested on its own (`lexipeek-cli`) |
+| `core/include/lexipeek/` | the facade the shells call: plain structs, enums, `std::string`, `std::vector`, `std::optional`, errors as values — importable by Swift's C++ interop and used as is by C++ shells. No C API |
+| engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp (Metal on macOS) |
+| `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX; Cmd+C with the clipboard restored only where allowed), Service, URL scheme, Accessibility, memory pressure |
+| `qt/` | (M4) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
+| checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
+| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; `.app` signed with Developer ID, notarized, on GitHub Releases |
 
-Why Widgets, not QML: settings must look native on every OS and on the current Linux desktop; Qt Quick has native
-styles only for macOS and Windows. Not used: Qt HTTP Server (GPL-3; the extension later uses cpp-httplib, MIT), Electron, Tauri, JVM.
+Why native shells: the look must be the system's on every OS; on macOS almost everything is native anyway (panel,
+material, Service, Accessibility), and SwiftUI settings look as in panerail. The rule (as panerail's `PaneRailKit`):
+everything that decides lives in the core and is tested there; a shell has no logic of its own, so adding an OS is
+drawing screens, not porting behaviour. Not used: Electron, Tauri, JVM, QML.
 
 ## Relation to InkPeek
 Two projects, **no shared code**. **InkPeek is the reference** for behaviour and data formats; LexiPeek is written
@@ -60,16 +67,17 @@ to match it and is checked against it.
 Laid out for every milestone now; a milestone fills a module, it does not reshape them.
 
 ```
-app/ (Qt Widgets)  tray · card · settings · onboarding · server/ (M6, 127.0.0.1 + token)
-  └ platform/ mac · win · linux: hotkey, selected text, panel, permission, memory pressure
-core/ (C++, no Qt)
+mac/ (Swift)       menu bar · card · settings · onboarding · server (M7, 127.0.0.1 + token) · platform parts
+qt/  (C++, M4)     the same screens for Windows and Linux · platform parts per OS
+core/ (C++, no UI)
+  views    what each screen shows (card, packs list, settings state) — shells only draw it
   lookup   Request{text, source: hotkey | input | service | url | extension} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
            the input field, the CLI and later the extension
   dict     Library, StarDict (.syn), header, gloss, separable verbs
   packs    manifest, resumable download, sha256, install, requirements → reasons
   mt       Translator (Bergamot: fast, direct; Llm: Hy-MT2), LangId, ModelHost, method choice
   store    sync log (append, HLC), merge, SQLite view; history, saved, ai answers
-  ai       (M4) Provider: HTTP (Anthropic, OpenAI-compatible) and CLI (claude -p, codex exec); modules, prompts
+  ai       (M5) Provider: HTTP (Anthropic, OpenAI-compatible) and CLI (claude -p, codex exec); modules, prompts
   settings one JSON for the app and the CLI
 cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
 ```
@@ -82,9 +90,10 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
   numbers go to the spec, a test fails when reload gets slower than its budget.
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
-  is a setting (M9).
-- **Platform layer** is an interface; macOS first, Windows and Linux add implementations, not branches in shared code.
-- **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), the records UI is M5.
+  is a setting (M8). Windows: `%APPDATA%\\LexiPeek`, Linux: XDG dirs.
+- **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8
+  (`u8path` care on Windows).
+- **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), the records UI is M6.
 
 ## Records and the sync log
 v1 shows no records, but writes the history in the sync log format from the start. The format (records schema,
@@ -98,7 +107,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Look:** system on every OS — fonts, light / dark, accent; on Linux the current desktop's theme. Settings are a
   plain native window. The card: a non-activating panel with the system's material, like Look Up or Spotlight.
 - **Card:** under the selection, on the screen with the cursor, kept inside its edges; no remembered coordinates.
-  Tabs Dictionary · Translate (· AI from M4: Analysis, Context — marked, asks only when opened). Translate shows one method with its name; the others are a switch (a switch
+  Tabs Dictionary · Translate (· AI from M5: Analysis, Context — marked, asks only when opened). Translate shows one method with its name; the others are a switch (a switch
   translates again), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
   No selection → an input field in the card (it takes focus only on a click).
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc, a click
@@ -118,22 +127,25 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 
 ## Milestones (each: spec → code → check → commit, stop)
 v1:
-- **M0 Engines.** CMake, submodules, Bergamot, fastText, llama.cpp (Metal) for macOS arm64; `lexipeek-cli translate`
-  on InkPeek's pack models; `lexipeek-cli bench`. Check: InkPeek's converted OPUS-MT int8 models load on Apple
-  Silicon; load, reload, speed and memory of the three methods.
+- **M0 Engines.** CMake + vcpkg, submodules, Bergamot, fastText, llama.cpp; `lexipeek-cli translate` and `bench` on
+  InkPeek's pack models. CI builds the core and runs its tests on macOS, Windows and Linux. Check: InkPeek's
+  converted OPUS-MT int8 models load on Apple Silicon and x86-64; load, reload, speed and memory of the three methods.
 - **M1 Core.** Packs (manifest, resumable download, sha256, install), StarDict with `.syn`, header, word-by-word
-  gloss, separable verbs, language id, method choice with reasons, the log and SQLite. Cross-tests green.
-- **M2 macOS shell.** Mockups first. Menu bar, hotkey, selected text, non-activating card at the cursor
-  (Dictionary, Translate), input field, Service and URL scheme, per-app rules, Recents, settings, Accessibility onboarding. Check the selection in Safari,
-  Chrome, Firefox, Vivaldi and native apps. A build for daily use.
-- **M3 Release 0.1.** Signing, notarization, GitHub Releases, update check.
+  gloss, separable verbs, language id, method choice with reasons, the log and SQLite, `views`. Cross-tests green
+  on all three OSes.
+- **M2 macOS app.** Swift shell: menu bar, hotkey, selected text, non-activating card at the cursor (Dictionary,
+  Translate), input field, Service and URL scheme, per-app rules, Recents, settings, Accessibility onboarding.
+  Check the selection in Safari, Chrome, Firefox, Vivaldi and native apps. A build for daily use.
+- **M3 Release 0.1 (macOS).** Signing, notarization, GitHub Releases, update check.
+- **M4 Windows app.** Qt Widgets shell, Windows platform parts, installer; release 0.2. The second shell right after
+  the first, to find what the core and its facade got wrong while it is cheap to change.
 
-Later, in this order: M4 AI — the extra value, as in InkPeek: the AI tab with **Analysis** (Grammar, Words)
-and **Context** (Explanation, Examples), AI translation; modules and parts with editable prompts; API providers
-as in InkPeek and CLI providers (`claude -p`, `codex exec`); answers cached through `ai.put` · M5 records in the UI (☆, history, TSV for Anki, export / import) · M6 browser
-extension for Chromium and Firefox: whole-page translation through the app's `server/`; selection in the browser
-only if M2 shows the system hotkey misses it there
-· M7 Windows · M8 sync folder (InkPeek too) · M9 Linux (X11; Wayland partly).
+Then, in this order: M5 AI — the extra value, as in InkPeek: the AI tab with **Analysis** (Grammar, Words) and
+**Context** (Explanation, Examples), AI translation; modules and parts with editable prompts; API providers as in
+InkPeek and CLI providers (`claude -p`, `codex exec`); answers cached through `ai.put` · M6 records in the UI (☆,
+history, TSV for Anki, export / import) · M7 browser extension for Chromium and Firefox: whole-page translation
+through the app's local server; selection in the browser only if M2 shows the system hotkey misses it there ·
+M8 sync folder (InkPeek too) · M9 Linux (the Qt shell; X11, Wayland through portals where they allow).
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0).
