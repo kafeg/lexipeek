@@ -34,11 +34,15 @@ endif()
 if(NOT APPLE)
   # Marian's FindCBLAS looks for cblas.h next to the library; vcpkg's OpenBLAS has it in include/openblas.
   find_path(LEXIPEEK_CBLAS_INCLUDE cblas.h PATH_SUFFIXES openblas REQUIRED)
-  set(CBLAS_openblas_INCLUDE ${LEXIPEEK_CBLAS_INCLUDE} CACHE PATH "" FORCE)
+  set(cblas_openblas_INCLUDE ${LEXIPEEK_CBLAS_INCLUDE} CACHE PATH "" FORCE)
+  set(cblas_openblas_WORKS ON CACHE BOOL "" FORCE) # its link check misses -pthread for the static library
 endif()
 add_subdirectory(${E}/bergamot ${CMAKE_BINARY_DIR}/engines/bergamot EXCLUDE_FROM_ALL SYSTEM)
 # Marian builds with -Werror; newer clang warns on its variable-length arrays.
 target_compile_options(marian PRIVATE $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option -Wno-vla-cxx-extension>)
+if(APPLE)
+  target_compile_definitions(zlib PRIVATE fdopen=fdopen) # its old zutil.h turns fdopen into NULL on newer SDKs
+endif()
 
 # fastText (MIT): its library sources only (no main.cc).
 file(GLOB FASTTEXT_SOURCES ${E}/fasttext/src/*.cc)
