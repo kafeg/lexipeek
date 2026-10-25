@@ -41,7 +41,9 @@ add_subdirectory(${E}/bergamot ${CMAKE_BINARY_DIR}/engines/bergamot EXCLUDE_FROM
 # Marian builds with -Werror; newer clang warns on its variable-length arrays.
 target_compile_options(marian PRIVATE $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option -Wno-vla-cxx-extension>)
 if(NOT APPLE)
-  find_package(LAPACK REQUIRED) # marian's faiss part; Accelerate has it on macOS
+  # Marian's faiss part needs LAPACK (Accelerate has it on macOS): clapack's own FindLAPACK.
+  list(PREPEND CMAKE_MODULE_PATH ${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/clapack)
+  find_package(LAPACK REQUIRED)
   target_link_libraries(marian ${LAPACK_LIBRARIES})
 endif()
 if(APPLE)
