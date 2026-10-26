@@ -61,5 +61,11 @@ final class CardModel: ObservableObject {
         }
     }
 
+    // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
+    func choose(_ m: lexipeek.Method) {
+        Prefs.shared.method = m == .fast ? "fast" : m == .direct ? "direct" : "llm"
+        translate(m)
+    }
+
     func switchTab() { tab = tab == .dictionary ? .translate : .dictionary }
 }

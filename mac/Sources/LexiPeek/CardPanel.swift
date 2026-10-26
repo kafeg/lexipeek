@@ -27,6 +27,7 @@ final class CardController {
     private var monitors: [Any] = []
     private var changes: AnyCancellable?
     private var moved: Any?
+    private var downAt: NSPoint?
 
     var isVisible: Bool { panel.isVisible }
 
@@ -42,10 +43,17 @@ final class CardController {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isMovableByWindowBackground = true
-        // Moved by hand (the mouse is down): the card stays where it was put, as pinned.
-        moved = NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: panel, queue: .main) {
-            [weak self] _ in
-            if NSEvent.pressedMouseButtons & 1 != 0 { self?.model.pinned = true }
+        // Dragged somewhere (moved further than a click's jitter): the card stays where it was put, as pinned.
+        moved = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] e in
+            guard let self, e.window === self.panel else { return e }
+            if e.type == .leftMouseDown {
+                self.downAt = self.panel.frame.origin
+            } else if let d = self.downAt {
+                let o = self.panel.frame.origin
+                if hypot(o.x - d.x, o.y - d.y) > 4 { self.model.pinned = true }
+                self.downAt = nil
+            }
+            return e
         }
         effect.material = .popover
         effect.blendingMode = .behindWindow
@@ -71,6 +79,7 @@ final class CardController {
     // text nil: the input field (focused at once when typing was asked for).
     func show(text: String?, source: lexipeek.Source, bounds: CGRect?, focus: Bool) {
         close()
+        model.pinned = false
         model.reset(input: text == nil)
         let view = CardView(model: model, focusInput: focus)
         hosting?.removeFromSuperview()

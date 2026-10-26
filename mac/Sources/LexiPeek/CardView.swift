@@ -180,7 +180,7 @@ struct CardView: View {
         let current = card.methods.first { $0.id == model.method }
         return Menu {
             ForEach(card.methods) { m in
-                Button { model.translate(m.id) } label: {
+                Button { model.choose(m.id) } label: {
                     Text(m.available ? m.name : "\(m.name) — \(m.reason)")
                 }
                 .disabled(!m.available)
