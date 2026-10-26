@@ -91,7 +91,7 @@ struct CardView {
   std::string title;     // the header ("das Haus (Hauses, pl. Häuser)") or the text
   std::string subtitle;  // a word's small line, InkPeek's: "form: Häusern\namong the 1,000 most frequent words · looked up 3 times"
   std::string tooltip;   // the text as asked
-  std::string badge;     // "de → ru", "Russian" (already in it), ""
+  std::string badge;     // "de → ru", "Russian" (already in it), "French" (no pack from it), ""
   bool wide = false;     // a passage: a wider card
   bool tabs = false;     // Dictionary · Translate are shown
   CardTab tab = CardTab::translate;  // the one shown
@@ -103,6 +103,7 @@ struct CardView {
   std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
   std::string pager;  // a section's page: "21–40 of 63", "" (one page)
   bool prev = false, next = false;  // the section has a page before, after
+  bool footer = false;              // anything in the footer (else it is not drawn)
 };
 
 // The tab a new card opens on: Dictionary for a word with entries, else Translate.

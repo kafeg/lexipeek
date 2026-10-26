@@ -220,6 +220,7 @@ CardView card_view(const Card &c, const CardState &s) {
     v.title = c.text;
   }
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang_name : c.lang + " → " + c.answer;
+  else if (!c.other_name.empty()) v.badge = c.other_name;  // a language without a pack, named
   v.wide = v.style == HeaderStyle::passage;
   v.tabs = c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty();
   v.tab = v.tabs ? s.tab : CardTab::translate;
@@ -242,6 +243,7 @@ CardView card_view(const Card &c, const CardState &s) {
       if (s.has_method && m.method == s.method) v.menu_title = m.name;
     }
   }
+  v.footer = !v.back.empty() || !v.entry_toggle.empty() || v.menu || !v.pager.empty();
   return v;
 }
 

@@ -62,6 +62,7 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.entry_toggle == "Full entry ⏎");
   CHECK(!v.menu);
   CHECK(v.back.empty());
+  CHECK(v.footer);
   s.full_entry = true;
   v = card_view(c, s);
   CHECK(v.rows[0].html == "<b>Haus</b> дом");
@@ -223,6 +224,7 @@ TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
   REQUIRE(v.rows.size() == 5);
   CHECK(v.rows[4].style == Style::note);
   CHECK(v.rows[4].text == "… and 12 more words");
+  CHECK(!v.footer);  // nothing in it: not drawn
 }
 
 TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
@@ -252,7 +254,8 @@ TEST_CASE("views: same language, no pack, unknown language, nothing to translate
   c.lang = c.lang_name = "";
   c.other_name = "French";
   v = card_view(c, first_state(c));
-  CHECK(v.badge.empty());
+  CHECK(v.badge == "French");
+  CHECK(!v.footer);
   CHECK(v.rows[0].text == "No language pack from French into Russian yet.");
   c.other_name = "";
   CHECK(card_view(c, first_state(c)).rows[0].text == "Could not tell the language of this text.");

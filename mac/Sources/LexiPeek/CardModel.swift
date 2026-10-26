@@ -37,6 +37,7 @@ struct CardLook {
     var pager = ""
     var prev = false
     var next = false
+    var footer = false
 
     init(_ v: lexipeek.CardView) {
         style = v.style
@@ -59,6 +60,7 @@ struct CardLook {
         pager = String(v.pager)
         prev = v.prev
         next = v.next
+        footer = v.footer
     }
 }
 

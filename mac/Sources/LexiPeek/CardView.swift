@@ -51,7 +51,7 @@ struct CardView: View {
                     bodyHeight = $0
                     model.objectWillChange.send()
                 }
-                footer(look)
+                if look.footer { footer(look) }
             } else if !model.showInput {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
