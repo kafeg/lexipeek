@@ -118,75 +118,94 @@ struct PacksPane: View {
     var body: some View {
         Form {
             Section {
-                ForEach(model.rows) { row in
-                    pair(row)
-                    ForEach(row.extras) { part($0) }
-                }
-                if model.rows.isEmpty { Text("No list of packs yet: check for packs.").foregroundStyle(.secondary) }
-            } header: {
-                HStack {
-                    Text("Language pairs")
-                    Spacer()
-                    Button("Check for packs") { model.refresh() }.disabled(model.busy != nil)
-                }
-            } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    if let b = model.busy, b != "list" {
-                        HStack {
-                            ProgressView(value: model.progress).controlSize(.small)
-                            Text(b).font(.caption)
-                            Button("Cancel") { model.cancel() }.controlSize(.small)
-                        }
+                if let b = model.busy {
+                    HStack {
+                        Text(b == "list" ? "Checking for packs…" : b).lineLimit(1)
+                        ProgressView(value: b == "list" ? nil : model.progress).progressViewStyle(.linear)
+                        if b != "list" { Button("Cancel") { model.cancel() }.controlSize(.small) }
                     }
-                    ForEach([model.error, model.listError].filter { !$0.isEmpty }, id: \.self) {
-                        Text($0).font(.caption).foregroundStyle(.red)
-                    }
-                    Button(CoreClient.dataDir) { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
+                }
+                ForEach([model.error, model.listError].filter { !$0.isEmpty }, id: \.self) {
+                    Label($0, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.callout)
+                }
+                LabeledContent {
+                    Button("Check for Updates") { model.refresh() }.disabled(model.busy != nil)
+                } label: {
+                    Text(summary)
+                    Button("Show in Finder") { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
                         .buttonStyle(.link).font(.caption)
                 }
             }
+            let installed = model.rows.filter(\.installed), available = model.rows.filter { !$0.installed }
+            if !installed.isEmpty {
+                Section("Installed") { ForEach(installed) { installedRow($0) } }
+            }
+            if !available.isEmpty {
+                Section("Available") { ForEach(available) { availableRow($0) } }
+            }
+            if model.rows.isEmpty {
+                Section { Text("No list of packs yet. Check for updates.").foregroundStyle(.secondary) }
+            }
         }
         .formStyle(.grouped)
+        .frame(width: 520, height: 520)
         .onAppear { model.load() }
     }
 
-    private func pair(_ r: PacksModel.Row) -> some View {
+    private var summary: String {
+        let n = model.rows.filter(\.installed).count
+        return n == 0 ? "No language pairs installed" : n == 1 ? "1 language pair installed" : "\(n) language pairs installed"
+    }
+
+    private func size(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
+
+    private func level(_ r: PacksModel.Row) -> String { r.level.isEmpty ? "" : r.level.capitalized }
+
+    private func installedRow(_ r: PacksModel.Row) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title)
-                Text(r.level.isEmpty ? "Dictionary and Mozilla models" : "\(r.level.capitalized) · dictionary and Mozilla models")
+                Text(([level(r), "Mozilla"] + r.extras.filter(\.installed).map(\.title)).filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            if r.installed {
-                if r.missing > 0 { download(r.missing) { model.install(model.pairIDs(r), r.title) } }
-                Button("Remove") { model.remove(model.freedIDs(r), r.title) }.disabled(model.busy != nil)
-            } else {
-                download(r.missing) { model.install(model.pairIDs(r), r.title) }
+            if r.missing > 0 || r.extras.contains(where: \.update) {
+                Button("Update") {
+                    model.install(model.pairIDs(r) + r.extras.filter(\.update).map(\.id), r.title)
+                }
+                .disabled(model.busy != nil)
             }
+            Menu {
+                ForEach(r.extras) { p in
+                    if p.installed {
+                        Button("Remove \(p.title)") { model.remove([p.id], p.title) }
+                    } else if p.cannot.isEmpty {
+                        Button("Download \(p.title) (\(size(p.size)))") { model.install([p.id], p.title) }
+                    } else {
+                        Button("\(p.title): \(p.cannot)") {}.disabled(true)
+                    }
+                }
+                if !r.extras.isEmpty { Divider() }
+                Button("Remove \(r.title)", role: .destructive) { model.remove(model.freedIDs(r), r.title) }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(model.busy != nil)
         }
     }
 
-    private func part(_ p: PacksModel.Part) -> some View {
+    private func availableRow(_ r: PacksModel.Row) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(p.title)
-                if !p.cannot.isEmpty { Text(p.cannot).font(.caption).foregroundStyle(.secondary) }
+                Text(r.title)
+                Text([level(r), size(r.missing)].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            .padding(.leading, 16)
-            .opacity(p.cannot.isEmpty ? 1 : 0.5)
             Spacer()
-            if p.installed {
-                if p.update { download(p.size) { model.install([p.id], p.title) } }
-                Button("Remove") { model.remove([p.id], p.title) }.disabled(model.busy != nil)
-            } else if p.cannot.isEmpty {
-                download(p.size) { model.install([p.id], p.title) }
-            }
+            Button("Download") { model.install(model.pairIDs(r), r.title) }.disabled(model.busy != nil)
         }
-    }
-
-    private func download(_ size: Int64, _ action: @escaping () -> Void) -> some View {
-        Button("Download \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))", action: action)
-            .disabled(model.busy != nil)
     }
 }

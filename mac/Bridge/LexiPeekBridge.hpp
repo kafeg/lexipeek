@@ -1,5 +1,6 @@
 // The facade for Swift: plain functions and copyable handles (Swift cannot build std::function or std::filesystem::path).
 #pragma once
+#include <algorithm>
 #include <atomic>
 #include <memory>
 #include <string>
@@ -66,6 +67,16 @@ inline Rows rows(const std::string &data, const Device &d) {
 }
 
 // The release's list (network); "" or why it is not fresh.
+// Answer languages the packs offer (codes), and a language's English name.
+inline Strings answers(const std::string &data) {
+  Strings out;
+  for (auto &p : pairs(Packs(dir(data)).cached()))
+    if (std::find(out.begin(), out.end(), p.to) == out.end()) out.push_back(p.to);
+  std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return language_name(a) < language_name(b); });
+  return out;
+}
+inline std::string name_of(const std::string &code) { return language_name(code); }
+
 inline std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().error; }
 
 // What a pair needs that is not installed yet.

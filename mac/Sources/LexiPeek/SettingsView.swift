@@ -1,66 +1,112 @@
 import AppKit
+import CxxStdlib
+import LexiPeekCore
 import LexiPeekKit
 import ServiceManagement
 import SwiftUI
 
-// Settings: General · Packs · Translation · Permissions.
-struct SettingsView: View {
-    enum Pane: Hashable { case general, packs, translation, permissions }
+// Settings: a standard macOS settings window, one toolbar tab per pane (General · Translation · Packs · Permissions).
+enum SettingsPane: String, CaseIterable {
+    case general, translation, packs, permissions
 
-    @ObservedObject var prefs = Prefs.shared
-    @ObservedObject var state: SettingsState
-    let client: CoreClient
-
-    var body: some View {
-        TabView(selection: $state.pane) {
-            GeneralPane(prefs: prefs, state: state).tabItem { Label("General", systemImage: "gearshape") }.tag(Pane.general)
-            PacksPane(client: client).tabItem { Label("Packs", systemImage: "shippingbox") }.tag(Pane.packs)
-            TranslationPane(prefs: prefs).tabItem { Label("Translation", systemImage: "character.bubble") }.tag(Pane.translation)
-            PermissionsPane(state: state).tabItem { Label("Permissions", systemImage: "hand.raised") }.tag(Pane.permissions)
+    var title: String { rawValue.capitalized }
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .translation: "character.bubble"
+        case .packs: "shippingbox"
+        case .permissions: "hand.raised"
         }
-        .frame(width: 520, height: 420)
     }
 }
 
 final class SettingsState: ObservableObject {
-    @Published var pane = SettingsView.Pane.general
     @Published var trusted = Selection.trusted
     @Published var hotkeyErrors: [String: String] = [:]
 }
 
-private struct GeneralPane: View {
+enum SettingsWindow {
+    static func make(state: SettingsState, client: CoreClient) -> NSWindow {
+        let tabs = NSTabViewController()
+        tabs.tabStyle = .toolbar
+        for pane in SettingsPane.allCases {
+            let vc = NSHostingController(rootView: view(pane, state: state, client: client))
+            vc.sizingOptions = .preferredContentSize
+            let item = NSTabViewItem(viewController: vc)
+            item.label = pane.title
+            item.image = NSImage(systemSymbolName: pane.symbol, accessibilityDescription: pane.title)
+            item.identifier = pane.rawValue
+            tabs.addTabViewItem(item)
+        }
+        let w = NSWindow(contentViewController: tabs)
+        w.styleMask = [.titled, .closable]
+        w.toolbarStyle = .preference
+        w.isReleasedWhenClosed = false
+        w.center()
+        return w
+    }
+
+    static func select(_ w: NSWindow?, _ pane: SettingsPane) {
+        guard let tabs = w?.contentViewController as? NSTabViewController else { return }
+        tabs.selectedTabViewItemIndex = SettingsPane.allCases.firstIndex(of: pane) ?? 0
+        w?.title = pane.title
+    }
+
+    static func view(_ pane: SettingsPane, state: SettingsState, client: CoreClient) -> AnyView {
+        switch pane {
+        case .general: AnyView(GeneralPane(prefs: .shared, state: state))
+        case .translation: AnyView(TranslationPane(prefs: .shared))
+        case .packs: AnyView(PacksPane(client: client))
+        case .permissions: AnyView(PermissionsPane(state: state))
+        }
+    }
+}
+
+// The common frame: grouped form, fixed width, height of its content.
+private struct Pane<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        Form { content }
+            .formStyle(.grouped)
+            .scrollDisabled(true)
+            .frame(width: 520)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct GeneralPane: View {
     @ObservedObject var prefs: Prefs
     @ObservedObject var state: SettingsState
     @State private var login = SMAppService.mainApp.status == .enabled
 
     var body: some View {
-        Form {
-            Section("Hotkeys") {
+        Pane {
+            Section {
                 LabeledContent("Translate selection") {
                     ShortcutField(shortcut: $prefs.translateKey, other: prefs.inputKey, error: state.hotkeyErrors["translate"])
                 }
                 LabeledContent("Type text") {
                     ShortcutField(shortcut: $prefs.inputKey, other: prefs.translateKey, error: state.hotkeyErrors["input"])
                 }
-            }
-            Section {
                 Toggle("Open at login", isOn: $login).onChange(of: login) { _, on in
                     try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
                     login = SMAppService.mainApp.status == .enabled
                     prefs.openAtLogin = login
                 }
             }
-            Section("Apps where the hotkey does nothing") { AppList(ids: $prefs.offApps) }
             Section {
                 AppList(ids: $prefs.copyApps)
             } header: {
-                Text("Apps where Cmd+C may read the selection")
+                Text("Read the selection with ⌘C in")
             } footer: {
-                Text("For apps that do not show their selection to Accessibility. The clipboard is restored after.")
-                    .font(.caption).foregroundStyle(.secondary)
+                Note("For apps that do not show their selection to Accessibility. The clipboard is put back after.")
+            }
+            Section {
+                AppList(ids: $prefs.offApps)
+            } header: {
+                Text("The hotkey does nothing in")
             }
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -108,21 +154,29 @@ private struct ShortcutField: View {
     }
 }
 
-// Bundle ids, added from the running apps.
+// Apps by bundle id, with their icons; added from the running apps.
 private struct AppList: View {
     @Binding var ids: [String]
 
     var body: some View {
         ForEach(ids, id: \.self) { id in
             HStack {
+                icon(id)
                 Text(name(id))
                 Spacer()
-                Button { ids.removeAll { $0 == id } } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless)
+                Button { ids.removeAll { $0 == id } } label: { Image(systemName: "minus.circle.fill").foregroundStyle(.secondary) }
+                    .buttonStyle(.borderless)
+                    .help("Remove")
             }
         }
-        Menu("Add an app") {
-            ForEach(running, id: \.self) { id in Button(name(id)) { ids.append(id) } }
+        Menu {
+            ForEach(running, id: \.self) { id in
+                Button { ids.append(id) } label: { Text(name(id)) }
+            }
+        } label: {
+            Label("Add App…", systemImage: "plus")
         }
+        .menuStyle(.borderlessButton)
         .fixedSize()
     }
 
@@ -131,64 +185,91 @@ private struct AppList: View {
             .filter { $0.activationPolicy == .regular }
             .compactMap(\.bundleIdentifier)
             .filter { !ids.contains($0) && $0 != Bundle.main.bundleIdentifier }
+            .sorted { name($0) < name($1) }
     }
+
+    private func url(_ id: String) -> URL? { NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) }
 
     private func name(_ id: String) -> String {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else { return id }
-        return FileManager.default.displayName(atPath: url.path)
+        guard let url = url(id) else { return id }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+    }
+
+    @ViewBuilder private func icon(_ id: String) -> some View {
+        if let url = url(id) {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 18, height: 18)
+        }
     }
 }
 
-
-private struct TranslationPane: View {
+struct TranslationPane: View {
     @ObservedObject var prefs: Prefs
 
+    private var answers: [String] {
+        let a = lexipeek.mac.answers(std.string()).map { String($0) }
+        return a.contains(prefs.answer) ? a : [prefs.answer] + a
+    }
+
     var body: some View {
-        Form {
-            Picker("Method", selection: $prefs.method) {
-                Text("The first available").tag("")
-                Text("Fast · Mozilla").tag("fast")
-                Text("Direct · OPUS-MT").tag("direct")
-                Text("AI model · Hy-MT2").tag("llm")
+        Pane {
+            Section {
+                Picker("Translate into", selection: $prefs.answer) {
+                    ForEach(answers, id: \.self) { code in
+                        Text(String(lexipeek.mac.name_of(std.string(code)))).tag(code)
+                    }
+                }
+                Picker("Method", selection: $prefs.method) {
+                    Text("The first available").tag("")
+                    Divider()
+                    Text("Fast · Mozilla").tag("fast")
+                    Text("Direct · OPUS-MT").tag("direct")
+                    Text("AI model · Hy-MT2").tag("llm")
+                }
+            } footer: {
+                Note("The card can switch the method for one text. A method this Mac cannot run is dimmed there, with the reason.")
             }
-            TextField("Translate into", text: $prefs.answer, prompt: Text("ru"))
-            Text("A method this Mac cannot run is shown dimmed in the card, with the reason.")
-                .font(.caption).foregroundStyle(.secondary)
         }
-        .formStyle(.grouped)
     }
 }
 
-private struct PermissionsPane: View {
+struct PermissionsPane: View {
     @ObservedObject var state: SettingsState
 
     var body: some View {
-        Form {
+        Pane {
             Section {
                 LabeledContent("Accessibility") {
-                    Label(state.trusted ? "Granted" : "Not granted",
-                          systemImage: state.trusted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(state.trusted ? .green : .orange)
-                }
-                if !state.trusted {
-                    Button("Open System Settings") {
-                        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-                        AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
-                        NSWorkspace.shared.open(URL(string:
-                            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                    if state.trusted {
+                        Label("Allowed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    } else {
+                        Button("Allow…") {
+                            let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+                            AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+                            NSWorkspace.shared.open(URL(string:
+                                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                        }
                     }
                 }
             } footer: {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("LexiPeek reads the selected text of the app in front when you press the hotkey. "
-                        + "That needs Accessibility; nothing else is read, nothing leaves this Mac.")
-                    Text("Without it: ⌥A, the Service “Look up in LexiPeek” and lexipeek:// links still work.")
-                    Text("After a macOS update or a new build, remove LexiPeek from the list and add it again. "
-                        + "Run it from /Applications.")
-                }
-                .font(.caption).foregroundStyle(.secondary)
+                Note("LexiPeek reads the selected text of the app in front when you press the hotkey; nothing else is "
+                    + "read and nothing leaves this Mac. Without it, ⌥A, the Service “Look up in LexiPeek” and "
+                    + "lexipeek:// links still work. If it stops working after an update, remove LexiPeek from the "
+                    + "list in System Settings and add it again.")
             }
         }
-        .formStyle(.grouped)
+    }
+}
+
+// A footer note: small, secondary, left-aligned.
+struct Note: View {
+    var text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }

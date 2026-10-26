@@ -14,6 +14,9 @@ final class CardModel: ObservableObject {
     @Published var translating = false
     @Published var fullEntry = false
     @Published var pinned = false
+    // The hotkey found no selection in this app (bundle id, name): the card says so and offers Cmd+C there.
+    @Published var unread: (id: String, name: String)?
+    var retry: (() -> Void)?
 
     let client: CoreClient
     private var request = 0
@@ -28,6 +31,7 @@ final class CardModel: ObservableObject {
         translation = nil
         translating = false
         fullEntry = false
+        unread = nil
     }
 
     func lookup(_ text: String, source: lexipeek.Source) {

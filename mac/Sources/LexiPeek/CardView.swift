@@ -10,6 +10,19 @@ struct CardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let u = model.unread {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(u.name) does not show its selection to LexiPeek.").font(.callout)
+                    HStack {
+                        Button("Read it with ⌘C in \(u.name)") {
+                            Prefs.shared.copyApps.append(u.id)
+                            model.retry?()
+                        }
+                        .controlSize(.small)
+                        Text("The clipboard is restored after.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
             if model.showInput {
                 TextField("Type a word or a sentence", text: $model.input)
                     .textFieldStyle(.roundedBorder)

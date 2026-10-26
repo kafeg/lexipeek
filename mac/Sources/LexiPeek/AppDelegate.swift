@@ -83,7 +83,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if let s = await Selection.read(app: app, allowCopy: allowCopy) {
                 card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false)
             } else {
-                card.show(text: nil, source: .input, bounds: nil, focus: false)
+                // Nothing read: say where, offer Cmd+C there (not when it was allowed already), type meanwhile.
+                card.show(text: nil, source: .input, bounds: nil, focus: true)
+                if Selection.trusted && !allowCopy && !id.isEmpty {
+                    model.unread = (id, app?.localizedName ?? id)
+                    model.retry = { [weak self] in
+                        self?.card.close()
+                        self?.translateSelection()
+                    }
+                }
             }
         }
     }
@@ -100,30 +108,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showSettings() { openSettings(.general) }
 
-    private func openSettings(_ pane: SettingsView.Pane) {
-        settingsState.pane = pane
-        if settingsWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(state: settingsState, client: client)))
-            w.title = "LexiPeek Settings"
-            w.styleMask = [.titled, .closable]
-            w.isReleasedWhenClosed = false
-            w.center()
-            settingsWindow = w
-        }
+    private func openSettings(_ pane: SettingsPane) {
+        if settingsWindow == nil { settingsWindow = SettingsWindow.make(state: settingsState, client: client) }
+        SettingsWindow.select(settingsWindow, pane)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { Snapshot.write(self.settingsWindow?.contentView, "settings.png") }
     }
 
     // Each settings pane drawn off screen, without showing a window.
     private func snapshotSettings() {
-        for (pane, name) in [(SettingsView.Pane.general, "general"), (.packs, "packs"), (.translation, "translation"),
-                             (.permissions, "permissions")] {
-            let state = SettingsState()
-            state.pane = pane
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(state: state, client: client)))
+        for pane in SettingsPane.allCases {
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsWindow.view(pane, state: SettingsState(), client: client)))
             w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Snapshot.write(w.contentView, "settings-\(name).png") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Snapshot.write(w.contentView, "settings-\(pane.rawValue).png") }
         }
     }
 
