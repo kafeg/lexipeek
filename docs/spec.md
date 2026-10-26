@@ -5,20 +5,19 @@ the cursor with the dictionary entry and a translation made on this Mac. Close i
 LexiPeek is the desktop sibling of [InkPeek](https://github.com/kafeg/inkpeek) (Android e-ink readers) and uses its
 language packs.
 
-## Goals (v1)
-- One card over any app, opened by a global hotkey on the selected text. The card does not take focus.
-- Dictionary first: the header with grammar from the packs ("das Haus (Hauses, pl. Häuser)"), one short line per
-  dictionary, the full entry on request, the base form of an inflected word (*Träumen* → *Traum*). A sentence gets a
-  word-by-word gloss, separable verbs included.
-- Offline translation of a phrase or a paragraph, three methods as in InkPeek: Fast · Mozilla (through English),
-  Direct · OPUS-MT, AI model · Hy-MT2 (llama.cpp, Metal). The text's language from fastText. A method this Mac
-  cannot run is shown dimmed with the reason.
+## Goals
+InkPeek's behaviour and data on the desktop, nearly 1:1: its card (dictionary, gloss, offline translation, ☆, notes),
+its own dictionaries, its settings and its AI layer — in desktop form (menu bar, hotkey, an icon at the selection,
+Service) instead of Android's intents, without what is e-ink only (black and white, no animations, the icon row).
+- One card over any app, from a hotkey or an icon at the selection; it does not take focus.
+- Dictionary first: the header with grammar from the packs, one short line per dictionary, the full entry and its
+  sections, the base form of an inflected word; a phrase or a passage gets a word-by-word gloss, separable verbs
+  included.
+- Offline translation, three methods as in InkPeek: Fast · Mozilla, Direct · OPUS-MT, AI model · Hy-MT2 (Metal).
 - Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256.
 
-## Non-goals (v1)
-AI tab, saved words and history in the UI, browser extension, whole-page translation, Linux, sync
-(Windows comes right after v1, M4).
-They are planned — see Milestones.
+## Not yet
+Browser extension, whole-page translation, Linux, sync — see Milestones.
 
 ## Principles
 - The core works offline and without AI. AI is an optional, marked tab, asked only on the person's action.
@@ -39,7 +38,7 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `core/include/lexipeek/` | the facade the shells call: plain structs, enums, `std::string`, `std::vector`, `std::optional`, errors as values — importable by Swift's C++ interop and used as is by C++ shells. No C API |
 | engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp (Metal on macOS) |
 | `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX; Cmd+C with the clipboard restored only where allowed), Service, URL scheme, Accessibility, memory pressure |
-| `qt/` | (M4) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
+| `qt/` | (M6) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
 | CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; `.app` signed with Developer ID, notarized, on GitHub Releases |
 
@@ -151,26 +150,29 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   first pair and download it → "select a word and press ⌥D".
 
 ## Milestones (each: spec → code → check → commit, stop)
-v1:
-- **M0 Engines.** CMake + vcpkg, submodules, Bergamot, fastText, llama.cpp; `lexipeek-cli translate` and `bench` on
-  InkPeek's pack models. CI builds the core and runs its tests on macOS, Windows and Linux. Check: InkPeek's
-  converted OPUS-MT int8 models load on Apple Silicon and x86-64; load, reload, speed and memory of the three methods.
-- **M1 Core.** Packs (manifest, resumable download, sha256, install), StarDict with `.syn`, header, word-by-word
-  gloss, separable verbs, language id, method choice with reasons, the log and SQLite, `views`. Cross-tests green
-  on all three OSes.
-- **M2 macOS app.** Swift shell: menu bar, hotkey, selected text, non-activating card at the cursor (Dictionary,
-  Translate), input field, Service and URL scheme, per-app rules, Recents, settings, Accessibility onboarding.
-  Check the selection in Safari, Chrome, Firefox, Vivaldi and native apps. A build for daily use.
-- **M3 Release 0.1 (macOS).** Signing, notarization, GitHub Releases, update check.
-- **M4 Windows app.** Qt Widgets shell, Windows platform parts, installer; release 0.2. The second shell right after
-  the first, to find what the core and its facade got wrong while it is cheap to change.
+Done: **M0 Engines** (CMake + vcpkg, engines at InkPeek's pins, `lexipeek-cli`, bench; CI on three OSes) · **M1 Core**
+(packs, StarDict, header, gloss, separable verbs, language by the dictionaries, methods with reasons, the log and
+SQLite, settings) · **M2 macOS app** (menu bar, ⌥D / ⌥A, the icon at the selection, the card by kind of text,
+Service, URL scheme, settings, packs).
 
-Then, in this order: M5 AI — the extra value, as in InkPeek: the AI tab with **Analysis** (Grammar, Words) and
-**Context** (Explanation, Examples), AI translation; modules and parts with editable prompts; API providers as in
-InkPeek and CLI providers (`claude -p`, `codex exec`); answers cached through `ai.put` · M6 records in the UI (☆,
-history, TSV for Anki, export / import) · M7 browser extension for Chromium and Firefox: whole-page translation
-through the app's local server; selection in the browser only if M2 shows the system hotkey misses it there ·
-M8 sync folder (InkPeek too) · M9 Linux (the Qt shell; X11, Wayland through portals where they allow).
+Parity with InkPeek first, then the other OS, then a release when the owner says so:
+- **M2.1 Debts.** The card's view model in the core (`views`: tabs, the open one, labels, every state's text — the
+  shell only draws it); a Swift-friendly facade (plain structs, polled progress; no logic in `mac/Bridge`);
+  `Core::configure(settings)` instead of rebuilding the core; offline answers versioned by the models' sha256 (as
+  InkPeek); log compaction; `scripts/snapshots.sh` — the app's own snapshots of a fixed set of cards (word, phrase,
+  passage, same language, no pack, long list, full entry) and of every settings pane, looked at before each hand-over.
+- **M3 Card parity.** ☆ save (a word as its base form), Notes (Words · Phrases · History: open, remove, clear), the
+  full entry with "←", its sections (related, synonyms, antonyms, expressions, IPA, origin, forms from `.rel`), "form
+  of …", frequency and looks, Mozilla's English in between (a setting), first run: pick a pair and download it.
+- **M4 Dictionaries and settings parity.** Own StarDict dictionaries (a folder, InkPeek's catalog of public
+  sources, import), dictionary order and on / off; settings in InkPeek's sections (Languages · Card · AI · Notes) in
+  desktop form; the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl); updates and About.
+- **M5 AI.** InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context** (Explanation,
+  Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter) and CLI providers (`claude -p`, `codex exec`);
+  editable prompts; answers cached through `ai.put`.
+- **M6 Windows app.** Qt Widgets shell, Windows platform parts, installer.
+- Then: release (signing, notarization, GitHub Releases, update check) · TSV for Anki, export / import · browser
+  extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0).
