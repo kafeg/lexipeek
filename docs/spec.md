@@ -144,10 +144,14 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Per-app rules:** apps where the hotkey and the icon do nothing, apps where Cmd+C may read the selection.
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
 - **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
-  method with sizes; download with progress, remove) · Translation (method) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
+  method with sizes; download with progress, remove) · Translation (answer language, method, "Show the English": Fast's English in between,
+  smaller, under the translation, as InkPeek's; "Set Up…" while no pair is installed) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
   again; run from `/Applications`).
-- **First run:** why Accessibility → open System Settings → continue by itself when granted (no restart) → pick the
-  first pair and download it → "select a word and press ⌥D".
+- **First run** (a window of its own, at launch while no pair is installed, or Accessibility is off and it was never
+  finished; again from Settings → Translation): why Accessibility → open System Settings → continue by itself when
+  granted (no restart; "Later" skips it) → pick the first pair (answer language: the system's when the packs offer it,
+  else English; the text's language from a list by the packs' levels) and download it with progress → "select a word
+  and press ⌥D".
 
 ## Milestones (each: spec → code → check → commit, stop)
 Done: **M0 Engines** (CMake + vcpkg, engines at InkPeek's pins, `lexipeek-cli`, bench; CI on three OSes) · **M1 Core**

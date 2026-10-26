@@ -49,6 +49,8 @@ Settings load_settings(const fs::path &data) {
     s.open_at_login = j.value("open_at_login", s.open_at_login);
     s.selection_icon = j.value("selection_icon", s.selection_icon);
     s.pin_moved = j.value("pin_moved", s.pin_moved);
+    s.mt_english = j.value("mt_english", s.mt_english);
+    s.first_run = j.value("first_run", s.first_run);
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
   } catch (const std::exception &) {
@@ -66,6 +68,8 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["open_at_login"] = s.open_at_login;
   j["selection_icon"] = s.selection_icon;
   j["pin_moved"] = s.pin_moved;
+  j["mt_english"] = s.mt_english;
+  j["first_run"] = s.first_run;
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
   std::error_code ec;

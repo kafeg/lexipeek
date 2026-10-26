@@ -121,6 +121,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   std::lock_guard g(impl_->mu);
   impl_->o.answer = s.answer;
   impl_->o.method = s.method;
+  impl_->o.mt_english = s.mt_english;
   if (device) impl_->o.device = device;
 }
 
@@ -192,10 +193,37 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   // Kept as InkPeek's offline answers (section offline-<from>, ver by the models' sha256): an updated model translates again.
   auto section = "offline-" + card.lang;
   Packs packs(impl_->o.data, "");
-  auto ver = answer_version(packs.cached(), packs.installed(), card.lang, card.answer, *method);
-  if (auto a = impl_->store->answer(card.text, card.answer, section, ver)) return {*a, "", method_title(*method), ""};
-  auto t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
-  if (t.ok() && card.source != Source::cli) impl_->store->put_answer(card.text, card.answer, section, ver, answer_model(*method), t.text);
+  auto manifest = packs.cached();
+  auto installed = packs.installed();
+  auto ver = answer_version(manifest, installed, card.lang, card.answer, *method);
+  bool keep = card.source != Source::cli;
+  bool pivot = *method == Method::fast && mt::steps(card.lang, card.answer).size() > 1;
+  bool show = false;
+  {
+    std::lock_guard g(impl_->mu);
+    show = impl_->o.mt_english;
+  }
+  // The English in between is the text's translation into English, kept as such (InkPeek's OfflineTranslation).
+  auto en_ver = pivot ? answer_version(manifest, installed, card.lang, "en", Method::fast) : 0;
+  std::string en;
+  if (pivot)
+    if (auto a = impl_->store->answer(card.text, "en", section, en_ver)) en = *a;
+  auto keep_english = [&](const std::string &e) {
+    en = e;
+    if (keep) impl_->store->put_answer(card.text, "en", section, en_ver, answer_model(Method::fast), e);
+  };
+  Translation t;
+  if (auto a = impl_->store->answer(card.text, card.answer, section, ver)) {
+    t = {*a, "", method_title(*method), ""};
+  } else {
+    t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
+    if (t.ok() && keep) impl_->store->put_answer(card.text, card.answer, section, ver, answer_model(*method), t.text);
+    if (t.ok() && pivot && !t.english.empty()) keep_english(t.english);
+  }
+  // Kept before the setting was on: only the English step now.
+  if (pivot && show && en.empty() && t.ok())
+    if (auto e = impl_->tr->translate(card.lang, "en", card.text, Method::fast); e.ok()) keep_english(e.text);
+  t.english = pivot && show ? en : "";
   return t;
 }
 

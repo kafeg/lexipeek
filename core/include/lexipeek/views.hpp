@@ -65,7 +65,8 @@ struct CardRow {
     text,      // selectable text: the translation
     error,     // red: a failed translation
     entry,     // a dictionary's entry: label (the dictionary), text (its short line) or html (the full article)
-    gloss      // a word of a phrase: label bold ("mache … zu (zumachen)"), text secondary (its meaning)
+    gloss,     // a word of a phrase: label bold ("mache … zu (zumachen)"), text secondary (its meaning)
+    english    // Mozilla's English in between, smaller, selectable, under the translation
   };
   Style style = Style::note;
   std::string label, text, html;
@@ -99,5 +100,52 @@ CardTab first_tab(const Card &c);
 // A new card's state: its first tab and its method (none when no method is available).
 CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
+
+// The first run, a window of its own: Accessibility → the first pair (answer language, book language) → its
+// download → the hotkey. The shell keeps this state and draws first_run_view.
+enum class FirstStep { access, list, pair, download, done };
+
+struct FirstRunState {
+  bool trusted = false;       // Accessibility is granted
+  bool access_later = false;  // "Later" on the Accessibility step
+  std::string system;         // the system's language ("de")
+  std::string answer, book;   // picked ("" = the default)
+  bool fetching = false;      // the packs list is being fetched
+  std::string list_error;     // fetching it failed
+  bool downloading = false;
+  std::int64_t done = 0, total = 0;
+  std::string error;         // the download failed
+  std::string hotkey = "⌥D", input = "⌥A";  // the hotkeys' labels
+};
+
+struct Choice {
+  std::string code, title;  // "de", "German"
+  std::string detail;       // "Full · 84 MB", "Basic · installed"
+};
+
+struct FirstRunView {
+  FirstStep step = FirstStep::access;
+  int number = 1, steps = 3;  // "Step 1 of 3"
+  std::string title, text, note;
+  std::string button, secondary;  // the main and the other button ("" = none)
+  bool button_enabled = true;
+  std::string answer_label = "Translate into", book_label = "Texts in";
+  std::vector<Choice> answers, books;
+  std::string answer, book;  // the picked ones (the defaults filled in)
+  bool progress = false;     // a progress bar
+  double fraction = -1;      // 0…1, -1 = indeterminate
+  std::string progress_text;  // "12 MB of 84 MB"
+  std::string error;
+};
+
+// "84 MB", "1.2 GB".
+std::string size_text(std::int64_t bytes);
+// Some pair has its dictionary and Mozilla models.
+bool has_pair(const Manifest &m, const std::map<std::string, std::string> &installed);
+// The first-run window opens at launch: no pair yet, or Accessibility not granted and the window never finished.
+bool first_run_at_launch(bool has_pair, bool trusted, bool finished);
+// The answer language by default: the system's when the packs offer it, else English.
+std::string first_answer(const Manifest &m, const std::string &system);
+FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s);
 
 }  // namespace lexipeek

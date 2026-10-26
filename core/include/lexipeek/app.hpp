@@ -49,6 +49,12 @@ std::vector<std::string> freed_ids(const std::string &data, const std::string &f
 // The release's list (network): "" or why it is not fresh.
 std::string refresh(const std::string &data);
 
+// The first-run window (views.hpp): by the data dir's packs list and installed parts.
+FirstRunView first_run(const std::string &data, const FirstRunState &s);
+// It opens at launch (no pair yet, or Accessibility not granted and the window never finished).
+bool first_run_at_launch(const std::string &data, bool trusted);
+bool has_pair(const std::string &data);
+
 // A download's progress and cancel, shared between the worker and the UI (polled).
 struct Download {
   std::shared_ptr<std::atomic<std::int64_t>> done = std::make_shared<std::atomic<std::int64_t>>(0);

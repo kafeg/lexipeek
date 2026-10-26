@@ -23,6 +23,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.answer = s.answer;
   o.method = s.method;
   o.device = d;
+  o.mt_english = s.mt_english;
   return {std::make_shared<Core>(std::move(o))};
 }
 
@@ -53,6 +54,20 @@ std::vector<std::string> freed_ids(const std::string &data, const std::string &f
 }
 
 std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().error; }
+
+FirstRunView first_run(const std::string &data, const FirstRunState &s) {
+  Packs p(dir(data));
+  return first_run_view(p.cached(), p.installed(), s);
+}
+
+bool has_pair(const std::string &data) {
+  Packs p(dir(data));
+  return lexipeek::has_pair(p.cached(), p.installed());
+}
+
+bool first_run_at_launch(const std::string &data, bool trusted) {
+  return lexipeek::first_run_at_launch(has_pair(data), trusted, load_settings(dir(data)).first_run);
+}
 
 Status install(const std::string &data, const std::vector<std::string> &ids, const Download &dl) {
   Packs p(dir(data));

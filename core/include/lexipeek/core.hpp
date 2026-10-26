@@ -77,6 +77,7 @@ struct CoreOptions {
   std::optional<Method> method;  // the preferred method; unavailable → the first available
   TranslatorOptions translator;  // data is filled from [data]
   std::optional<Device> device;  // this machine (from the shell); none: not checked
+  bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
 };
 
 class Core {
@@ -86,12 +87,13 @@ class Core {
   Core(const Core &) = delete;
   Core &operator=(const Core &) = delete;
 
-  // Changed settings (answer language, method) and, when given, this machine: the next cards use them.
+  // Changed settings (answer language, method, the English in between) and, when given, this machine: the next cards use them.
   void configure(const Settings &s, const std::optional<Device> &device = std::nullopt);
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);
   LanguageGuess language(const std::string &text, const std::string &answer);
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
+  // Fast through English: the English is kept as the text's translation into English (InkPeek's), shown when asked.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
   // A newer request: stops a running AI translation.
   void cancel();
