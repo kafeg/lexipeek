@@ -27,7 +27,7 @@ final class SelectionIcon {
             NSBezierPath(roundedRect: r, xRadius: 7, yRadius: 7).fill()
             return true
         }
-        let button = NSButton(image: NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: "Look up")!,
+        let button = NSButton(image: NSImage(named: "MenuBarIcon")!,
                               target: self, action: #selector(clicked))
         button.isBordered = false
         button.frame = effect.bounds

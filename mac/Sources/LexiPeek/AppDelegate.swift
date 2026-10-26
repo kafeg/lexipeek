@@ -39,7 +39,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item?.button?.image = NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: "LexiPeek")
+        item?.button?.image = NSImage(named: "MenuBarIcon")
+        item?.button?.image?.isTemplate = true
+        item?.button?.image?.accessibilityDescription = "LexiPeek"
         menu.delegate = self
         item?.menu = menu
         NSApp.servicesProvider = self
