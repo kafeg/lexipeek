@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CxxStdlib
 import LexiPeekCore
 import LexiPeekKit
 import SwiftUI
@@ -14,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var card = CardController(model: model)
     private let settingsState = SettingsState()
     private var settingsWindow: NSWindow?
+    private lazy var firstRun = FirstRunModel(client: client)
+    private var firstRunWindow: NSWindow?
     private var item: NSStatusItem?
     private let menu = NSMenu()
     private var bag: [AnyCancellable] = []
@@ -39,7 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Publishers.CombineLatest(prefs.$translateKey, prefs.$inputKey)
             .sink { [weak self] t, i in self?.registerHotkeys(t, i) }.store(in: &bag)
         // Either one changed (CombineLatest would wait for both).
-        Publishers.Merge(prefs.$answer.dropFirst().map { _ in () }, prefs.$method.dropFirst().map { _ in () })
+        Publishers.Merge3(prefs.$answer.dropFirst().map { _ in () }, prefs.$method.dropFirst().map { _ in () },
+                          prefs.$mtEnglish.dropFirst().map { _ in () })
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] in self?.client.configure() }.store(in: &bag)
 
@@ -54,14 +58,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, self.settingsState.trusted != Selection.trusted else { return }
             self.settingsState.trusted = Selection.trusted
         }
-        if !Selection.trusted && !UserDefaults.standard.bool(forKey: "onboarded") {
-            UserDefaults.standard.set(true, forKey: "onboarded")
-            openSettings(.permissions)
-        }
+        settingsState.openFirstRun = { [weak self] in self?.openFirstRun() }
+        if lexipeek.app.first_run_at_launch(std.string(), Selection.trusted) { openFirstRun() }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
+            if let step = Snapshot.firstRun(url) {
+                if firstRunWindow == nil { openFirstRun() }
+                Snapshot.firstRun(firstRunWindow, firstRun, step)
+                continue
+            }
             if Snapshot.take(url) {
                 card.show(text: nil, source: .input, bounds: nil, focus: false)
                 model.unread = ("com.example.app", "Example")
@@ -132,6 +139,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         SettingsWindow.select(settingsWindow, pane)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    // Accessibility, the first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
+    private func openFirstRun() {
+        if firstRunWindow == nil {
+            let w = FirstRunWindow.make(model: firstRun)
+            firstRun.close = { [weak w] in w?.close() }
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
+                self?.firstRun.stop()
+                self?.prefs.firstRun = true
+            }
+            firstRunWindow = w
+        }
+        firstRun.refresh()
+        if let w = firstRunWindow, Snapshot.dir != nil {
+            Snapshot.hide(w)
+            w.orderBack(nil)
+            return
+        }
+        firstRun.start()
+        NSApp.activate(ignoringOtherApps: true)
+        firstRunWindow?.makeKeyAndOrderFront(nil)
     }
 
     // Each settings pane in the real window (with its toolbar), off screen; settings.done when all are written.

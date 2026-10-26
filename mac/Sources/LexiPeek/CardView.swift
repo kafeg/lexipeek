@@ -109,6 +109,8 @@ struct CardView: View {
                 .lineLimit(1).truncationMode(.tail)
         case .text:
             Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .english:
+            Text(r.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .error:
             Text(r.text).foregroundStyle(.red)
         case .progress:

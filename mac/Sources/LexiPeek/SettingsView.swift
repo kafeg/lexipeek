@@ -23,6 +23,7 @@ enum SettingsPane: String, CaseIterable {
 final class SettingsState: ObservableObject {
     @Published var trusted = Selection.trusted
     @Published var hotkeyErrors: [String: String] = [:]
+    var openFirstRun: (() -> Void)?
 }
 
 enum SettingsWindow {
@@ -55,7 +56,7 @@ enum SettingsWindow {
     static func view(_ pane: SettingsPane, state: SettingsState, client: CoreClient) -> AnyView {
         switch pane {
         case .general: AnyView(GeneralPane(prefs: .shared, state: state))
-        case .translation: AnyView(TranslationPane(prefs: .shared))
+        case .translation: AnyView(TranslationPane(prefs: .shared, state: state))
         case .packs: AnyView(PacksPane(client: client))
         case .permissions: AnyView(PermissionsPane(state: state))
         }
@@ -211,6 +212,8 @@ private struct AppList: View {
 
 struct TranslationPane: View {
     @ObservedObject var prefs: Prefs
+    @ObservedObject var state: SettingsState
+    @State private var hasPair = true
 
     private var answers: [String] {
         let a = lexipeek.app.answers(std.string()).map { String($0) }
@@ -219,6 +222,15 @@ struct TranslationPane: View {
 
     var body: some View {
         Pane {
+            if !hasPair {
+                Section {
+                    LabeledContent("No language pair installed yet") {
+                        Button("Set Up…") { state.openFirstRun?() }
+                    }
+                } footer: {
+                    Note("Picks the first pair and downloads it, as on the first launch.")
+                }
+            }
             Section {
                 Picker("Translate into", selection: $prefs.answer) {
                     ForEach(answers, id: \.self) { code in
@@ -235,7 +247,14 @@ struct TranslationPane: View {
             } footer: {
                 Note("The card can switch the method for one text. A method this Mac cannot run is dimmed there, with the reason.")
             }
+            Section {
+                Toggle("Show the English", isOn: $prefs.mtEnglish)
+            } footer: {
+                Note("Fast · Mozilla goes through English when neither language is English: that English, smaller, "
+                    + "under the translation. Nothing is translated again.")
+            }
         }
+        .onAppear { hasPair = lexipeek.app.has_pair(std.string()) }
     }
 }
 

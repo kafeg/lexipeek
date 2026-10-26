@@ -33,7 +33,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   menu-bar item, no hotkeys, never activated): it must never show a window on the owner's screen; a new card state → a new case
   in the script. How: `LEXIPEEK_SNAPSHOT=<dir>` (`Snapshot.swift`) — the app reads `lexipeek://…&snap=<name>[&tab=
   dictionary][&full=1]` from `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
-  `<name>-end.png` when the body scrolls, then `<name>.done`; no Esc/⌘P/outside-click closing; packs symlinked from
+  `<name>-end.png` when the body scrolls, then `<name>.done`; `&method=fast` overrides the method;
+  `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that
+  first-run step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go); no Esc/⌘P/outside-click closing; packs symlinked from
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
@@ -42,11 +44,14 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `core/src/<module>/` — one folder per module of the spec's Architecture, empty ones are stubs for their milestone.
 - `core/src/views/`: `views` — what screens show: `card_view(Card, CardState)` → `CardView` (header and its style, badge,
   tabs and the open one, body rows per tab, every state's text, footer: method menu, "Full entry ⏎", looks),
-  `first_state`, the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`); `app` — the facade for
+  `first_state`, the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`), the first run
+  (`first_run_view(Manifest, installed, FirstRunState)` → step, texts, choices, progress; `first_run_at_launch`,
+  `first_answer`, `has_pair`); `app` — the facade for
   Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
   no `std::function` / `std::filesystem::path` / `std::optional` in what Swift calls.
 - `Core::configure(Settings)` applies the answer language and method to the next cards; `Core::reload()` after a
-  packs change (dictionaries again, the held model freed). Offline answers: `ver` = `answer_version` (Java
+  packs change (dictionaries again, the held model freed). Fast through English keeps the English as the text's own
+  `en` answer (InkPeek's); `Translation::english` is filled only with the `mt_english` setting. Offline answers: `ver` = `answer_version` (Java
   `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
 - `core/src/dict/` (InkPeek's `stardict/`): `stardict` (own sorted index in `<data>/index/<id>/`, `.dict.dz` by dictzip
   chunks), `library` (lookup across packs, heads, gloss, separable verbs, rank). `core/src/text/`: PCRE2 wrapper, InkPeek's
@@ -74,7 +79,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `mac/`: `cmake/apple_bundle.cmake` walks `lexipeek_core`'s link closure and `libtool`s it into
   `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
-  The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`.
+  The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. The first-run
+  window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker), a newer request turns older ones into no-ops.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.

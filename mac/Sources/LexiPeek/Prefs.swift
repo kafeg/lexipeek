@@ -16,6 +16,8 @@ final class Prefs: ObservableObject {
     @Published var openAtLogin: Bool { didSet { save() } }
     @Published var selectionIcon: Bool { didSet { save() } }
     @Published var pinMoved: Bool { didSet { save() } }
+    @Published var mtEnglish: Bool { didSet { save() } }
+    @Published var firstRun: Bool { didSet { save() } }
     @Published var error = ""
 
     private init() {
@@ -29,6 +31,8 @@ final class Prefs: ObservableObject {
         openAtLogin = s.open_at_login
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
+        mtEnglish = s.mt_english
+        firstRun = s.first_run
     }
 
     private static func shortcut(_ h: lexipeek.Hotkey) -> Shortcut? {
@@ -69,6 +73,8 @@ final class Prefs: ObservableObject {
         s.open_at_login = openAtLogin
         s.selection_icon = selectionIcon
         s.pin_moved = pinMoved
+        s.mt_english = mtEnglish
+        s.first_run = firstRun
         error = String(lexipeek.app.save(std.string(), s))
     }
 }

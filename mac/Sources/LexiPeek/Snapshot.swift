@@ -8,7 +8,7 @@ enum Snapshot {
     static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1].
-    private struct Request { var name: String, dictionary: Bool, full: Bool }
+    private struct Request { var name: String, dictionary: Bool, full: Bool, method: lexipeek.Method? }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
 
@@ -35,7 +35,10 @@ enum Snapshot {
         pending?.cancel()
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        request = v("snap").map { Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1") }
+        request = v("snap").map {
+            Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1",
+                    method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } })
+        }
         return url.host == "unread"
     }
 
@@ -43,6 +46,39 @@ enum Snapshot {
     static let away = NSPoint(x: -20000, y: -20000)
     static func hide(_ w: NSWindow) {
         if dir != nil { w.setFrameOrigin(away) }
+    }
+
+    // &method=fast: the card translates with it, whatever the settings say.
+    static var method: lexipeek.Method? { request?.method }
+
+    // lexipeek://firstrun?snap=<name>&step=<step>: the first-run window in that step (its name); nil for other URLs.
+    static func firstRun(_ url: URL) -> String? {
+        guard dir != nil, url.host == "firstrun" else { return nil }
+        _ = take(url)
+        let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        return q.first { $0.name == "step" }?.value ?? "access"
+    }
+
+    // The step's state as the shell would hold it (Accessibility, a download half-way), drawn from the data dir's packs.
+    static func firstRun(_ w: NSWindow?, _ model: FirstRunModel, _ step: String) {
+        guard let r = request else { return }
+        request = nil
+        var s = lexipeek.FirstRunState()
+        s.system = "ru"
+        s.hotkey = model.state.hotkey
+        s.input = model.state.input
+        s.trusted = step != "access" && step != "done-later"
+        s.access_later = step == "done-later"
+        s.fetching = step == "list"
+        if step == "list-error" { s.list_error = "Could not resolve host: github.com" }
+        if step == "download" { s.downloading = true; s.done = 27_000_000; s.total = 68_000_000 }
+        if step == "error" { s.error = "Could not connect to server" }
+        model.state = s
+        if let w { hide(w) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            write(w?.contentView?.superview, "\(r.name).png")
+            mark("\(r.name).done")
+        }
     }
 
     static func write(_ view: NSView?, _ name: String) {

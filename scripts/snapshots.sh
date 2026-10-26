@@ -16,8 +16,14 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir "$TMP/data"
 for f in "$DATA"/*; do
-  case "${f##*/}" in log | device | lexipeek.db*) ;; *) ln -s "$f" "$TMP/data/" ;; esac
+  case "${f##*/}" in log | device | lexipeek.db* | settings.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
 done
+# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English).
+python3 -c 'import json, sys
+try: s = json.load(open(sys.argv[1]))
+except OSError: s = {}
+s["mt_english"] = True
+json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json"
 
 LONG="Am nächsten Morgen stand Anna früh auf, weil sie den ersten Zug in die Stadt nicht verpassen wollte. \
 Draußen war es noch dunkel, und auf den Straßen lag eine dünne Schicht Schnee. Sie trank schnell einen Kaffee, \
@@ -44,6 +50,7 @@ passage-translate|lookup?text=Der Hund schläft im Garten. Die Kinder spielen dr
 passage-dictionary|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&tab=dictionary
 long-translate|lookup?text=$LONG
 long-dictionary|lookup?text=$LONG&tab=dictionary
+passage-english|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&method=fast
 passage-ru|lookup?text=Вчера мы долго гуляли по парку. Погода была тёплой, и мы не хотели возвращаться домой.
 french|lookup?text=Le chat dort sur le canapé depuis ce matin.
 unknown-symbols|lookup?text=+++ 42 ### 17 *** 9
@@ -66,7 +73,22 @@ wait_for() {  # file, seconds; stops when the app has quit (another `pkill -x Le
   [ -e "$1" ]
 }
 
+# The first-run window on an empty data dir: name | step | a file of the data dir copied in before it.
+firstrun_cases() {
+  cat <<EOF
+firstrun-access|access|
+firstrun-list|list|
+firstrun-list-error|list-error|
+firstrun-pair|pair|packs.json
+firstrun-download|download|
+firstrun-error|error|
+firstrun-done|done|installed.json
+firstrun-done-later|done-later|
+EOF
+}
+
 cases >"$TMP/cases"
+firstrun_cases >"$TMP/firstrun"
 fail=0
 for look in light dark; do
   dir="$OUT/$look"
@@ -82,6 +104,22 @@ for look in light dark; do
   done <"$TMP/cases"
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
+
+  # Another instance on an empty data dir (its settings shots: the Translation pane without a pair).
+  empty="$TMP/empty" && rm -rf "$empty" "$dir/empty" && mkdir -p "$empty" "$dir/empty"
+  LEXIPEEK_SNAPSHOT="$dir/empty" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$empty" \
+    "$APP/Contents/MacOS/LexiPeek" >"$dir/empty/app.log" 2>&1 &
+  pid=$!
+  wait_for "$dir/empty/settings.done" 60 || { echo "$look: empty settings timed out" >&2; fail=1; }
+  mv "$dir/empty/settings-translation.png" "$dir/settings-translation-empty.png" 2>/dev/null || true
+  while IFS='|' read -r name step file; do
+    [ -z "$file" ] || cp "$DATA/$file" "$empty/"
+    echo "lexipeek://firstrun?step=$step&snap=$name" >"$dir/empty/request.tmp" && mv "$dir/empty/request.tmp" "$dir/empty/request"
+    if wait_for "$dir/empty/$name.done" 30; then mv "$dir/empty/$name.png" "$dir/" && echo "$look/$name"; else echo "$look/$name: timed out" >&2; fail=1; fi
+  done <"$TMP/firstrun"
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  rm -rf "$dir/empty"
   rm -f "$dir"/*.done "$dir/card.png"
 done
 
@@ -90,7 +128,8 @@ done
   echo '<!doctype html><meta charset="utf-8"><title>LexiPeek snapshots</title>'
   echo '<style>body{font:13px -apple-system;background:#888;margin:16px}h2{margin:24px 0 6px}'
   echo '.row{display:flex;gap:16px;align-items:flex-start}img{zoom:.5}</style>'
-  for n in $(cut -d'|' -f1 "$TMP/cases") settings-general settings-translation settings-packs settings-permissions; do
+  for n in $(cut -d'|' -f1 "$TMP/cases" "$TMP/firstrun") settings-general settings-translation settings-translation-empty \
+    settings-packs settings-permissions; do
     for s in "$n" "$n-end"; do
       [ -e "$OUT/light/$s.png" ] || continue
       echo "<h2>$s</h2><div class=row><img src=\"light/$s.png\"><img src=\"dark/$s.png\"></div>"

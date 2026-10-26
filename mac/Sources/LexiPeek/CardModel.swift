@@ -84,6 +84,7 @@ final class CardModel: ObservableObject {
             guard let self, id == self.request else { return }
             var s = lexipeek.first_state(card)
             if Snapshot.dictionary { s.tab = .dictionary }
+            if let m = Snapshot.method, s.has_method { s.method = m }
             self.card = card
             self.state = s
             if s.has_method { self.translate(s.method) }
