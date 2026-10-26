@@ -10,6 +10,11 @@ final class CardPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+// The card's content: a drag on its empty background moves the card (buttons and text keep their clicks).
+final class CardHostingView<Content: View>: NSHostingView<Content> {
+    override var mouseDownCanMoveWindow: Bool { true }
+}
+
 // Shows the card at the selection or the cursor, keeps its top edge and its height while it is open.
 final class CardController {
     private static let escapeKey: UInt32 = 100, pinKey: UInt32 = 101
@@ -17,10 +22,11 @@ final class CardController {
     let model: CardModel
     private let panel: CardPanel
     private let effect = NSVisualEffectView()
-    private var hosting: NSHostingView<CardView>?
+    private var hosting: CardHostingView<CardView>?
     private var screen = CGRect.zero
     private var monitors: [Any] = []
     private var changes: AnyCancellable?
+    private var moved: Any?
 
     var isVisible: Bool { panel.isVisible }
 
@@ -35,6 +41,12 @@ final class CardController {
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.isMovableByWindowBackground = true
+        // Moved by hand (the mouse is down): the card stays where it was put, as pinned.
+        moved = NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: panel, queue: .main) {
+            [weak self] _ in
+            if NSEvent.pressedMouseButtons & 1 != 0 { self?.model.pinned = true }
+        }
         effect.material = .popover
         effect.blendingMode = .behindWindow
         effect.state = .active
@@ -62,7 +74,7 @@ final class CardController {
         model.reset(input: text == nil)
         let view = CardView(model: model, focusInput: focus)
         hosting?.removeFromSuperview()
-        let h = NSHostingView(rootView: view)
+        let h = CardHostingView(rootView: view)
         h.translatesAutoresizingMaskIntoConstraints = true
         effect.addSubview(h)
         hosting = h
