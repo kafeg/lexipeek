@@ -25,8 +25,15 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - App (macOS): `make app` (core + `mac/` by XcodeGen, Release, ad-hoc signed; `SIGN=<identity>` keeps the
   Accessibility grant across builds), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
-  `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`; `LEXIPEEK_SNAPSHOT=<dir>` makes the app write
-  its own card and settings as PNGs (no Screen Recording needed).
+  `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
+- **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
+  (word, full entry, phrase and passages on both tabs, long list scrolled to the end, same language, no pack, unknown,
+  input, selection failed) and every settings pane in its toolbar window, light and dark, into
+  `build/snapshots/index.html`. **Look at every image before handing over UI work**; a new card state → a new case
+  in the script. How: `LEXIPEEK_SNAPSHOT=<dir>` (`Snapshot.swift`) — the app reads `lexipeek://…&snap=<name>[&tab=
+  dictionary][&full=1]` from `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
+  `<name>-end.png` when the body scrolls, then `<name>.done`; no Esc/⌘P/outside-click closing; packs symlinked from
+  the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
 ## Code layout and gotchas
