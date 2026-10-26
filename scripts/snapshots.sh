@@ -33,6 +33,7 @@ der Schnee schmolz, und Anna lachte zum ersten Mal seit Wochen ohne Grund. Zu Ha
 und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
+# open=<word> clicks that word in the card; section=<key> opens the first entry's section;
 # notes?tab=…: the Notes window, after the cards that fill it)
 cases() {
   cat <<EOF
