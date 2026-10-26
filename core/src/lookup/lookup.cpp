@@ -75,6 +75,8 @@ struct Core::Impl {
   std::unique_ptr<dict::Library> lib;
   std::unique_ptr<Store> store;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
+  std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
+  std::string notes_answer;
 
   // The text's language among the packs' book languages into answer (InkPeek's LangId.source): (lang, other).
   std::pair<std::string, std::string> source(const std::string &txt, const std::string &answer) {
@@ -112,6 +114,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->tr = std::make_unique<Translator>(o.translator);
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index");
   impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
+  impl_->notes_answer = o.answer;
   impl_->o = std::move(o);
 }
 
@@ -120,6 +123,8 @@ Core::~Core() = default;
 void Core::configure(const Settings &s, const std::optional<Device> &device) {
   std::lock_guard g(impl_->mu);
   impl_->o.answer = s.answer;
+  std::lock_guard a(impl_->answer_mu);
+  impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   if (device) impl_->o.device = device;
 }
@@ -145,6 +150,7 @@ Card Core::lookup(const Request &r) {
         c.header = heads.front().header();
         if (text::lower(heads.front().word) != text::lower(c.text)) c.base = heads.front().word;
         c.rank = lib.rank(heads.front().word, heads.front().book);
+        c.save_text = heads.front().word, c.save_line = heads.front().line;
         if (c.lang.empty()) c.lang = heads.front().book;
       }
       for (auto &[d, hits] : lib.lookup(c.text, c.answer)) {
@@ -152,6 +158,13 @@ Card Core::lookup(const Request &r) {
         for (auto &h : hits) c.entries.push_back({label, dict::head_line(h.html).value_or(h.word), h.html});
       }
     } else if (!c.lang.empty()) {
+      // "das Haus": the pack's header of its second word starts so → saved as that word.
+      static const text::Regex word_re("\\S+");
+      auto words = word_re.all(c.text);
+      if (words.size() == 2)
+        if (auto heads = lib.heads(words[1].groups[0], c.answer);
+            !heads.empty() && text::lower(heads.front().header()).starts_with(text::lower(c.text)))
+          c.save_text = heads.front().word, c.save_kind = "word", c.save_line = heads.front().line;
       for (auto &gl : lib.gloss(c.text, c.answer))
         c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : ""});
       for (auto &[f, h] : lib.separable(c.text, c.answer))
@@ -166,6 +179,9 @@ Card Core::lookup(const Request &r) {
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }
   c.looks = impl_->store->looks(c.base.empty() ? c.text : c.base);
+  if (c.save_text.empty()) c.save_text = c.text, c.save_kind = c.kind == Card::Kind::word ? "word" : "phrase";
+  if (c.save_kind.empty()) c.save_kind = "word";
+  c.saved = impl_->store->is_saved(c.save_text) || impl_->store->is_saved(c.text);
   c.answer_name = language_name(c.answer);
   if (!c.lang.empty()) c.lang_name = language_name(c.lang);
   if (!c.other.empty()) c.other_name = language_name(c.other);
@@ -199,9 +215,26 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   return t;
 }
 
+bool Core::toggle_saved(const Card &card, const std::string &translation) {
+  auto &st = *impl_->store;
+  if (card.save_text.empty()) return false;
+  if (st.is_saved(card.save_text) || st.is_saved(card.text)) {
+    st.unsave(card.save_text);
+    if (card.text != card.save_text) st.unsave(card.text);
+    return false;
+  }
+  auto line = card.save_line.empty() ? translation : card.save_line;
+  return st.save(card.save_text, card.save_kind, card.answer, line, card.text).empty();
+}
+
 std::vector<Seen> Core::recents(int n) { return impl_->store->recents(n); }
 
 Store &Core::store() { return *impl_->store; }
+
+std::string Core::answer() {
+  std::lock_guard g(impl_->answer_mu);
+  return impl_->notes_answer;
+}
 
 LanguageGuess Core::language(const std::string &text, const std::string &answer) {
   std::lock_guard g(impl_->mu);

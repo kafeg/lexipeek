@@ -89,6 +89,11 @@ struct CardView: View {
             .help(look.tooltip)
             Spacer(minLength: 8)
             if !look.badge.isEmpty { Text(look.badge).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            if !look.star.isEmpty {
+                Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
+                    .buttonStyle(.borderless)
+                    .help("\(look.starHelp) (⌘S)")
+            }
             Button { model.pinned.toggle() } label: { Image(systemName: model.pinned ? "pin.fill" : "pin") }
                 .buttonStyle(.borderless)
                 .help("Keep the card open (⌘P)")

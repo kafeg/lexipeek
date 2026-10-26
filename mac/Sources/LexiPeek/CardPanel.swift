@@ -127,9 +127,14 @@ final class CardController {
         }
     }
 
-    // In the card (when it has the focus): ←/→ tabs, Return the full entry; the input field keeps its own keys.
+    // In the card (when it has the focus): ←/→ tabs, Return the full entry, ⌘S ☆; the input field keeps its own keys.
     private func key(_ e: NSEvent) -> NSEvent? {
-        guard e.window === panel, model.card != nil, !(panel.firstResponder is NSTextView) else { return e }
+        guard e.window === panel, model.card != nil else { return e }
+        if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
+            model.toggleSaved()
+            return nil
+        }
+        guard !(panel.firstResponder is NSTextView) else { return e }
         switch e.keyCode {
         case 0x7B, 0x7C: model.switchTab()
         case 0x24: model.toggleEntry()

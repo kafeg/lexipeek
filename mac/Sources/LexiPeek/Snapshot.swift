@@ -7,8 +7,8 @@ enum Snapshot {
     // LEXIPEEK_SNAPSHOT_TAB=dictionary: cards open on Dictionary (to see that tab).
     static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
-    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1].
-    private struct Request { var name: String, dictionary: Bool, full: Bool }
+    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1][&save=1] (☆ once it is final).
+    private struct Request { var name: String, dictionary: Bool, full: Bool, save: Bool }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
 
@@ -29,13 +29,22 @@ enum Snapshot {
         }
     }
 
+    // lexipeek://notes?tab=words|phrases|history&snap=<name>: the Notes window on that tab.
+    static func notes(_ url: URL) -> (lexipeek.NotesTab, String)? {
+        guard dir != nil, url.host == "notes" else { return nil }
+        let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
+        let tab: lexipeek.NotesTab = v("tab") == "history" ? .history : v("tab") == "phrases" ? .phrases : .words
+        return (tab, v("snap") ?? "notes")
+    }
+
     // Reads the snapshot options of a lexipeek:// URL; true for lexipeek://unread (the selection-failed card).
     static func take(_ url: URL) -> Bool {
         guard dir != nil else { return false }
         pending?.cancel()
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        request = v("snap").map { Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1") }
+        request = v("snap").map { Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1", save: v("save") == "1") }
         return url.host == "unread"
     }
 
@@ -64,6 +73,7 @@ enum Snapshot {
                 if r.dictionary && model.state.tab != .dictionary { model.state.tab = .dictionary; return }
                 if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
             }
+            if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
             request = nil
             write(view, "\(r.name).png")
             writeEnd(view, "\(r.name)-end.png")

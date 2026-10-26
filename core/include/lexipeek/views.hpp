@@ -55,6 +55,7 @@ struct CardState {
   bool translated = false;  // translation holds the answer
   Translation translation;
   bool full_entry = false;
+  bool saved = false;  // ★: the card's text is in Notes
 };
 
 // One line of the card's body.
@@ -92,6 +93,8 @@ struct CardView {
   std::string menu_title;    // the current method's name or "No method available"
   std::vector<MethodItem> methods;
   std::string looks;  // "Looked up 3×", ""
+  std::string star;       // "☆", "★" (saved), "" (nothing to save)
+  std::string star_help;  // "Save to Notes", "Remove from Notes"
 };
 
 // The tab a new card opens on: Dictionary for a word with entries, else Translate.
@@ -99,5 +102,26 @@ CardTab first_tab(const Card &c);
 // A new card's state: its first tab and its method (none when no method is available).
 CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
+
+// Notes: saved words, saved phrases (a passage counts as one), the history; newest first.
+enum class NotesTab { words, phrases, history };
+
+struct NotesRow {
+  std::string text;   // what opens the card
+  std::string line;   // one short line: the saved meaning, else the newest answer, else "—"
+  std::string looks;  // History: "3×"; "" elsewhere
+};
+
+struct NotesView {
+  std::vector<std::string> tabs;  // "Words (3)", "Phrases (1)", "History (12)"
+  NotesTab tab = NotesTab::words;
+  std::vector<NotesRow> rows;
+  std::string empty;   // shown instead of rows when there are none
+  bool clear = false;  // "Clear history" under the list
+};
+
+NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer);
+// ✕ of a row: unsave, or forget the look.
+std::string remove_note(Store &s, NotesTab tab, const std::string &text);
 
 }  // namespace lexipeek

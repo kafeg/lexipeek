@@ -14,6 +14,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var card = CardController(model: model)
     private let settingsState = SettingsState()
     private var settingsWindow: NSWindow?
+    private lazy var notes: NotesModel = {
+        let m = NotesModel(client: client)
+        m.open = { [weak self] t in self?.card.show(text: t, source: .input, bounds: nil, focus: false) }
+        return m
+    }()
+    private var notesWindow: NSWindow?
     private var item: NSStatusItem?
     private let menu = NSMenu()
     private var bag: [AnyCancellable] = []
@@ -61,6 +67,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
+            if let n = Snapshot.notes(url) {
+                snapshotNotes(n.0, n.1)
+                continue
+            }
             if Snapshot.take(url) {
                 card.show(text: nil, source: .input, bounds: nil, focus: false)
                 model.unread = ("com.example.app", "Example")
@@ -126,6 +136,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showSettings() { openSettings(.general) }
 
+    @objc private func showNotes() {
+        if notesWindow == nil { notesWindow = NotesWindow.make(model: notes) }
+        notes.refresh()
+        NSApp.activate(ignoringOtherApps: true)
+        notesWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    // The Notes window on one tab, off screen: <name>.png, then <name>.done.
+    private func snapshotNotes(_ tab: lexipeek.NotesTab, _ name: String) {
+        if notesWindow == nil { notesWindow = NotesWindow.make(model: notes) }
+        guard let w = notesWindow else { return }
+        w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
+        w.orderBack(nil)
+        notes.tab = tab
+        notes.refresh()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            Snapshot.write(w.contentView?.superview, "\(name).png")
+            Snapshot.mark("\(name).done")
+        }
+    }
+
     private func openSettings(_ pane: SettingsPane) {
         if settingsWindow == nil { settingsWindow = SettingsWindow.make(state: settingsState, client: client) }
         SettingsWindow.select(settingsWindow, pane)
@@ -168,6 +199,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if sub.items.isEmpty { sub.addItem(NSMenuItem(title: "Nothing yet", action: nil, keyEquivalent: "")) }
         recents.submenu = sub
         menu.addItem(recents)
+        let n = NSMenuItem(title: "Notes…", action: #selector(showNotes), keyEquivalent: "")
+        n.target = self
+        menu.addItem(n)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Translate into: \(prefs.answer)", action: nil, keyEquivalent: ""))
         menu.addItem(.separator())

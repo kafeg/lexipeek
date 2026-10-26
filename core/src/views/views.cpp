@@ -76,6 +76,7 @@ CardState first_state(const Card &c) {
   s.tab = first_tab(c);
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
+  s.saved = c.saved;
   return s;
 }
 
@@ -139,7 +140,40 @@ CardView card_view(const Card &c, const CardState &s) {
     }
   }
   if (c.kind == Card::Kind::word && c.looks > 1) v.looks = "Looked up " + std::to_string(c.looks) + "×";
+  if (!c.save_text.empty()) {
+    v.star = s.saved ? "★" : "☆";
+    v.star_help = s.saved ? "Remove " + c.save_text + " from Notes" : "Save " + c.save_text + " to Notes";
+  }
   return v;
+}
+
+NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
+  NotesView v;
+  v.tab = tab;
+  auto line = [&](const std::string &text, const std::string &meaning, const std::string &lang) {
+    if (!meaning.empty()) return meaning;
+    auto a = st.newest_answer(text, lang.empty() ? answer : lang);
+    return a.empty() ? std::string("—") : a;
+  };
+  std::size_t words = 0, phrases = 0;
+  for (auto &e : st.saved()) {
+    bool word = e.kind == "word";
+    (word ? words : phrases)++;
+    if ((tab == NotesTab::words) == word && tab != NotesTab::history) v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), ""});
+  }
+  auto history = st.history();
+  if (tab == NotesTab::history)
+    for (auto &e : history) v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), std::to_string(e.count) + "×"});
+  v.tabs = {"Words (" + std::to_string(words) + ")", "Phrases (" + std::to_string(phrases) + ")",
+            "History (" + std::to_string(history.size()) + ")"};
+  if (v.rows.empty())
+    v.empty = tab == NotesTab::history ? "Nothing looked up yet." : "Nothing saved yet: ☆ in a card saves its text here.";
+  v.clear = tab == NotesTab::history && !v.rows.empty();
+  return v;
+}
+
+std::string remove_note(Store &st, NotesTab tab, const std::string &text) {
+  return tab == NotesTab::history ? st.forget(text) : st.unsave(text);
 }
 
 }  // namespace lexipeek

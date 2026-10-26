@@ -35,6 +35,12 @@ struct Engine {
   Card lookup(const std::string &text, Source source) const;
   Translation translate(const Card &card, Method m) const;
   std::vector<Seen> recents(int n) const;
+  // ☆ in the card → whether it is saved now.
+  bool toggle_saved(const Card &card, const std::string &translation) const;
+  // Notes, in the settings' answer language.
+  NotesView notes(NotesTab tab) const;
+  void remove_note(NotesTab tab, const std::string &text) const;
+  void clear_history() const;
   void prepare() const;
   void reload() const;
   void release() const;

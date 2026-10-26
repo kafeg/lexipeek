@@ -15,4 +15,6 @@
 - M2.1 core part: card view model, `lexipeek::app` facade, `Core::configure`, answers' `ver` done.
   Open: Mozilla's English in between is not kept as the text's `en` answer (InkPeek does; M3 with its setting); the
   Settings panes (Translation's method list, Packs' rows text) still build their labels in Swift (views for them: M4).
+- M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; Notes window). Open: Notes has no TSV export / import
+  (spec's "Then"); an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).

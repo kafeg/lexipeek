@@ -112,7 +112,7 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
   is a setting (M8). Windows: `%APPDATA%\\LexiPeek`, Linux: XDG dirs.
 - **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8
   (`u8path` care on Windows).
-- **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), the records UI is M6.
+- **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), Notes shows it (M3).
 
 ## Records and the sync log
 v1 shows no records, but writes the history in the sync log format from the start. The format (records schema,
@@ -134,7 +134,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   No selection → an input field in the card (it takes focus only on a click).
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc and a click
   outside close it. ⌥D with a card open: another selection → its card at once; the same one or none → closes.
-  In the card: ←/→ switch tabs, Return opens the full entry.
+  In the card: ←/→ switch tabs, Return opens the full entry, ⌘S is ☆.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
   one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.
@@ -142,7 +142,13 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   selection is read by Accessibility (never by Cmd+C: the clipboard is not touched) and a small icon appears next to
   the cursor; a click on it opens the card; it goes after a few seconds, a click elsewhere or a key.
 - **Per-app rules:** apps where the hotkey and the icon do nothing, apps where Cmd+C may read the selection.
-- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
+- **☆ in the header** (★ when saved, a click or ⌘S toggles): a word is saved as its base form (InkPeek's `saveKey`:
+  the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
+  short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
+- **Notes** (menu bar → Notes…; a normal window): Words · Phrases · History with counts, newest first; a row is the
+  text and one line (the saved line, else the newest kept answer, else "—"), History also its looks; a click opens
+  the card, ✕ removes, "Clear history…" (asks) under History. Rows and texts come from the core (`notes_view`).
+- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · Notes… · language pair · Settings… ⌘, · Quit.
 - **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
   method with sizes; download with progress, remove) · Translation (method) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
   again; run from `/Applications`).

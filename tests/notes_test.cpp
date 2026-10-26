@@ -1,0 +1,174 @@
+// ☆ (what a card saves, as InkPeek's saveKey) and Notes (Words · Phrases · History) on a small pack dictionary.
+#include <doctest/doctest.h>
+#include <fstream>
+#include "lexipeek/app.hpp"
+#include "lexipeek/core.hpp"
+#include "lexipeek/views.hpp"
+
+using namespace lexipeek;
+namespace fs = std::filesystem;
+
+namespace {
+
+void be32(std::string &s, uint32_t v) {
+  for (int i = 3; i >= 0; i--) s += static_cast<char>((v >> (i * 8)) & 0xff);
+}
+
+// <data>/dicts/dict-de-ru: Haus (form Häusern), Baum; articles with the packs' head line.
+fs::path pack_data(const std::string &name) {
+  auto d = fs::temp_directory_path() / name;
+  fs::remove_all(d);
+  auto dir = d / "dicts" / "dict-de-ru";
+  fs::create_directories(dir);
+  std::vector<std::pair<std::string, std::string>> words{
+      {"Baum", "<p class=\"head\">der Baum (Baum(e)s, pl. Bäume) — дерево</p>"},
+      {"Haus", "<p class=\"head\">das Haus (Hauses, pl. Häuser) — дом, здание</p>"}};
+  std::string idx, dict;
+  for (auto &[w, a] : words) {
+    idx += w + '\0';
+    be32(idx, static_cast<uint32_t>(dict.size()));
+    be32(idx, static_cast<uint32_t>(a.size()));
+    dict += a;
+  }
+  std::string syn = std::string("Häusern") + '\0';
+  be32(syn, 1);
+  std::ofstream(dir / "dict-de-ru.idx", std::ios::binary) << idx;
+  std::ofstream(dir / "dict-de-ru.dict", std::ios::binary) << dict;
+  std::ofstream(dir / "dict-de-ru.syn", std::ios::binary) << syn;
+  std::ofstream(dir / "dict-de-ru.ifo") << "StarDict's dict ifo file\nversion=3.0.0\nbookname=de-ru\nwordcount=2\nsynwordcount=1\nidxfilesize="
+                                         << idx.size() << "\nsametypesequence=h\n";
+  return d;
+}
+
+}  // namespace
+
+TEST_CASE("☆: a word as its base form, also after its article; a phrase as it is") {
+  auto d = pack_data("lexipeek-notes-save");
+  {
+    CoreOptions o;
+    o.data = d;
+    Core core(o);
+    auto c = core.lookup(Request{.text = "Häusern", .source = Source::hotkey});
+    REQUIRE(c.kind == Card::Kind::word);
+    CHECK(c.save_text == "Haus");
+    CHECK(c.save_kind == "word");
+    CHECK(c.save_line == "das Haus (Hauses, pl. Häuser) — дом, здание");
+    CHECK(!c.saved);
+    CHECK(!first_state(c).saved);
+    CHECK(card_view(c, first_state(c)).star == "☆");
+
+    CHECK(core.toggle_saved(c, "дома"));
+    CHECK(core.store().is_saved("Haus"));
+    CHECK(!core.store().is_saved("Häusern"));
+    REQUIRE(core.store().saved().size() == 1);
+    CHECK(core.store().saved()[0].meaning == "das Haus (Hauses, pl. Häuser) — дом, здание");
+    auto again = core.lookup(Request{.text = "Haus", .source = Source::hotkey});
+    CHECK(again.saved);
+    auto s = first_state(again);
+    CHECK(s.saved);
+    CHECK(card_view(again, s).star == "★");
+    CHECK(card_view(again, s).star_help == "Remove Haus from Notes");
+
+    auto article = core.lookup(Request{.text = "das Haus", .source = Source::hotkey});
+    CHECK(article.kind == Card::Kind::phrase);
+    CHECK(article.save_text == "Haus");
+    CHECK(article.save_kind == "word");
+    CHECK(article.saved);
+    CHECK(!core.toggle_saved(article, ""));
+    CHECK(!core.store().is_saved("Haus"));
+
+    // Not the pack's header: "ein Haus" is a phrase of its own.
+    auto other = core.lookup(Request{.text = "ein Haus", .source = Source::hotkey});
+    CHECK(other.save_text == "ein Haus");
+    CHECK(other.save_kind == "phrase");
+    CHECK(other.save_line.empty());
+    CHECK(core.toggle_saved(other, "один дом"));
+    CHECK(core.store().saved()[0].meaning == "один дом");
+
+    // A word the dictionaries do not know is saved as asked.
+    auto unknown = core.lookup(Request{.text = "Fenster", .source = Source::hotkey});
+    CHECK(unknown.save_text == "Fenster");
+    CHECK(unknown.save_kind == "word");
+
+    // Saved as the form by an older version: ★, and ☆ removes both.
+    core.store().save("Häusern", "word", "ru", "дома");
+    auto form = core.lookup(Request{.text = "Häusern", .source = Source::hotkey});
+    CHECK(form.saved);
+    CHECK(!core.toggle_saved(form, ""));
+    CHECK(!core.store().is_saved("Häusern"));
+  }
+  fs::remove_all(d);
+}
+
+TEST_CASE("notes: three lists, newest first, a line for each; remove and clear") {
+  auto d = fs::temp_directory_path() / "lexipeek-notes-view";
+  fs::remove_all(d);
+  {
+    Store st({d, {}, {}});
+    auto v = notes_view(st, NotesTab::words, "ru");
+    CHECK(v.tabs == std::vector<std::string>{"Words (0)", "Phrases (0)", "History (0)"});
+    CHECK(v.rows.empty());
+    CHECK(!v.empty.empty());
+    CHECK(!v.clear);
+
+    st.seen("Haus", "word", "ru", "das Haus — дом");
+    st.seen("Haus", "word", "ru", "das Haus — дом");
+    st.seen("Ich mache die Tür zu", "phrase", "ru", "");
+    st.put_answer("Ich mache die Tür zu", "ru", "offline-de", 7, "bergamot", "Я закрываю дверь");
+    st.seen("Wort", "word", "ru", "");
+    st.save("Haus", "word", "ru", "das Haus — дом");
+    st.save("Baum", "word", "ru", "der Baum — дерево");
+    st.save("Ich mache die Tür zu", "phrase", "ru", "");
+
+    v = notes_view(st, NotesTab::words, "ru");
+    CHECK(v.tabs == std::vector<std::string>{"Words (2)", "Phrases (1)", "History (3)"});
+    REQUIRE(v.rows.size() == 2);
+    CHECK(v.rows[0].text == "Baum");
+    CHECK(v.rows[0].line == "der Baum — дерево");
+    CHECK(v.rows[0].looks.empty());
+    CHECK(v.rows[1].text == "Haus");
+    CHECK(v.empty.empty());
+    CHECK(!v.clear);
+
+    v = notes_view(st, NotesTab::phrases, "ru");
+    REQUIRE(v.rows.size() == 1);
+    CHECK(v.rows[0].line == "Я закрываю дверь");  // no saved line: the cached translation
+
+    v = notes_view(st, NotesTab::history, "ru");
+    REQUIRE(v.rows.size() == 3);
+    CHECK(v.rows[0].text == "Wort");
+    CHECK(v.rows[0].line == "—");
+    CHECK(v.rows[2].text == "Haus");
+    CHECK(v.rows[2].looks == "2×");
+    CHECK(v.clear);
+
+    CHECK(remove_note(st, NotesTab::history, "Wort").empty());
+    CHECK(notes_view(st, NotesTab::history, "ru").rows.size() == 2);
+    CHECK(remove_note(st, NotesTab::words, "Baum").empty());
+    CHECK(!st.is_saved("Baum"));
+    CHECK(st.clear_history().empty());
+    v = notes_view(st, NotesTab::history, "ru");
+    CHECK(v.rows.empty());
+    CHECK(!v.clear);
+    CHECK(notes_view(st, NotesTab::words, "ru").tabs[0] == "Words (1)");
+  }
+  fs::remove_all(d);
+}
+
+TEST_CASE("app: notes through the engine") {
+  auto d = pack_data("lexipeek-notes-engine");
+  {
+    auto e = app::Engine::make(d.string(), app::device(8192, true));
+    auto c = e.lookup("Baum", Source::hotkey);
+    CHECK(e.toggle_saved(c, ""));
+    auto v = e.notes(NotesTab::words);
+    REQUIRE(v.rows.size() == 1);
+    CHECK(v.rows[0].text == "Baum");
+    CHECK(e.notes(NotesTab::history).rows.size() == 1);
+    e.remove_note(NotesTab::words, "Baum");
+    CHECK(e.notes(NotesTab::words).rows.empty());
+    e.clear_history();
+    CHECK(e.notes(NotesTab::history).rows.empty());
+  }
+  fs::remove_all(d);
+}

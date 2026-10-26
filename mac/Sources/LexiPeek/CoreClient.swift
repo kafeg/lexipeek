@@ -45,6 +45,15 @@ final class CoreClient {
         engine.recents(Int32(Recents.limit)).map { (String($0.text), String($0.meaning)) }
     }
 
+    // ☆ in the card → whether it is saved now (one line appended to the log: fast enough for the main thread).
+    func toggleSaved(_ card: lexipeek.Card, translation: String) -> Bool {
+        engine.toggle_saved(card, std.string(translation))
+    }
+
+    func notes(_ tab: lexipeek.NotesTab) -> lexipeek.NotesView { engine.notes(tab) }
+    func removeNote(_ tab: lexipeek.NotesTab, _ text: String) { engine.remove_note(tab, std.string(text)) }
+    func clearHistory() { engine.clear_history() }
+
     private func current(_ id: Int) -> Bool { lock.withLock { latest == id } }
 
     // Returns the request's id; done runs on the main queue, only if no newer request came.
