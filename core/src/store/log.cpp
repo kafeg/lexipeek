@@ -131,6 +131,55 @@ std::string append(const fs::path &file, const std::string &line) {
   return out ? "" : "cannot write " + file.string();
 }
 
+std::vector<Line> compact(const std::vector<Line> &lines) {
+  std::map<std::string, std::vector<size_t>> by_text;
+  for (size_t i = 0; i < lines.size(); i++) by_text[lines[i].text].push_back(i);
+  std::vector<size_t> keep;
+  for (auto &[text, is] : by_text) {
+    std::optional<size_t> saved, del;
+    std::map<std::string, size_t> seen;
+    std::map<std::tuple<std::string, std::string, std::int64_t>, size_t> ai;
+    for (auto i : is) {
+      auto &l = lines[i];
+      if (l.op == Op::saved_put || l.op == Op::saved_del) saved = i;
+      else if (l.op == Op::history_del) del = i, seen.clear();
+      else if (l.op == Op::history_seen) seen[l.d] = i;
+      else ai[{l.lang, l.section, l.ver}] = i;
+    }
+    for (auto i : {saved, del})
+      if (i) keep.push_back(*i);
+    for (auto &[d, i] : seen) keep.push_back(i);
+    for (auto &[k, i] : ai) keep.push_back(i);
+  }
+  std::sort(keep.begin(), keep.end());
+  std::vector<Line> out;
+  for (auto i : keep) out.push_back(lines[i]);
+  return out;
+}
+
+std::string compact_file(const fs::path &file, size_t min) {
+  auto raw = lines_of(file);
+  if (raw.size() < min) return "";
+  std::set<std::string> once;
+  std::vector<Line> lines;
+  for (auto &s : raw)
+    if (once.insert(s).second)
+      if (auto l = parse(s)) lines.push_back(std::move(*l));
+  std::stable_sort(lines.begin(), lines.end(), before);
+  auto out = compact(lines);
+  if (out.size() * 2 > raw.size()) return "";
+  auto tmp = fs::path(file).concat(".tmp");
+  {
+    std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+    for (auto &l : out) f << format(l) << '\n';
+    f.flush();
+    if (!f) return "cannot write " + tmp.string();
+  }
+  std::error_code ec;
+  fs::rename(tmp, file, ec);
+  return ec ? "cannot rename " + tmp.string() + ": " + ec.message() : "";
+}
+
 Records merge(const std::vector<Line> &lines) {
   std::map<std::string, std::vector<const Line *>> by_text;
   for (auto &l : lines) by_text[l.text].push_back(&l);

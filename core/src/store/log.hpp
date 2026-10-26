@@ -49,6 +49,13 @@ std::vector<Line> read_folder(const std::filesystem::path &folder);
 // Appends [line] + "\n"; a file that does not end with "\n" is cut back to its last "\n" first.
 std::string append(const std::filesystem::path &file, const std::string &line);
 
+// Lines that merge to the same state as [lines] (in order) with any other logs: per text its last saved.*, its last
+// history.del, per device its last history.seen after that del, per answer key its last ai.put.
+std::vector<Line> compact(const std::vector<Line> &lines);
+// Compacts [file] when it has at least [min] lines and twice as many as it compacts to: written whole, then renamed.
+// Returns "" or the error.
+std::string compact_file(const std::filesystem::path &file, size_t min = 1000);
+
 // The merge rules over lines in order.
 Records merge(const std::vector<Line> &lines);
 // The device's count of looks of [text] since its last history.del ([lines]: of that text, in order).

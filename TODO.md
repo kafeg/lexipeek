@@ -4,8 +4,7 @@
   reasons, the log + SQLite, settings, views (card, packs list); InkPeek's sync, sentence and device cases pass. Open:
   CI on Linux / Windows not run since M0 (the owner: macOS first); InkPeek's `packs/tests/golden` check the pack build,
   not the app (no cross-test); the offline answers' `ver` is the method only (an updated model does not translate again).
-- Store (M1 done): log compaction (formats.md → Compaction) not done yet; the logs folder is `<data>/log` until the
-  sync folder setting (M8).
+- Store (M1 done): the logs folder is `<data>/log` until the sync folder setting (M8).
 - Packs (M1 done): Swift can't build `std::function`: `mac/Bridge` wraps `Packs::install` with atomics for progress / cancel; Windows: `http.cpp` / `unpack` open files by narrow paths (M4); CI could fetch models with `packs install`.
 - M2 open: first run's "pick a pair, download it" step (Permissions only now); check the selection and ⌥D's
   position under it (AX bounds) in Safari, Chrome, Firefox, Vivaldi and native apps; per-app hotkey off is checked

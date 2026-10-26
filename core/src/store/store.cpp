@@ -86,6 +86,7 @@ struct Store::Impl {
     device = o.device.empty() ? device_id() : o.device;
     if (device.empty()) return "cannot write " + (o.data / "device").string();
     own = o.logs / (device + ".jsonl");
+    store::compact_file(own);  // on open only: a failure leaves the file as it was
     auto file = o.data / "lexipeek.db";
     for (int attempt = 0; attempt < 2; attempt++) {
       if (sqlite3_open((file).string().c_str(), &db) == SQLITE_OK) {

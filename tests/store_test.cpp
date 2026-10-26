@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 #include <algorithm>
 #include <fstream>
+#include <random>
 #include <nlohmann/json.hpp>
 #include "lexipeek/store.hpp"
 #include "store/log.hpp"
@@ -49,6 +50,16 @@ std::vector<fs::path> cases() {
   std::sort(out.begin(), out.end());
   return out;
 }
+
+// Every *.jsonl in [from] copied to a new folder.
+fs::path copy_logs(const fs::path &from, const std::string &name) {
+  auto to = fresh(name);
+  for (auto &e : fs::directory_iterator(from))
+    if (e.path().extension() == ".jsonl") fs::copy_file(e.path(), to / e.path().filename());
+  return to;
+}
+
+std::string state(const fs::path &folder) { return records_json(merge_folder(folder)); }
 
 }  // namespace
 
@@ -208,4 +219,88 @@ TEST_CASE("store: the history keeps the newest entries") {
   CHECK(!st.answer("w0", "ru", "quick", 1));
   Store again({data, {}, "mac-0001"});
   CHECK(again.history().size() == size_t(Store::history_limit));
+}
+
+TEST_CASE("compaction: the sync cases merge the same with any one file compacted") {
+  for (auto &d : cases())
+    for (auto &f : fs::directory_iterator(d)) {
+      if (f.path().extension() != ".jsonl") continue;
+      auto logs = copy_logs(d, "lexipeek-store-compact-case");
+      auto file = logs / f.path().filename();
+      std::vector<store::Line> own;
+      for (auto &s : store::lines_of(file))
+        if (auto l = store::parse(s)) own.push_back(*l);
+      std::stable_sort(own.begin(), own.end(), store::before);
+      std::ofstream out(file, std::ios::trunc);
+      for (auto &l : store::compact(own)) out << store::format(l) << "\n";
+      out.close();
+      INFO(d.filename().string(), " ", f.path().filename().string());
+      check_case(d, json::parse(state(logs)));
+    }
+}
+
+TEST_CASE("compaction: a long log of two devices merges the same, the clock goes on") {
+  auto data = fresh("lexipeek-store-compact");
+  auto logs = data / "log";
+  std::mt19937 rnd(7);
+  const std::vector<std::string> words = {"Haus", "Häuser", "Baum", "gehen", "ging", "das Haus", "Weg", "alt"};
+  {
+    Store a({data / "a", logs, "mac-0001"}), b({data / "b", logs, "boox-0002"});
+    REQUIRE(a.error() == "");
+    REQUIRE(b.error() == "");
+    for (int i = 0; i < 3000; i++) {
+      auto &st = rnd() % 3 ? a : b;
+      auto &w = words[rnd() % words.size()];
+      auto op = rnd() % 100;
+      if (op < 80) REQUIRE(st.seen(w, "word", "ru", "m" + std::to_string(i), w == "Häuser" ? "Haus" : "") == "");
+      else if (op < 86) REQUIRE(st.save(w, "word", "ru", "s" + std::to_string(i)) == "");
+      else if (op < 90) REQUIRE(st.unsave(w) == "");
+      else if (op < 95) REQUIRE(st.put_answer(w, "ru", rnd() % 2 ? "quick" : "analysis", rnd() % 2, "m", std::to_string(i)) == "");
+      else if (op < 99) REQUIRE(st.forget(w) == "");
+      else REQUIRE(st.clear_history() == "");
+      if (rnd() % 20 == 0) REQUIRE((rnd() % 2 ? a : b).merge() == "");
+    }
+  }
+  auto own = logs / "mac-0001.jsonl", other = logs / "boox-0002.jsonl";
+  auto before = state(logs);
+  auto other_bytes = slurp(other);
+  auto old_lines = store::lines_of(own).size();
+  store::Time last;
+  for (auto &l : store::read_folder(logs)) last = std::max(last, l.t);
+
+  Store st({data, logs, "mac-0001"});
+  REQUIRE(st.error() == "");
+  auto new_lines = store::lines_of(own).size();
+  MESSAGE(old_lines, " lines compacted to ", new_lines);
+  CHECK(new_lines * 2 <= old_lines);
+  CHECK(slurp(other) == other_bytes);
+  CHECK(!fs::exists(fs::path(own).concat(".tmp")));
+  CHECK(state(logs) == before);
+  CHECK(by_key(json::parse(records_json(st.records()))) == by_key(json::parse(before)));
+
+  CHECK(store::compact_file(other, 0) == "");
+  CHECK(state(logs) == before);
+  CHECK(store::compact_file(own, 0) == "");  // twice: nothing left to drop, the file stays
+  CHECK(store::lines_of(own).size() == new_lines);
+
+  CHECK(st.seen("Haus", "word", "ru", "дом") == "");
+  auto tail = store::parse(store::lines_of(own).back());
+  REQUIRE(tail);
+  CHECK(last < tail->t);
+}
+
+TEST_CASE("compaction: a small log stays as it is") {
+  auto data = fresh("lexipeek-store-compact-small");
+  {
+    Store st({data, {}, "mac-0001"});
+    for (int i = 0; i < 500; i++) REQUIRE(st.seen("Haus", "word", "ru", "дом") == "");
+  }
+  auto own = data / "log" / "mac-0001.jsonl";
+  auto bytes = slurp(own);
+  Store st({data, {}, "mac-0001"});
+  CHECK(slurp(own) == bytes);
+  CHECK(st.looks("Haus") == 500);
+  CHECK(store::compact_file(own, 0) == "");
+  CHECK(store::lines_of(own).size() == 1);
+  CHECK(Store({data, {}, "mac-0001"}).looks("Haus") == 500);
 }
