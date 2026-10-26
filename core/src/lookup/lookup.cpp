@@ -117,8 +117,13 @@ Card Core::lookup(const Request &r) {
   }
   c.looks = impl_->store->looks(c.base.empty() ? c.text : c.base);
   if (c.lang.empty() || c.lang == c.answer) return c;
+  auto manifest = Packs(impl_->o.data, "").cached();
   for (auto m : {Method::fast, Method::direct, Method::llm}) {
-    MethodState s{m, method_title(m), false, impl_->tr->why_not(c.lang, c.answer, m)};
+    MethodState s{m, method_title(m), false, ""};
+    // A model this machine cannot run comes first (no use installing it), then a missing one.
+    if (m != Method::fast && impl_->o.device)
+      if (auto comp = covering(manifest, m == Method::direct ? "opus" : "llm", c.lang, c.answer)) s.reason = cannot(*comp, *impl_->o.device);
+    if (s.reason.empty()) s.reason = impl_->tr->why_not(c.lang, c.answer, m);
     s.available = s.reason.empty();
     c.methods.push_back(s);
   }

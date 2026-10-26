@@ -182,3 +182,4 @@ TEST_CASE("core: a card is a look in the history, not the CLI's") {
   }
   fs::remove_all(d);
 }
+

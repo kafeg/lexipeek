@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "lexipeek/mt.hpp"
+#include "lexipeek/packs.hpp"
 #include "lexipeek/store.hpp"
 
 namespace lexipeek {
@@ -67,6 +68,7 @@ struct CoreOptions {
   std::string answer = "ru";
   std::optional<Method> method;  // the preferred method; unavailable → the first available
   TranslatorOptions translator;  // data is filled from [data]
+  std::optional<Device> device;  // this machine (from the shell); none: not checked
 };
 
 class Core {

@@ -8,11 +8,12 @@ namespace lexipeek::cli {
 
 namespace {
 
-const Register lookup{{"lookup", "[--to ru] [--translate] [--full] TEXT...   (the card: header, dictionary, gloss, methods)",
+const Register lookup{{"lookup", "[--to ru] [--translate] [--full] [--time] [--ram MB] TEXT...   (the card: header, dictionary, gloss, methods)",
                        {"--translate", "--full", "--time"}, [](const Args &a) {
                          CoreOptions o;
                          o.data = a.data;
                          o.answer = a.opt("--to", "ru");
+                         if (a.has("--ram")) o.device = Device{std::stoi(a.opt("--ram")), {"asimddp"}};
                          Core core(o);
                          auto text = a.text();
                          auto c = core.lookup({text, Source::cli, o.answer});
