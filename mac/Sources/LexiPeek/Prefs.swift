@@ -1,32 +1,68 @@
+import CxxStdlib
 import Foundation
+import LexiPeekCore
 import LexiPeekKit
 
-// The shell's own settings (hotkeys, per-app rules, recents); the core's answer language and method too, until M1's settings.json.
+// The core's settings.json (shared with the CLI): every change is written at once.
 final class Prefs: ObservableObject {
     static let shared = Prefs()
-    private let d = UserDefaults.standard
 
-    @Published var translateKey: Shortcut { didSet { save(translateKey, "translateKey") } }
-    @Published var inputKey: Shortcut { didSet { save(inputKey, "inputKey") } }
-    @Published var offApps: [String] { didSet { d.set(offApps, forKey: "offApps") } }
-    @Published var copyApps: [String] { didSet { d.set(copyApps, forKey: "copyApps") } }
-    @Published var method: String { didSet { d.set(method, forKey: "method") } }
-    @Published var answer: String { didSet { d.set(answer, forKey: "answer") } }
-    @Published var recents: Recents { didSet { save(recents, "recents") } }
+    @Published var translateKey: Shortcut { didSet { save() } }
+    @Published var inputKey: Shortcut { didSet { save() } }
+    @Published var offApps: [String] { didSet { save() } }
+    @Published var copyApps: [String] { didSet { save() } }
+    @Published var method: String { didSet { save() } }
+    @Published var answer: String { didSet { save() } }
+    @Published var openAtLogin: Bool { didSet { save() } }
+    @Published var error = ""
 
     private init() {
-        translateKey = Self.load("translateKey") ?? .translate
-        inputKey = Self.load("inputKey") ?? .input
-        offApps = d.stringArray(forKey: "offApps") ?? []
-        copyApps = d.stringArray(forKey: "copyApps") ?? []
-        method = d.string(forKey: "method") ?? ""
-        answer = d.string(forKey: "answer") ?? "ru"
-        recents = Self.load("recents") ?? Recents()
+        let s = lexipeek.mac.settings(std.string())
+        translateKey = Self.shortcut(s.lookup) ?? .translate
+        inputKey = Self.shortcut(s.input) ?? .input
+        offApps = s.ignore_apps.map { String($0) }
+        copyApps = s.copy_apps.map { String($0) }
+        method = String(lexipeek.mac.method_of(s))
+        answer = String(s.answer)
+        openAtLogin = s.open_at_login
     }
 
-    private static func load<T: Decodable>(_ key: String) -> T? {
-        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(T.self, from: $0) }
+    private static func shortcut(_ h: lexipeek.Hotkey) -> Shortcut? {
+        var m: UInt32 = 0
+        if h.option { m |= Shortcut.option }
+        if h.command { m |= Shortcut.cmd }
+        if h.control { m |= Shortcut.control }
+        if h.shift { m |= Shortcut.shift }
+        let s = Shortcut(key: String(h.key), modifiers: m)
+        return s.isValid ? s : nil
     }
 
-    private func save<T: Encodable>(_ v: T, _ key: String) { d.set(try? JSONEncoder().encode(v), forKey: key) }
+    private static func hotkey(_ s: Shortcut) -> lexipeek.Hotkey {
+        var h = lexipeek.Hotkey()
+        h.key = std.string(s.key)
+        h.option = s.modifiers & Shortcut.option != 0
+        h.command = s.modifiers & Shortcut.cmd != 0
+        h.control = s.modifiers & Shortcut.control != 0
+        h.shift = s.modifiers & Shortcut.shift != 0
+        return h
+    }
+
+    private static func strings(_ a: [String]) -> lexipeek.mac.Strings {
+        var v = lexipeek.mac.Strings()
+        for s in a { v.push_back(std.string(s)) }
+        return v
+    }
+
+    // Read again first: fields this shell does not show stay as they are.
+    private func save() {
+        var s = lexipeek.mac.settings(std.string())
+        s.lookup = Self.hotkey(translateKey)
+        s.input = Self.hotkey(inputKey)
+        s.ignore_apps = Self.strings(offApps)
+        s.copy_apps = Self.strings(copyApps)
+        lexipeek.mac.set_method(&s, std.string(method))
+        s.answer = std.string(answer.isEmpty ? "ru" : answer)
+        s.open_at_login = openAtLogin
+        error = String(lexipeek.mac.save(std.string(), s))
+    }
 }

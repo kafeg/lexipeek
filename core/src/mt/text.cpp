@@ -1,7 +1,6 @@
 #include "mt/text.hpp"
 #include <algorithm>
 #include <utf8proc.h>
-#include "ssplit.h"
 
 namespace lexipeek::mt {
 
@@ -45,16 +44,6 @@ std::string trim(const std::string &s) {
   auto b = s.find_first_not_of(" \t\r\n");
   if (b == std::string::npos) return "";
   return s.substr(b, s.find_last_not_of(" \t\r\n") - b + 1);
-}
-
-std::vector<std::string> sentences(const std::string &text) {
-  static const ug::ssplit::SentenceSplitter splitter;
-  ug::ssplit::SentenceStream in(text, splitter, ug::ssplit::SentenceStream::splitmode::wrapped_text, false);
-  std::vector<std::string> out;
-  std::string s;
-  while (in >> s)
-    if (auto t = trim(s); !t.empty()) out.push_back(t);
-  return out;
 }
 
 size_t utf16_length(const std::string &s) {

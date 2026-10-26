@@ -79,8 +79,8 @@ final class CardController {
 
     // Esc and ⌘P as hotkeys while the card is open: they work while another app has the focus.
     private func watch() {
-        Hotkeys.shared.register(Self.escapeKey, Shortcut(keyCode: 0x35, modifiers: 0, key: "⎋")) { [weak self] in self?.close() }
-        Hotkeys.shared.register(Self.pinKey, Shortcut(keyCode: 0x23, modifiers: Shortcut.cmd, key: "P")) { [weak self] in
+        Hotkeys.shared.register(Self.escapeKey, code: 0x35, modifiers: 0) { [weak self] in self?.close() }
+        Hotkeys.shared.register(Self.pinKey, code: 0x23, modifiers: Shortcut.cmd) { [weak self] in
             self?.model.pinned.toggle()
         }
         if let m = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in

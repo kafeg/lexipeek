@@ -9,7 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private static let translateKey: UInt32 = 1, inputKey: UInt32 = 2
 
     private let prefs = Prefs.shared
-    private lazy var client = CoreClient(answer: prefs.answer, method: prefs.method)
+    private let client = CoreClient()
     private lazy var model = CardModel(client: client)
     private lazy var card = CardController(model: model)
     private let settingsState = SettingsState()
@@ -25,7 +25,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item?.button?.image = NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: "LexiPeek")
         menu.delegate = self
         item?.menu = menu
-        model.onLookup = { [weak self] t in self?.prefs.recents.add(t) }
         NSApp.servicesProvider = self
         NSUpdateDynamicServices()
 
@@ -33,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sink { [weak self] t, i in self?.registerHotkeys(t, i) }.store(in: &bag)
         Publishers.CombineLatest(prefs.$answer.dropFirst(), prefs.$method.dropFirst())
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
-            .sink { [weak self] a, m in self?.client.reconfigure(answer: a, method: m) }.store(in: &bag)
+            .sink { [weak self] _, _ in self?.client.reconfigure() }.store(in: &bag)
 
         pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
         pressure?.setEventHandler { [weak self] in self?.client.release() }
@@ -43,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, self.settingsState.trusted != Selection.trusted else { return }
             self.settingsState.trusted = Selection.trusted
         }
+        if Snapshot.dir != nil { snapshotSettings() }
         if !Selection.trusted && !UserDefaults.standard.bool(forKey: "onboarded") {
             UserDefaults.standard.set(true, forKey: "onboarded")
             openSettings(.permissions)
@@ -103,7 +103,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func openSettings(_ pane: SettingsView.Pane) {
         settingsState.pane = pane
         if settingsWindow == nil {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(state: settingsState)))
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(state: settingsState, client: client)))
             w.title = "LexiPeek Settings"
             w.styleMask = [.titled, .closable]
             w.isReleasedWhenClosed = false
@@ -115,6 +115,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { Snapshot.write(self.settingsWindow?.contentView, "settings.png") }
     }
 
+    // Each settings pane drawn off screen, without showing a window.
+    private func snapshotSettings() {
+        for (pane, name) in [(SettingsView.Pane.general, "general"), (.packs, "packs"), (.translation, "translation"),
+                             (.permissions, "permissions")] {
+            let state = SettingsState()
+            state.pane = pane
+            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(state: state, client: client)))
+            w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Snapshot.write(w.contentView, "settings-\(name).png") }
+        }
+    }
+
     // Rebuilt on every open: hotkey labels and Recents stay current.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
@@ -122,8 +134,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Type text…", #selector(typeText), prefs.inputKey))
         let recents = NSMenuItem(title: "Recents", action: nil, keyEquivalent: "")
         let sub = NSMenu()
-        for t in prefs.recents.items {
-            let i = NSMenuItem(title: Recents.title(t), action: #selector(openRecent), keyEquivalent: "")
+        for (t, meaning) in client.recents() {
+            let title = meaning.isEmpty ? t : "\(t) — \(meaning)"
+            let i = NSMenuItem(title: Recents.title(title), action: #selector(openRecent), keyEquivalent: "")
             i.target = self
             i.representedObject = t
             sub.addItem(i)

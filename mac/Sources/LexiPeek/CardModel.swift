@@ -16,7 +16,6 @@ final class CardModel: ObservableObject {
     @Published var pinned = false
 
     let client: CoreClient
-    var onLookup: ((String) -> Void)?
     private var request = 0
 
     init(client: CoreClient) { self.client = client }
@@ -37,11 +36,10 @@ final class CardModel: ObservableObject {
         translation = nil
         translating = false
         fullEntry = false
-        onLookup?(t)
         request = client.lookup(t, source: source) { [weak self] id, card in
             guard let self, id == self.request else { return }
             self.card = card
-            self.tab = card.entries.isEmpty && card.gloss.isEmpty ? .translate : .dictionary
+            self.tab = card.phrase || card.entries.isEmpty ? .translate : .dictionary
             self.method = card.method
             if let m = card.method { self.translate(m) }
         }

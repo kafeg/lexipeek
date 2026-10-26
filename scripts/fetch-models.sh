@@ -11,7 +11,7 @@ for id in "$@"; do
   meta=$(python3 -I -c "import json,sys; c=[c for c in json.load(open(sys.argv[1]))['components'] if c['id']==sys.argv[2]][0]; print(c['kind'], c.get('from') or '-', c.get('to') or '-', c['file']['name'], c['file']['sha256'])" "$dir/packs.json" "$id")
   set -- $meta; kind=$1
   name=$4; want=$5
-  case $kind in model) dest="$dir/models/$2$3" ;; langid) dest="$dir/langid.ftz" ;; llm) dest="$dir/llm/$id.gguf" ;; *) dest="$dir/$kind/$id" ;; esac
+  case $kind in model) dest="$dir/models/$2$3" ;; dict) dest="$dir/dicts/$id" ;; langid) dest="$dir/langid.ftz" ;; llm) dest="$dir/llm/$id.gguf" ;; *) dest="$dir/$kind/$id" ;; esac
   if [ -e "$dest" ]; then echo "$id: there"; continue; fi
   echo "$id: $name"
   curl -fL --retry 3 -C - -o "$dir/$name.part" "$BASE/$name"
@@ -19,6 +19,7 @@ for id in "$@"; do
   case $kind in
     langid) mv "$dir/$name.part" "$dest" ;;
     llm) mkdir -p "$dir/llm"; mv "$dir/$name.part" "$dest" ;;
+    dict) mkdir -p "$dest.tmp"; unzip -q -j -o "$dir/$name.part" -d "$dest.tmp"; rm "$dir/$name.part"; mv "$dest.tmp" "$dest" ;;
     *) mkdir -p "$dest.tmp"; rm -rf "$dest.tmp"/*; zstd -dc "$dir/$name.part" | tar -x -C "$dest.tmp"
        find "$dest.tmp" -type f -mindepth 2 -exec mv {} "$dest.tmp/" \; ; find "$dest.tmp" -mindepth 1 -type d -empty -delete
        rm "$dir/$name.part"; mv "$dest.tmp" "$dest" ;;

@@ -4,24 +4,32 @@ import XCTest
 final class ShortcutTests: XCTestCase {
     func testDefaults() {
         XCTAssertEqual(Shortcut.translate.label, "⌥D")
+        XCTAssertEqual(Shortcut.translate.keyCode, 2)
         XCTAssertEqual(Shortcut.input.label, "⌥A")
-        XCTAssertNotEqual(Shortcut.translate, Shortcut.input)
+        XCTAssertEqual(Shortcut.input.keyCode, 0)
     }
 
     func testLabelOrder() {
-        let s = Shortcut(keyCode: 0, modifiers: Shortcut.cmd | Shortcut.shift | Shortcut.option | Shortcut.control, key: "a")
+        let s = Shortcut(key: "a", modifiers: Shortcut.cmd | Shortcut.shift | Shortcut.option | Shortcut.control)
         XCTAssertEqual(s.label, "⌃⌥⇧⌘A")
     }
 
-    func testNeedsModifier() {
-        XCTAssertFalse(Shortcut(keyCode: 0, modifiers: 0, key: "A").isValid)
-        XCTAssertFalse(Shortcut(keyCode: 0, modifiers: Shortcut.shift, key: "A").isValid)
-        XCTAssertTrue(Shortcut(keyCode: 0, modifiers: Shortcut.control, key: "A").isValid)
+    func testValid() {
+        XCTAssertFalse(Shortcut(key: "A", modifiers: 0).isValid)
+        XCTAssertFalse(Shortcut(key: "A", modifiers: Shortcut.shift).isValid)
+        XCTAssertFalse(Shortcut(key: "-", modifiers: Shortcut.option).isValid)
+        XCTAssertTrue(Shortcut(key: "7", modifiers: Shortcut.control).isValid)
     }
 
-    func testCodable() throws {
-        let data = try JSONEncoder().encode(Shortcut.translate)
-        XCTAssertEqual(try JSONDecoder().decode(Shortcut.self, from: data), Shortcut.translate)
+    func testFromKeyCode() {
+        XCTAssertEqual(Shortcut(keyCode: 2, modifiers: Shortcut.option), .translate)
+        XCTAssertEqual(Shortcut(keyCode: 29, modifiers: Shortcut.cmd)?.key, "0")
+        XCTAssertNil(Shortcut(keyCode: 0x35, modifiers: 0))
+    }
+
+    func testCodesUnique() {
+        XCTAssertEqual(Set(Shortcut.codes.values).count, Shortcut.codes.count)
+        XCTAssertEqual(Shortcut.codes.count, 36)
     }
 }
 
@@ -60,18 +68,6 @@ final class PlacementTests: XCTestCase {
 }
 
 final class RecentsTests: XCTestCase {
-    func testNewestFirstNoRepeats() {
-        var r = Recents()
-        for t in ["a", "b", "a", "  ", "c"] { r.add(t) }
-        XCTAssertEqual(r.items, ["c", "a", "b"])
-    }
-
-    func testLimit() {
-        var r = Recents()
-        for i in 0..<9 { r.add("w\(i)") }
-        XCTAssertEqual(r.items, ["w8", "w7", "w6", "w5", "w4"])
-    }
-
     func testTitle() {
         XCTAssertEqual(Recents.title("one\ntwo"), "one two")
         XCTAssertEqual(Recents.title(String(repeating: "x", count: 50)).count, 40)

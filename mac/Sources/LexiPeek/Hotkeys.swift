@@ -21,10 +21,16 @@ final class Hotkeys {
     // false: taken by another app (or the system).
     @discardableResult
     func register(_ id: UInt32, _ s: Shortcut, action: @escaping () -> Void) -> Bool {
+        guard let code = s.keyCode else { return false }
+        return register(id, code: code, modifiers: s.modifiers, action: action)
+    }
+
+    @discardableResult
+    func register(_ id: UInt32, code: UInt32, modifiers: UInt32, action: @escaping () -> Void) -> Bool {
         unregister(id)
         var ref: EventHotKeyRef?
         let hid = EventHotKeyID(signature: OSType(0x4C58504B), id: id)  // 'LXPK'
-        guard RegisterEventHotKey(s.keyCode, s.modifiers, hid, GetApplicationEventTarget(), 0, &ref) == noErr, let ref
+        guard RegisterEventHotKey(code, modifiers, hid, GetApplicationEventTarget(), 0, &ref) == noErr, let ref
         else { return false }
         refs[id] = ref
         actions[id] = action

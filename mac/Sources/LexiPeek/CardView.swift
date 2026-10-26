@@ -59,7 +59,7 @@ struct CardView: View {
 
     @ViewBuilder
     private func dictionary(_ card: CardData) -> some View {
-        if card.entries.isEmpty && card.gloss.isEmpty {
+        if card.entries.isEmpty && card.gloss.isEmpty && card.separable.isEmpty {
             Text("No dictionary entry").foregroundStyle(.secondary)
         }
         ForEach(card.entries.indices, id: \.self) { i in
@@ -69,16 +69,20 @@ struct CardView: View {
                 Text(model.fullEntry ? e.article : e.line).textSelection(.enabled)
             }
         }
-        ForEach(card.gloss.indices, id: \.self) { i in
-            let g = card.gloss[i]
+        ForEach(Array((card.separable + card.gloss).enumerated()), id: \.offset) { _, g in
             HStack(alignment: .firstTextBaseline) {
                 Text(g.base.isEmpty || g.base == g.word ? g.word : "\(g.word) (\(g.base))").bold()
                 Text(g.meaning).foregroundStyle(.secondary)
             }
         }
-        if !card.entries.isEmpty && !model.fullEntry {
-            Button("Full entry ⏎") { model.fullEntry = true }.buttonStyle(.link).font(.caption)
+        HStack {
+            if !card.entries.isEmpty && !model.fullEntry {
+                Button("Full entry ⏎") { model.fullEntry = true }.buttonStyle(.link)
+            }
+            Spacer()
+            if card.looks > 1 { Text("Looked up \(card.looks)×").foregroundStyle(.secondary) }
         }
+        .font(.caption)
     }
 
     @ViewBuilder

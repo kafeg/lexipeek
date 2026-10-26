@@ -9,11 +9,12 @@ struct SettingsView: View {
 
     @ObservedObject var prefs = Prefs.shared
     @ObservedObject var state: SettingsState
+    let client: CoreClient
 
     var body: some View {
         TabView(selection: $state.pane) {
             GeneralPane(prefs: prefs, state: state).tabItem { Label("General", systemImage: "gearshape") }.tag(Pane.general)
-            PacksPane().tabItem { Label("Packs", systemImage: "shippingbox") }.tag(Pane.packs)
+            PacksPane(client: client).tabItem { Label("Packs", systemImage: "shippingbox") }.tag(Pane.packs)
             TranslationPane(prefs: prefs).tabItem { Label("Translation", systemImage: "character.bubble") }.tag(Pane.translation)
             PermissionsPane(state: state).tabItem { Label("Permissions", systemImage: "hand.raised") }.tag(Pane.permissions)
         }
@@ -46,6 +47,7 @@ private struct GeneralPane: View {
                 Toggle("Open at login", isOn: $login).onChange(of: login) { _, on in
                     try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
                     login = SMAppService.mainApp.status == .enabled
+                    prefs.openAtLogin = login
                 }
             }
             Section("Apps where the hotkey does nothing") { AppList(ids: $prefs.offApps) }
@@ -92,9 +94,8 @@ private struct ShortcutField: View {
             if f.contains(.option) { m |= Shortcut.option }
             if f.contains(.control) { m |= Shortcut.control }
             if f.contains(.shift) { m |= Shortcut.shift }
-            let s = Shortcut(keyCode: UInt32(e.keyCode), modifiers: m, key: e.charactersIgnoringModifiers ?? "")
-            guard s.isValid else { NSSound.beep(); return nil }
-            if s.keyCode == other.keyCode && s.modifiers == other.modifiers { conflict = true } else { shortcut = s }
+            guard let s = Shortcut(keyCode: e.keyCode, modifiers: m), s.isValid else { NSSound.beep(); return nil }
+            if s == other { conflict = true } else { shortcut = s }
             stop()
             return nil
         }
@@ -138,19 +139,6 @@ private struct AppList: View {
     }
 }
 
-private struct PacksPane: View {
-    var body: some View {
-        Form {
-            LabeledContent("Data folder") {
-                Button(CoreClient.dataDir) { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
-                    .buttonStyle(.link)
-            }
-            Text("Packs: the list with sizes, downloads and removal come with the core's pack manager.")
-                .foregroundStyle(.secondary)
-        }
-        .formStyle(.grouped)
-    }
-}
 
 private struct TranslationPane: View {
     @ObservedObject var prefs: Prefs
