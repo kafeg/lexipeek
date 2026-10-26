@@ -3,15 +3,26 @@ import LexiPeekCore
 import SwiftUI
 
 // The card: draws what the core's card_view says (header, tabs, rows, footer); the HTML of a full entry by AppKit.
-// The body scrolls inside a height limit; the card never outgrows half the screen.
+// The body scrolls inside the height limit; width, text size and font are the settings' (the core's CardView).
 struct CardView: View {
     @ObservedObject var model: CardModel
     @FocusState private var focused: Bool
     var focusInput = false
     @State private var bodyHeight: CGFloat = 0
 
-    static func width(_ look: CardLook?) -> CGFloat { look?.wide == true ? 460 : 400 }
-    private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * 0.45 }
+    private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * CGFloat(model.look?.height ?? 45) / 100 }
+
+    // The settings' size and font; delta: the header a little larger, secondary lines a little smaller.
+    private func font(_ delta: CGFloat = 0, _ weight: Font.Weight = .regular) -> Font {
+        let look = model.look
+        let design: Font.Design = switch look?.font ?? "" {
+        case "serif": .serif
+        case "rounded": .rounded
+        case "mono": .monospaced
+        default: .default
+        }
+        return .system(size: CGFloat(look?.text ?? 13) + delta, weight: weight, design: design)
+    }
 
     var body: some View {
         let look = model.look
@@ -56,8 +67,9 @@ struct CardView: View {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
         }
+        .font(font())
         .padding(14)
-        .frame(width: Self.width(look), alignment: .leading)
+        .frame(width: CGFloat(look?.width ?? 400), alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear { focused = focusInput }
     }
@@ -82,19 +94,19 @@ struct CardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 switch look.style {
                 case .word:
-                    Text(look.title).font(.title3.weight(.semibold)).lineLimit(1)
+                    Text(look.title).font(font(4, .semibold)).lineLimit(1)
                     if !look.subtitle.isEmpty {
-                        Text(look.subtitle).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 case .phrase:
-                    Text(look.title).font(.headline).lineLimit(2).truncationMode(.tail)
+                    Text(look.title).font(font(0, .semibold)).lineLimit(2).truncationMode(.tail)
                 default:
-                    Text(look.title).font(.callout).foregroundStyle(.secondary).lineLimit(2).truncationMode(.tail)
+                    Text(look.title).font(font(-1)).foregroundStyle(.secondary).lineLimit(2).truncationMode(.tail)
                 }
             }
             .help(look.tooltip)
             Spacer(minLength: 8)
-            if !look.badge.isEmpty { Text(look.badge).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            if !look.badge.isEmpty { Text(look.badge).font(font(-2)).foregroundStyle(.secondary).lineLimit(1) }
             if !look.star.isEmpty {
                 Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
                     .buttonStyle(.borderless)
@@ -111,8 +123,8 @@ struct CardView: View {
         switch r.style {
         case .entry:
             VStack(alignment: .leading, spacing: 2) {
-                Text(r.label).font(.caption).foregroundStyle(.secondary)
-                (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html)))
+                Text(r.label).font(font(-2)).foregroundStyle(.secondary)
+                (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html, size: model.look?.text ?? 13, font: model.look?.font ?? "")))
                     .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
         case .gloss:
@@ -129,13 +141,13 @@ struct CardView: View {
                 Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
         case .example:
-            Text(r.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+            Text(r.text).font(font(-1)).foregroundStyle(.secondary).textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true).padding(.leading, 24)
         case .section:
             Button { model.openSection(r.entry, r.open) } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(r.label).lineLimit(2).truncationMode(.tail)
-                    Text(r.text).font(.caption).foregroundStyle(.secondary)
+                    Text(r.text).font(font(-2)).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
@@ -146,7 +158,7 @@ struct CardView: View {
         case .text:
             Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .english:
-            Text(r.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            Text(r.text).font(font(-1)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .error:
             Text(r.text).foregroundStyle(.red)
         case .progress:
@@ -185,12 +197,18 @@ struct CardView: View {
                 Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
             }
         }
-        .font(.caption)
+        .font(font(-2))
     }
 
-    // The entry's HTML in the system font and colours (AppKit's importer: main thread only).
-    static func html(_ html: String) -> AttributedString {
-        let doc = "<style>body{font-family:-apple-system;font-size:13px}</style>" + html
+    // The entry's HTML in the card's font and the system's colours (AppKit's importer: main thread only).
+    static func html(_ html: String, size: Int, font: String) -> AttributedString {
+        let family = switch font {
+        case "serif": "ui-serif, 'New York', serif"
+        case "rounded": "ui-rounded, -apple-system"
+        case "mono": "ui-monospace, Menlo, monospace"
+        default: "-apple-system"
+        }
+        let doc = "<style>body{font-family:\(family);font-size:\(size)px}</style>" + html
         guard let ns = try? NSMutableAttributedString(data: Data(doc.utf8), options: [
             .documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue,
         ], documentAttributes: nil) else { return AttributedString(html) }

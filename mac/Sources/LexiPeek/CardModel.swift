@@ -40,6 +40,10 @@ struct CardLook {
     var footer = false
     var star = ""
     var starHelp = ""
+    var width = 400
+    var text = 13
+    var font = ""
+    var height = 45
 
     init(_ v: lexipeek.CardView) {
         style = v.style
@@ -65,6 +69,10 @@ struct CardLook {
         footer = v.footer
         star = String(v.star)
         starHelp = String(v.star_help)
+        width = Int(v.width)
+        text = Int(v.text)
+        font = String(v.font)
+        height = Int(v.height)
     }
 }
 

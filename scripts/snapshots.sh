@@ -1,5 +1,5 @@
 #!/bin/sh
-# The app's own snapshots of a fixed set of cards, of Notes and of every settings pane, light and dark, + index.html.
+# The app's own snapshots of a fixed set of cards, of Notes and of every settings section × tab, light and dark, + index.html.
 # Usage: scripts/snapshots.sh [out-dir]   (after `make app`; packs from the default data dir or LEXIPEEK_DATA)
 set -eu
 cd "$(dirname "$0")/.."
@@ -40,7 +40,7 @@ und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
 # open=<word> clicks that word in the card; section=<key> opens the first entry's section;
-# notes?tab=…: the Notes window, after the cards that fill it)
+# notes?tab=…: Settings → Notes, after the cards that fill it)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
@@ -102,6 +102,13 @@ firstrun-done-later|done-later|
 EOF
 }
 
+# The settings window's shots, written by the app at launch: every section × tab (settings-<section>[-<tab>]).
+settings_shots() {
+  echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
+    settings-languages-other-dictionaries settings-card-opening settings-card-article settings-card-article-empty \
+    settings-card-appearance settings-notes-words settings-notes-phrases settings-notes-history settings-general
+}
+
 cases >"$TMP/cases"
 firstrun_cases >"$TMP/firstrun"
 fail=0
@@ -120,13 +127,14 @@ for look in light dark; do
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
 
-  # Another instance on an empty data dir (its settings shots: the Translation pane without a pair).
+  # Another instance on an empty data dir (its settings shots: Translation without a pair, Article without dictionaries).
   empty="$TMP/empty" && rm -rf "$empty" "$dir/empty" && mkdir -p "$empty" "$dir/empty"
   LEXIPEEK_SNAPSHOT="$dir/empty" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$empty" \
     "$APP/Contents/MacOS/LexiPeek" >"$dir/empty/app.log" 2>&1 &
   pid=$!
   wait_for "$dir/empty/settings.done" 60 || { echo "$look: empty settings timed out" >&2; fail=1; }
-  mv "$dir/empty/settings-translation.png" "$dir/settings-translation-empty.png" 2>/dev/null || true
+  mv "$dir/empty/settings-languages-translation.png" "$dir/settings-languages-translation-empty.png" 2>/dev/null || true
+  mv "$dir/empty/settings-card-article.png" "$dir/settings-card-article-empty.png" 2>/dev/null || true
   while IFS='|' read -r name step file; do
     [ -z "$file" ] || cp "$DATA/$file" "$empty/"
     echo "lexipeek://firstrun?step=$step&snap=$name" >"$dir/empty/request.tmp" && mv "$dir/empty/request.tmp" "$dir/empty/request"
@@ -143,8 +151,7 @@ done
   echo '<!doctype html><meta charset="utf-8"><title>LexiPeek snapshots</title>'
   echo '<style>body{font:13px -apple-system;background:#888;margin:16px}h2{margin:24px 0 6px}'
   echo '.row{display:flex;gap:16px;align-items:flex-start}img{zoom:.5}</style>'
-  for n in $(cut -d'|' -f1 "$TMP/cases" "$TMP/firstrun") settings-general settings-translation settings-translation-empty \
-    settings-packs settings-permissions; do
+  for n in $(cut -d'|' -f1 "$TMP/cases" "$TMP/firstrun") $(settings_shots); do
     for s in "$n" "$n-end"; do
       [ -e "$OUT/light/$s.png" ] || continue
       echo "<h2>$s</h2><div class=row><img src=\"light/$s.png\"><img src=\"dark/$s.png\"></div>"

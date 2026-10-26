@@ -3,6 +3,11 @@ import Foundation
 import LexiPeekCore
 import LexiPeekKit
 
+extension Notification.Name {
+    // The installed dictionaries were read again (after the packs changed): Settings → Article shows them.
+    static let dictionariesChanged = Notification.Name("lexipeek.dictionariesChanged")
+}
+
 // The core on two serial queues: look-ups (fast) and translations (one worker); a newer request makes older ones no-ops.
 final class CoreClient {
     private let engine: lexipeek.app.Engine
@@ -11,6 +16,7 @@ final class CoreClient {
     private let lock = NSLock()
     private var latest = 0
     private var cards: [Int: lexipeek.Card] = [:]
+    private var dicts: [lexipeek.DictItem] = []
 
     static var dataDir: String { String(lexipeek.app.data_dir()) }
 
@@ -24,7 +30,17 @@ final class CoreClient {
 
     init() {
         engine = lexipeek.app.Engine.make(std.string(), Self.device)
-        lookups.async { [engine] in engine.prepare() }
+        lookups.async { [self] in prepared() }
+    }
+
+    // The installed dictionaries, as of the last prepare (the library is busy while it indexes: never asked on the main queue).
+    var dictionaries: [lexipeek.DictItem] { lock.withLock { dicts } }
+
+    private func prepared() {
+        engine.prepare()
+        let d = engine.dictionaries().map { $0 }
+        lock.withLock { dicts = d }
+        DispatchQueue.main.async { NotificationCenter.default.post(name: .dictionariesChanged, object: nil) }
     }
 
     // Changed settings: the next cards use them.
@@ -34,9 +50,9 @@ final class CoreClient {
 
     // Changed packs: the dictionaries again, the held model freed.
     func reload() {
-        lookups.async { [engine] in
+        lookups.async { [self] in
             engine.reload()
-            engine.prepare()
+            prepared()
         }
     }
 

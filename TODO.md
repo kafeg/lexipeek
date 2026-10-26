@@ -13,12 +13,12 @@
   in the gloss ("Das Haus ist alt"); InkPeek's own card does the same.
 - M2 Engines bench: on an 8 GB Mac; OPUS-MT's working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.
 - M2.1 core part: card view model, `lexipeek::app` facade, `Core::configure`, answers' `ver` done.
-  Open: the Settings panes (Translation's method list, Packs' rows text) still build their labels in Swift (views for them: M4).
 - M3 card parity, Dictionary tab (branch m3-entry): full entry as senses and examples, `.rel` sections and their pages,
   a clicked gloss / section word opens in the card with "←", "form: …" + frequency + looks under the header, the text's
   language's packs first, "… and N more words". Open: an entry's line is not clickable to its own article (the card
   toggles all with "Full entry ⏎"); the origin section is shown (InkPeek hides it by default: its setting is M4); other
   dictionaries' articles stay HTML (M4, with InkPeek's `shortMeaning`); a word's header is cut at one line (InkPeek: up to 3).
+  The origin section is now off by default (Settings → Card → Article).
 - Same as InkPeek (not changed here): unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
   when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — a change belongs in InkPeek first;
   a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
@@ -27,4 +27,10 @@
 - M3 first run and Mozilla's English: done in the core (tested) and the window. Open: the first-run snapshot cases
   and `passage-english` not yet looked at (run invisibly by the owner's session); the models test of the English
   (`firstrun_test.cpp`) not run here; the Accessibility step's "goes on by itself" not tried on a real grant.
+- M4 settings (branch m4-settings): InkPeek's sections (Languages · Card · Notes · General) with sub-tabs, rows from the
+  core (`settings_view`), the card's settings honoured (phrase opening, full entry, grammar, sections, order, width, text
+  size, font, height limit); Notes moved into Settings. Open: the settings snapshots not yet looked at (run invisibly by
+  the owner's session); the app language is a placeholder (localization); "Check for updates" waits for releases;
+  Packs' busy / empty texts still in Swift; an order row has no on / off yet (m4-dicts); InkPeek's Opening also has
+  AI choices (M5).
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).
