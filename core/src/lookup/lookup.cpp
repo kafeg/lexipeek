@@ -69,6 +69,16 @@ std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::
   return java_hash(key);
 }
 
+// In the person's order: listed ids first, as listed; the others after, as they were.
+template <class T, class Id>
+void ordered(std::vector<T> &xs, const std::vector<std::string> &order, Id id) {
+  auto rank = [&](const T &x) { return static_cast<size_t>(std::find(order.begin(), order.end(), id(x)) - order.begin()); };
+  std::stable_sort(xs.begin(), xs.end(), [&](const T &a, const T &b) { return rank(a) < rank(b); });
+}
+
+// The name of a dictionary in the card: a pack's "InkPeek · de → ru", another's own name.
+static std::string dict_title(const dict::StarDict &d) { return d.book().empty() ? d.name() : "InkPeek · " + d.book() + " → " + d.answer(); }
+
 struct Core::Impl {
   CoreOptions o;
   std::unique_ptr<Translator> tr;
@@ -127,6 +137,8 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   impl_->o.mt_english = s.mt_english;
+  impl_->o.card = s.card;
+  impl_->o.dict_order = s.dict_order;
   if (device) impl_->o.device = device;
 }
 
@@ -134,6 +146,7 @@ Card Core::lookup(const Request &r) {
   std::lock_guard g(impl_->mu);
   Card c;
   c.source = r.source;
+  c.prefs = impl_->o.card;
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);
   if (raw.empty()) return c;
@@ -157,7 +170,7 @@ Card Core::lookup(const Request &r) {
       // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
       for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) {
         Entry e;
-        e.dictionary = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
+        e.dictionary = dict_title(*d);
         e.id = d->id();
         e.word = hits.front().word;
         e.line = dict::head_line(hits.front().html).value_or(e.word);
@@ -172,6 +185,7 @@ Card Core::lookup(const Request &r) {
         if (auto x = d->related(e.word)) e.related = {x->rel, x->syn, x->ant, x->expr, x->ipa, x->origin, x->forms};
         c.entries.push_back(e);
       }
+      ordered(c.entries, impl_->o.dict_order, [](const Entry &e) { return e.id; });
     } else if (!c.lang.empty()) {
       // "das Haus": the pack's header of its second word starts so → saved as that word.
       static const text::Regex word_re("\\S+");
@@ -269,6 +283,17 @@ bool Core::toggle_saved(const Card &card, const std::string &translation) {
   }
   auto line = card.save_line.empty() ? translation : card.save_line;
   return st.save(card.save_text, card.save_kind, card.answer, line, card.text).empty();
+}
+
+std::vector<DictItem> Core::dictionaries() {
+  std::lock_guard g(impl_->mu);
+  std::vector<DictItem> out;
+  for (auto *d : impl_->lib->all()) {
+    bool pack = !d->book().empty();
+    out.push_back({d->id(), pack ? language_name(d->book()) + " → " + language_name(d->answer()) : d->name(), pack});
+  }
+  ordered(out, impl_->o.dict_order, [](const DictItem &d) { return d.id; });
+  return out;
 }
 
 std::vector<Seen> Core::recents(int n) { return impl_->store->recents(n); }

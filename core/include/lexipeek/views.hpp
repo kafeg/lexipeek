@@ -108,11 +108,15 @@ struct CardView {
   bool footer = false;              // anything in the footer (else it is not drawn)
   std::string star;       // "☆", "★" (saved), "" (nothing to save)
   std::string star_help;  // "Save to Notes", "Remove from Notes"
+  int width = 400;        // the card's look (Settings → Card → Appearance): points
+  int text = 13;          // the body's text size, points; the header a little larger
+  std::string font;       // "" the system's, "serif", "rounded", "mono"
+  int height = 45;        // % of the screen at most
 };
 
-// The tab a new card opens on: Dictionary for a word with entries, else Translate.
+// The tab a new card opens on: Dictionary for a word with entries or a phrase set to open word by word, else Translate.
 CardTab first_tab(const Card &c);
-// A new card's state: its first tab and its method (none when no method is available).
+// A new card's state: its first tab, the full entry when set so, its method (none when no method is available).
 CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
 // The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
@@ -185,5 +189,60 @@ bool first_run_at_launch(bool has_pair, bool trusted, bool finished);
 // The answer language by default: the system's when the packs offer it, else English.
 std::string first_answer(const Manifest &m, const std::string &system);
 FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s);
+
+// Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
+enum class SettingsSection { languages, card, notes, general };
+
+// What the shell knows and the core does not: this Mac and the app.
+struct SettingsState {
+  bool trusted = false;   // Accessibility is granted
+  bool has_pair = true;   // some pair is installed
+  bool login = false;     // opens at login (the system's say)
+  std::string version;    // "0.1 (5)"
+  std::vector<std::string> answers;   // the packs' answer languages (codes)
+  std::vector<DictItem> dictionaries;  // installed (put in the person's order here)
+};
+
+// One row, InkPeek's Rows: a title, a one-line description, a control.
+struct SettingRow {
+  enum class Kind {
+    heading,  // a group's title
+    toggle,   // on: its state
+    choice,   // choices, selected
+    hotkey,   // a shortcut recorder: key "lookup" / "input"
+    apps,     // a list of apps by bundle id: key "copy_apps" / "ignore_apps"
+    item,     // a dictionary in the order: up / down move it (key: its id)
+    button,   // value: the button's label; the shell does what key names ("setup", "access", "updates")
+    status,   // value: the state ("Allowed"), on: good
+    link      // value: a URL
+  };
+  Kind kind = Kind::heading;
+  std::string key = "", title = "", about = "";
+  bool on = false, enabled = true;
+  std::vector<std::string> choices = {};
+  int selected = 0;
+  std::string value = "";
+  bool up = false, down = false;
+};
+
+struct SettingsPage {
+  std::vector<std::string> sections;  // "Languages", "Card", "Notes", "General"
+  std::vector<std::string> tabs;      // the section's sub-tabs ("Packs", "Translation", "Other dictionaries"), none for General
+  int tab = 0;
+  std::string pane;  // a pane drawn by its own view: "packs", "other", "notes"; "" = rows
+  std::vector<SettingRow> rows;
+};
+
+std::vector<std::string> settings_sections();
+std::vector<std::string> settings_tabs(SettingsSection section);
+SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, const SettingsState &state);
+// A row's change → the settings ("" when the key is not the row's). Toggles and choices by the row's key and index.
+void settings_toggle(Settings &s, const std::string &key, bool on);
+void settings_choose(Settings &s, const std::string &key, int index, const SettingsState &state);
+// A dictionary moved up (-1) or down (+1) in the order: the whole order is kept from then on.
+void settings_move(Settings &s, const std::string &id, int by, const SettingsState &state);
+// "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
+std::string packs_summary(const std::vector<PairRow> &rows);
+std::string pair_detail(const PairRow &r);
 
 }  // namespace lexipeek

@@ -42,11 +42,19 @@ struct Engine {
   NotesView notes(NotesTab tab) const;
   void remove_note(NotesTab tab, const std::string &text) const;
   void clear_history() const;
+  // Installed dictionaries in the person's order (Settings → Card → Article).
+  std::vector<DictItem> dictionaries() const;
   void prepare() const;
   void reload() const;
   void release() const;
   void cancel() const;
 };
+
+// Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
+SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
+std::string toggle(const std::string &data, const std::string &key, bool on);
+std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
+std::string move(const std::string &data, const std::string &id, int by, const SettingsState &state);
 
 // Settings → Packs.
 std::vector<PairRow> rows(const std::string &data, const Device &d);

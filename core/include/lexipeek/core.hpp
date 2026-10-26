@@ -100,6 +100,13 @@ struct Card {
   std::vector<MethodState> methods;
   std::optional<Method> method;  // the one to translate with (the setting, else the first available)
   std::string error;
+  CardPrefs prefs = {};  // the card's settings when it was looked up (what it opens on, shows, its look)
+};
+
+// An installed dictionary: its id, its name ("German → Russian" for a pack), whether it is a language pack's.
+struct DictItem {
+  std::string id, title;
+  bool pack = false;
 };
 
 // The version an offline answer is kept under, as InkPeek's OfflineTranslation: Java's hashCode of the
@@ -119,6 +126,8 @@ struct CoreOptions {
   TranslatorOptions translator;  // data is filled from [data]
   std::optional<Device> device;  // this machine (from the shell); none: not checked
   bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
+  CardPrefs card;                // copied into every card
+  std::vector<std::string> dict_order;  // the entries' order by dictionary id; the others after
 };
 
 class Core {
@@ -128,7 +137,7 @@ class Core {
   Core(const Core &) = delete;
   Core &operator=(const Core &) = delete;
 
-  // Changed settings (answer language, method, the English in between) and, when given, this machine: the next cards use them.
+  // Changed settings (answer language, method, the English in between, the card's, the dictionaries' order) and, when given, this machine: the next cards use them.
   void configure(const Settings &s, const std::optional<Device> &device = std::nullopt);
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);
@@ -154,6 +163,8 @@ class Core {
   // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.
   void reload();
   Translator &translator();
+  // The installed dictionaries, in the person's order (Settings → Card → Article).
+  std::vector<DictItem> dictionaries();
 
  private:
   struct Impl;
