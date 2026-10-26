@@ -41,7 +41,11 @@ struct CardView: View {
                 }
                 .scrollIndicators(.automatic)
                 .frame(height: min(max(bodyHeight, 20), limit))
-                .onPreferenceChange(HeightKey.self) { bodyHeight = $0 }
+                // The body's height is known only after layout: the panel fits itself to it again.
+                .onPreferenceChange(HeightKey.self) {
+                    bodyHeight = $0
+                    model.objectWillChange.send()
+                }
                 footer(card)
             } else if !model.showInput {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)

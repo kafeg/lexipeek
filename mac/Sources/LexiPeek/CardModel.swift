@@ -43,7 +43,7 @@ final class CardModel: ObservableObject {
         request = client.lookup(t, source: source) { [weak self] id, card in
             guard let self, id == self.request else { return }
             self.card = card
-            self.tab = card.kind == .word && !card.entries.isEmpty ? .dictionary : .translate
+            self.tab = (card.kind == .word && !card.entries.isEmpty) || Snapshot.dictionary ? .dictionary : .translate
             self.method = card.method
             if let m = card.method { self.translate(m) }
         }
