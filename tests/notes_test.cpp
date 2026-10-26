@@ -1,6 +1,7 @@
 // ☆ (what a card saves, as InkPeek's saveKey) and Notes (Words · Phrases · History) on a small pack dictionary.
 #include <doctest/doctest.h>
 #include <fstream>
+#include <thread>
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/views.hpp"
@@ -111,11 +112,16 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
     CHECK(!v.empty.empty());
     CHECK(!v.clear);
 
-    st.seen("Haus", "word", "ru", "das Haus — дом");
-    st.seen("Haus", "word", "ru", "das Haus — дом");
-    st.seen("Ich mache die Tür zu", "phrase", "ru", "");
+    // Looks a few ms apart: the history's order is by the look's time.
+    auto look = [&](const std::string &t, const std::string &kind, const std::string &line) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(3));
+      st.seen(t, kind, "ru", line);
+    };
+    look("Haus", "word", "das Haus — дом");
+    look("Haus", "word", "das Haus — дом");
+    look("Ich mache die Tür zu", "phrase", "");
     st.put_answer("Ich mache die Tür zu", "ru", "offline-de", 7, "bergamot", "Я закрываю дверь");
-    st.seen("Wort", "word", "ru", "");
+    look("Wort", "word", "");
     st.save("Haus", "word", "ru", "das Haus — дом");
     st.save("Baum", "word", "ru", "der Baum — дерево");
     st.save("Ich mache die Tür zu", "phrase", "ru", "");
