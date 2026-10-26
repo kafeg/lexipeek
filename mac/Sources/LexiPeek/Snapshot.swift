@@ -1,4 +1,5 @@
 import AppKit
+import LexiPeekCore
 
 // Checks without Screen Recording: LEXIPEEK_SNAPSHOT=<dir> writes the app's own views as PNGs (scripts/snapshots.sh).
 enum Snapshot {
@@ -57,11 +58,11 @@ enum Snapshot {
         let work = DispatchWorkItem {
             write(view, "card.png")
             guard let r = request else { return }
-            let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.translating)
+            let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating)
             guard final else { return }
-            if let card = model.card, card.kind == .word || !card.gloss.isEmpty || !card.separable.isEmpty {
-                if r.dictionary && model.tab != .dictionary { model.tab = .dictionary; return }
-                if r.full && !model.fullEntry && !card.entries.isEmpty { model.fullEntry = true; return }
+            if let card = model.card, lexipeek.card_view(card, model.state).tabs {
+                if r.dictionary && model.state.tab != .dictionary { model.state.tab = .dictionary; return }
+                if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
             }
             request = nil
             write(view, "\(r.name).png")
