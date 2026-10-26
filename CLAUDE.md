@@ -28,8 +28,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
   (word, full entry, phrase and passages on both tabs, long list scrolled to the end, same language, no pack, unknown,
-  input, selection failed, saved ★) and the Notes window's three tabs and every settings pane in its toolbar window, light and dark, into
-  `build/snapshots/index.html`. **Look at every image before handing over UI work**; a new card state → a new case
+  input, selection failed, saved ★), the Notes window's three tabs and every settings pane in its toolbar window, light
+  and dark, into `build/snapshots/index.html`. **Look at every image before handing over UI work**. The run is invisible
+  (accessory app, windows off screen, no menu-bar item, no hotkeys, never activated): it must never show a window on
+  the owner's screen; a new card state → a new case
   in the script. How: `LEXIPEEK_SNAPSHOT=<dir>` (`Snapshot.swift`) — the app reads `lexipeek://…&snap=<name>[&tab=
   dictionary][&full=1]` from `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
   `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final,
