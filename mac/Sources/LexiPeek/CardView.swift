@@ -33,12 +33,16 @@ struct CardView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
+                        }
+                        .id("top")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(GeometryReader { g in Color.clear.preference(key: HeightKey.self, value: g.size.height) })
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(GeometryReader { g in Color.clear.preference(key: HeightKey.self, value: g.size.height) })
+                    .onChange(of: model.place) { proxy.scrollTo("top", anchor: .top) }
                 }
                 .scrollIndicators(.automatic)
                 .frame(height: min(max(bodyHeight, 20), limit))
@@ -79,7 +83,9 @@ struct CardView: View {
                 switch look.style {
                 case .word:
                     Text(look.title).font(.title3.weight(.semibold)).lineLimit(1)
-                    if !look.subtitle.isEmpty { Text(look.subtitle).foregroundStyle(.secondary) }
+                    if !look.subtitle.isEmpty {
+                        Text(look.subtitle).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
                 case .phrase:
                     Text(look.title).font(.headline).lineLimit(2).truncationMode(.tail)
                 default:
@@ -105,8 +111,33 @@ struct CardView: View {
                     .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
         case .gloss:
-            (Text(r.label).bold() + Text(r.text.isEmpty ? "" : "  \(r.text)").foregroundColor(.secondary))
-                .lineLimit(1).truncationMode(.tail)
+            // Whole, as InkPeek's rows: a long meaning wraps; a click opens the word here.
+            link(r.link) {
+                (Text(r.label).bold() + Text(r.text.isEmpty ? "" : " \(r.text)").foregroundColor(.secondary))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        case .heading:
+            Text(r.text).bold().textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .sense:
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(r.label).foregroundStyle(.secondary).monospacedDigit().frame(minWidth: 18, alignment: .trailing)
+                Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            }
+        case .example:
+            Text(r.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true).padding(.leading, 24)
+        case .section:
+            Button { model.openSection(r.entry, r.open) } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(r.label).lineLimit(2).truncationMode(.tail)
+                    Text(r.text).font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+            .overlay(alignment: .top) { Divider() }
         case .text:
             Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .error:
@@ -121,12 +152,31 @@ struct CardView: View {
         }
     }
 
+    // A row a click opens as a word of its own in this card; plain when it has no word.
+    @ViewBuilder
+    private func link(_ word: String, @ViewBuilder _ content: () -> some View) -> some View {
+        if word.isEmpty {
+            content()
+        } else {
+            Button { model.open(word) } label: { content().frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }
+                .buttonStyle(.plain)
+                .help("Open \(word)")
+        }
+    }
+
     private func footer(_ look: CardLook) -> some View {
         HStack {
+            if !look.back.isEmpty {
+                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help("Back (⌘[)")
+            }
             if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link) }
             if look.menu { methods(look) }
             Spacer()
-            if !look.looks.isEmpty { Text(look.looks).foregroundStyle(.secondary) }
+            if !look.pager.isEmpty {
+                Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(!look.prev)
+                Text(look.pager).foregroundStyle(.secondary).monospacedDigit()
+                Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
+            }
         }
         .font(.caption)
     }

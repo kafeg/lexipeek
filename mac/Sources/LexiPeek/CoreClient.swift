@@ -60,12 +60,29 @@ final class CoreClient {
         return id
     }
 
+    // A card shown again ("←"): it becomes the current request, so its translation can run.
+    func restore(_ card: lexipeek.Card) -> Int {
+        lock.withLock {
+            latest += 1
+            cards = [latest: card]
+            return latest
+        }
+    }
+
     func translate(_ id: Int, method: lexipeek.Method, done: @escaping (lexipeek.Translation) -> Void) {
         engine.cancel()  // the one running (another method, an older card) gives way
         worker.async { [engine] in
             guard self.current(id), let card = self.lock.withLock({ self.cards[id] }) else { return }
             let t = engine.translate(card, method)
             DispatchQueue.main.async { if self.current(id) { done(t) } }
+        }
+    }
+
+    // A section of the card's entry (its words' meanings: off the main queue); done on the main queue.
+    func section(_ card: lexipeek.Card, entry: Int, key: String, page: Int, done: @escaping (lexipeek.SectionPage) -> Void) {
+        lookups.async { [engine] in
+            let p = engine.section(card, Int32(entry), std.string(key), Int32(page))
+            DispatchQueue.main.async { done(p) }
         }
     }
 

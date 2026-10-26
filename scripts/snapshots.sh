@@ -37,6 +37,11 @@ cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
 word-haus-full|lookup?text=Haus&full=1
+word-machen-sections|lookup?text=machen&full=1
+section-related|lookup?text=machen&full=1&section=rel
+section-forms|lookup?text=machen&full=1&section=forms
+gloss-open|lookup?text=Ich mache die Tür zu&tab=dictionary&open=Tür
+gloss-open-full|lookup?text=Am nächsten Morgen stand Anna früh auf&tab=dictionary&open=aufstehen&full=1
 word-ru|lookup?text=дом
 phrase-translate|lookup?text=Ich mache die Tür zu
 phrase-dictionary|lookup?text=Ich mache die Tür zu&tab=dictionary
