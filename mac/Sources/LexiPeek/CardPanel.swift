@@ -131,7 +131,7 @@ final class CardController {
         guard e.window === panel, model.card != nil, !(panel.firstResponder is NSTextView) else { return e }
         switch e.keyCode {
         case 0x7B, 0x7C: model.switchTab()
-        case 0x24: model.fullEntry.toggle()
+        case 0x24: model.toggleEntry()
         default: return e
         }
         return nil

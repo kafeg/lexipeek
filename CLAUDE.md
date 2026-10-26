@@ -30,8 +30,16 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
 ## Code layout and gotchas
-- `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`); `core/src/<module>/` — one folder per
-  module of the spec's Architecture, empty ones are stubs for their milestone.
+- `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`, `core.hpp`, `views.hpp`, `app.hpp`);
+  `core/src/<module>/` — one folder per module of the spec's Architecture, empty ones are stubs for their milestone.
+- `core/src/views/`: `views` — what screens show: `card_view(Card, CardState)` → `CardView` (header and its style, badge,
+  tabs and the open one, body rows per tab, every state's text, footer: method menu, "Full entry ⏎", looks),
+  `first_state`, the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`); `app` — the facade for
+  Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
+  no `std::function` / `std::filesystem::path` / `std::optional` in what Swift calls.
+- `Core::configure(Settings)` applies the answer language and method to the next cards; `Core::reload()` after a
+  packs change (dictionaries again, the held model freed). Offline answers: `ver` = `answer_version` (Java
+  `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
 - `core/src/dict/` (InkPeek's `stardict/`): `stardict` (own sorted index in `<data>/index/<id>/`, `.dict.dz` by dictzip
   chunks), `library` (lookup across packs, heads, gloss, separable verbs, rank). `core/src/text/`: PCRE2 wrapper, InkPeek's
   lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card`, language by
@@ -55,7 +63,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   release on macOS and Linux (cached), none on Windows.
 - `mac/`: `cmake/apple_bundle.cmake` walks `lexipeek_core`'s link closure and `libtool`s it into
   `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
-  `mac/Bridge` (module `LexiPeekCore`: `lexipeek::mac::Engine`, a copyable `shared_ptr<Core>` built from strings).
+  `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
+  The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`.
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker), a newer request turns older ones into no-ops.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.

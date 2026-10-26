@@ -35,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Either one changed (CombineLatest would wait for both).
         Publishers.Merge(prefs.$answer.dropFirst().map { _ in () }, prefs.$method.dropFirst().map { _ in () })
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .sink { [weak self] in self?.client.reconfigure() }.store(in: &bag)
+            .sink { [weak self] in self?.client.configure() }.store(in: &bag)
 
         icon.open = { [weak self] s in self?.card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
         prefs.$selectionIcon.sink { [weak self] on in self?.icon.setEnabled(on) }.store(in: &bag)

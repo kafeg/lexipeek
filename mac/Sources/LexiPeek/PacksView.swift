@@ -29,14 +29,14 @@ final class PacksModel: ObservableObject {
     @Published var progress = 0.0
     @Published var error = ""
     @Published var listError = ""
-    private var download: lexipeek.mac.Download?
+    private var download: lexipeek.app.Download?
     private var timer: Timer?
     let client: CoreClient
 
     init(client: CoreClient) { self.client = client }
 
     func load() {
-        rows = lexipeek.mac.rows(std.string(), CoreClient.device).map { r in
+        rows = lexipeek.app.rows(std.string(), CoreClient.device).map { r in
             let extras = [r.direct, r.llm].filter { lexipeek.mac.has_part($0) }.map { o -> Part in
                 let p = lexipeek.mac.part(o)
                 return Part(id: String(p.id), title: String(p.title), size: p.size, installed: p.installed,
@@ -50,7 +50,7 @@ final class PacksModel: ObservableObject {
     func refresh() {
         busy = "list"
         DispatchQueue.global(qos: .userInitiated).async {
-            let e = String(lexipeek.mac.refresh(std.string()))
+            let e = String(lexipeek.app.refresh(std.string()))
             DispatchQueue.main.async {
                 self.busy = nil
                 self.listError = e
@@ -61,7 +61,7 @@ final class PacksModel: ObservableObject {
 
     func install(_ ids: [String], _ what: String) {
         guard busy == nil, !ids.isEmpty else { return }
-        let dl = lexipeek.mac.Download()
+        let dl = lexipeek.app.Download()
         download = dl
         busy = what
         progress = 0
@@ -70,22 +70,22 @@ final class PacksModel: ObservableObject {
             let total = dl.get_total()
             self?.progress = total > 0 ? Double(dl.get_done()) / Double(total) : 0
         }
-        run { lexipeek.mac.install(std.string(), Self.strings(ids), dl) }
+        run { lexipeek.app.install(std.string(), Self.strings(ids), dl) }
     }
 
     func remove(_ ids: [String], _ what: String) {
         guard busy == nil, !ids.isEmpty else { return }
         busy = what
         error = ""
-        run { lexipeek.mac.remove(std.string(), Self.strings(ids)) }
+        run { lexipeek.app.remove(std.string(), Self.strings(ids)) }
     }
 
     func cancel() { download?.cancel() }
 
-    func pairIDs(_ r: Row) -> [String] { lexipeek.mac.pair_ids(std.string(), std.string(r.from), std.string(r.to)).map { String($0) } }
+    func pairIDs(_ r: Row) -> [String] { lexipeek.app.missing_ids(std.string(), std.string(r.from), std.string(r.to)).map { String($0) } }
 
     func freedIDs(_ r: Row) -> [String] {
-        lexipeek.mac.freed_ids(std.string(), std.string(r.from), std.string(r.to), CoreClient.device).map { String($0) }
+        lexipeek.app.freed_ids(std.string(), std.string(r.from), std.string(r.to)).map { String($0) }
     }
 
     private func run(_ work: @escaping () -> lexipeek.Status) {
@@ -98,7 +98,7 @@ final class PacksModel: ObservableObject {
                 self.busy = nil
                 self.error = e
                 self.load()
-                self.client.reconfigure()
+                self.client.reload()
             }
         }
     }
