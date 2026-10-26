@@ -28,6 +28,40 @@ std::optional<std::string> head_line(const std::string &html) {
   return edge.replace(text::strip_tags(m.groups[1]), "");
 }
 
+std::vector<Sense> senses(const std::string &html) {
+  static const text::Regex li("<li[^>]*>(.*?)</li>", false, true), br("<br\\s*/?>"), small("^\\s*<small>(.*)</small>\\s*$", false, true),
+      space("\\s+"), edge("^\\s+|\\s+$");
+  auto plain = [&](const std::string &h) { return edge.replace(space.replace(text::strip_tags(h), " "), ""); };
+  std::vector<Sense> out;
+  for (auto &m : li.all(html)) {
+    Sense s;
+    // The meaning, then its examples, each after a <br> in <small>.
+    auto parts = br.replace(m.groups[1], "\n");
+    size_t at = 0;
+    while (at <= parts.size()) {
+      auto nl = parts.find('\n', at);
+      auto part = parts.substr(at, nl == std::string::npos ? std::string::npos : nl - at);
+      text::Regex::Match e;
+      if (small.find(part, e)) {
+        if (auto x = plain(e.groups[1]); !x.empty()) s.examples.push_back(x);
+      } else if (auto x = plain(part); !x.empty()) {
+        s.text += (s.text.empty() ? "" : " ") + x;
+      }
+      if (nl == std::string::npos) break;
+      at = nl + 1;
+    }
+    out.push_back(s);
+  }
+  return out;
+}
+
+size_t gloss_words(const std::string &txt) {
+  static const text::Regex word("\\p{L}[\\p{L}'’-]*");
+  std::set<std::string> seen;
+  for (auto &m : word.all(txt)) seen.insert(text::lower(m.groups[0]));
+  return seen.size();
+}
+
 std::vector<SeparableFind> find_separable(const std::string &text, const std::function<std::vector<std::string>(const std::string &)> &bases,
                                           const std::function<std::string(const std::string &)> &particle) {
   static const text::Regex token("\\p{L}+|[^\\p{L}\\p{N}\\s]"), letters("^\\p{L}+$");
@@ -89,12 +123,13 @@ std::vector<StarDict *> Library::all() {
   return out;
 }
 
-std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::string &query, const std::string &answer) {
-  return lookup(query, answer, all());
+std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::string &query, const std::string &answer,
+                                                                     const std::string &book) {
+  return lookup(query, answer, all(), book);
 }
 
 std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::string &query, const std::string &answer,
-                                                                     const std::vector<StarDict *> &among) {
+                                                                     const std::vector<StarDict *> &among, const std::string &book) {
   auto q = text::clean_query(query);
   auto lq = text::lower(q);
   std::vector<std::pair<StarDict *, std::vector<Hit>>> hits;
@@ -119,17 +154,25 @@ std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::
           if (h.word == b) own.push_back(h);
     if (!own.empty()) out.emplace_back(d, own);
   }
-  std::vector<std::pair<StarDict *, std::vector<Hit>>> into;
-  for (auto &x : out)
-    if (x.first->answer() == answer) into.push_back(x);
+  // As InkPeek's Library.lookup over the ticked pairs: the packs from the text's language into answer, the own ones too.
+  auto pack = [](StarDict *d) { return !d->book().empty(); };
+  std::vector<std::pair<StarDict *, std::vector<Hit>>> into, from;
+  for (auto &x : out) {
+    if (pack(x.first) && x.first->answer() != answer) continue;
+    into.push_back(x);
+    if (!pack(x.first) || x.first->book() == book) from.push_back(x);
+  }
+  if (!book.empty() && std::any_of(from.begin(), from.end(), [&](auto &x) { return pack(x.first); })) return from;
   return into.empty() ? out : into;
 }
 
-std::vector<Head> Library::heads(const std::string &query, const std::string &answer) {
+std::vector<Head> Library::heads(const std::string &query, const std::string &answer, const std::string &book) {
   std::vector<Head> out;
   std::set<std::string> books;
-  for (auto &[d, hs] : lookup(query, answer)) {
-    if (!books.insert(d->book()).second) continue;
+  auto found = lookup(query, answer, book);
+  std::stable_partition(found.begin(), found.end(), [&](auto &x) { return x.first->book() == book; });
+  for (auto &[d, hs] : found) {
+    if (d->book().empty() || !books.insert(d->book()).second) continue;
     for (auto &h : hs)
       if (auto l = head_line(h.html)) {
         out.push_back({h.word, *l, d->book()});
@@ -139,7 +182,7 @@ std::vector<Head> Library::heads(const std::string &query, const std::string &an
   return out;
 }
 
-std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string &answer, size_t limit) {
+std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string &answer, size_t limit, const std::string &book) {
   static const text::Regex word("\\p{L}[\\p{L}'’-]*"), tail("[\\s]+$");
   auto dicts = all();
   auto matches = word.all(txt);
@@ -157,9 +200,9 @@ std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string 
     std::vector<std::pair<StarDict *, std::vector<Hit>>> r;
     auto lw = text::lower(w);
     if (starts.contains(w) && w != lw)
-      for (auto &x : lookup(lw, answer, dicts))
+      for (auto &x : lookup(lw, answer, dicts, book))
         if (x.second.front().word == lw) r.push_back(x);
-    if (r.empty()) r = lookup(w, answer, dicts);
+    if (r.empty()) r = lookup(w, answer, dicts, book);
     for (auto &x : r) known[x.first->id()]++;
     found[w] = r;
   }

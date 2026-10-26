@@ -1,5 +1,6 @@
 // lookup: the card as the app shows it, in text.
 #include <chrono>
+#include <format>
 #include <iostream>
 #include "command.hpp"
 #include "lexipeek/core.hpp"
@@ -31,9 +32,14 @@ const Register lookup{{"lookup", "[--to ru] [--translate] [--full] [--time] [--r
                          for (auto &e : c.entries) {
                            std::cout << "· " << e.line << "   [" << e.dictionary << "]\n";
                            if (a.has("--full")) std::cout << e.article << "\n";
+                           auto &r = e.related;
+                           if (!r.rel.empty() || !r.syn.empty() || !r.expr.empty() || !r.forms.empty())
+                             std::cout << std::format("  related {}, synonyms {}, antonyms {}, expressions {}, forms {}\n", r.rel.size(), r.syn.size(),
+                                                      r.ant.size(), r.expr.size(), r.forms.size());
                          }
                          for (auto &g : c.gloss) std::cout << "  " << g.word << (g.base != g.word ? " (" + g.base + ")" : "") << " — " << g.meaning << "\n";
                          for (auto &g : c.separable) std::cout << "  sep: " << g.word << " → " << g.base << " — " << g.meaning << "\n";
+                         if (c.more) std::cout << "  … and " << c.more << " more words\n";
                          for (auto &m : c.methods)
                            std::cout << (c.method && *c.method == m.method ? "* " : "  ") << m.name << (m.available ? "" : " — " + m.reason) << "\n";
                          if (!c.error.empty()) std::cout << "error: " << c.error << "\n";

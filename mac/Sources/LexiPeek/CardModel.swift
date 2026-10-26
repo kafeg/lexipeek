@@ -1,3 +1,4 @@
+import CxxStdlib
 import Foundation
 import LexiPeekCore
 
@@ -8,6 +9,9 @@ struct CardLook {
         var label: String
         var text: String
         var html: String
+        var link: String
+        var open: String
+        var entry: Int
     }
 
     struct Item: Identifiable {
@@ -29,7 +33,11 @@ struct CardLook {
     var menu = false
     var menuTitle = ""
     var methods: [Item] = []
-    var looks = ""
+    var back = ""
+    var pager = ""
+    var prev = false
+    var next = false
+    var footer = false
     var star = ""
     var starHelp = ""
 
@@ -42,12 +50,19 @@ struct CardLook {
         wide = v.wide
         tabs = v.tabs
         tab = v.tab
-        rows = v.rows.map { Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html)) }
+        rows = v.rows.map {
+            Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
+                open: String($0.open), entry: Int($0.entry))
+        }
         entryToggle = String(v.entry_toggle)
         menu = v.menu
         menuTitle = String(v.menu_title)
         methods = v.methods.map { Item(id: $0.method, title: String($0.title), enabled: $0.enabled) }
-        looks = String(v.looks)
+        back = String(v.back)
+        pager = String(v.pager)
+        prev = v.prev
+        next = v.next
+        footer = v.footer
         star = String(v.star)
         starHelp = String(v.star_help)
     }
@@ -66,6 +81,8 @@ final class CardModel: ObservableObject {
 
     let client: CoreClient
     private var request = 0
+    // The cards this one was opened from (a gloss word, a section's word): "←" goes back to them as they were.
+    private var trail: [(card: lexipeek.Card, state: lexipeek.CardState)] = []
 
     init(client: CoreClient) { self.client = client }
 
@@ -78,16 +95,20 @@ final class CardModel: ObservableObject {
         card = nil
         state = lexipeek.CardState()
         unread = nil
+        trail = []
     }
 
-    func lookup(_ text: String, source: lexipeek.Source) {
+    func lookup(_ text: String, source: lexipeek.Source, keep: Bool = false) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
+        if !keep { trail = [] }
+        let before = trail.last.map { String($0.card.text) } ?? ""
         state = lexipeek.CardState()
         request = client.lookup(t, source: source) { [weak self] id, card in
             guard let self, id == self.request else { return }
             var s = lexipeek.first_state(card)
             if Snapshot.dictionary { s.tab = .dictionary }
+            s.before = std.string(before)
             self.card = card
             self.state = s
             NotificationCenter.default.post(name: .notesChanged, object: nil)
@@ -120,6 +141,46 @@ final class CardModel: ObservableObject {
         guard let card, !lexipeek.card_view(card, state).star.empty() else { return }
         state.saved = client.toggleSaved(card, translation: state.translated && state.translation.ok() ? String(state.translation.text) : "")
         NotificationCenter.default.post(name: .notesChanged, object: nil)
+    }
+
+    // A word clicked in the card (the gloss, a section): its card here, "←" comes back to this one.
+    func open(_ word: String) {
+        guard let card else { return }
+        trail.append((card, state))
+        lookup(word, source: .input, keep: true)
+    }
+
+    // "←": from a section to its entry, else to the card this one was opened from, as it was.
+    func back() {
+        if !String(state.section.key).isEmpty {
+            state.section = lexipeek.SectionPage()
+            return
+        }
+        guard let last = trail.popLast() else { return }
+        request = client.restore(last.card)
+        card = last.card
+        state = last.state
+        if state.translating { translate(state.method) }
+    }
+
+    func openSection(_ entry: Int, _ key: String, page: Int = 0) {
+        guard let card else { return }
+        let id = request
+        client.section(card, entry: entry, key: key, page: page) { [weak self] p in
+            guard let self, id == self.request else { return }
+            self.state.section = p
+        }
+    }
+
+    func turn(_ by: Int) {
+        let s = state.section
+        if !String(s.key).isEmpty { openSection(Int(s.entry), String(s.key), page: Int(s.page) + by) }
+    }
+
+    // Where the body is: a new place (another card, tab, section or page) scrolls to the top.
+    var place: String {
+        guard let card else { return "" }
+        return "\(String(card.text))|\(state.tab.rawValue)|\(state.full_entry)|\(String(state.section.key))|\(state.section.page)"
     }
 
     func switchTab() { state.tab = state.tab == .dictionary ? .translate : .dictionary }

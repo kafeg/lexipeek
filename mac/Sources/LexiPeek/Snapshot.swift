@@ -7,8 +7,9 @@ enum Snapshot {
     // LEXIPEEK_SNAPSHOT_TAB=dictionary: cards open on Dictionary (to see that tab).
     static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
-    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1][&save=1] (☆ once it is final).
-    private struct Request { var name: String, dictionary: Bool, full: Bool, save: Bool }
+    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1][&save=1][&open=<word>][&section=<key>]
+    // (save: ☆ once it is final; open: that word clicked in the card; section: the first entry's section opened).
+    private struct Request { var name: String, dictionary: Bool, full: Bool, save: Bool, open: String?, section: String? }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
 
@@ -44,7 +45,10 @@ enum Snapshot {
         pending?.cancel()
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        request = v("snap").map { Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1", save: v("save") == "1") }
+        request = v("snap").map {
+            Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1", save: v("save") == "1", open: v("open"),
+                    section: v("section"))
+        }
         return url.host == "unread"
     }
 
@@ -77,7 +81,9 @@ enum Snapshot {
             guard final else { return }
             if let card = model.card, lexipeek.card_view(card, model.state).tabs {
                 if r.dictionary && model.state.tab != .dictionary { model.state.tab = .dictionary; return }
+                if let w = r.open { request?.open = nil; model.open(w); return }
                 if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
+                if let k = r.section { request?.section = nil; model.openSection(0, k); return }
             }
             if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
             request = nil

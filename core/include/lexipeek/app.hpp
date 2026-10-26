@@ -34,6 +34,7 @@ struct Engine {
   void configure(const std::string &data) const;
   Card lookup(const std::string &text, Source source) const;
   Translation translate(const Card &card, Method m) const;
+  SectionPage section(const Card &card, int entry, const std::string &key, int page) const;
   std::vector<Seen> recents(int n) const;
   // ☆ in the card → whether it is saved now.
   bool toggle_saved(const Card &card, const std::string &translation) const;

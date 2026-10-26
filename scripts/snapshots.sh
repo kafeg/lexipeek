@@ -33,11 +33,17 @@ der Schnee schmolz, und Anna lachte zum ersten Mal seit Wochen ohne Grund. Zu Ha
 und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
+# open=<word> clicks that word in the card; section=<key> opens the first entry's section;
 # notes?tab=…: the Notes window, after the cards that fill it)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
 word-haus-full|lookup?text=Haus&full=1
+word-machen-sections|lookup?text=machen&full=1
+section-related|lookup?text=machen&full=1&section=rel
+section-forms|lookup?text=machen&full=1&section=forms
+gloss-open|lookup?text=Ich mache die Tür zu&tab=dictionary&open=Tür
+gloss-open-full|lookup?text=Am nächsten Morgen stand Anna früh auf&tab=dictionary&open=aufstehen&full=1
 word-ru|lookup?text=дом
 phrase-translate|lookup?text=Ich mache die Tür zu
 phrase-dictionary|lookup?text=Ich mache die Tür zu&tab=dictionary
