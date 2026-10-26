@@ -38,11 +38,22 @@ final class CardController {
         effect.material = .popover
         effect.blendingMode = .behindWindow
         effect.state = .active
-        effect.wantsLayer = true
-        effect.layer?.cornerRadius = 12
-        effect.layer?.masksToBounds = true
+        // A behind-window material ignores the layer's corner radius: its own mask rounds it.
+        effect.maskImage = Self.rounded(12)
         panel.contentView = effect
         changes = model.objectWillChange.sink { [weak self] in DispatchQueue.main.async { self?.fit() } }
+    }
+
+    private static func rounded(_ r: CGFloat) -> NSImage {
+        let d = r * 2 + 1
+        let image = NSImage(size: NSSize(width: d, height: d), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: r, yRadius: r).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: r, left: r, bottom: r, right: r)
+        image.resizingMode = .stretch
+        return image
     }
 
     // text nil: the input field (focused at once when typing was asked for).

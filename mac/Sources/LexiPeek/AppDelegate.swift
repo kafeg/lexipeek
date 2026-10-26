@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var trustTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Selection.log.info("launched; Accessibility trusted: \(Selection.trusted)")
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item?.button?.image = NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: "LexiPeek")
         menu.delegate = self

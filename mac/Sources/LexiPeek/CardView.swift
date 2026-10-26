@@ -54,10 +54,12 @@ struct CardView: View {
     private func header(_ card: CardData) -> some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
+                // Not selectable: a selectable Text drops its line limit on a click and spills over the card.
                 Text(card.header.isEmpty ? card.text : card.header)
                     .font(.headline)
-                    .lineLimit(card.phrase ? 3 : 1)
-                    .textSelection(.enabled)
+                    .lineLimit(card.phrase ? 2 : 1)
+                    .truncationMode(.tail)
+                    .help(card.text)
                 if !card.base.isEmpty { Text("→ \(card.base)").font(.subheadline).foregroundStyle(.secondary) }
             }
             Spacer(minLength: 8)
