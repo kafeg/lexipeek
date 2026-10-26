@@ -30,7 +30,7 @@ enum Snapshot {
         }
     }
 
-    // lexipeek://notes?tab=words|phrases|history&snap=<name>: the Notes window on that tab.
+    // lexipeek://notes?tab=words|phrases|history&snap=<name>: Settings → Notes on that tab.
     static func notes(_ url: URL) -> (lexipeek.NotesTab, String)? {
         guard dir != nil, url.host == "notes" else { return nil }
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []

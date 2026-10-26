@@ -15,6 +15,7 @@ using DictRows = std::vector<DictRow>;
 using FolderRows = std::vector<FolderRow>;
 using CatalogRows = std::vector<CatalogRow>;
 using SourceRows = std::vector<SourceRow>;
+using SettingRows = std::vector<SettingRow>;
 
 inline bool has_part(const std::optional<PackPart> &p) { return p.has_value(); }
 inline PackPart part(const std::optional<PackPart> &p) { return p.value_or(PackPart{}); }

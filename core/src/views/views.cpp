@@ -71,11 +71,16 @@ std::vector<std::string> answer_languages(const Manifest &m) {
   return out;
 }
 
-CardTab first_tab(const Card &c) { return c.kind == Card::Kind::word && !c.entries.empty() ? CardTab::dictionary : CardTab::translate; }
+CardTab first_tab(const Card &c) {
+  if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
+  bool words = !c.gloss.empty() || !c.separable.empty();
+  return c.kind == Card::Kind::phrase && words && c.prefs.phrase_open == "dict" ? CardTab::dictionary : CardTab::translate;
+}
 
 CardState first_state(const Card &c) {
   CardState s;
   s.tab = first_tab(c);
+  s.full_entry = c.kind == Card::Kind::word && c.prefs.full;
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
   s.saved = c.saved;
@@ -112,9 +117,9 @@ std::string few(const std::vector<std::string> &xs, const std::string &sep = ", 
 }
 
 // Under a pack's article: a row per section it has (InkPeek's DictionaryPage.sections), a preview and its caption.
-void section_rows(std::vector<CardRow> &rows, const Related &r, int entry) {
+void section_rows(std::vector<CardRow> &rows, const Related &r, int entry, const std::vector<std::string> &shown) {
   auto row = [&](const std::string &key, const std::string &preview, const std::string &caption) {
-    if (!preview.empty()) rows.push_back({Style::section, preview, caption + " ›", "", "", key, entry});
+    if (!preview.empty() && std::find(shown.begin(), shown.end(), key) != shown.end()) rows.push_back({Style::section, preview, caption + " ›", "", "", key, entry});
   };
   auto n = [](const std::vector<std::string> &xs) { return std::to_string(xs.size()); };
   std::vector<std::string> forms;
@@ -165,12 +170,12 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
           for (auto &x : a.senses[k].examples) rows.push_back({Style::example, "", x, ""});
         }
       }
-      section_rows(rows, e.related, static_cast<int>(i));
+      section_rows(rows, e.related, static_cast<int>(i), c.prefs.sections);
     }
     return rows;
   }
   // As InkPeek's word by word: a verb written apart first, then each word; a form names itself first.
-  auto line = [](const Gloss &g) { return g.header.empty() ? g.base : g.header; };
+  auto line = [&](const Gloss &g) { return g.header.empty() || !c.prefs.grammar ? g.base : g.header; };
   for (auto &g : c.separable) {
     CardRow r{Style::gloss, g.word + ": " + line(g), g.meaning.empty() ? "" : "— " + g.meaning, ""};
     r.link = g.base;
@@ -213,7 +218,7 @@ CardView card_view(const Card &c, const CardState &s) {
   v.tooltip = c.text;
   if (c.kind == Card::Kind::word) {
     v.style = HeaderStyle::word;
-    v.title = c.header.empty() ? c.text : c.header;
+    v.title = c.header.empty() ? c.text : c.prefs.grammar ? c.header : c.base.empty() ? c.text : c.base;
     // InkPeek's head(): the selected form, then how common the word is and how often it was looked up here.
     std::vector<std::string> facts;
     if (auto f = frequency(c.rank); !f.empty()) facts.push_back(f);
@@ -255,6 +260,8 @@ CardView card_view(const Card &c, const CardState &s) {
     v.star_help = s.saved ? "Remove " + c.save_text + " from Notes" : "Save " + c.save_text + " to Notes";
   }
   v.footer = !v.back.empty() || !v.entry_toggle.empty() || v.menu || !v.pager.empty();
+  v.width = c.prefs.width + (v.wide ? 60 : 0);
+  v.text = c.prefs.text, v.font = c.prefs.font, v.height = c.prefs.height;
   return v;
 }
 

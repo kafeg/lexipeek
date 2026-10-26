@@ -100,7 +100,9 @@ struct Card {
   std::vector<MethodState> methods;
   std::optional<Method> method;  // the one to translate with (the setting, else the first available)
   std::string error;
+  CardPrefs prefs = {};  // the card's settings when it was looked up (what it opens on, shows, its look)
 };
+
 
 // The version an offline answer is kept under, as InkPeek's OfflineTranslation: Java's hashCode of the
 // installed models' sha256 (fast: the steps' model-* joined by ", "; direct, llm: the covering component's).
@@ -120,6 +122,7 @@ struct CoreOptions {
   std::optional<Device> device;  // this machine (from the shell); none: not checked
   bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
   DictSettings dicts;            // the own dictionaries: folders, off, order
+  CardPrefs card;                // copied into every card
 };
 
 class Core {
@@ -129,7 +132,7 @@ class Core {
   Core(const Core &) = delete;
   Core &operator=(const Core &) = delete;
 
-  // Changed settings (answer language, method, the English in between, own dictionaries) and, when given, this machine: the next cards use them.
+  // Changed settings (answer language, method, the English in between, the card's, own dictionaries) and, when given, this machine: the next cards use them.
   void configure(const Settings &s, const std::optional<Device> &device = std::nullopt);
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);

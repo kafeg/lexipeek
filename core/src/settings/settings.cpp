@@ -34,6 +34,25 @@ json to_json(const Hotkey &h) {
   return {{"key", h.key}, {"option", h.option}, {"command", h.command}, {"control", h.control}, {"shift", h.shift}};
 }
 
+CardPrefs card(const json &j) {
+  CardPrefs c;
+  if (!j.is_object()) return c;
+  c.phrase_open = j.value("phrase_open", c.phrase_open);
+  c.full = j.value("full", c.full);
+  c.grammar = j.value("grammar", c.grammar);
+  c.sections = j.value("sections", c.sections);
+  c.width = j.value("width", c.width);
+  c.text = j.value("text", c.text);
+  c.font = j.value("font", c.font);
+  c.height = j.value("height", c.height);
+  return c;
+}
+
+json to_json(const CardPrefs &c) {
+  return {{"phrase_open", c.phrase_open}, {"full", c.full}, {"grammar", c.grammar}, {"sections", c.sections},
+          {"width", c.width}, {"text", c.text}, {"font", c.font}, {"height", c.height}};
+}
+
 }  // namespace
 
 Settings load_settings(const fs::path &data) {
@@ -60,6 +79,8 @@ Settings load_settings(const fs::path &data) {
       s.dicts.sources_off = d.value("sources_off", s.dicts.sources_off);
       s.dicts.got = d.value("got", s.dicts.got);
     }
+    s.card = card(j.value("card", json()));
+    s.ui_lang = j.value("ui_lang", s.ui_lang);
   } catch (const std::exception &) {
     return Settings{};
   }
@@ -80,6 +101,8 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
   j["dicts"] = {{"order", s.dicts.order}, {"off", s.dicts.off}, {"folders", s.dicts.folders}, {"sources_off", s.dicts.sources_off}, {"got", s.dicts.got}};
+  j["card"] = to_json(s.card);
+  j["ui_lang"] = s.ui_lang;
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";

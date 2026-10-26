@@ -49,6 +49,11 @@ struct Engine {
   void cancel() const;
 };
 
+// Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
+SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
+std::string toggle(const std::string &data, const std::string &key, bool on);
+std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
+
 // Settings → Packs.
 std::vector<PairRow> rows(const std::string &data, const Device &d);
 std::vector<std::string> answers(const std::string &data);

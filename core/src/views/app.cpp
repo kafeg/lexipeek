@@ -25,6 +25,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.device = d;
   o.mt_english = s.mt_english;
   o.dicts = s.dicts;
+  o.card = s.card;
   return {std::make_shared<Core>(std::move(o))};
 }
 
@@ -41,6 +42,22 @@ void Engine::prepare() const { core->prepare(); }
 void Engine::reload() const { core->reload(); }
 void Engine::release() const { core->release(); }
 void Engine::cancel() const { core->cancel(); }
+
+SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {
+  return settings_view(section, tab, load_settings(dir(data)), state);
+}
+
+std::string toggle(const std::string &data, const std::string &key, bool on) {
+  auto s = load_settings(dir(data));
+  settings_toggle(s, key, on);
+  return save_settings(dir(data), s);
+}
+
+std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state) {
+  auto s = load_settings(dir(data));
+  settings_choose(s, key, index, state);
+  return save_settings(dir(data), s);
+}
 
 std::vector<PairRow> rows(const std::string &data, const Device &d) {
   Packs p(dir(data));

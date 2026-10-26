@@ -75,6 +75,9 @@ std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::
   return java_hash(key);
 }
 
+// The name of a dictionary in the card: a pack's "InkPeek · de → ru", another's own name.
+static std::string dict_title(const dict::StarDict &d) { return !d.pack() ? d.name() : "InkPeek · " + d.book() + " → " + d.answer(); }
+
 struct Core::Impl {
   CoreOptions o;
   std::unique_ptr<Translator> tr;
@@ -135,6 +138,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->o.mt_english = s.mt_english;
   impl_->o.dicts = s.dicts;
   impl_->lib->configure(own(impl_->o.data, s.dicts));
+  impl_->o.card = s.card;
   if (device) impl_->o.device = device;
 }
 
@@ -142,6 +146,7 @@ Card Core::lookup(const Request &r) {
   std::lock_guard g(impl_->mu);
   Card c;
   c.source = r.source;
+  c.prefs = impl_->o.card;
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);
   if (raw.empty()) return c;
@@ -165,7 +170,7 @@ Card Core::lookup(const Request &r) {
       // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
       for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) {
         Entry e;
-        e.dictionary = d->pack() ? "InkPeek · " + d->book() + " → " + d->answer() : d->name();
+        e.dictionary = dict_title(*d);
         e.id = d->id();
         e.word = hits.front().word;
         // A pack's first line, another dictionary's "word — its first meaning" (InkPeek's DictionaryPage.line).

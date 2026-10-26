@@ -19,6 +19,9 @@ final class Prefs: ObservableObject {
     @Published var mtEnglish: Bool { didSet { save() } }
     @Published var firstRun: Bool { didSet { save() } }
     @Published var error = ""
+    // Bumped whenever settings.json changed here: the core is configured again.
+    @Published private(set) var changed = 0
+    private var loading = false
 
     private init() {
         let s = lexipeek.app.settings(std.string())
@@ -33,6 +36,26 @@ final class Prefs: ObservableObject {
         pinMoved = s.pin_moved
         mtEnglish = s.mt_english
         firstRun = s.first_run
+    }
+
+    // The core wrote settings.json (a settings row): read it again, without writing it back.
+    func reload(_ error: String = "") {
+        let s = lexipeek.app.settings(std.string())
+        loading = true
+        if let k = Self.shortcut(s.lookup), k != translateKey { translateKey = k }
+        if let k = Self.shortcut(s.input), k != inputKey { inputKey = k }
+        offApps = s.ignore_apps.map { String($0) }
+        copyApps = s.copy_apps.map { String($0) }
+        method = String(lexipeek.app.method_id(s))
+        answer = String(s.answer)
+        openAtLogin = s.open_at_login
+        selectionIcon = s.selection_icon
+        pinMoved = s.pin_moved
+        mtEnglish = s.mt_english
+        firstRun = s.first_run
+        loading = false
+        self.error = error
+        changed += 1
     }
 
     private static func shortcut(_ h: lexipeek.Hotkey) -> Shortcut? {
@@ -63,6 +86,7 @@ final class Prefs: ObservableObject {
 
     // Read again first: fields this shell does not show stay as they are.
     private func save() {
+        guard !loading else { return }
         var s = lexipeek.app.settings(std.string())
         s.lookup = Self.hotkey(translateKey)
         s.input = Self.hotkey(inputKey)
@@ -76,5 +100,6 @@ final class Prefs: ObservableObject {
         s.mt_english = mtEnglish
         s.first_run = firstRun
         error = String(lexipeek.app.save(std.string(), s))
+        changed += 1
     }
 }

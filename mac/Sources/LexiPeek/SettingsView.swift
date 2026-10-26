@@ -5,38 +5,107 @@ import LexiPeekKit
 import ServiceManagement
 import SwiftUI
 
-// Settings: a standard macOS settings window, one toolbar tab per pane (General · Translation · Packs · Permissions).
-enum SettingsPane: String, CaseIterable {
-    case general, translation, packs, permissions
+// Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
+enum SettingsSection: Int, CaseIterable {
+    case languages, card, notes, general
 
-    var title: String { rawValue.capitalized }
+    var core: lexipeek.SettingsSection { [.languages, .card, .notes, .general][rawValue] }
+    var key: String { ["languages", "card", "notes", "general"][rawValue] }
+    var title: String { String(lexipeek.settings_sections()[rawValue]) }
+    var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var symbol: String {
         switch self {
+        case .languages: "character.book.closed"
+        case .card: "rectangle.on.rectangle"
+        case .notes: "star"
         case .general: "gearshape"
-        case .translation: "character.bubble"
-        case .packs: "shippingbox"
-        case .permissions: "hand.raised"
         }
     }
 }
 
-final class SettingsState: ObservableObject {
+// What the panes show and what their rows do: every change goes through the core and is written at once.
+final class SettingsModel: ObservableObject {
     @Published var trusted = Selection.trusted
     @Published var hotkeyErrors: [String: String] = [:]
+    @Published var tabs: [SettingsSection: Int] = [:]
+    @Published private(set) var revision = 0
     var openFirstRun: (() -> Void)?
+    var showSection: ((SettingsSection, Int) -> Void)?
+    let client: CoreClient
+    let notes: NotesModel
+
+    init(client: CoreClient, notes: NotesModel) {
+        self.client = client
+        self.notes = notes
+    }
+
+    private var version: String {
+        let i = Bundle.main.infoDictionary
+        return "\(i?["CFBundleShortVersionString"] as? String ?? "") (\(i?["CFBundleVersion"] as? String ?? ""))"
+    }
+
+    func state() -> lexipeek.SettingsState {
+        var s = lexipeek.SettingsState()
+        s.trusted = trusted
+        s.has_pair = lexipeek.app.has_pair(std.string())
+        s.login = SMAppService.mainApp.status == .enabled
+        s.version = std.string(version)
+        s.answers = lexipeek.app.answers(std.string())
+        return s
+    }
+
+    func page(_ section: SettingsSection) -> lexipeek.SettingsPage {
+        _ = revision
+        return lexipeek.app.settings_page(std.string(), section.core, Int32(tabs[section] ?? 0), state())
+    }
+
+    func select(_ section: SettingsSection, _ tab: Int) {
+        tabs[section] = tab
+        if section == .notes { notes.tab = NotesModel.tabs[min(tab, NotesModel.tabs.count - 1)] }
+    }
+
+    func toggle(_ key: String, _ on: Bool) {
+        var on = on
+        if key == "open_at_login" {
+            try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+            on = SMAppService.mainApp.status == .enabled
+        }
+        changed(lexipeek.app.toggle(std.string(), std.string(key), on))
+    }
+
+    func choose(_ key: String, _ index: Int) {
+        changed(lexipeek.app.choose(std.string(), std.string(key), Int32(index), state()))
+    }
+
+    func press(_ key: String) {
+        switch key {
+        case "setup": openFirstRun?()
+        case "order": showSection?(.languages, 2)
+        case "access":
+            let k = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+            AXIsProcessTrustedWithOptions([k: true] as CFDictionary)
+            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        default: break
+        }
+    }
+
+    private func changed(_ error: std.string) {
+        Prefs.shared.reload(String(error))
+        revision += 1
+    }
 }
 
 enum SettingsWindow {
-    static func make(state: SettingsState, client: CoreClient) -> NSWindow {
+    static func make(model: SettingsModel) -> NSWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        for pane in SettingsPane.allCases {
-            let vc = NSHostingController(rootView: view(pane, state: state, client: client))
+        for section in SettingsSection.allCases {
+            let vc = NSHostingController(rootView: SectionView(section: section, model: model, notes: model.notes))
             vc.sizingOptions = .preferredContentSize
             let item = NSTabViewItem(viewController: vc)
-            item.label = pane.title
-            item.image = NSImage(systemSymbolName: pane.symbol, accessibilityDescription: pane.title)
-            item.identifier = pane.rawValue
+            item.label = section.title
+            item.image = NSImage(systemSymbolName: section.symbol, accessibilityDescription: section.title)
+            item.identifier = section.key
             tabs.addTabViewItem(item)
         }
         let w = NSWindow(contentViewController: tabs)
@@ -47,73 +116,150 @@ enum SettingsWindow {
         return w
     }
 
-    static func select(_ w: NSWindow?, _ pane: SettingsPane) {
+    static func select(_ w: NSWindow?, _ section: SettingsSection, tab: Int? = nil, model: SettingsModel) {
         guard let tabs = w?.contentViewController as? NSTabViewController else { return }
-        tabs.selectedTabViewItemIndex = SettingsPane.allCases.firstIndex(of: pane) ?? 0
-        w?.title = pane.title
+        if let tab { model.select(section, tab) }
+        tabs.selectedTabViewItemIndex = section.rawValue
+        w?.title = section.title
     }
+}
 
-    static func view(_ pane: SettingsPane, state: SettingsState, client: CoreClient) -> AnyView {
-        switch pane {
-        case .general: AnyView(GeneralPane(prefs: .shared, state: state))
-        case .translation: AnyView(TranslationPane(prefs: .shared, state: state))
-        case .packs: AnyView(PacksPane(client: client))
-        case .permissions: AnyView(PermissionsPane(state: state))
+// A section: its sub-tabs, then its pane (the core's rows, or Packs, Other dictionaries, Notes drawn by their own views).
+struct SectionView: View {
+    let section: SettingsSection
+    @ObservedObject var model: SettingsModel
+    @ObservedObject var notes: NotesModel
+
+    var body: some View {
+        let page = model.page(section)
+        VStack(spacing: 0) {
+            if !page.tabs.isEmpty {
+                let labels = section == .notes && notes.look.tabs.count == page.tabs.count ? notes.look.tabs : page.tabs.map { String($0) }
+                Picker("", selection: Binding(get: { Int(page.tab) }, set: { model.select(section, $0) })) {
+                    ForEach(labels.indices, id: \.self) { Text(labels[$0]).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .padding(.top, 14)
+            }
+            switch String(page.pane) {
+            case "packs": PacksPane(client: model.client)
+            case "other": OtherDictionariesPane(client: model.client)
+            case "notes": NotesList(model: notes).onAppear { notes.refresh() }
+            default: RowsView(rows: page.rows.map { SettingLine($0) }, model: model)
+            }
         }
+        .frame(width: 560, height: 540)
     }
 }
 
-// The common frame: grouped form, fixed width, height of its content.
-private struct Pane<Content: View>: View {
-    @ViewBuilder var content: Content
-    var body: some View {
-        Form { content }
-            .formStyle(.grouped)
-            .scrollDisabled(true)
-            .frame(width: 520)
-            .fixedSize(horizontal: false, vertical: true)
+// A row copied out of the core's SettingRow.
+struct SettingLine: Identifiable {
+    var kind: lexipeek.SettingRow.Kind
+    var key, title, about, value: String
+    var on, enabled: Bool
+    var choices: [String]
+    var selected: Int
+    var id: String { "\(kind.rawValue)|\(key)|\(title)" }
+
+    init(_ r: lexipeek.SettingRow) {
+        kind = r.kind
+        key = String(r.key)
+        title = String(r.title)
+        about = String(r.about)
+        value = String(r.value)
+        on = r.on
+        enabled = r.enabled
+        choices = r.choices.map { String($0) }
+        selected = Int(r.selected)
     }
 }
 
-struct GeneralPane: View {
-    @ObservedObject var prefs: Prefs
-    @ObservedObject var state: SettingsState
-    @State private var login = SMAppService.mainApp.status == .enabled
+// InkPeek's Rows: every row a title, a one-line description and its control; a heading starts a group.
+struct RowsView: View {
+    var rows: [SettingLine]
+    @ObservedObject var model: SettingsModel
+    @ObservedObject var prefs = Prefs.shared
+
+    private var groups: [(head: SettingLine?, rows: [SettingLine])] {
+        var out: [(head: SettingLine?, rows: [SettingLine])] = []
+        for r in rows {
+            if r.kind == .heading || out.isEmpty { out.append((r.kind == .heading ? r : nil, [])) }
+            if r.kind != .heading { out[out.count - 1].rows.append(r) }
+        }
+        return out
+    }
 
     var body: some View {
-        Pane {
-            Section {
-                LabeledContent("Translate selection") {
-                    ShortcutField(shortcut: $prefs.translateKey, other: prefs.inputKey, error: state.hotkeyErrors["translate"])
+        Form {
+            ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
+                Section {
+                    ForEach(g.rows) { row($0) }
+                } header: {
+                    if let h = g.head {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(h.title)
+                            if !h.about.isEmpty { Text(h.about).font(.caption).foregroundStyle(.secondary).textCase(nil) }
+                        }
+                    }
                 }
-                LabeledContent("Type text") {
-                    ShortcutField(shortcut: $prefs.inputKey, other: prefs.translateKey, error: state.hotkeyErrors["input"])
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func label(_ r: SettingLine) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(r.title).lineLimit(1)
+            Text(r.about).font(.caption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+        }
+        .help(r.about)
+    }
+
+    @ViewBuilder
+    private func row(_ r: SettingLine) -> some View {
+        switch r.kind {
+        case .toggle:
+            Toggle(isOn: Binding(get: { r.on }, set: { model.toggle(r.key, $0) })) { label(r) }.disabled(!r.enabled)
+        case .choice:
+            Picker(selection: Binding(get: { r.selected }, set: { model.choose(r.key, $0) })) {
+                ForEach(r.choices.indices, id: \.self) { Text(r.choices[$0]).tag($0) }
+            } label: { label(r) }
+            .disabled(!r.enabled)
+        case .hotkey:
+            LabeledContent {
+                if r.key == "input" {
+                    ShortcutField(shortcut: $prefs.inputKey, other: prefs.translateKey, error: model.hotkeyErrors["input"])
+                } else {
+                    ShortcutField(shortcut: $prefs.translateKey, other: prefs.inputKey, error: model.hotkeyErrors["translate"])
                 }
-                Toggle("Open at login", isOn: $login).onChange(of: login) { _, on in
-                    try? on ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
-                    login = SMAppService.mainApp.status == .enabled
-                    prefs.openAtLogin = login
+            } label: { label(r) }
+        case .apps:
+            VStack(alignment: .leading, spacing: 6) {
+                label(r)
+                AppList(ids: r.key == "copy_apps" ? $prefs.copyApps : $prefs.offApps)
+            }
+        case .button:
+            LabeledContent {
+                Button(r.value) { model.press(r.key) }.disabled(!r.enabled)
+            } label: { label(r) }
+        case .status:
+            LabeledContent {
+                if r.on {
+                    Label(r.value, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                } else {
+                    Text(r.value).foregroundStyle(.secondary)
                 }
-            }
-            Section {
-                Toggle("Show an icon next to selected text", isOn: $prefs.selectionIcon)
-                Toggle("Keep a card open after moving it", isOn: $prefs.pinMoved)
-            } footer: {
-                Note("The icon opens the card with a click, without the hotkey. It reads the selection by Accessibility "
-                    + "only and never touches the clipboard.")
-            }
-            Section {
-                AppList(ids: $prefs.copyApps)
-            } header: {
-                Text("Read the selection with ⌘C in")
-            } footer: {
-                Note("For apps that do not show their selection to Accessibility. The clipboard is put back after.")
-            }
-            Section {
-                AppList(ids: $prefs.offApps)
-            } header: {
-                Text("The hotkey and the icon do nothing in")
-            }
+            } label: { label(r) }
+        case .link:
+            LabeledContent {
+                if let url = URL(string: r.value) {
+                    Link(destination: url) { Image(systemName: "arrow.up.right.square") }.help(r.value)
+                }
+            } label: { label(r) }
+        default:
+            label(r)
         }
     }
 }
@@ -207,95 +353,5 @@ private struct AppList: View {
         if let url = url(id) {
             Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 18, height: 18)
         }
-    }
-}
-
-struct TranslationPane: View {
-    @ObservedObject var prefs: Prefs
-    @ObservedObject var state: SettingsState
-    @State private var hasPair = true
-
-    private var answers: [String] {
-        let a = lexipeek.app.answers(std.string()).map { String($0) }
-        return a.contains(prefs.answer) ? a : [prefs.answer] + a
-    }
-
-    var body: some View {
-        Pane {
-            if !hasPair {
-                Section {
-                    LabeledContent("No language pair installed yet") {
-                        Button("Set Up…") { state.openFirstRun?() }
-                    }
-                } footer: {
-                    Note("Picks the first pair and downloads it, as on the first launch.")
-                }
-            }
-            Section {
-                Picker("Translate into", selection: $prefs.answer) {
-                    ForEach(answers, id: \.self) { code in
-                        Text(String(lexipeek.app.language(std.string(code)))).tag(code)
-                    }
-                }
-                Picker("Method", selection: $prefs.method) {
-                    Text("The first available").tag("")
-                    Divider()
-                    Text("Fast · Mozilla").tag("fast")
-                    Text("Direct · OPUS-MT").tag("direct")
-                    Text("AI model · Hy-MT2").tag("llm")
-                }
-            } footer: {
-                Note("The card can switch the method for one text. A method this Mac cannot run is dimmed there, with the reason.")
-            }
-            Section {
-                Toggle("Show the English", isOn: $prefs.mtEnglish)
-            } footer: {
-                Note("Fast · Mozilla goes through English when neither language is English: that English, smaller, "
-                    + "under the translation. Nothing is translated again.")
-            }
-        }
-        .onAppear { hasPair = lexipeek.app.has_pair(std.string()) }
-    }
-}
-
-struct PermissionsPane: View {
-    @ObservedObject var state: SettingsState
-
-    var body: some View {
-        Pane {
-            Section {
-                LabeledContent("Accessibility") {
-                    if state.trusted {
-                        Label("Allowed", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                    } else {
-                        Button("Allow…") {
-                            let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-                            AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
-                            NSWorkspace.shared.open(URL(string:
-                                "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
-                        }
-                    }
-                }
-            } footer: {
-                Note("LexiPeek reads the selected text of the app in front when you press the hotkey; nothing else is "
-                    + "read and nothing leaves this Mac. Without it, ⌥A, the Service “Look up in LexiPeek” and "
-                    + "lexipeek:// links still work. If it stops working after an update, remove LexiPeek from the "
-                    + "list in System Settings and add it again.")
-            }
-        }
-    }
-}
-
-// A footer note: small, secondary, left-aligned.
-struct Note: View {
-    var text: String
-    init(_ text: String) { self.text = text }
-    var body: some View {
-        Text(text)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
     }
 }

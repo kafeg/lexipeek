@@ -22,6 +22,18 @@ struct DictSettings {
   std::vector<std::string> got;          // "<url>\t<name>\t…": what a catalog download brought (its ✓)
 };
 
+// The card's settings (InkPeek's Card section): Opening, Article, Appearance.
+struct CardPrefs {
+  std::string phrase_open = "offline";  // a phrase opens on: "offline" (Translate) or "dict" (word by word)
+  bool full = false;                    // a word's dictionaries as full entries, not short lines
+  bool grammar = true;                  // the header's grammar from the packs: "das Haus (Hauses, pl. Häuser)"
+  std::vector<std::string> sections{"rel", "syn", "expr", "forms"};  // .rel sections shown (InkPeek: origin off)
+  int width = 400;      // points (a passage: 60 more)
+  int text = 13;        // points
+  std::string font;     // "" the system's, "serif", "rounded", "mono"
+  int height = 45;      // % of the screen at most
+};
+
 struct Settings {
   std::string answer = "ru";     // the answer language
   std::optional<Method> method;  // none: the first available
@@ -34,6 +46,8 @@ struct Settings {
   std::vector<std::string> ignore_apps;  // bundle ids where the hotkey does nothing
   std::vector<std::string> copy_apps;    // bundle ids where Cmd+C may read the selection (the clipboard is restored)
   DictSettings dicts;
+  CardPrefs card;
+  std::string ui_lang;                  // the app's language, "" = the system's
 };
 
 // Missing or broken file: the defaults.

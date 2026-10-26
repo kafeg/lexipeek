@@ -28,8 +28,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
   (word, full entry with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
-  to the end, same language, no pack, unknown, input, selection failed, saved ★), the Notes window's three tabs and every
-  settings pane in its toolbar window, light and dark, into `build/snapshots/index.html`. **Look at every image before
+  to the end, same language, no pack, unknown, input, selection failed, saved ★), Settings → Notes' three tabs and every
+  settings section × tab in its toolbar window (`settings-<section>[-<tab>]`), light and dark, into `build/snapshots/index.html`. **Look at every image before
   handing over UI work**. The run is invisible
   (accessory app, windows off screen, no menu-bar item, no hotkeys, never activated): it must never show a window on
   the owner's screen; a new card state → a new case
@@ -37,7 +37,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   dictionary][&full=1][&open=<word>][&section=<key>]` (open: a word clicked in the card; section: entry 0's) from
   `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
   `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final, `&method=fast` overrides the method,
-  `lexipeek://notes?tab=words|phrases|history&snap=<name>` shoots Notes; no Esc/⌘P/outside-click closing; packs symlinked from
+  `lexipeek://notes?tab=words|phrases|history&snap=<name>` shoots Settings → Notes; no Esc/⌘P/outside-click closing; packs symlinked from
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
@@ -52,10 +52,15 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   tabs and the open one, body rows per tab, every state's text, ☆, footer: "←", method menu, "Full entry ⏎", a section's pager),
   `first_state`, Notes (`notes_view`, `remove_note`: Words · Phrases · History rows), the first run
   (`first_run_view(Manifest, installed, FirstRunState)` → step, texts, choices, progress; `first_run_at_launch`,
-  `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`); `app` — the facade for
+  `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`, `packs_summary`,
+  `pair_detail`); `settings` — Settings' panes: `settings_view(section, tab, Settings, SettingsState)` → sections, sub-tabs,
+  a pane drawn by its own view (packs, other, notes) or rows (InkPeek's Rows: kind, key, title, one-line about, control),
+  `settings_toggle` / `settings_choose` by a row's key; `app` — the facade for
   Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
   no `std::function` / `std::filesystem::path` / `std::optional` in what Swift calls.
-- `Core::configure(Settings)` applies the answer language and method to the next cards; `Core::reload()` after a
+- `Core::configure(Settings)` applies the answer language, method, the card's settings (`CardPrefs`: what a phrase opens
+  on, full entry, grammar, `.rel` sections, width, text size, font, height limit — copied into each `Card::prefs`, honoured
+  by `first_state` / `card_view`) to the next cards; `Core::reload()` after a
   packs change (dictionaries again, the held model freed). Fast through English keeps the English as the text's own
   `en` answer (InkPeek's); `Translation::english` is filled only with the `mt_english` setting. Offline answers: `ver` = `answer_version` (Java
   `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
@@ -94,8 +99,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
   The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. A clicked word
   (row `link`) opens in the same card; `CardModel` keeps the cards before it (`CardState.before` names the last), "←" restores them.
-  ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`; `NotesWindow`
-  draws `notes_view` and reloads on `.notesChanged` (posted by the card). ⌘S is a local key (not a hotkey: a pinned
+  ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`; Settings →
+  Notes (`NotesPane.swift`) draws `notes_view` and reloads on `.notesChanged` (posted by the card); the menu's Notes… opens it.
+  Settings (`SettingsView.swift`): toolbar sections, a segmented control of sub-tabs, `RowsView` draws the core's rows;
+  a change goes `app::toggle` / `choose` → settings.json, then `Prefs.reload()` (its `changed` → `configure`).
+  Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is own dictionaries' pane (with the dictionary order; Article's "Dictionary order" opens it). ⌘S is a local key (not a hotkey: a pinned
   card would steal the frontmost app's Save).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two

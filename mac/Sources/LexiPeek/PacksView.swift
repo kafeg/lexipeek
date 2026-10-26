@@ -18,13 +18,14 @@ final class PacksModel: ObservableObject {
         var from: String
         var to: String
         var title: String
-        var level: String
+        var detail: String  // "Full · Mozilla · OPUS-MT", "Basic · 84 MB"
         var installed: Bool
         var missing: Int64
         var extras: [Part]
     }
 
     @Published var rows: [Row] = []
+    @Published var summary = ""
     @Published var busy: String?
     @Published var progress = 0.0
     @Published var error = ""
@@ -36,13 +37,15 @@ final class PacksModel: ObservableObject {
     init(client: CoreClient) { self.client = client }
 
     func load() {
-        rows = lexipeek.app.rows(std.string(), CoreClient.device).map { r in
+        let all = lexipeek.app.rows(std.string(), CoreClient.device)
+        summary = String(lexipeek.packs_summary(all))
+        rows = all.map { r in
             let extras = [r.direct, r.llm].filter { lexipeek.mac.has_part($0) }.map { o -> Part in
                 let p = lexipeek.mac.part(o)
                 return Part(id: String(p.id), title: String(p.title), size: p.size, installed: p.installed,
                             update: p.update, cannot: String(p.cannot))
             }
-            return Row(from: String(r.from), to: String(r.to), title: String(r.title), level: String(r.level),
+            return Row(from: String(r.from), to: String(r.to), title: String(r.title), detail: String(lexipeek.pair_detail(r)),
                        installed: r.installed, missing: r.missing, extras: extras)
         }
     }
@@ -131,7 +134,7 @@ struct PacksPane: View {
                 LabeledContent {
                     Button("Check for Updates") { model.refresh() }.disabled(model.busy != nil)
                 } label: {
-                    Text(summary)
+                    Text(model.summary)
                     Button("Show in Finder") { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
                         .buttonStyle(.link).font(.caption)
                 }
@@ -148,25 +151,16 @@ struct PacksPane: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520, height: 520)
         .onAppear { model.load() }
     }
 
-    private var summary: String {
-        let n = model.rows.filter(\.installed).count
-        return n == 0 ? "No language pairs installed" : n == 1 ? "1 language pair installed" : "\(n) language pairs installed"
-    }
-
     private func size(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
-
-    private func level(_ r: PacksModel.Row) -> String { r.level.isEmpty ? "" : r.level.capitalized }
 
     private func installedRow(_ r: PacksModel.Row) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title)
-                Text(([level(r), "Mozilla"] + r.extras.filter(\.installed).map(\.title)).filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(r.detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             if r.missing > 0 || r.extras.contains(where: \.update) {
@@ -201,8 +195,7 @@ struct PacksPane: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title)
-                Text([level(r), size(r.missing)].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.caption).foregroundStyle(.secondary)
+                Text(r.detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
             Button("Download") { model.install(model.pairIDs(r), r.title) }.disabled(model.busy != nil)

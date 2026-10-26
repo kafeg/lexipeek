@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let client = CoreClient()
     private lazy var model = CardModel(client: client)
     private lazy var card = CardController(model: model)
-    private let settingsState = SettingsState()
+    private lazy var settings: SettingsModel = SettingsModel(client: client, notes: notes)
     private var settingsWindow: NSWindow?
     private lazy var firstRun = FirstRunModel(client: client)
     private var firstRunWindow: NSWindow?
@@ -22,7 +22,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         m.open = { [weak self] t in self?.card.show(text: t, source: .input, bounds: nil, focus: false) }
         return m
     }()
-    private var notesWindow: NSWindow?
     private var item: NSStatusItem?
     private let menu = NSMenu()
     private var bag: [AnyCancellable] = []
@@ -49,11 +48,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Publishers.CombineLatest(prefs.$translateKey, prefs.$inputKey)
             .sink { [weak self] t, i in self?.registerHotkeys(t, i) }.store(in: &bag)
-        // Either one changed (CombineLatest would wait for both).
-        Publishers.Merge3(prefs.$answer.dropFirst().map { _ in () }, prefs.$method.dropFirst().map { _ in () },
-                          prefs.$mtEnglish.dropFirst().map { _ in () })
+        prefs.$changed.dropFirst()
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
-            .sink { [weak self] in self?.client.configure() }.store(in: &bag)
+            .sink { [weak self] _ in self?.client.configure() }.store(in: &bag)
 
         icon.open = { [weak self] s in self?.card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
         prefs.$selectionIcon.sink { [weak self] on in self?.icon.setEnabled(on) }.store(in: &bag)
@@ -63,10 +60,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pressure?.resume()
 
         trustTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, self.settingsState.trusted != Selection.trusted else { return }
-            self.settingsState.trusted = Selection.trusted
+            guard let self, self.settings.trusted != Selection.trusted else { return }
+            self.settings.trusted = Selection.trusted
         }
-        settingsState.openFirstRun = { [weak self] in self?.openFirstRun() }
+        settings.openFirstRun = { [weak self] in self?.openFirstRun() }
+        settings.showSection = { [weak self] s, tab in
+            guard let self else { return }
+            SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
+        }
         if lexipeek.app.first_run_at_launch(std.string(), Selection.trusted) { openFirstRun() }
     }
 
@@ -103,9 +104,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func registerHotkeys(_ t: Shortcut, _ i: Shortcut) {
         let ok1 = Hotkeys.shared.register(Self.translateKey, t) { [weak self] in self?.translateSelection() }
         let ok2 = Hotkeys.shared.register(Self.inputKey, i) { [weak self] in self?.typeText() }
-        settingsState.hotkeyErrors = [:]
-        if !ok1 { settingsState.hotkeyErrors["translate"] = "Taken by another app" }
-        if !ok2 { settingsState.hotkeyErrors["input"] = "Taken by another app" }
+        settings.hotkeyErrors = [:]
+        if !ok1 { settings.hotkeyErrors["translate"] = "Taken by another app" }
+        if !ok2 { settings.hotkeyErrors["input"] = "Taken by another app" }
     }
 
     // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -144,22 +145,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         card.show(text: t, source: .input, bounds: nil, focus: false)
     }
 
-    @objc private func showSettings() { openSettings(.general) }
+    @objc private func showSettings() { openSettings(nil) }
 
-    @objc private func showNotes() {
-        if notesWindow == nil { notesWindow = NotesWindow.make(model: notes) }
-        notes.refresh()
-        NSApp.activate(ignoringOtherApps: true)
-        notesWindow?.makeKeyAndOrderFront(nil)
-    }
+    @objc private func showNotes() { openSettings(.notes) }
 
-    // The Notes window on one tab, off screen: <name>.png, then <name>.done.
+    // Settings → Notes on one tab, off screen: <name>.png, then <name>.done.
     private func snapshotNotes(_ tab: lexipeek.NotesTab, _ name: String) {
-        if notesWindow == nil { notesWindow = NotesWindow.make(model: notes) }
-        guard let w = notesWindow else { return }
+        if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
+        guard let w = settingsWindow else { return }
         Snapshot.hide(w)
         w.orderBack(nil)
-        notes.tab = tab
+        SettingsWindow.select(w, .notes, tab: NotesModel.tabs.firstIndex(of: tab) ?? 0, model: settings)
         notes.refresh()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             Snapshot.write(w.contentView?.superview, "\(name).png")
@@ -167,9 +163,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    private func openSettings(_ pane: SettingsPane) {
-        if settingsWindow == nil { settingsWindow = SettingsWindow.make(state: settingsState, client: client) }
-        SettingsWindow.select(settingsWindow, pane)
+    // nil: the section shown last.
+    private func openSettings(_ section: SettingsSection?) {
+        if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
+        if let section { SettingsWindow.select(settingsWindow, section, model: settings) }
+        if section == .notes { notes.refresh() }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
@@ -196,18 +194,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         firstRunWindow?.makeKeyAndOrderFront(nil)
     }
 
-    // Each settings pane in the real window (with its toolbar), off screen; settings.done when all are written.
+    // Each section × tab in the real window (with its toolbar), off screen: settings-<section>[-<tab>].png; settings.done
+    // when all are written.
     private func snapshotSettings() {
-        let w = SettingsWindow.make(state: SettingsState(), client: client)
-        w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
+        let w = SettingsWindow.make(model: settings)
+        Snapshot.hide(w)
         w.orderBack(nil)
+        let shots = SettingsSection.allCases.flatMap { s in
+            s.tabs.isEmpty ? [(s, 0, "settings-\(s.key)")]
+                : s.tabs.enumerated().map { (s, $0.offset, "settings-\(s.key)-\($0.element.lowercased().replacingOccurrences(of: " ", with: "-"))") }
+        }
         func shot(_ i: Int) {
-            guard i < SettingsPane.allCases.count else { w.orderOut(nil); Snapshot.mark("settings.done"); return }
-            let pane = SettingsPane.allCases[i]
-            SettingsWindow.select(w, pane)
+            guard i < shots.count else { w.orderOut(nil); Snapshot.mark("settings.done"); return }
+            let (section, tab, name) = shots[i]
+            SettingsWindow.select(w, section, tab: tab, model: settings)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                Snapshot.write(w.contentView?.superview, "settings-\(pane.rawValue).png")
-                Snapshot.writeEnd(w.contentView?.superview, "settings-\(pane.rawValue)-end.png")
+                Snapshot.write(w.contentView?.superview, "\(name).png")
+                Snapshot.writeEnd(w.contentView?.superview, "\(name)-end.png")
                 shot(i + 1)
             }
         }

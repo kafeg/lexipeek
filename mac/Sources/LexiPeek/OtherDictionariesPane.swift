@@ -163,7 +163,6 @@ struct OtherDictionariesPane: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520, height: 520)
         .onAppear { model.load() }
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             drop(providers)

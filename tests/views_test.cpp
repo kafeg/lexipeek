@@ -95,6 +95,7 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   e.related.ipa = {"[haʊ̯s]"};
   e.related.forms = {{"Hauses", "genitive"}};
   e.related.origin = std::string(130, 'x');
+  c.prefs.sections.push_back("ety");  // off by default, as InkPeek's
   auto s = first_state(c);
   s.full_entry = true;
   auto v = card_view(c, s);
