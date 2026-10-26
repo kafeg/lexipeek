@@ -6,6 +6,7 @@
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/settings.hpp"
+#include "lexipeek/views.hpp"
 #include "mt/model_host.hpp"
 #include "mt/text.hpp"
 
@@ -183,3 +184,24 @@ TEST_CASE("core: a card is a look in the history, not the CLI's") {
   fs::remove_all(d);
 }
 
+
+TEST_CASE("views: the packs list") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "dict-de-ru", "kind": "dict", "from": "de", "to": "ru", "stats": {"coverage": 90}, "file": {"name": "a", "size": 10, "sha256": "d1"}},
+    {"id": "dict-it-ru", "kind": "dict", "from": "it", "to": "ru", "stats": {"coverage": 50}, "file": {"name": "b", "size": 10, "sha256": "d2"}},
+    {"id": "model-de-en", "kind": "model", "from": "de", "to": "en", "file": {"name": "c", "size": 20, "sha256": "m1"}},
+    {"id": "model-en-ru", "kind": "model", "from": "en", "to": "ru", "file": {"name": "d", "size": 30, "sha256": "m2"}},
+    {"id": "langid", "kind": "langid", "file": {"name": "e", "size": 1, "sha256": "l"}},
+    {"id": "llm-x", "kind": "llm", "name": "Hy-MT2 1.8B", "covers": ["de-ru"], "ram_mb": 5000, "file": {"name": "f", "size": 100, "sha256": "x"}}]})");
+  auto rows = pack_rows(m, {{"dict-de-ru", "old"}, {"model-de-en", "m1"}}, Device{4096, {}});
+  REQUIRE(rows.size() == 2);
+  CHECK(rows[0].title == "German → Russian");
+  CHECK(rows[0].level == "full");
+  CHECK(!rows[0].installed);
+  CHECK(rows[0].missing == 31);  // en-ru and langid
+  CHECK(rows[0].base[0].update);
+  REQUIRE(rows[0].llm);
+  CHECK(rows[0].llm->cannot.find("memory") != std::string::npos);
+  CHECK(!rows[0].direct);
+  CHECK(rows[1].level == "experimental");
+}
