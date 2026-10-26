@@ -12,9 +12,15 @@ struct CardData {
         var reason: String
     }
 
+    enum Kind { case word, phrase, passage }
+
     var text = ""
     var lang = ""
     var answer = ""
+    var other = ""
+    var langName = ""
+    var answerName = ""
+    var kind = Kind.word
     var header = ""
     var base = ""
     var phrase = false
@@ -34,7 +40,11 @@ struct CardData {
         answer = String(c.answer)
         header = String(c.header)
         base = String(c.base)
-        phrase = c.kind == .phrase
+        phrase = c.kind != .word
+        kind = c.kind == .word ? .word : c.kind == .phrase ? .phrase : .passage
+        other = String(c.other_name)
+        langName = String(c.lang_name)
+        answerName = String(c.answer_name)
         entries = c.entries.map { (String($0.dictionary), String($0.line), String($0.article)) }
         gloss = c.gloss.map { (String($0.word), String($0.base), String($0.meaning)) }
         separable = c.separable.map { (String($0.word), String($0.base), String($0.meaning)) }

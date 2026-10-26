@@ -5,6 +5,7 @@
 #include <set>
 #include "dict/library.hpp"
 #include "lexipeek/core.hpp"
+#include "lexipeek/views.hpp"
 #include "mt/text.hpp"
 #include "text/text.hpp"
 
@@ -24,6 +25,13 @@ std::string method_title(Method m) {
 size_t word_count(const std::string &s) {
   static const text::Regex words("\\S+");
   return words.all(s).size();
+}
+
+Card::Kind kind_of(const std::string &s) {
+  static const text::Regex ends("[.!?…]\\s+\\p{Lu}|[。！？]\\s*\\S");
+  auto words = word_count(s);
+  if (words == 1) return Card::Kind::word;
+  return words <= 8 && ends.all(s).empty() ? Card::Kind::phrase : Card::Kind::passage;
 }
 
 }  // namespace
@@ -83,12 +91,14 @@ Card Core::lookup(const Request &r) {
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);
   if (raw.empty()) return c;
-  c.kind = word_count(text::clean_query(raw)) == 1 ? Card::Kind::word : Card::Kind::phrase;
+  c.kind = kind_of(raw);
   c.text = c.kind == Card::Kind::word ? text::clean_query(raw) : text::clean_phrase(raw);
   if (c.text.empty()) return c.kind = Card::Kind::empty, c;
   auto &lib = *impl_->lib;
   try {
     std::tie(c.lang, c.other) = impl_->source(c.text, c.answer);
+    // A text in the answer language itself: no pack translates it, the card says so.
+    if (c.lang.empty() && c.other == c.answer) c.lang = c.answer, c.other.clear();
     if (c.kind == Card::Kind::word) {
       auto heads = lib.heads(c.text, c.answer);
       if (!heads.empty()) {
@@ -101,7 +111,7 @@ Card Core::lookup(const Request &r) {
         auto label = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
         for (auto &h : hits) c.entries.push_back({label, dict::head_line(h.html).value_or(h.word), h.html});
       }
-    } else {
+    } else if (c.kind == Card::Kind::phrase && !c.lang.empty() && c.lang != c.answer) {
       for (auto &gl : lib.gloss(c.text, c.answer))
         c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : ""});
       for (auto &[f, h] : lib.separable(c.text, c.answer))
@@ -116,6 +126,9 @@ Card Core::lookup(const Request &r) {
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }
   c.looks = impl_->store->looks(c.base.empty() ? c.text : c.base);
+  c.answer_name = language_name(c.answer);
+  if (!c.lang.empty()) c.lang_name = language_name(c.lang);
+  if (!c.other.empty()) c.other_name = language_name(c.other);
   if (c.lang.empty() || c.lang == c.answer) return c;
   auto manifest = Packs(impl_->o.data, "").cached();
   for (auto m : {Method::fast, Method::direct, Method::llm}) {

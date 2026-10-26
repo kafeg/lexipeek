@@ -39,13 +39,15 @@ struct MethodState {
 };
 
 struct Card {
-  enum class Kind { empty, word, phrase };
+  // As InkPeek's Kind.of: a word; a phrase (up to 8 words, one sentence); a passage (more).
+  enum class Kind { empty, word, phrase, passage };
   Kind kind = Kind::empty;
   Source source = Source::input;
   std::string text;    // as asked, trimmed
   std::string lang;    // the text's language, "" = unknown
   std::string other;   // a language named by language id that has no pack
   std::string answer;  // the answer language
+  std::string lang_name, answer_name, other_name;  // English names ("German"), "" when unknown
   std::string header;  // "das Haus (Hauses, pl. Häuser)"
   std::string base;    // the base form of an inflected word ("Träumen" → "Traum")
   std::vector<Entry> entries;

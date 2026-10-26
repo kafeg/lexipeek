@@ -116,9 +116,13 @@ final class CardController {
 
     private func fit() {
         guard panel.isVisible, let h = hosting else { return }
-        let height = min(max(h.fittingSize.height, panel.frame.height), screen.height)
-        if height != panel.frame.height {
-            panel.setFrame(Placement.resized(panel.frame, height: height, screen: screen), display: true)
+        let fitting = h.fittingSize
+        let height = min(max(fitting.height, panel.frame.height), screen.height)
+        if height != panel.frame.height || fitting.width != panel.frame.width {
+            var f = Placement.resized(panel.frame, height: height, screen: screen)
+            f.size.width = fitting.width
+            if f.maxX > screen.maxX { f.origin.x = max(screen.minX, screen.maxX - f.width) }
+            panel.setFrame(f, display: true)
         }
         layout()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { Snapshot.write(self.effect, "card.png") }
