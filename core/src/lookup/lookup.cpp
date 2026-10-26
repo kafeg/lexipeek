@@ -34,7 +34,40 @@ Card::Kind kind_of(const std::string &s) {
   return words <= 8 && ends.all(s).empty() ? Card::Kind::phrase : Card::Kind::passage;
 }
 
+// Java's String.hashCode over UTF-16 units.
+std::int32_t java_hash(const std::string &s) {
+  std::uint32_t h = 0;
+  for (char32_t cp : mt::utf32(s)) {
+    if (cp < 0x10000) {
+      h = h * 31 + cp;
+    } else {
+      cp -= 0x10000;
+      h = h * 31 + (0xD800 + (cp >> 10));
+      h = h * 31 + (0xDC00 + (cp & 0x3FF));
+    }
+  }
+  return static_cast<std::int32_t>(h);
+}
+
+// InkPeek's names of the model kinds in its answers' model field.
+const char *answer_model(Method m) { return m == Method::fast ? "bergamot" : m == Method::direct ? "opus" : "llm"; }
+
 }  // namespace
+
+std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::string> &installed, const std::string &from,
+                            const std::string &to, Method method) {
+  auto sha = [&](const std::string &id) {
+    auto i = installed.find(id);
+    return i == installed.end() ? std::string() : i->second;
+  };
+  std::string key;
+  if (method == Method::fast) {
+    for (auto &[a, b] : mt::steps(from, to)) key += (key.empty() ? "" : ", ") + sha("model-" + a + "-" + b);
+  } else if (auto c = covering(m, method == Method::direct ? "opus" : "llm", from, to)) {
+    key = sha(c->id);
+  }
+  return java_hash(key);
+}
 
 struct Core::Impl {
   CoreOptions o;
@@ -83,6 +116,13 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
 }
 
 Core::~Core() = default;
+
+void Core::configure(const Settings &s, const std::optional<Device> &device) {
+  std::lock_guard g(impl_->mu);
+  impl_->o.answer = s.answer;
+  impl_->o.method = s.method;
+  if (device) impl_->o.device = device;
+}
 
 Card Core::lookup(const Request &r) {
   std::lock_guard g(impl_->mu);
@@ -149,12 +189,13 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   auto method = m ? m : card.method;
   if (card.lang == card.answer && !card.lang.empty()) return {card.text, "", "", ""};
   if (!method || card.lang.empty()) return {"", "", "", "No method can translate this text here"};
-  // Kept per method as InkPeek's offline answers (section offline-<from>); ver tells the methods apart.
+  // Kept as InkPeek's offline answers (section offline-<from>, ver by the models' sha256): an updated model translates again.
   auto section = "offline-" + card.lang;
-  auto ver = static_cast<std::int64_t>(*method) + 1;
+  Packs packs(impl_->o.data, "");
+  auto ver = answer_version(packs.cached(), packs.installed(), card.lang, card.answer, *method);
   if (auto a = impl_->store->answer(card.text, card.answer, section, ver)) return {*a, "", method_title(*method), ""};
   auto t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
-  if (t.ok() && card.source != Source::cli) impl_->store->put_answer(card.text, card.answer, section, ver, std::string(method_name(*method)), t.text);
+  if (t.ok() && card.source != Source::cli) impl_->store->put_answer(card.text, card.answer, section, ver, answer_model(*method), t.text);
   return t;
 }
 
@@ -186,6 +227,7 @@ void Core::prepare() {
 void Core::reload() {
   std::lock_guard g(impl_->mu);
   impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index");
+  impl_->tr->release();
 }
 
 Translator &Core::translator() { return *impl_->tr; }
