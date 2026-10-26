@@ -11,6 +11,10 @@ namespace lexipeek::mac {
 using Strings = std::vector<std::string>;
 using Rows = std::vector<PairRow>;
 using Recents = std::vector<Seen>;
+using DictRows = std::vector<DictRow>;
+using FolderRows = std::vector<FolderRow>;
+using CatalogRows = std::vector<CatalogRow>;
+using SourceRows = std::vector<SourceRow>;
 
 inline bool has_part(const std::optional<PackPart> &p) { return p.has_value(); }
 inline PackPart part(const std::optional<PackPart> &p) { return p.value_or(PackPart{}); }

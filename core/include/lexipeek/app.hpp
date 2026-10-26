@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "lexipeek/core.hpp"
+#include "lexipeek/dicts.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/settings.hpp"
 #include "lexipeek/views.hpp"
@@ -75,5 +76,25 @@ struct Download {
 // Blocking: the components one after another, progress over all of them.
 Status install(const std::string &data, const std::vector<std::string> &ids, const Download &dl);
 Status remove(const std::string &data, const std::vector<std::string> &ids);
+
+// Settings → Other dictionaries (dicts.hpp). Each edit saves the settings; the shell then calls Engine::configure.
+DictsView dictionaries(const std::string &data);
+void set_dict_on(const std::string &data, const std::string &id, bool on);
+// One step (-1 up, +1 down) or to an index (a drag) in the list as dictionaries() shows it.
+void move_dict(const std::string &data, const std::string &id, int by);
+void move_dict_to(const std::string &data, const std::string &id, int index);
+// What to say: the error, a note ("No StarDict dictionaries in … yet") or "".
+std::string add_folder(const std::string &data, const std::string &path);
+void remove_folder(const std::string &data, const std::string &path);
+std::string remove_dict(const std::string &data, const std::string &id);
+// Blocking: files or archives into dicts-own.
+Imported import_dicts(const std::string &data, const std::vector<std::string> &files);
+// "Added: X. Already there: Y." or the error.
+std::string imported_text(const Imported &r);
+// The catalog: the switched-on sources' lists (network, blocking), its rows by a filter, one item's download.
+CatalogList catalog(const std::string &data);
+CatalogView catalog_view(const std::string &data, const CatalogList &list, const std::string &filter);
+void set_source_on(const std::string &data, const std::string &id, bool on);
+Imported download_dict(const std::string &data, const CatalogList &list, int item, const Download &dl);
 
 }  // namespace lexipeek::app

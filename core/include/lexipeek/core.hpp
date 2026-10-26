@@ -119,6 +119,7 @@ struct CoreOptions {
   TranslatorOptions translator;  // data is filled from [data]
   std::optional<Device> device;  // this machine (from the shell); none: not checked
   bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
+  DictSettings dicts;            // the own dictionaries: folders, off, order
 };
 
 class Core {
@@ -128,7 +129,7 @@ class Core {
   Core(const Core &) = delete;
   Core &operator=(const Core &) = delete;
 
-  // Changed settings (answer language, method, the English in between) and, when given, this machine: the next cards use them.
+  // Changed settings (answer language, method, the English in between, own dictionaries) and, when given, this machine: the next cards use them.
   void configure(const Settings &s, const std::optional<Device> &device = std::nullopt);
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);

@@ -9,7 +9,7 @@
     "zstd",
     "utf8proc",
     "doctest",
-    { "name": "libarchive", "default-features": false, "features": ["zstd"] },
+    { "name": "libarchive", "default-features": false, "features": ["zstd", "bzip2", "lzma"] },
     "hash-library",
     "zlib",
     { "name": "openblas", "platform": "!osx", "features": [{ "name": "dynamic-arch", "platform": "linux" }] },

@@ -158,6 +158,17 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
   the icon at the selection, per-app rules, a moved card stays, open at login, Accessibility, the app's language,
   updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
+- **Other dictionaries** (Languages → Other dictionaries; InkPeek's own StarDict dictionaries): `<data>/dicts-own/`
+  (imported, downloaded) and folders the person adds (KOReader's, GoldenDict's: read in place, never written). One list
+  of every dictionary, packs and others, in the card's order (drag or ↑ ↓; not ordered ones after them, the packs
+  first, by name); an own one has on / off, an imported one ✕ (its files deleted). Their articles go in the card in that
+  order with InkPeek's short meaning as the line ("Haus — house, home": WikDict's translations of the first part of
+  speech, Wiktionary's first sense, Mueller's first line without its marks; up to the first ";"); the full entry is the
+  article's HTML. The gloss of a phrase takes an own dictionary's first meaning too. "Import…" takes StarDict files
+  (a picked one brings its siblings) or archives (.zip, .tar, .tar.gz, .tar.bz2, .tar.xz, .tar.zst), each dictionary
+  once. "Catalog…": InkPeek's public sources (WikDict, Wiktionary by xxyzz, FreeDict; each can be off), into the
+  answer language first, WikDict's recommended (★), a filter, one download at a time with progress, ✓ while a
+  dictionary it brought is on disk. Settings: `dicts` in settings.json (order, off, folders, sources_off, got).
 - **First run** (a window of its own, at launch while no pair is installed, or Accessibility is off and it was never
   finished; again from Settings → Translation): why Accessibility → open System Settings → continue by itself when
   granted (no restart; "Later" skips it) → pick the first pair (answer language: the system's when the packs offer it,

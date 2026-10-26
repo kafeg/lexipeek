@@ -197,7 +197,7 @@ struct StarDict::Data {
   }
 };
 
-StarDict::StarDict(const fs::path &ifo, const fs::path &work) : ifo_(fs::weakly_canonical(ifo)) {
+StarDict::StarDict(const fs::path &ifo, const fs::path &work, bool pack) : ifo_(fs::weakly_canonical(ifo)), pack_(pack) {
   auto s = ifo_.string();
   base_ = s.substr(0, s.size() - 4);
   std::ifstream f(ifo_);
@@ -209,15 +209,16 @@ StarDict::StarDict(const fs::path &ifo, const fs::path &work) : ifo_(fs::weakly_
     if (k == "bookname") name_ = v;
     else if (k == "sametypesequence") types_ = v;
     else if (k == "idxoffsetbits") offset64_ = v == "64";
+    else if (k == "wordcount") words_ = std::strtol(v.c_str(), nullptr, 10);
   }
   if (name_.empty()) name_ = ifo_.stem().string();
   SHA1 sha;
   id_ = sha(text::lower(s)).substr(0, 16);
   work_ = work / id_;
-  static const text::Regex pack("dict-([a-z]{2,3})-([a-z]{2,3})");
+  static const text::Regex pack_dir("dict-([a-z]{2,3})-([a-z]{2,3})");
   text::Regex::Match m;
   auto dir = ifo_.parent_path().filename().string();
-  if (pack.find(dir, m) && m.begin == 0 && m.end == dir.size()) book_ = m.groups[1], answer_ = m.groups[2];
+  if (pack_ && pack_dir.find(dir, m) && m.begin == 0 && m.end == dir.size()) book_ = m.groups[1], answer_ = m.groups[2];
 }
 
 StarDict::~StarDict() = default;
@@ -232,6 +233,11 @@ std::string StarDict::stamp() const {
          std::to_string(static_cast<long long>(fs::last_write_time(p, ec).time_since_epoch().count())) + "\n";
   }
   return s;
+}
+
+bool StarDict::ready() {
+  std::lock_guard g(mu_);
+  return !index_.empty() || (slurp(work_ / "stamp") == stamp() && fs::exists(work_ / "index.ipk"));
 }
 
 void StarDict::prepare() {

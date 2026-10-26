@@ -19,6 +19,11 @@ struct Head {
 
 // The pack's first line of an article ("<p class=\"head\">…</p>") as text, if any.
 std::optional<std::string> head_line(const std::string &html);
+// Another dictionary's first meaning as one short line (InkPeek's shortMeaning: WikDict, Wiktionary, Mueller); pos picks
+// that part of speech where the article marks several.
+std::string short_meaning(const std::string &html, const std::string &headword, const std::string &pos = "");
+// An article's first line: a pack's own, else "word — its first meaning".
+std::optional<Head> head(const Hit &h);
 
 // A pack article's senses: "<ol><li>meaning<br><small>◆ example</small></li>…</ol>" as text.
 struct Sense {
@@ -43,13 +48,23 @@ struct SeparableFind {
 std::vector<SeparableFind> find_separable(const std::string &text, const std::function<std::vector<std::string>(const std::string &)> &bases,
                                           const std::function<std::string(const std::string &)> &particle);
 
+// The own dictionaries' roots (dicts-own, folders read in place), which are off, the order of all (ids).
+struct Own {
+  std::vector<std::filesystem::path> roots;
+  std::vector<std::string> off, order;
+};
+
 class Library {
  public:
   // packs: <data>/dicts (dict-<book>-<answer>/ folders); work: <data>/index.
-  Library(std::filesystem::path packs, std::filesystem::path work);
+  Library(std::filesystem::path packs, std::filesystem::path work, Own own = {});
   ~Library();
 
-  // The dictionaries on disk (scanned again when the folder changed).
+  void configure(Own own);
+  // Every dictionary on disk (scanned again when a folder changed), in the person's order; the others after them, the
+  // packs first, by name.
+  std::vector<StarDict *> found();
+  // Those in use: the packs and the own ones not switched off.
   std::vector<StarDict *> all();
   // Hits per dictionary: the packs from book into answer (book "": any) and the other dictionaries; then the other packs
   // into answer; the rest only when none of those knows the word.
@@ -66,6 +81,7 @@ class Library {
   std::vector<std::pair<StarDict *, std::vector<Hit>>> lookup(const std::string &query, const std::string &answer,
                                                               const std::vector<StarDict *> &among, const std::string &book);
   std::filesystem::path packs_, work_;
+  Own own_;
   std::string stamp_;
   std::vector<std::unique_ptr<StarDict>> dicts_;
 };

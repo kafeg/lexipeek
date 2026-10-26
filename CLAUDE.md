@@ -41,6 +41,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
+- Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
+  catalog [filter] | get <url>` (`<data>/dicts-own/`, settings.json's `dicts`).
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
 ## Code layout and gotchas
@@ -59,7 +61,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
 - `core/src/dict/` (InkPeek's `stardict/`): `stardict` (own sorted index in `<data>/index/<id>/`, `.dict.dz` by dictzip
   chunks), `library` (lookup across packs — the text's language's packs into the answer first, as InkPeek's ticked
-  pairs —, heads, gloss, separable verbs, rank, a pack article's senses). `core/src/text/`: PCRE2 wrapper, InkPeek's
+  pairs —, heads, gloss, separable verbs, rank, a pack article's senses; the own dictionaries (`Own`: dicts-own and
+  folders, off, order) after the packs, `found()` all on disk in order, `all()` those in use; `StarDict::pack()` by
+  its root, not its folder name), `short` (InkPeek's `shortMeaning`, `head(hit)`: a pack's line or "word — meaning"),
+  `importer` (libarchive: zip, tar + gzip/bzip2/xz/zstd; names leaving the folder skipped; `.ifo` copied last),
+  `catalog` (WikDict / Wiktionary / FreeDict listings, ISO 639 codes and names, `download_dict` records `got`).
+  `views/dicts`: Settings → Other dictionaries rows, edits of `DictSettings`, catalog rows; facade `lexipeek/dicts.hpp`. `core/src/text/`: PCRE2 wrapper, InkPeek's
   lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card` (one `Entry` per
   dictionary: line, articles parsed into senses and examples, `.rel` sections), `section()` (a section's page of words with
   meanings, 20 per page), language by the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv`.

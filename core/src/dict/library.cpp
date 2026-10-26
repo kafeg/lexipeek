@@ -95,22 +95,35 @@ std::vector<SeparableFind> find_separable(const std::string &text, const std::fu
   return out;
 }
 
-Library::Library(fs::path packs, fs::path work) : packs_(std::move(packs)), work_(std::move(work)) {}
+Library::Library(fs::path packs, fs::path work, Own own) : packs_(std::move(packs)), work_(std::move(work)), own_(std::move(own)) {}
 
 Library::~Library() = default;
 
-std::vector<StarDict *> Library::all() {
-  auto found = scan(packs_);
+void Library::configure(Own own) { own_ = std::move(own); }
+
+std::vector<StarDict *> Library::found() {
+  std::vector<std::pair<fs::path, bool>> files;
+  std::set<fs::path> seen;
+  auto add = [&](const fs::path &root, bool pack) {
+    for (auto &f : scan(root)) {
+      std::error_code ec;
+      auto c = fs::weakly_canonical(f, ec);
+      if (!ec && seen.insert(c).second) files.emplace_back(c, pack);
+    }
+  };
+  add(packs_, true);
+  for (auto &r : own_.roots) add(r, false);
   std::string stamp;
-  for (auto &f : found) stamp += f.string() + "\n";
+  for (auto &[f, pack] : files) stamp += (pack ? "p " : "o ") + f.string() + "\n";
   if (stamp != stamp_) {
     std::vector<std::unique_ptr<StarDict>> next;
-    for (auto &f : found) {
-      auto same = std::find_if(dicts_.begin(), dicts_.end(), [&](auto &d) { return d && d->ifo() == fs::weakly_canonical(f); });
+    for (auto &[f, pack] : files) {
+      auto same = std::find_if(dicts_.begin(), dicts_.end(), [&](auto &d) { return d && d->ifo() == f && d->pack() == pack; });
       if (same != dicts_.end()) next.push_back(std::move(*same));
       else {
+        // One unreadable .ifo (being rewritten by another app) is skipped, not the whole library.
         try {
-          next.push_back(std::make_unique<StarDict>(f, work_));
+          next.push_back(std::make_unique<StarDict>(f, work_, pack));
         } catch (const std::exception &) {
         }
       }
@@ -120,6 +133,21 @@ std::vector<StarDict *> Library::all() {
   }
   std::vector<StarDict *> out;
   for (auto &d : dicts_) out.push_back(d.get());
+  auto rank = [&](StarDict *d) {
+    auto i = std::find(own_.order.begin(), own_.order.end(), d->id());
+    return i == own_.order.end() ? own_.order.size() : static_cast<size_t>(i - own_.order.begin());
+  };
+  std::stable_sort(out.begin(), out.end(), [&](StarDict *a, StarDict *b) {
+    if (rank(a) != rank(b)) return rank(a) < rank(b);
+    if (a->pack() != b->pack()) return a->pack();
+    return a->name() < b->name();
+  });
+  return out;
+}
+
+std::vector<StarDict *> Library::all() {
+  auto out = found();
+  std::erase_if(out, [&](StarDict *d) { return !d->pack() && std::find(own_.off.begin(), own_.off.end(), d->id()) != own_.off.end(); });
   return out;
 }
 
@@ -150,12 +178,15 @@ std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::
     auto own = hs;
     if (own.empty())
       for (auto &b : bases)
-        for (auto &h : d->lookup(b))
-          if (h.word == b) own.push_back(h);
+        try {
+          for (auto &h : d->lookup(b))
+            if (h.word == b) own.push_back(h);
+        } catch (const std::exception &) {
+        }
     if (!own.empty()) out.emplace_back(d, own);
   }
   // As InkPeek's Library.lookup over the ticked pairs: the packs from the text's language into answer, the own ones too.
-  auto pack = [](StarDict *d) { return !d->book().empty(); };
+  auto pack = [](StarDict *d) { return d->pack(); };
   std::vector<std::pair<StarDict *, std::vector<Hit>>> into, from;
   for (auto &x : out) {
     if (pack(x.first) && x.first->answer() != answer) continue;
@@ -172,7 +203,7 @@ std::vector<Head> Library::heads(const std::string &query, const std::string &an
   auto found = lookup(query, answer, book);
   std::stable_partition(found.begin(), found.end(), [&](auto &x) { return x.first->book() == book; });
   for (auto &[d, hs] : found) {
-    if (d->book().empty() || !books.insert(d->book()).second) continue;
+    if (!d->pack() || d->book().empty() || !books.insert(d->book()).second) continue;
     for (auto &h : hs)
       if (auto l = head_line(h.html)) {
         out.push_back({h.word, *l, d->book()});
@@ -213,9 +244,10 @@ std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string 
     std::vector<std::pair<StarDict *, Head>> cand;
     for (auto &[d, hs] : found[w]) {
       if (known[d->id()] * 2 < top) continue;
-      if (auto l = head_line(hs.front().html)) {
-        Head h{hs.front().word, *l, d->book()};
-        if (!h.meaning().empty()) cand.emplace_back(d, h);
+      // An own dictionary gives its first meaning.
+      if (auto h = head(hs.front())) {
+        h->book = d->book();
+        if (!h->meaning().empty()) cand.emplace_back(d, *h);
       }
     }
     std::stable_sort(cand.begin(), cand.end(), [&](auto &a, auto &b) {
@@ -230,6 +262,7 @@ std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string 
 
 std::vector<std::pair<SeparableFind, std::optional<Head>>> Library::separable(const std::string &txt, const std::string &answer) {
   auto dicts = all();
+  std::erase_if(dicts, [](StarDict *d) { return !d->pack(); });
   auto finds = find_separable(
       txt,
       [&](const std::string &f) {

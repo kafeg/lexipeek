@@ -27,4 +27,11 @@
 - M3 first run and Mozilla's English: done in the core (tested) and the window. Open: the first-run snapshot cases
   and `passage-english` not yet looked at (run invisibly by the owner's session); the models test of the English
   (`firstrun_test.cpp`) not run here; the Accessibility step's "goes on by itself" not tried on a real grant.
+- M4 own dictionaries (branch m4-dicts): dicts-own + folders, on / off, order with the packs, short meaning in the card
+  and the gloss, import (zip, tar.gz/bz2/xz/zst, loose files), InkPeek's catalog, `lexipeek-cli dicts`, the pane
+  `OtherDictionariesPane.swift`. Open: indexes are built on the look-up queue (`Core::prepare` after a reload; a big
+  folder delays the next card; InkPeek builds in the background with a status per dictionary); no "indexing…" state in
+  the rows; the catalog's list is fetched on every opening (no cache); index folders of dictionaries gone from a
+  folder stay in `<data>/index`; the pane and the catalog sheet not yet looked at in snapshots (cases to add:
+  `settings-other` with an own dictionary and a folder, `settings-catalog` with a fixture list, an own line in a card).
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).

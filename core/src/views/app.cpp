@@ -24,6 +24,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.method = s.method;
   o.device = d;
   o.mt_english = s.mt_english;
+  o.dicts = s.dicts;
   return {std::make_shared<Core>(std::move(o))};
 }
 
@@ -98,6 +99,90 @@ Status remove(const std::string &data, const std::vector<std::string> &ids) {
   for (auto &id : ids)
     if (auto s = p.remove(id); !s.ok()) return s;
   return {};
+}
+
+DictsView dictionaries(const std::string &data) { return dicts_view(dir(data)); }
+
+namespace {
+template <class F>
+void edit(const std::string &data, F f) {
+  auto s = load_settings(dir(data));
+  f(s.dicts);
+  save_settings(dir(data), s);
+}
+
+std::vector<std::string> shown(const std::string &data) {
+  std::vector<std::string> ids;
+  for (auto &r : dicts_view(dir(data)).rows) ids.push_back(r.id);
+  return ids;
+}
+}  // namespace
+
+void set_dict_on(const std::string &data, const std::string &id, bool on) {
+  edit(data, [&](DictSettings &d) { lexipeek::set_dict_on(d, id, on); });
+}
+
+void move_dict(const std::string &data, const std::string &id, int by) {
+  auto ids = shown(data);
+  edit(data, [&](DictSettings &d) { lexipeek::move_dict(d, ids, id, by); });
+}
+
+void move_dict_to(const std::string &data, const std::string &id, int index) {
+  auto ids = shown(data);
+  edit(data, [&](DictSettings &d) { lexipeek::move_dict_to(d, ids, id, index); });
+}
+
+std::string add_folder(const std::string &data, const std::string &path) {
+  std::string err, note;
+  edit(data, [&](DictSettings &d) { err = lexipeek::add_folder(d, path, note); });
+  return err.empty() ? note : err;
+}
+
+void remove_folder(const std::string &data, const std::string &path) {
+  edit(data, [&](DictSettings &d) { lexipeek::remove_folder(d, path); });
+}
+
+std::string remove_dict(const std::string &data, const std::string &id) {
+  std::string err;
+  edit(data, [&](DictSettings &d) { err = lexipeek::remove_dict(dir(data), d, id); });
+  return err;
+}
+
+Imported import_dicts(const std::string &data, const std::vector<std::string> &files) {
+  std::vector<std::filesystem::path> paths(files.begin(), files.end());
+  return lexipeek::import_dicts(paths, own_dir(dir(data)));
+}
+
+std::string imported_text(const Imported &r) {
+  if (!r.error.empty()) return r.error;
+  auto list = [](const std::vector<std::string> &v) {
+    std::string s;
+    for (auto &x : v) s += (s.empty() ? "" : ", ") + x;
+    return s;
+  };
+  std::string out;
+  if (!r.added.empty()) out += "Added: " + list(r.added) + ".";
+  if (!r.already.empty()) out += std::string(out.empty() ? "" : " ") + "Already there: " + list(r.already) + ".";
+  return out;
+}
+
+CatalogList catalog(const std::string &data) { return fetch_catalog(load_settings(dir(data)).dicts); }
+
+CatalogView catalog_view(const std::string &data, const CatalogList &list, const std::string &filter) {
+  auto s = load_settings(dir(data));
+  return lexipeek::catalog_view(list, s.dicts, s.answer, filter, present_names(dir(data)));
+}
+
+void set_source_on(const std::string &data, const std::string &id, bool on) {
+  edit(data, [&](DictSettings &d) { lexipeek::set_source_on(d, id, on); });
+}
+
+Imported download_dict(const std::string &data, const CatalogList &list, int item, const Download &dl) {
+  if (item < 0 || item >= static_cast<int>(list.items.size())) return {{}, {}, "No such dictionary"};
+  auto &it = list.items[static_cast<size_t>(item)];
+  *dl.total = it.size;
+  return lexipeek::download_dict(
+      dir(data), it, [&](std::int64_t done, std::int64_t total) { *dl.done = done, *dl.total = total; }, [&] { return dl.stop->load(); });
 }
 
 }  // namespace lexipeek::app

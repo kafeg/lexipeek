@@ -52,6 +52,12 @@ std::int32_t java_hash(const std::string &s) {
 // InkPeek's names of the model kinds in its answers' model field.
 const char *answer_model(Method m) { return m == Method::fast ? "bergamot" : m == Method::direct ? "opus" : "llm"; }
 
+dict::Own own(const std::filesystem::path &data, const DictSettings &s) {
+  dict::Own o{{data / "dicts-own"}, s.off, s.order};
+  for (auto &f : s.folders) o.roots.emplace_back(f);
+  return o;
+}
+
 }  // namespace
 
 std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::string> &installed, const std::string &from,
@@ -112,7 +118,7 @@ struct Core::Impl {
 Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   o.translator.data = o.data;
   impl_->tr = std::make_unique<Translator>(o.translator);
-  impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index");
+  impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index", own(o.data, o.dicts));
   impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
   impl_->notes_answer = o.answer;
   impl_->o = std::move(o);
@@ -127,6 +133,8 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   impl_->o.mt_english = s.mt_english;
+  impl_->o.dicts = s.dicts;
+  impl_->lib->configure(own(impl_->o.data, s.dicts));
   if (device) impl_->o.device = device;
 }
 
@@ -157,14 +165,16 @@ Card Core::lookup(const Request &r) {
       // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
       for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) {
         Entry e;
-        e.dictionary = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
+        e.dictionary = d->pack() ? "InkPeek · " + d->book() + " → " + d->answer() : d->name();
         e.id = d->id();
         e.word = hits.front().word;
-        e.line = dict::head_line(hits.front().html).value_or(e.word);
+        // A pack's first line, another dictionary's "word — its first meaning" (InkPeek's DictionaryPage.line).
+        auto first = dict::head(hits.front());
+        e.line = first ? first->line : e.word;
         for (auto &h : hits) {
           bool other = text::lower(h.word) != text::lower(c.text);
           e.article += (other ? "<b>" + text::escape(h.word) + "</b><br>" : "") + h.html;
-          if (d->book().empty()) continue;
+          if (!d->pack()) continue;
           Article a{h.word, dict::head_line(h.html).value_or(h.word), {}};
           for (auto &x : dict::senses(h.html)) a.senses.push_back({x.text, x.examples});
           e.articles.push_back(a);
@@ -348,7 +358,7 @@ void Core::prepare() {
 
 void Core::reload() {
   std::lock_guard g(impl_->mu);
-  impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index");
+  impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index", own(impl_->o.data, impl_->o.dicts));
   impl_->tr->release();
 }
 

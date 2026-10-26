@@ -27,8 +27,8 @@ struct Related {
 
 class StarDict {
  public:
-  // work: where its own sorted index lives (never the dictionary's folder).
-  StarDict(const std::filesystem::path &ifo, const std::filesystem::path &work);
+  // work: where its own sorted index lives (never the dictionary's folder); pack: a language pack's (its languages from its folder).
+  StarDict(const std::filesystem::path &ifo, const std::filesystem::path &work, bool pack = true);
   ~StarDict();
 
   const std::string &name() const { return name_; }
@@ -37,6 +37,11 @@ class StarDict {
   // A pack's languages from its folder dict-<book>-<answer>; "" for other dictionaries.
   const std::string &book() const { return book_; }
   const std::string &answer() const { return answer_; }
+  bool pack() const { return pack_; }
+  // The .ifo's wordcount, 0 when it has none.
+  long words() const { return words_; }
+  // Its own index is built (a lookup needs no build first).
+  bool ready();
 
   // Builds the index when it is missing or from other files (once; slow for a big dictionary).
   void prepare();
@@ -59,7 +64,8 @@ class StarDict {
 
   std::filesystem::path ifo_, base_, work_;
   std::string name_, id_, book_, answer_, types_;
-  bool offset64_ = false;
+  bool offset64_ = false, pack_ = true;
+  long words_ = 0;
   std::mutex mu_;
   std::string index_;           // the index file: "IPK2", count, offsets, blob
   size_t count_ = 0, blob_ = 0;

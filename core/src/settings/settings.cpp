@@ -53,6 +53,13 @@ Settings load_settings(const fs::path &data) {
     s.first_run = j.value("first_run", s.first_run);
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
+    if (auto d = j.value("dicts", json::object()); d.is_object()) {
+      s.dicts.order = d.value("order", s.dicts.order);
+      s.dicts.off = d.value("off", s.dicts.off);
+      s.dicts.folders = d.value("folders", s.dicts.folders);
+      s.dicts.sources_off = d.value("sources_off", s.dicts.sources_off);
+      s.dicts.got = d.value("got", s.dicts.got);
+    }
   } catch (const std::exception &) {
     return Settings{};
   }
@@ -72,6 +79,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["first_run"] = s.first_run;
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
+  j["dicts"] = {{"order", s.dicts.order}, {"off", s.dicts.off}, {"folders", s.dicts.folders}, {"sources_off", s.dicts.sources_off}, {"got", s.dicts.got}};
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";
