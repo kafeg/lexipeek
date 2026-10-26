@@ -1,3 +1,4 @@
+import AppKit
 import LexiPeekCore
 import SwiftUI
 
@@ -66,7 +67,7 @@ struct CardView: View {
             let e = card.entries[i]
             VStack(alignment: .leading, spacing: 2) {
                 Text(e.dictionary).font(.caption).foregroundStyle(.secondary)
-                Text(model.fullEntry ? e.article : e.line).textSelection(.enabled)
+                (model.fullEntry ? Text(Self.html(e.article)) : Text(e.line)).textSelection(.enabled)
             }
         }
         ForEach(Array((card.separable + card.gloss).enumerated()), id: \.offset) { _, g in
@@ -110,6 +111,17 @@ struct CardView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 36, alignment: .topLeading)
         }
+    }
+
+    // The entry's HTML in the system font and colours (AppKit's importer: main thread only).
+    static func html(_ html: String) -> AttributedString {
+        let doc = "<style>body{font-family:-apple-system;font-size:13px}</style>" + html
+        guard let ns = try? NSMutableAttributedString(data: Data(doc.utf8), options: [
+            .documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue,
+        ], documentAttributes: nil) else { return AttributedString(html) }
+        ns.addAttribute(.foregroundColor, value: NSColor.labelColor, range: NSRange(location: 0, length: ns.length))
+        while ns.string.hasSuffix("\n") { ns.deleteCharacters(in: NSRange(location: ns.length - 1, length: 1)) }
+        return (try? AttributedString(ns, including: \.appKit)) ?? AttributedString(ns.string)
     }
 
     // The current method by name; the others in its menu, unavailable ones dimmed with the reason.
