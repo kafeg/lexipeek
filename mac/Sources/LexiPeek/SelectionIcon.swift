@@ -45,6 +45,11 @@ final class SelectionIcon {
             self?.downAt = NSEvent.mouseLocation
             self?.close()
         }) { monitors.append(m) }
+        // A press on our own windows (the card) does not reach the global monitor: noted here.
+        if let m = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown, handler: { [weak self] e in
+            self?.downAt = NSEvent.mouseLocation
+            return e
+        }) { monitors.append(m) }
         if let m = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp, handler: { [weak self] e in self?.mouseUp(e) }) {
             monitors.append(m)
         }
