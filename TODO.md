@@ -10,5 +10,7 @@
 - M2 open: first run's "pick a pair, download it" step (Permissions only now); check the selection and ⌥D's
   position under it (AX bounds) in Safari, Chrome, Firefox, Vivaldi and native apps; per-app hotkey off is checked
   on the frontmost app only; the card's keys (←/→, Return) work only once it has the focus (a click).
+- InkPeek's data (fix there, not here): dict-de-ru has a headword "ist" ("ист") that wins over the form of *sein*
+  in the gloss ("Das Haus ist alt"); InkPeek's own card does the same.
 - M2 Engines bench: on an 8 GB Mac; OPUS-MT's working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.
 - M0 Engines (done) · M1 Core · M2 macOS shell · M3 Release 0.1 (see `docs/spec.md`).
