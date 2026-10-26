@@ -53,12 +53,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`, `packs_summary`,
   `pair_detail`); `settings` — Settings' panes: `settings_view(section, tab, Settings, SettingsState)` → sections, sub-tabs,
   a pane drawn by its own view (packs, other, notes) or rows (InkPeek's Rows: kind, key, title, one-line about, control),
-  `settings_toggle` / `settings_choose` / `settings_move` by a row's key; `app` — the facade for
+  `settings_toggle` / `settings_choose` by a row's key; `app` — the facade for
   Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
   no `std::function` / `std::filesystem::path` / `std::optional` in what Swift calls.
 - `Core::configure(Settings)` applies the answer language, method, the card's settings (`CardPrefs`: what a phrase opens
   on, full entry, grammar, `.rel` sections, width, text size, font, height limit — copied into each `Card::prefs`, honoured
-  by `first_state` / `card_view`) and `dict_order` (entries sorted by it; `Core::dictionaries()`) to the next cards; `Core::reload()` after a
+  by `first_state` / `card_view`) to the next cards; `Core::reload()` after a
   packs change (dictionaries again, the held model freed). Fast through English keeps the English as the text's own
   `en` answer (InkPeek's); `Translation::english` is filled only with the `mt_english` setting. Offline answers: `ver` = `answer_version` (Java
   `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
@@ -95,8 +95,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`; Settings →
   Notes (`NotesPane.swift`) draws `notes_view` and reloads on `.notesChanged` (posted by the card); the menu's Notes… opens it.
   Settings (`SettingsView.swift`): toolbar sections, a segmented control of sub-tabs, `RowsView` draws the core's rows;
-  a change goes `app::toggle` / `choose` / `move` → settings.json, then `Prefs.reload()` (its `changed` → `configure`).
-  Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is the m4-dicts pane. ⌘S is a local key (not a hotkey: a pinned
+  a change goes `app::toggle` / `choose` → settings.json, then `Prefs.reload()` (its `changed` → `configure`).
+  Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is own dictionaries' pane (with the dictionary order; Article's "Dictionary order" opens it). ⌘S is a local key (not a hotkey: a pinned
   card would steal the frontmost app's Save).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two

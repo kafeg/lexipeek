@@ -46,14 +46,6 @@ std::vector<std::string> names(const std::vector<std::pair<K, std::string>> &xs)
   return out;
 }
 
-// The dictionaries in the person's order: listed ids first, the others after, as found.
-std::vector<DictItem> in_order(const Settings &s, const SettingsState &st) {
-  auto out = st.dictionaries;
-  auto rank = [&](const DictItem &d) { return std::find(s.dict_order.begin(), s.dict_order.end(), d.id) - s.dict_order.begin(); };
-  std::stable_sort(out.begin(), out.end(), [&](const DictItem &a, const DictItem &b) { return rank(a) < rank(b); });
-  return out;
-}
-
 // The answer languages offered: the packs', the current one first when they lack it.
 std::vector<std::string> answer_codes(const Settings &s, const SettingsState &st) {
   auto a = st.answers;
@@ -104,7 +96,7 @@ std::vector<SettingRow> opening(const Settings &s) {
                  index_of(phrase_opens, s.card.phrase_open))};
 }
 
-std::vector<SettingRow> article(const Settings &s, const SettingsState &st) {
+std::vector<SettingRow> article(const Settings &s) {
   std::vector<SettingRow> rows{choice("full", "Dictionary view", "Short lines, ⏎ for the full entry; or full entries with their sections.",
                                       {"Short lines", "Full entries"}, s.card.full ? 1 : 0)};
   rows.push_back(heading("From InkPeek language packs"));
@@ -113,15 +105,8 @@ std::vector<SettingRow> article(const Settings &s, const SettingsState &st) {
     bool on = std::find(s.card.sections.begin(), s.card.sections.end(), key) != s.card.sections.end();
     rows.push_back(toggle("section." + key, title, about, on));
   }
-  rows.push_back(heading("Dictionary order", "Their entries in the card in this order."));
-  auto dicts = in_order(s, st);
-  if (dicts.empty()) rows.push_back(valued(Kind::status, "", "No dictionaries yet", "Download a pair in Languages → Packs.", ""));
-  for (size_t i = 0; i < dicts.size(); i++) {
-    auto &d = dicts[i];
-    SettingRow r{Kind::item, d.id, d.title, d.pack ? "InkPeek language pack" : "Other dictionary"};
-    r.up = i > 0, r.down = i + 1 < dicts.size();
-    rows.push_back(r);
-  }
+  rows.push_back(heading("Dictionaries"));
+  rows.push_back(valued(Kind::button, "order", "Dictionary order", "Packs and other dictionaries in one list: Languages → Other dictionaries.", "Open…"));
   return rows;
 }
 
@@ -203,7 +188,7 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
       else p.pane = "other";
       break;
     case SettingsSection::card:
-      p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s, st) : appearance(s);
+      p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s);
       break;
     case SettingsSection::notes: p.pane = "notes"; break;
     case SettingsSection::general: p.rows = general(s, st); break;
@@ -242,17 +227,6 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "font") s.card.font = at(fonts).first;
   else if (key == "height") s.card.height = at(heights);
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
-}
-
-void settings_move(Settings &s, const std::string &id, int by, const SettingsState &st) {
-  std::vector<std::string> ids;
-  for (auto &d : in_order(s, st)) ids.push_back(d.id);
-  auto i = std::find(ids.begin(), ids.end(), id);
-  if (i == ids.end()) return;
-  auto j = i + by;
-  if (j < ids.begin() || j >= ids.end()) return;
-  std::iter_swap(i, j);
-  s.dict_order = ids;
 }
 
 std::string packs_summary(const std::vector<PairRow> &rows) {

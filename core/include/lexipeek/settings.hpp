@@ -37,7 +37,6 @@ struct Settings {
   std::vector<std::string> ignore_apps;  // bundle ids where the hotkey does nothing
   std::vector<std::string> copy_apps;    // bundle ids where Cmd+C may read the selection (the clipboard is restored)
   CardPrefs card;
-  std::vector<std::string> dict_order;  // dictionaries' ids in the person's order; the others after, as found
   std::string ui_lang;                  // the app's language, "" = the system's
 };
 

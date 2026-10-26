@@ -25,7 +25,6 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.device = d;
   o.mt_english = s.mt_english;
   o.card = s.card;
-  o.dict_order = s.dict_order;
   return {std::make_shared<Core>(std::move(o))};
 }
 
@@ -38,7 +37,6 @@ bool Engine::toggle_saved(const Card &card, const std::string &translation) cons
 NotesView Engine::notes(NotesTab tab) const { return notes_view(core->store(), tab, core->answer()); }
 void Engine::remove_note(NotesTab tab, const std::string &text) const { lexipeek::remove_note(core->store(), tab, text); }
 void Engine::clear_history() const { core->store().clear_history(); }
-std::vector<DictItem> Engine::dictionaries() const { return core->dictionaries(); }
 void Engine::prepare() const { core->prepare(); }
 void Engine::reload() const { core->reload(); }
 void Engine::release() const { core->release(); }
@@ -57,12 +55,6 @@ std::string toggle(const std::string &data, const std::string &key, bool on) {
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state) {
   auto s = load_settings(dir(data));
   settings_choose(s, key, index, state);
-  return save_settings(dir(data), s);
-}
-
-std::string move(const std::string &data, const std::string &id, int by, const SettingsState &state) {
-  auto s = load_settings(dir(data));
-  settings_move(s, id, by, state);
   return save_settings(dir(data), s);
 }
 

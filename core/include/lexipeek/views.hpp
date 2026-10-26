@@ -200,7 +200,6 @@ struct SettingsState {
   bool login = false;     // opens at login (the system's say)
   std::string version;    // "0.1 (5)"
   std::vector<std::string> answers;   // the packs' answer languages (codes)
-  std::vector<DictItem> dictionaries;  // installed (put in the person's order here)
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -211,8 +210,7 @@ struct SettingRow {
     choice,   // choices, selected
     hotkey,   // a shortcut recorder: key "lookup" / "input"
     apps,     // a list of apps by bundle id: key "copy_apps" / "ignore_apps"
-    item,     // a dictionary in the order: up / down move it (key: its id)
-    button,   // value: the button's label; the shell does what key names ("setup", "access", "updates")
+    button,   // value: the button's label; the shell does what key names ("setup", "access", "order", "updates")
     status,   // value: the state ("Allowed"), on: good
     link      // value: a URL
   };
@@ -222,7 +220,6 @@ struct SettingRow {
   std::vector<std::string> choices = {};
   int selected = 0;
   std::string value = "";
-  bool up = false, down = false;
 };
 
 struct SettingsPage {
@@ -239,8 +236,6 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
 // A row's change → the settings ("" when the key is not the row's). Toggles and choices by the row's key and index.
 void settings_toggle(Settings &s, const std::string &key, bool on);
 void settings_choose(Settings &s, const std::string &key, int index, const SettingsState &state);
-// A dictionary moved up (-1) or down (+1) in the order: the whole order is kept from then on.
-void settings_move(Settings &s, const std::string &id, int by, const SettingsState &state);
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);
 std::string pair_detail(const PairRow &r);

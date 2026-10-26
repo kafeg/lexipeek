@@ -28,9 +28,9 @@
   and `passage-english` not yet looked at (run invisibly by the owner's session); the models test of the English
   (`firstrun_test.cpp`) not run here; the Accessibility step's "goes on by itself" not tried on a real grant.
 - M4 settings (branch m4-settings): InkPeek's sections (Languages · Card · Notes · General) with sub-tabs, rows from the
-  core (`settings_view`), the card's settings honoured (phrase opening, full entry, grammar, sections, order, width, text
-  size, font, height limit); Notes moved into Settings. Open: the settings snapshots not yet looked at (run invisibly by
+  core (`settings_view`), the card's settings honoured (phrase opening, full entry, grammar, sections, width, text
+  size, font, height limit); the dictionary order is own dictionaries' (Article links to it); Notes moved into Settings. Open: the settings snapshots not yet looked at (run invisibly by
   the owner's session); the app language is a placeholder (localization); "Check for updates" waits for releases;
-  Packs' busy / empty texts still in Swift; an order row has no on / off yet (m4-dicts); InkPeek's Opening also has
+  Packs' busy / empty texts still in Swift; InkPeek's Opening also has
   AI choices (M5).
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).

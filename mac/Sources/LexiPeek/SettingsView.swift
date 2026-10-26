@@ -30,15 +30,13 @@ final class SettingsModel: ObservableObject {
     @Published var tabs: [SettingsSection: Int] = [:]
     @Published private(set) var revision = 0
     var openFirstRun: (() -> Void)?
+    var showSection: ((SettingsSection, Int) -> Void)?
     let client: CoreClient
     let notes: NotesModel
 
     init(client: CoreClient, notes: NotesModel) {
         self.client = client
         self.notes = notes
-        NotificationCenter.default.addObserver(forName: .dictionariesChanged, object: nil, queue: .main) { [weak self] _ in
-            self?.revision += 1
-        }
     }
 
     private var version: String {
@@ -53,7 +51,6 @@ final class SettingsModel: ObservableObject {
         s.login = SMAppService.mainApp.status == .enabled
         s.version = std.string(version)
         s.answers = lexipeek.app.answers(std.string())
-        for d in client.dictionaries { s.dictionaries.push_back(d) }
         return s
     }
 
@@ -80,13 +77,10 @@ final class SettingsModel: ObservableObject {
         changed(lexipeek.app.choose(std.string(), std.string(key), Int32(index), state()))
     }
 
-    func move(_ id: String, _ by: Int) {
-        changed(lexipeek.app.move(std.string(), std.string(id), Int32(by), state()))
-    }
-
     func press(_ key: String) {
         switch key {
         case "setup": openFirstRun?()
+        case "order": showSection?(.languages, 2)
         case "access":
             let k = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
             AXIsProcessTrustedWithOptions([k: true] as CFDictionary)
@@ -151,7 +145,7 @@ struct SectionView: View {
             }
             switch String(page.pane) {
             case "packs": PacksPane(client: model.client)
-            case "other": OtherDictionariesPane()
+            case "other": OtherDictionariesPane(client: model.client)
             case "notes": NotesList(model: notes).onAppear { notes.refresh() }
             default: RowsView(rows: page.rows.map { SettingLine($0) }, model: model)
             }
@@ -164,7 +158,7 @@ struct SectionView: View {
 struct SettingLine: Identifiable {
     var kind: lexipeek.SettingRow.Kind
     var key, title, about, value: String
-    var on, enabled, up, down: Bool
+    var on, enabled: Bool
     var choices: [String]
     var selected: Int
     var id: String { "\(kind.rawValue)|\(key)|\(title)" }
@@ -177,8 +171,6 @@ struct SettingLine: Identifiable {
         value = String(r.value)
         on = r.on
         enabled = r.enabled
-        up = r.up
-        down = r.down
         choices = r.choices.map { String($0) }
         selected = Int(r.selected)
     }
@@ -248,14 +240,6 @@ struct RowsView: View {
                 label(r)
                 AppList(ids: r.key == "copy_apps" ? $prefs.copyApps : $prefs.offApps)
             }
-        case .item:
-            LabeledContent {
-                HStack(spacing: 2) {
-                    Button { model.move(r.key, -1) } label: { Image(systemName: "chevron.up") }.disabled(!r.up).help("Move up")
-                    Button { model.move(r.key, 1) } label: { Image(systemName: "chevron.down") }.disabled(!r.down).help("Move down")
-                }
-                .buttonStyle(.borderless)
-            } label: { label(r) }
         case .button:
             LabeledContent {
                 Button(r.value) { model.press(r.key) }.disabled(!r.enabled)

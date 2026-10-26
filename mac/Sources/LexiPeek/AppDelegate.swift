@@ -64,6 +64,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.settings.trusted = Selection.trusted
         }
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
+        settings.showSection = { [weak self] s, tab in
+            guard let self else { return }
+            SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
+        }
         if lexipeek.app.first_run_at_launch(std.string(), Selection.trusted) { openFirstRun() }
     }
 

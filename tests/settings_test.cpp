@@ -22,7 +22,6 @@ SettingsState state() {
   st.trusted = true;
   st.version = "0.1 (5)";
   st.answers = {"en", "ru"};
-  st.dictionaries = {{"de-ru", "German → Russian", true}, {"en-ru", "English → Russian", true}, {"mine", "My dictionary", false}};
   return st;
 }
 
@@ -44,7 +43,7 @@ Card word() {
 
 }  // namespace
 
-TEST_CASE("settings: the card's settings, the order and the app language round trip") {
+TEST_CASE("settings: the card's settings and the app language round trip") {
   auto d = fs::temp_directory_path() / "lexipeek-settings-card";
   fs::remove_all(d);
   auto s = load_settings(d);
@@ -55,7 +54,6 @@ TEST_CASE("settings: the card's settings, the order and the app language round t
   CHECK(s.card.width == 400);
   CHECK(s.card.height == 45);
   s.card = {"dict", true, false, {"rel"}, 460, 16, "serif", 60};
-  s.dict_order = {"en-ru", "de-ru"};
   s.ui_lang = "en";
   REQUIRE(save_settings(d, s).empty());
   auto t = load_settings(d);
@@ -67,7 +65,6 @@ TEST_CASE("settings: the card's settings, the order and the app language round t
   CHECK(t.card.text == 16);
   CHECK(t.card.font == "serif");
   CHECK(t.card.height == 60);
-  CHECK(t.dict_order == std::vector<std::string>{"en-ru", "de-ru"});
   CHECK(t.ui_lang == "en");
   fs::remove_all(d);
 }
@@ -123,7 +120,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   CHECK(row(p, "answer")->selected == 0);
 }
 
-TEST_CASE("settings: Card — opening, article, sections, order, appearance") {
+TEST_CASE("settings: Card — opening, article, sections, appearance") {
   Settings s;
   auto st = state();
   auto p = settings_view(SettingsSection::card, 0, s, st);
@@ -140,22 +137,7 @@ TEST_CASE("settings: Card — opening, article, sections, order, appearance") {
   CHECK(s.card.sections == std::vector<std::string>{"syn", "expr", "forms", "ety"});
   settings_toggle(s, "section.rel", true);
   CHECK(s.card.sections == std::vector<std::string>{"rel", "syn", "expr", "forms", "ety"});
-  REQUIRE(row(p, "de-ru"));
-  CHECK(row(p, "de-ru")->kind == Kind::item);
-  CHECK(!row(p, "de-ru")->up);
-  CHECK(row(p, "de-ru")->down);
-  CHECK(row(p, "mine")->about == "Other dictionary");
-  CHECK(!row(p, "mine")->down);
-  settings_move(s, "mine", -1, st);
-  CHECK(s.dict_order == std::vector<std::string>{"de-ru", "mine", "en-ru"});
-  settings_move(s, "de-ru", -1, st);  // already first: nothing
-  CHECK(s.dict_order == std::vector<std::string>{"de-ru", "mine", "en-ru"});
-  settings_move(s, "mine", -1, st);  // from the settings' order, not the state's
-  CHECK(s.dict_order == std::vector<std::string>{"mine", "de-ru", "en-ru"});
-  p = settings_view(SettingsSection::card, 1, s, st);
-  CHECK(!row(p, "mine")->up);
-  st.dictionaries.clear();
-  CHECK(row(settings_view(SettingsSection::card, 1, s, st), "de-ru") == nullptr);
+  CHECK(row(p, "order")->kind == Kind::button);  // the order itself: Languages → Other dictionaries
   p = settings_view(SettingsSection::card, 2, s, st);
   CHECK(row(p, "width")->selected == 1);
   CHECK(row(p, "text")->choices[1] == "13 pt");
@@ -238,11 +220,9 @@ TEST_CASE("settings: the facade writes a row's change to settings.json at once")
   auto st = state();
   CHECK(app::toggle(d.string(), "grammar", false).empty());
   CHECK(app::choose(d.string(), "height", 0, st).empty());
-  CHECK(app::move(d.string(), "en-ru", -1, st).empty());
   auto s = load_settings(d);
   CHECK(!s.card.grammar);
   CHECK(s.card.height == 30);
-  CHECK(s.dict_order == std::vector<std::string>{"en-ru", "de-ru", "mine"});
   auto p = app::settings_page(d.string(), SettingsSection::card, 1, st);
   CHECK(!row(p, "grammar")->on);
   fs::remove_all(d);

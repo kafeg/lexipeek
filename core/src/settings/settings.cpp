@@ -73,7 +73,6 @@ Settings load_settings(const fs::path &data) {
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
     s.card = card(j.value("card", json()));
-    s.dict_order = j.value("dict_order", s.dict_order);
     s.ui_lang = j.value("ui_lang", s.ui_lang);
   } catch (const std::exception &) {
     return Settings{};
@@ -95,7 +94,6 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
   j["card"] = to_json(s.card);
-  j["dict_order"] = s.dict_order;
   j["ui_lang"] = s.ui_lang;
   std::error_code ec;
   fs::create_directories(data, ec);

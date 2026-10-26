@@ -105,7 +105,7 @@ EOF
 # The settings window's shots, written by the app at launch: every section × tab (settings-<section>[-<tab>]).
 settings_shots() {
   echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
-    settings-languages-other-dictionaries settings-card-opening settings-card-article settings-card-article-empty \
+    settings-languages-other-dictionaries settings-card-opening settings-card-article \
     settings-card-appearance settings-notes-words settings-notes-phrases settings-notes-history settings-general
 }
 
@@ -127,14 +127,13 @@ for look in light dark; do
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
 
-  # Another instance on an empty data dir (its settings shots: Translation without a pair, Article without dictionaries).
+  # Another instance on an empty data dir (its settings shots: the Translation pane without a pair).
   empty="$TMP/empty" && rm -rf "$empty" "$dir/empty" && mkdir -p "$empty" "$dir/empty"
   LEXIPEEK_SNAPSHOT="$dir/empty" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$empty" \
     "$APP/Contents/MacOS/LexiPeek" >"$dir/empty/app.log" 2>&1 &
   pid=$!
   wait_for "$dir/empty/settings.done" 60 || { echo "$look: empty settings timed out" >&2; fail=1; }
   mv "$dir/empty/settings-languages-translation.png" "$dir/settings-languages-translation-empty.png" 2>/dev/null || true
-  mv "$dir/empty/settings-card-article.png" "$dir/settings-card-article-empty.png" 2>/dev/null || true
   while IFS='|' read -r name step file; do
     [ -z "$file" ] || cp "$DATA/$file" "$empty/"
     echo "lexipeek://firstrun?step=$step&snap=$name" >"$dir/empty/request.tmp" && mv "$dir/empty/request.tmp" "$dir/empty/request"
