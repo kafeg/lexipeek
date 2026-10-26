@@ -126,24 +126,29 @@ From the study of other translators (private research): the most common complain
 a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Look:** system on every OS — fonts, light / dark, accent; on Linux the current desktop's theme. Settings are a
   plain native window. The card: a non-activating panel with the system's material, like Look Up or Spotlight.
-- **Card:** under the selection, on the screen with the cursor, kept inside its edges; no remembered coordinates.
+- **Card:** under the selection, on the screen with the cursor, kept inside its edges; it can be dragged anywhere
+  (an option keeps a dragged card open, as pinned). By the text: a word — header, dictionary first; a phrase (up to 8
+  words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
+  translation only. At most 45% of the screen high, the rest scrolls inside.
   Tabs Dictionary · Translate (· AI from M5: Analysis, Context — marked, asks only when opened). Translate shows one method with its name; the others are a switch (a switch
-  translates again), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
+  translates again and is kept for the next cards), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
   No selection → an input field in the card (it takes focus only on a click).
-- **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc, a click
-  outside, the hotkey again close it.
+- **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc and a click
+  outside close it. ⌥D with a card open: another selection → its card at once; the same one or none → closes.
   In the card: ←/→ switch tabs, Return opens the full entry.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
   one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.
-- **Per-app rules:** apps where the hotkey does nothing, apps where Cmd+C is allowed (off by default).
+- **Icon at the selection** (an option, off by default): after a drag or a double / triple click in another app, the
+  selection is read by Accessibility (never by Cmd+C: the clipboard is not touched) and a small icon appears next to
+  the cursor; a click on it opens the card; it goes after a few seconds, a click elsewhere or a key.
+- **Per-app rules:** apps where the hotkey and the icon do nothing, apps where Cmd+C may read the selection.
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
 - **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
   method with sizes; download with progress, remove) · Translation (method) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
   again; run from `/Applications`).
 - **First run:** why Accessibility → open System Settings → continue by itself when granted (no restart) → pick the
   first pair and download it → "select a word and press ⌥D".
-- Not done: an icon at the selection, a global event tap, Cmd+C by default, all methods at once.
 
 ## Milestones (each: spec → code → check → commit, stop)
 v1:
