@@ -75,6 +75,8 @@ struct Core::Impl {
   std::unique_ptr<dict::Library> lib;
   std::unique_ptr<Store> store;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
+  std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
+  std::string notes_answer;
 
   // The text's language among the packs' book languages into answer (InkPeek's LangId.source): (lang, other).
   std::pair<std::string, std::string> source(const std::string &txt, const std::string &answer) {
@@ -112,6 +114,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->tr = std::make_unique<Translator>(o.translator);
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index");
   impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
+  impl_->notes_answer = o.answer;
   impl_->o = std::move(o);
 }
 
@@ -120,6 +123,8 @@ Core::~Core() = default;
 void Core::configure(const Settings &s, const std::optional<Device> &device) {
   std::lock_guard g(impl_->mu);
   impl_->o.answer = s.answer;
+  std::lock_guard a(impl_->answer_mu);
+  impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   impl_->o.mt_english = s.mt_english;
   if (device) impl_->o.device = device;
@@ -141,22 +146,46 @@ Card Core::lookup(const Request &r) {
     // A text in the answer language itself: no pack translates it, the card says so.
     if (c.lang.empty() && c.other == c.answer) c.lang = c.answer, c.other.clear();
     if (c.kind == Card::Kind::word) {
-      auto heads = lib.heads(c.text, c.answer);
+      auto heads = lib.heads(c.text, c.answer, c.lang);
       if (!heads.empty()) {
         c.header = heads.front().header();
         if (text::lower(heads.front().word) != text::lower(c.text)) c.base = heads.front().word;
         c.rank = lib.rank(heads.front().word, heads.front().book);
+        c.save_text = heads.front().word, c.save_line = heads.front().line;
         if (c.lang.empty()) c.lang = heads.front().book;
       }
-      for (auto &[d, hits] : lib.lookup(c.text, c.answer)) {
-        auto label = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
-        for (auto &h : hits) c.entries.push_back({label, dict::head_line(h.html).value_or(h.word), h.html});
+      // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
+      for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) {
+        Entry e;
+        e.dictionary = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
+        e.id = d->id();
+        e.word = hits.front().word;
+        e.line = dict::head_line(hits.front().html).value_or(e.word);
+        for (auto &h : hits) {
+          bool other = text::lower(h.word) != text::lower(c.text);
+          e.article += (other ? "<b>" + text::escape(h.word) + "</b><br>" : "") + h.html;
+          if (d->book().empty()) continue;
+          Article a{h.word, dict::head_line(h.html).value_or(h.word), {}};
+          for (auto &x : dict::senses(h.html)) a.senses.push_back({x.text, x.examples});
+          e.articles.push_back(a);
+        }
+        if (auto x = d->related(e.word)) e.related = {x->rel, x->syn, x->ant, x->expr, x->ipa, x->origin, x->forms};
+        c.entries.push_back(e);
       }
     } else if (!c.lang.empty()) {
-      for (auto &gl : lib.gloss(c.text, c.answer))
-        c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : ""});
+      // "das Haus": the pack's header of its second word starts so → saved as that word.
+      static const text::Regex word_re("\\S+");
+      auto words = word_re.all(c.text);
+      if (words.size() == 2)
+        if (auto heads = lib.heads(words[1].groups[0], c.answer, c.lang);
+            !heads.empty() && text::lower(heads.front().header()).starts_with(text::lower(c.text)))
+          c.save_text = heads.front().word, c.save_kind = "word", c.save_line = heads.front().line;
+      const size_t limit = 60;
+      for (auto &gl : lib.gloss(c.text, c.answer, limit, c.lang))
+        c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : "", gl.head ? gl.head->header() : ""});
+      c.more = static_cast<int>(dict::gloss_words(c.text) - c.gloss.size());
       for (auto &[f, h] : lib.separable(c.text, c.answer))
-        c.separable.push_back({f.form + " … " + f.particle, f.verb, h ? h->meaning() : ""});
+        c.separable.push_back({f.form + " … " + f.particle, f.verb, h ? h->meaning() : "", h ? h->header() : ""});
     }
   } catch (const std::exception &e) {
     c.error = e.what();
@@ -167,6 +196,9 @@ Card Core::lookup(const Request &r) {
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }
   c.looks = impl_->store->looks(c.base.empty() ? c.text : c.base);
+  if (c.save_text.empty()) c.save_text = c.text, c.save_kind = c.kind == Card::Kind::word ? "word" : "phrase";
+  if (c.save_kind.empty()) c.save_kind = "word";
+  c.saved = impl_->store->is_saved(c.save_text) || impl_->store->is_saved(c.text);
   c.answer_name = language_name(c.answer);
   if (!c.lang.empty()) c.lang_name = language_name(c.lang);
   if (!c.other.empty()) c.other_name = language_name(c.other);
@@ -227,14 +259,76 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   return t;
 }
 
+bool Core::toggle_saved(const Card &card, const std::string &translation) {
+  auto &st = *impl_->store;
+  if (card.save_text.empty()) return false;
+  if (st.is_saved(card.save_text) || st.is_saved(card.text)) {
+    st.unsave(card.save_text);
+    if (card.text != card.save_text) st.unsave(card.text);
+    return false;
+  }
+  auto line = card.save_line.empty() ? translation : card.save_line;
+  return st.save(card.save_text, card.save_kind, card.answer, line, card.text).empty();
+}
+
 std::vector<Seen> Core::recents(int n) { return impl_->store->recents(n); }
 
 Store &Core::store() { return *impl_->store; }
+
+std::string Core::answer() {
+  std::lock_guard g(impl_->answer_mu);
+  return impl_->notes_answer;
+}
 
 LanguageGuess Core::language(const std::string &text, const std::string &answer) {
   std::lock_guard g(impl_->mu);
   auto [lang, other] = impl_->source(text, answer);
   return {lang, other};
+}
+
+SectionPage Core::section(const Card &card, int entry, const std::string &key, int page) {
+  std::lock_guard g(impl_->mu);
+  const int per = 20;  // InkPeek's WordsList.PAGE_SHORT
+  SectionPage p;
+  if (entry < 0 || entry >= static_cast<int>(card.entries.size())) return p;
+  auto &e = card.entries[entry];
+  p.key = key, p.word = e.word, p.entry = entry;
+  auto &r = e.related;
+  if (key == "forms") {
+    for (auto &i : r.ipa) p.text += (p.text.empty() ? "" : ", ") + i;
+    for (auto &[f, tags] : r.forms) p.items.push_back({f, f, tags, ""});
+    p.total = static_cast<int>(p.items.size()), p.pages = 1;
+    return p;
+  }
+  if (key == "ety") return p.text = r.origin, p.pages = 1, p;
+  std::vector<std::string> all = key == "rel" ? r.rel : key == "expr" ? r.expr : r.syn;
+  if (key == "syn")
+    for (auto &a : r.ant) all.push_back("≠ " + a);
+  p.total = static_cast<int>(all.size());
+  p.pages = std::max(1, (p.total + per - 1) / per);
+  p.page = std::clamp(page, 0, p.pages - 1);
+  p.first = p.page * per;
+  dict::StarDict *d = nullptr;
+  for (auto *x : impl_->lib->all())
+    if (x->id() == e.id) d = x;
+  // The first meaning of each word from the same dictionary (expressions: none).
+  for (int i = p.page * per; i < std::min(p.total, (p.page + 1) * per); i++) {
+    auto x = all[i];
+    auto w = x.starts_with("≠ ") ? x.substr(std::string("≠ ").size()) : x;
+    std::string meaning;
+    if (d && key != "expr") {
+      try {
+        auto hs = d->lookup(w);
+        auto h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return h.word == w; });
+        if (h == hs.end()) h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return text::lower(h.word) == text::lower(w); });
+        if (h != hs.end())
+          if (auto l = dict::head_line(h->html)) meaning = dict::Head{h->word, *l, ""}.meaning();
+      } catch (const std::exception &) {
+      }
+    }
+    p.items.push_back({x, w, meaning, ""});
+  }
+  return p;
 }
 
 void Core::cancel() { impl_->tr->cancel(); }

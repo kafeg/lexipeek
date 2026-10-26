@@ -50,3 +50,16 @@ TEST_CASE("separable verbs written apart") {
   CHECK(f[1].verb == "anfangen");
   CHECK(dict::find_separable("Ich gehe zu Hause.", bases, particle).empty());
 }
+
+TEST_CASE("a pack article's senses and examples") {
+  auto s = dict::senses("<p class=\"head\"><b>das Haus</b> — дом</p><ol><li>дом, <i>здание</i><br><small>◆ Ich gehe nach Hause — Я иду "
+                        "домой.</small><br><small>◆ Haus &amp; Hof</small></li><li>династия</li>\n<li>спорт. дом<br>(в кёрлинге)</li></ol>");
+  REQUIRE(s.size() == 3);
+  CHECK(s[0].text == "дом, здание");
+  REQUIRE(s[0].examples.size() == 2);
+  CHECK(s[0].examples[0] == "◆ Ich gehe nach Hause — Я иду домой.");
+  CHECK(s[0].examples[1] == "◆ Haus & Hof");
+  CHECK(s[1].examples.empty());
+  CHECK(s[2].text == "спорт. дом (в кёрлинге)");
+  CHECK(dict::senses("<p>no list</p>").empty());
+}

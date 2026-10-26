@@ -14,6 +14,16 @@
 - M2 Engines bench: on an 8 GB Mac; OPUS-MT's working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.
 - M2.1 core part: card view model, `lexipeek::app` facade, `Core::configure`, answers' `ver` done.
   Open: the Settings panes (Translation's method list, Packs' rows text) still build their labels in Swift (views for them: M4).
+- M3 card parity, Dictionary tab (branch m3-entry): full entry as senses and examples, `.rel` sections and their pages,
+  a clicked gloss / section word opens in the card with "←", "form: …" + frequency + looks under the header, the text's
+  language's packs first, "… and N more words". Open: an entry's line is not clickable to its own article (the card
+  toggles all with "Full entry ⏎"); the origin section is shown (InkPeek hides it by default: its setting is M4); other
+  dictionaries' articles stay HTML (M4, with InkPeek's `shortMeaning`); a word's header is cut at one line (InkPeek: up to 3).
+- Same as InkPeek (not changed here): unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
+  when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — a change belongs in InkPeek first;
+  a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
+- M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; Notes window). Open: Notes has no TSV export / import
+  (spec's "Then"); an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
 - M3 first run and Mozilla's English: done in the core (tested) and the window. Open: the first-run snapshot cases
   and `passage-english` not yet looked at (run invisibly by the owner's session); the models test of the English
   (`firstrun_test.cpp`) not run here; the Accessibility step's "goes on by itself" not tried on a real grant.

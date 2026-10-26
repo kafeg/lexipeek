@@ -18,7 +18,7 @@ Card word() {
   c.lang = "de", c.answer = "ru", c.lang_name = "German", c.answer_name = "Russian";
   c.header = "das Haus (Hauses, pl. Häuser)";
   c.base = "Haus";
-  c.entries = {{"InkPeek · de → ru", "дом", "<b>Haus</b> дом"}};
+  c.entries = {{"InkPeek · de → ru", "дом", "<b>Haus</b> дом", "de-ru", "Haus"}};
   c.looks = 3;
   c.methods = {{Method::fast, "Fast · Mozilla", true, ""},
                {Method::direct, "Direct · OPUS-MT", false, "Not installed: opus-x"},
@@ -33,14 +33,14 @@ Card phrase() {
   c.text = "Ich mache die Tür zu";
   c.header = c.base = "";
   c.entries = {};
-  c.gloss = {{"Ich", "ich", "я"}, {"Tür", "Tür", "дверь"}, {"die", "", ""}};
-  c.separable = {{"mache … zu", "zumachen", "закрывать"}};
+  c.gloss = {{"Ich", "ich", "я"}, {"Tür", "Tür", "дверь", "die Tür (Tür, мн. Türen)"}, {"die", "", ""}};
+  c.separable = {{"mache … zu", "zumachen", "закрывать", "zumachen (macht zu, machte zu, hat zugemacht)"}};
   return c;
 }
 
 }  // namespace
 
-TEST_CASE("views: a word opens on Dictionary with its header, entries and looks") {
+TEST_CASE("views: a word opens on Dictionary with its header, the form, frequency and looks") {
   auto c = word();
   auto s = first_state(c);
   CHECK(s.tab == CardTab::dictionary);
@@ -49,7 +49,7 @@ TEST_CASE("views: a word opens on Dictionary with its header, entries and looks"
   auto v = card_view(c, s);
   CHECK(v.style == HeaderStyle::word);
   CHECK(v.title == "das Haus (Hauses, pl. Häuser)");
-  CHECK(v.subtitle == "→ Haus");
+  CHECK(v.subtitle == "form: Häusern\nlooked up 3 times");
   CHECK(v.tooltip == "Häusern");
   CHECK(v.badge == "de → ru");
   CHECK(!v.wide);
@@ -57,23 +57,87 @@ TEST_CASE("views: a word opens on Dictionary with its header, entries and looks"
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::entry);
   CHECK(v.rows[0].label == "InkPeek · de → ru");
-  CHECK(v.rows[0].text == "дом");
+  CHECK(v.rows[0].text == "Häusern: дом");  // the selected form names itself first
   CHECK(v.rows[0].html.empty());
   CHECK(v.entry_toggle == "Full entry ⏎");
   CHECK(!v.menu);
-  CHECK(v.looks == "Looked up 3×");
+  CHECK(v.back.empty());
+  CHECK(v.footer);
   s.full_entry = true;
   v = card_view(c, s);
   CHECK(v.rows[0].html == "<b>Haus</b> дом");
   CHECK(v.rows[0].text.empty());
   CHECK(v.entry_toggle == "Short ⏎");
-  c.looks = 1;
-  CHECK(card_view(c, s).looks.empty());
+  c.rank = 255;
+  CHECK(card_view(c, s).subtitle == "form: Häusern\namong the 1,000 most frequent words · looked up 3 times");
+  c.looks = 1, c.rank = 4800;
+  CHECK(card_view(c, s).subtitle == "form: Häusern\namong the 5,000 most frequent words");
   c.header = "";
   c.base = "";
+  c.rank = 20001;
   v = card_view(c, s);
   CHECK(v.title == "Häusern");
   CHECK(v.subtitle.empty());
+  CHECK(frequency(0).empty());
+  CHECK(frequency(20000) == "among the 20,000 most frequent words");
+}
+
+TEST_CASE("views: the full entry — senses, examples, other headwords, sections; a section's page; back") {
+  auto c = word();
+  c.text = "Haus";
+  auto &e = c.entries[0];
+  e.word = "Haus";
+  e.articles = {{"Haus", "das Haus (Hauses) — дом", {{"дом, здание", {"◆ Ich gehe nach Hause — Я иду домой."}}, {"династия", {}}}},
+                {"haus", "haus — вариант Haus", {{"вариант Haus", {}}}}};
+  e.related.rel = {"Krankenhaus", "zuhause", "a", "b", "c", "d", "e", "f", "g", "h", "i"};
+  e.related.syn = {"Gebäude"};
+  e.related.ant = {"Hütte"};
+  e.related.ipa = {"[haʊ̯s]"};
+  e.related.forms = {{"Hauses", "genitive"}};
+  e.related.origin = std::string(130, 'x');
+  auto s = first_state(c);
+  s.full_entry = true;
+  auto v = card_view(c, s);
+  REQUIRE(v.rows.size() == 10);
+  CHECK(v.rows[0].style == Style::entry);
+  CHECK(v.rows[0].text == "das Haus (Hauses) — дом");
+  CHECK(v.rows[1].style == Style::sense);
+  CHECK(v.rows[1].label == "1.");
+  CHECK(v.rows[1].text == "дом, здание");
+  CHECK(v.rows[2].style == Style::example);
+  CHECK(v.rows[2].text == "◆ Ich gehe nach Hause — Я иду домой.");
+  CHECK(v.rows[3].label == "2.");
+  CHECK(v.rows[4].style == Style::heading);
+  CHECK(v.rows[4].text == "haus — вариант Haus");
+  CHECK(v.rows[6].style == Style::section);
+  CHECK(v.rows[6].label == "Krankenhaus, zuhause, a, b, c, d, e, f, g, h …");
+  CHECK(v.rows[6].text == "Related words · 11 ›");
+  CHECK(v.rows[6].open == "rel");
+  CHECK(v.rows[7].label == "Gebäude ≠ Hütte");
+  CHECK(v.rows[7].text == "Synonyms · 1 · antonyms 1 ›");
+  CHECK(v.rows[8].text == "Forms and pronunciation · [haʊ̯s] ›");
+  CHECK(v.rows[9].label == std::string(120, 'x') + " …");
+  CHECK(v.rows[9].open == "ety");
+  // A section open: its words with their meanings, a pager, "←" to the entry.
+  s.section = {"rel", "Haus", 0, 1, 2, 23, 20, {{"Hausarzt", "Hausarzt", "домашний врач"}, {"Haustür", "Haustür", ""}, {"Hausboot", "Hausboot", ""}}, ""};
+  v = card_view(c, s);
+  REQUIRE(v.rows.size() == 4);
+  CHECK(v.rows[0].style == Style::heading);
+  CHECK(v.rows[0].text == "Haus · Related words");
+  CHECK(v.rows[1].style == Style::gloss);
+  CHECK(v.rows[1].label == "Hausarzt");
+  CHECK(v.rows[1].text == "— домашний врач");
+  CHECK(v.rows[1].link == "Hausarzt");
+  CHECK(v.pager == "21–23 of 23");
+  CHECK(v.prev);
+  CHECK(!v.next);
+  CHECK(v.back == "← Entry");
+  CHECK(v.entry_toggle.empty());
+  s.section = {};
+  s.before = "Ich mache die Tür zu";
+  v = card_view(c, s);
+  CHECK(v.back == "← Ich mache die Tür zu");
+  CHECK(v.pager.empty());
 }
 
 TEST_CASE("views: a word without entries opens on Translate; Dictionary says so") {
@@ -135,19 +199,32 @@ TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
   CHECK(v.title == "Ich mache die Tür zu");
   CHECK(v.subtitle.empty());
   CHECK(v.tabs);
-  CHECK(v.looks.empty());
   s.tab = CardTab::dictionary;
   v = card_view(c, s);
   REQUIRE(v.rows.size() == 4);
   CHECK(v.rows[0].style == Style::gloss);
-  CHECK(v.rows[0].label == "mache … zu (zumachen)");
-  CHECK(v.rows[0].text == "закрывать");
-  CHECK(v.rows[1].label == "Ich (ich)");
-  CHECK(v.rows[2].label == "Tür");
+  CHECK(v.rows[0].label == "mache … zu: zumachen (macht zu, machte zu, hat zugemacht)");
+  CHECK(v.rows[0].text == "— закрывать");
+  CHECK(v.rows[0].link == "zumachen");
+  CHECK(v.rows[1].label == "ich");
+  CHECK(v.rows[1].link == "ich");
+  CHECK(v.rows[2].label == "die Tür (Tür, мн. Türen)");
   CHECK(v.rows[3].label == "die");
   CHECK(v.rows[3].text.empty());
+  CHECK(v.rows[3].link == "die");
   CHECK(v.entry_toggle.empty());
   CHECK(!v.menu);
+  c.gloss[0].word = "Ich";
+  c.gloss[0].base = "ich";
+  c.gloss[1] = {"Türen", "Tür", "дверь", "die Tür (Tür, мн. Türen)"};
+  c.more = 12;
+  v = card_view(c, s);
+  CHECK(v.rows[2].label == "Türen: die Tür (Tür, мн. Türen)");
+  CHECK(v.rows[2].link == "Tür");
+  REQUIRE(v.rows.size() == 5);
+  CHECK(v.rows[4].style == Style::note);
+  CHECK(v.rows[4].text == "… and 12 more words");
+  CHECK(!v.footer);  // nothing in it: not drawn
 }
 
 TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
@@ -177,7 +254,8 @@ TEST_CASE("views: same language, no pack, unknown language, nothing to translate
   c.lang = c.lang_name = "";
   c.other_name = "French";
   v = card_view(c, first_state(c));
-  CHECK(v.badge.empty());
+  CHECK(v.badge == "French");
+  CHECK(!v.footer);
   CHECK(v.rows[0].text == "No language pack from French into Russian yet.");
   c.other_name = "";
   CHECK(card_view(c, first_state(c)).rows[0].text == "Could not tell the language of this text.");
