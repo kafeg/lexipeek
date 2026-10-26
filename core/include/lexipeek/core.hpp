@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
@@ -20,16 +21,51 @@ struct Request {
   std::string answer;  // the answer language ("ru"); "" = the settings' one
 };
 
+// A sense of a pack's article: its meaning and its examples ("◆ Ich gehe nach Hause — Я иду домой.").
+struct Sense {
+  std::string text;
+  std::vector<std::string> examples;
+};
+
+// One article of a dictionary: its headword, its first line, its senses (a pack's; empty for other dictionaries).
+struct Article {
+  std::string word, line;
+  std::vector<Sense> senses;
+};
+
+// A pack's word family and more for a headword (its .rel, as InkPeek's Related.Entry): frequent first.
+struct Related {
+  std::vector<std::string> rel, syn, ant, expr, ipa;
+  std::string origin;
+  std::vector<std::pair<std::string, std::string>> forms;  // form → tags
+};
+
 // One dictionary's part of the card: the short line and the whole article.
 struct Entry {
   std::string dictionary;
   std::string line;
   std::string article;
+  std::string id = "";            // the dictionary's id (its sections are read from it)
+  std::string word = "";          // the headword of its first article
+  std::vector<Article> articles = {};  // its articles, parsed when they are a pack's
+  Related related = {};           // the first headword's sections (packs only)
 };
 
 // A word of a sentence, word by word (separable verbs as one: "fängt … an" → "anfangen").
 struct Gloss {
   std::string word, base, meaning;
+  std::string header = "";  // the base form's header: "der Hund (Hundes, мн. Hunde)", "" when unknown
+};
+
+// A section of an entry opened in the card (InkPeek's DictionaryPage.section): words with their first meaning from the
+// same dictionary, 20 per page; forms with their tags; the origin as text. key "" = none open.
+struct SectionPage {
+  std::string key;  // rel, syn, expr, forms, ety
+  std::string word;
+  int entry = 0;  // the card's entry it belongs to
+  int page = 0, pages = 0, total = 0, first = 0;  // first: the index of the page's first item
+  std::vector<Gloss> items;  // word, its meaning ("≠ word" for an antonym)
+  std::string text;          // forms: the IPA; ety: the origin
 };
 
 struct MethodState {
@@ -54,6 +90,7 @@ struct Card {
   std::vector<Entry> entries;
   std::vector<Gloss> gloss;
   std::vector<Gloss> separable;  // separable verbs written apart: word "mache … zu", base "zumachen"
+  int more = 0;                  // the text's words past the gloss's limit
   int rank = 0;                  // the word's rank in its language's frequency list (0: not in it)
   std::int64_t looks = 0;        // looks of the word here, across its forms (this one included)
   std::vector<MethodState> methods;
@@ -91,6 +128,8 @@ class Core {
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);
   LanguageGuess language(const std::string &text, const std::string &answer);
+  // A section of the card's entry: page n (from 0) of its words with their meanings.
+  SectionPage section(const Card &card, int entry, const std::string &key, int page);
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
   // A newer request: stops a running AI translation.

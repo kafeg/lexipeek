@@ -109,3 +109,60 @@ TEST_CASE("InkPeek's device cases") {
   CHECK(failed == 0);
   CHECK(run > 50);
 }
+
+TEST_CASE("the card on the packs: the text's language first, one entry per dictionary, articles, sections") {
+  const char *v = std::getenv("LEXIPEEK_MODELS");  // NOLINT(concurrency-mt-unsafe)
+  if (!v || !*v || !fs::exists(fs::path(v) / "dicts/dict-de-ru") || !fs::exists(fs::path(v) / "dicts/dict-en-ru")) {
+    MESSAGE("skipped: no dict-de-ru and dict-en-ru in LEXIPEEK_MODELS");
+    return;
+  }
+  CoreOptions o;
+  o.data = v;
+  Core core(o);
+  auto c = core.lookup({"Haus", Source::cli, "ru"});
+  CHECK(c.lang == "de");
+  REQUIRE(!c.entries.empty());
+  // English "hausen" (en → ru) is not a German word's entry.
+  for (auto &e : c.entries) CHECK(e.dictionary == "InkPeek · de → ru");
+  CHECK(c.entries.size() == 1);
+  auto &e = c.entries[0];
+  CHECK(e.word == "Haus");
+  REQUIRE(!e.articles.empty());
+  REQUIRE(e.articles[0].senses.size() > 2);
+  CHECK(e.articles[0].senses[0].text.find("дом") != std::string::npos);
+  CHECK(!e.articles[0].senses[0].examples.empty());
+  CHECK(e.articles[0].senses[0].examples[0].starts_with("◆ "));
+  CHECK(e.related.rel.size() > 20);
+  CHECK(c.rank > 0);
+  auto p = core.section(c, 0, "rel", 1);
+  CHECK(p.key == "rel");
+  CHECK(p.word == "Haus");
+  CHECK(p.page == 1);
+  CHECK(p.first == 20);
+  CHECK(p.items.size() == 20);
+  CHECK(p.total == static_cast<int>(e.related.rel.size()));
+  CHECK(std::any_of(p.items.begin(), p.items.end(), [](auto &i) { return !i.meaning.empty(); }));
+  CHECK(core.section(c, 0, "forms", 0).items.size() == e.related.forms.size());
+  CHECK(core.section(c, 5, "rel", 0).key.empty());
+  // An inflected form: its base form's header.
+  auto f = core.lookup({"Häusern", Source::cli, "ru"});
+  CHECK(f.base == "Haus");
+  CHECK(f.header.starts_with("das Haus"));
+}
+
+TEST_CASE("the gloss says how many words it left out") {
+  const char *v = std::getenv("LEXIPEEK_MODELS");  // NOLINT(concurrency-mt-unsafe)
+  if (!v || !*v || !fs::exists(fs::path(v) / "dicts/dict-de-ru")) {
+    MESSAGE("skipped: no dict-de-ru in LEXIPEEK_MODELS");
+    return;
+  }
+  CoreOptions o;
+  o.data = v;
+  Core core(o);
+  std::string text = "Der Hund";
+  for (int i = 0; i < 70; i++) text += " wort" + std::string{static_cast<char>('a' + i / 26), static_cast<char>('a' + i % 26)};
+  auto c = core.lookup({text, Source::cli, "ru"});
+  CHECK(c.gloss.size() == 60);
+  CHECK(c.more == 12);
+  CHECK(dict::gloss_words("Der der DER Hund, hund.") == 2);
+}

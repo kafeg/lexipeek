@@ -55,6 +55,8 @@ struct CardState {
   bool translated = false;  // translation holds the answer
   Translation translation;
   bool full_entry = false;
+  SectionPage section;  // the entry's section open on Dictionary (key "": none)
+  std::string before;   // the text this card was opened from ("" = none): "←" goes back to it
 };
 
 // One line of the card's body.
@@ -65,10 +67,17 @@ struct CardRow {
     text,      // selectable text: the translation
     error,     // red: a failed translation
     entry,     // a dictionary's entry: label (the dictionary), text (its short line) or html (the full article)
-    gloss      // a word of a phrase: label bold ("mache … zu (zumachen)"), text secondary (its meaning)
+    gloss,     // a word of a phrase, of a section: label bold ("mache … zu: zumachen (…)"), text secondary (its meaning)
+    heading,   // bold text: another headword's article, an open section's title
+    sense,     // a sense of an article: label its number ("1."), text its meaning
+    example,   // an example under a sense, indented: "◆ Ich gehe nach Hause — Я иду домой."
+    section    // a section under an article: label its preview (two lines at most), text its caption ("Related words · 133 ›")
   };
   Style style = Style::note;
   std::string label, text, html;
+  std::string link = "";  // a word: a click opens it in this card ("←" comes back)
+  std::string open = "";  // a section's key: a click opens it (section rows)
+  int entry = 0;     // the entry the section belongs to
 };
 
 struct MethodItem {
@@ -80,7 +89,7 @@ struct MethodItem {
 struct CardView {
   HeaderStyle style = HeaderStyle::passage;
   std::string title;     // the header ("das Haus (Hauses, pl. Häuser)") or the text
-  std::string subtitle;  // "→ Traum": the base form
+  std::string subtitle;  // a word's small line, InkPeek's: "form: Häusern\namong the 1,000 most frequent words · looked up 3 times"
   std::string tooltip;   // the text as asked
   std::string badge;     // "de → ru", "Russian" (already in it), ""
   bool wide = false;     // a passage: a wider card
@@ -91,7 +100,9 @@ struct CardView {
   bool menu = false;         // the methods' menu is shown
   std::string menu_title;    // the current method's name or "No method available"
   std::vector<MethodItem> methods;
-  std::string looks;  // "Looked up 3×", ""
+  std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
+  std::string pager;  // a section's page: "21–40 of 63", "" (one page)
+  bool prev = false, next = false;  // the section has a page before, after
 };
 
 // The tab a new card opens on: Dictionary for a word with entries, else Translate.
@@ -99,5 +110,7 @@ CardTab first_tab(const Card &c);
 // A new card's state: its first tab and its method (none when no method is available).
 CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
+// The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
+std::string frequency(int rank);
 
 }  // namespace lexipeek

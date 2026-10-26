@@ -140,22 +140,38 @@ Card Core::lookup(const Request &r) {
     // A text in the answer language itself: no pack translates it, the card says so.
     if (c.lang.empty() && c.other == c.answer) c.lang = c.answer, c.other.clear();
     if (c.kind == Card::Kind::word) {
-      auto heads = lib.heads(c.text, c.answer);
+      auto heads = lib.heads(c.text, c.answer, c.lang);
       if (!heads.empty()) {
         c.header = heads.front().header();
         if (text::lower(heads.front().word) != text::lower(c.text)) c.base = heads.front().word;
         c.rank = lib.rank(heads.front().word, heads.front().book);
         if (c.lang.empty()) c.lang = heads.front().book;
       }
-      for (auto &[d, hits] : lib.lookup(c.text, c.answer)) {
-        auto label = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
-        for (auto &h : hits) c.entries.push_back({label, dict::head_line(h.html).value_or(h.word), h.html});
+      // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
+      for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) {
+        Entry e;
+        e.dictionary = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
+        e.id = d->id();
+        e.word = hits.front().word;
+        e.line = dict::head_line(hits.front().html).value_or(e.word);
+        for (auto &h : hits) {
+          bool other = text::lower(h.word) != text::lower(c.text);
+          e.article += (other ? "<b>" + text::escape(h.word) + "</b><br>" : "") + h.html;
+          if (d->book().empty()) continue;
+          Article a{h.word, dict::head_line(h.html).value_or(h.word), {}};
+          for (auto &x : dict::senses(h.html)) a.senses.push_back({x.text, x.examples});
+          e.articles.push_back(a);
+        }
+        if (auto x = d->related(e.word)) e.related = {x->rel, x->syn, x->ant, x->expr, x->ipa, x->origin, x->forms};
+        c.entries.push_back(e);
       }
     } else if (!c.lang.empty()) {
-      for (auto &gl : lib.gloss(c.text, c.answer))
-        c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : ""});
+      const size_t limit = 60;
+      for (auto &gl : lib.gloss(c.text, c.answer, limit, c.lang))
+        c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : "", gl.head ? gl.head->header() : ""});
+      c.more = static_cast<int>(dict::gloss_words(c.text) - c.gloss.size());
       for (auto &[f, h] : lib.separable(c.text, c.answer))
-        c.separable.push_back({f.form + " … " + f.particle, f.verb, h ? h->meaning() : ""});
+        c.separable.push_back({f.form + " … " + f.particle, f.verb, h ? h->meaning() : "", h ? h->header() : ""});
     }
   } catch (const std::exception &e) {
     c.error = e.what();
@@ -207,6 +223,51 @@ LanguageGuess Core::language(const std::string &text, const std::string &answer)
   std::lock_guard g(impl_->mu);
   auto [lang, other] = impl_->source(text, answer);
   return {lang, other};
+}
+
+SectionPage Core::section(const Card &card, int entry, const std::string &key, int page) {
+  std::lock_guard g(impl_->mu);
+  const int per = 20;  // InkPeek's WordsList.PAGE_SHORT
+  SectionPage p;
+  if (entry < 0 || entry >= static_cast<int>(card.entries.size())) return p;
+  auto &e = card.entries[entry];
+  p.key = key, p.word = e.word, p.entry = entry;
+  auto &r = e.related;
+  if (key == "forms") {
+    for (auto &i : r.ipa) p.text += (p.text.empty() ? "" : ", ") + i;
+    for (auto &[f, tags] : r.forms) p.items.push_back({f, f, tags, ""});
+    p.total = static_cast<int>(p.items.size()), p.pages = 1;
+    return p;
+  }
+  if (key == "ety") return p.text = r.origin, p.pages = 1, p;
+  std::vector<std::string> all = key == "rel" ? r.rel : key == "expr" ? r.expr : r.syn;
+  if (key == "syn")
+    for (auto &a : r.ant) all.push_back("≠ " + a);
+  p.total = static_cast<int>(all.size());
+  p.pages = std::max(1, (p.total + per - 1) / per);
+  p.page = std::clamp(page, 0, p.pages - 1);
+  p.first = p.page * per;
+  dict::StarDict *d = nullptr;
+  for (auto *x : impl_->lib->all())
+    if (x->id() == e.id) d = x;
+  // The first meaning of each word from the same dictionary (expressions: none).
+  for (int i = p.page * per; i < std::min(p.total, (p.page + 1) * per); i++) {
+    auto x = all[i];
+    auto w = x.starts_with("≠ ") ? x.substr(std::string("≠ ").size()) : x;
+    std::string meaning;
+    if (d && key != "expr") {
+      try {
+        auto hs = d->lookup(w);
+        auto h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return h.word == w; });
+        if (h == hs.end()) h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return text::lower(h.word) == text::lower(w); });
+        if (h != hs.end())
+          if (auto l = dict::head_line(h->html)) meaning = dict::Head{h->word, *l, ""}.meaning();
+      } catch (const std::exception &) {
+      }
+    }
+    p.items.push_back({x, w, meaning, ""});
+  }
+  return p;
 }
 
 void Core::cancel() { impl_->tr->cancel(); }
