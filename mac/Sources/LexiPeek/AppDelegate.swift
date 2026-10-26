@@ -23,6 +23,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Selection.log.info("launched; Accessibility trusted: \(Selection.trusted)")
+        // Snapshot mode is invisible: never activated (an accessory app), no menu-bar item, no hotkeys, windows off screen.
+        if Snapshot.dir != nil {
+            Snapshot.start { [weak self] in self?.application(NSApp, open: [$0]) }
+            snapshotSettings()
+            return
+        }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item?.button?.image = NSImage(systemSymbolName: "character.book.closed", accessibilityDescription: "LexiPeek")
         menu.delegate = self
@@ -47,11 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         trustTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, self.settingsState.trusted != Selection.trusted else { return }
             self.settingsState.trusted = Selection.trusted
-        }
-        if Snapshot.dir != nil {
-            Snapshot.start { [weak self] in self?.application(NSApp, open: [$0]) }
-            snapshotSettings()
-            return
         }
         if !Selection.trusted && !UserDefaults.standard.bool(forKey: "onboarded") {
             UserDefaults.standard.set(true, forKey: "onboarded")

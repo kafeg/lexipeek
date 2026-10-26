@@ -39,6 +39,12 @@ enum Snapshot {
         return url.host == "unread"
     }
 
+    // Snapshot mode: the window off every screen (it is drawn, never seen).
+    static let away = NSPoint(x: -20000, y: -20000)
+    static func hide(_ w: NSWindow) {
+        if dir != nil { w.setFrameOrigin(away) }
+    }
+
     static func write(_ view: NSView?, _ name: String) {
         guard let dir, let view, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)

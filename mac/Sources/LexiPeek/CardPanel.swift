@@ -97,7 +97,8 @@ final class CardController {
         panel.setFrame(Placement.frame(size: size, anchor: anchor, screen: screen), display: false)
         layout()
         if let text { model.lookup(text, source: source) }
-        if focus { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
+        Snapshot.hide(panel)
+        if focus && Snapshot.dir == nil { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
         // Snapshot mode: no Esc, ⌘P or outside clicks (the person keeps using the Mac meanwhile).
         if Snapshot.dir == nil { watch() }
     }
@@ -146,6 +147,7 @@ final class CardController {
             var f = Placement.resized(panel.frame, height: height, screen: screen)
             f.size.width = fitting.width
             if f.maxX > screen.maxX { f.origin.x = max(screen.minX, screen.maxX - f.width) }
+            if Snapshot.dir != nil { f.origin = Snapshot.away }
             panel.setFrame(f, display: true)
         }
         layout()
