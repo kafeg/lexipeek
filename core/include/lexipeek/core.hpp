@@ -85,6 +85,8 @@ class Core {
   LanguageGuess language(const std::string &text, const std::string &answer);
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
+  // A newer request: stops a running AI translation.
+  void cancel();
   // Memory pressure, idle: frees the held model.
   void release();
   // The newest looks, one per word (the menu's Recents).

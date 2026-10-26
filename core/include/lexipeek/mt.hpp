@@ -48,6 +48,8 @@ class Translator {
   // Loads the method's model for from → to without translating; "" or the error.
   std::string load(const std::string &from, const std::string &to, Method m);
   std::vector<Language> langid(const std::string &text, int k = 3);
+  // Stops a running AI translation (it returns the error "Cancelled"); the next translate starts afresh.
+  void cancel();
   // Frees the held model (idle, memory pressure).
   void release();
   // What is held: "" none, else the key ("fast:de-ru", "direct:<id>", "llm:<id>").

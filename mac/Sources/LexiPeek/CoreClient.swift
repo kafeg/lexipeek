@@ -107,6 +107,7 @@ final class CoreClient {
     // Returns the request's id; done runs on the main queue, only if no newer request came.
     func lookup(_ text: String, source: lexipeek.Source, done: @escaping (Int, CardData) -> Void) -> Int {
         let id = lock.withLock { latest += 1; cards.removeAll(); return latest }
+        lock.withLock { self.engine }.cancel()
         lookups.async {
             guard self.current(id) else { return }
             let card = self.lock.withLock { self.engine }.lookup(std.string(text), source)
@@ -119,6 +120,7 @@ final class CoreClient {
 
     func translate(_ id: Int, method: lexipeek.Method, done: @escaping (TranslationData) -> Void) {
         let engine = lock.withLock { self.engine }
+        engine.cancel()  // the one running (another method, an older card) gives way
         worker.async {
             guard self.current(id), let card = self.lock.withLock({ self.cards[id] }) else { return }
             let t = engine.translate(card, method)

@@ -32,9 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         Publishers.CombineLatest(prefs.$translateKey, prefs.$inputKey)
             .sink { [weak self] t, i in self?.registerHotkeys(t, i) }.store(in: &bag)
-        Publishers.CombineLatest(prefs.$answer.dropFirst(), prefs.$method.dropFirst())
-            .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
-            .sink { [weak self] _, _ in self?.client.reconfigure() }.store(in: &bag)
+        // Either one changed (CombineLatest would wait for both).
+        Publishers.Merge(prefs.$answer.dropFirst().map { _ in () }, prefs.$method.dropFirst().map { _ in () })
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .sink { [weak self] in self?.client.reconfigure() }.store(in: &bag)
 
         icon.open = { [weak self] s in self?.card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
         prefs.$selectionIcon.sink { [weak self] on in self?.icon.setEnabled(on) }.store(in: &bag)

@@ -64,6 +64,7 @@ struct Translator::Impl {
   ModelHost host;
   std::mutex lid_mu;
   std::unique_ptr<LangIdModel> lid;
+  std::atomic<bool> stop{false};
 
   Plan plan(const std::string &from, const std::string &to, Method m) {
     Plan p;
@@ -155,6 +156,7 @@ Translation Translator::translate(const std::string &from, const std::string &to
     r.text = text;
     return r;
   }
+  impl_->stop = false;
   auto p = impl_->plan(from, to, m);
   r.by = p.by;
   if (!p.error.empty()) {
@@ -171,7 +173,7 @@ Translation Translator::translate(const std::string &from, const std::string &to
         };
         std::string out;
         for (auto &piece : chunks(text)) {
-          auto t = trim(model.generate(fill(p.c.prompt, name(from), name(to), piece), static_cast<int>(utf16_length(piece) * 2 + 32)));
+          auto t = trim(model.generate(fill(p.c.prompt, name(from), name(to), piece), static_cast<int>(utf16_length(piece) * 2 + 32), &impl_->stop));
           out += (out.empty() ? "" : " ") + t;
         }
         r.text = out;
@@ -217,6 +219,8 @@ std::vector<Language> Translator::langid(const std::string &text, int k) {
     return {};
   }
 }
+
+void Translator::cancel() { impl_->stop = true; }
 
 void Translator::release() { impl_->host.release(); }
 

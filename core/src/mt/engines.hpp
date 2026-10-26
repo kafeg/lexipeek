@@ -1,5 +1,6 @@
 // The engines without JNI (ported from InkPeek's translator_jni.cpp, llm_jni.cpp, langid_jni.cpp). Errors throw.
 #pragma once
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,7 +25,8 @@ class LlmModel {
  public:
   LlmModel(const std::string &path, int threads);
   ~LlmModel();
-  std::string generate(const std::string &prompt, int max_tokens);
+  // stop: checked at every token; set → throws "Cancelled".
+  std::string generate(const std::string &prompt, int max_tokens, const std::atomic<bool> *stop = nullptr);
 
  private:
   struct Impl;

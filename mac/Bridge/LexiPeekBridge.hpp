@@ -44,6 +44,7 @@ struct Engine {
   void prepare() const { core->prepare(); }
   void reload() const { core->reload(); }
   void release() const { core->release(); }
+  void cancel() const { core->cancel(); }
 };
 
 inline bool has_method(const Card &c) { return c.method.has_value(); }

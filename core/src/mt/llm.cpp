@@ -43,7 +43,7 @@ LlmModel::LlmModel(const std::string &path, int threads) : impl_(std::make_uniqu
 
 LlmModel::~LlmModel() = default;
 
-std::string LlmModel::generate(const std::string &prompt, int max_tokens) {
+std::string LlmModel::generate(const std::string &prompt, int max_tokens, const std::atomic<bool> *stop) {
   auto *vocab = llama_model_get_vocab(impl_->model);
   llama_memory_clear(llama_get_memory(impl_->ctx), true);
   // The template has the model's special tokens as text: parsed, no extra BOS.
@@ -57,6 +57,7 @@ std::string LlmModel::generate(const std::string &prompt, int max_tokens) {
   std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)> smpl(llama_sampler_init_greedy(), llama_sampler_free);
   std::string out;
   for (int i = 0; i < room; i++) {
+    if (stop && stop->load()) throw std::runtime_error("Cancelled");
     llama_token t = llama_sampler_sample(smpl.get(), impl_->ctx, -1);
     if (llama_vocab_is_eog(vocab, t)) break;
     char buf[256];

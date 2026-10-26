@@ -109,3 +109,21 @@ TEST_CASE("idle unload and the reload budget") {
     CHECK(ms([&] { tr.load("de", to, c.m); }) < c.budget_ms);
   }
 }
+
+TEST_CASE("llm: a newer request cancels a running translation") {
+  if (!has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
+  Translator tr({models()});
+  REQUIRE(tr.load("de", "ru", Method::llm).empty());
+  std::string text;
+  for (int i = 0; i < 6; i++) text += "Am nächsten Morgen stand er früh auf und ging zum Bahnhof. Der Zug war voll. ";
+  std::thread canceller([&] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    tr.cancel();
+  });
+  auto t0 = std::chrono::steady_clock::now();
+  auto r = tr.translate("de", "ru", text, Method::llm);
+  canceller.join();
+  CHECK(r.error == "Cancelled");
+  CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(3));
+  CHECK(tr.translate("de", "ru", "Das Haus ist alt.", Method::llm).ok());  // the next one runs
+}

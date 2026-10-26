@@ -111,7 +111,7 @@ Card Core::lookup(const Request &r) {
         auto label = d->book().empty() ? d->name() : "InkPeek · " + d->book() + " → " + d->answer();
         for (auto &h : hits) c.entries.push_back({label, dict::head_line(h.html).value_or(h.word), h.html});
       }
-    } else if (c.kind == Card::Kind::phrase && !c.lang.empty() && c.lang != c.answer) {
+    } else if (!c.lang.empty()) {
       for (auto &gl : lib.gloss(c.text, c.answer))
         c.gloss.push_back({gl.word, gl.head ? gl.head->word : gl.word, gl.head ? gl.head->meaning() : ""});
       for (auto &[f, h] : lib.separable(c.text, c.answer))
@@ -167,6 +167,8 @@ LanguageGuess Core::language(const std::string &text, const std::string &answer)
   auto [lang, other] = impl_->source(text, answer);
   return {lang, other};
 }
+
+void Core::cancel() { impl_->tr->cancel(); }
 
 void Core::release() { impl_->tr->release(); }
 

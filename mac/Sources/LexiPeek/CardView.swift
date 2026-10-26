@@ -56,8 +56,7 @@ struct CardView: View {
     private func tabs(_ card: CardData) -> Bool {
         switch card.kind {
         case .word: true
-        case .phrase: !card.gloss.isEmpty || !card.separable.isEmpty
-        case .passage: false
+        case .phrase, .passage: !card.gloss.isEmpty || !card.separable.isEmpty
         }
     }
 
