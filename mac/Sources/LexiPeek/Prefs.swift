@@ -14,6 +14,8 @@ final class Prefs: ObservableObject {
     @Published var method: String { didSet { save() } }
     @Published var answer: String { didSet { save() } }
     @Published var openAtLogin: Bool { didSet { save() } }
+    @Published var selectionIcon: Bool { didSet { save() } }
+    @Published var pinMoved: Bool { didSet { save() } }
     @Published var error = ""
 
     private init() {
@@ -25,6 +27,8 @@ final class Prefs: ObservableObject {
         method = String(lexipeek.mac.method_of(s))
         answer = String(s.answer)
         openAtLogin = s.open_at_login
+        selectionIcon = s.selection_icon
+        pinMoved = s.pin_moved
     }
 
     private static func shortcut(_ h: lexipeek.Hotkey) -> Shortcut? {
@@ -63,6 +67,8 @@ final class Prefs: ObservableObject {
         lexipeek.mac.set_method(&s, std.string(method))
         s.answer = std.string(answer.isEmpty ? "ru" : answer)
         s.open_at_login = openAtLogin
+        s.selection_icon = selectionIcon
+        s.pin_moved = pinMoved
         error = String(lexipeek.mac.save(std.string(), s))
     }
 }

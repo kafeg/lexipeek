@@ -153,10 +153,13 @@ TEST_CASE("settings: defaults, round trip, unknown fields kept") {
   CHECK(s.answer == "en");
   s.method = Method::direct;
   s.copy_apps = {"com.example.app"};
+  s.selection_icon = true;
   CHECK(save_settings(d, s).empty());
   auto t = load_settings(d);
   CHECK(t.method == Method::direct);
   CHECK(t.copy_apps.size() == 1);
+  CHECK(t.selection_icon);
+  CHECK(!t.pin_moved);
   std::ifstream f(d / "settings.json");
   std::string all((std::istreambuf_iterator<char>(f)), {});
   CHECK(all.find("future") != std::string::npos);

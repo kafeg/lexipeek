@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var bag: [AnyCancellable] = []
     private var pressure: DispatchSourceMemoryPressure?
     private var trustTimer: Timer?
+    private let icon = SelectionIcon()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Selection.log.info("launched; Accessibility trusted: \(Selection.trusted)")
@@ -34,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Publishers.CombineLatest(prefs.$answer.dropFirst(), prefs.$method.dropFirst())
             .debounce(for: .milliseconds(500), scheduler: RunLoop.main)
             .sink { [weak self] _, _ in self?.client.reconfigure() }.store(in: &bag)
+
+        icon.open = { [weak self] s in self?.card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
+        prefs.$selectionIcon.sink { [weak self] on in self?.icon.setEnabled(on) }.store(in: &bag)
 
         pressure = DispatchSource.makeMemoryPressureSource(eventMask: [.warning, .critical], queue: .main)
         pressure?.setEventHandler { [weak self] in self?.client.release() }
@@ -74,14 +78,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !ok2 { settingsState.hotkeyErrors["input"] = "Taken by another app" }
     }
 
+    // With a card open: another selection opens its card at once; the same one or none closes it.
     @objc func translateSelection() {
-        if card.isVisible { card.close(); return }
         let app = NSWorkspace.shared.frontmostApplication
         let id = app?.bundleIdentifier ?? ""
-        if prefs.offApps.contains(id) { return }
+        if prefs.offApps.contains(id) { if card.isVisible { card.close() }; return }
         let allowCopy = prefs.copyApps.contains(id)
+        let open = card.isVisible
         Task { @MainActor in
-            if let s = await Selection.read(app: app, allowCopy: allowCopy) {
+            let s = await Selection.read(app: app, allowCopy: allowCopy)
+            if open && (s == nil || s?.text == card.shown) { card.close(); return }
+            if let s {
                 card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false)
             } else {
                 // Nothing read: say where, offer Cmd+C there (not when it was allowed already), type meanwhile.

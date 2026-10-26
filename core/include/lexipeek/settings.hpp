@@ -18,6 +18,8 @@ struct Settings {
   std::optional<Method> method;  // none: the first available
   Hotkey lookup{"D"}, input{"A"};
   bool open_at_login = false;
+  bool selection_icon = false;  // a small icon next to a new selection opens the card
+  bool pin_moved = false;       // a dragged card stays open, as pinned
   std::vector<std::string> ignore_apps;  // bundle ids where the hotkey does nothing
   std::vector<std::string> copy_apps;    // bundle ids where Cmd+C may read the selection (the clipboard is restored)
 };

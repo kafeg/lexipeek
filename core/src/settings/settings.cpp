@@ -47,6 +47,8 @@ Settings load_settings(const fs::path &data) {
       s.input = hotkey(j["hotkeys"].value("input", json()), s.input);
     }
     s.open_at_login = j.value("open_at_login", s.open_at_login);
+    s.selection_icon = j.value("selection_icon", s.selection_icon);
+    s.pin_moved = j.value("pin_moved", s.pin_moved);
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
   } catch (const std::exception &) {
@@ -62,6 +64,8 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   else j.erase("method");
   j["hotkeys"] = {{"lookup", to_json(s.lookup)}, {"input", to_json(s.input)}};
   j["open_at_login"] = s.open_at_login;
+  j["selection_icon"] = s.selection_icon;
+  j["pin_moved"] = s.pin_moved;
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
   std::error_code ec;

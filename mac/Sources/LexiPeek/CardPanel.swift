@@ -30,6 +30,7 @@ final class CardController {
     private var downAt: NSPoint?
 
     var isVisible: Bool { panel.isVisible }
+    private(set) var shown = ""  // the text the open card was asked for
 
     init(model: CardModel) {
         self.model = model
@@ -43,14 +44,14 @@ final class CardController {
         panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.isMovableByWindowBackground = true
-        // Dragged somewhere (moved further than a click's jitter): the card stays where it was put, as pinned.
+        // Dragged somewhere (further than a click's jitter): with the option on, the card stays, as pinned.
         moved = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .leftMouseUp]) { [weak self] e in
             guard let self, e.window === self.panel else { return e }
             if e.type == .leftMouseDown {
                 self.downAt = self.panel.frame.origin
             } else if let d = self.downAt {
                 let o = self.panel.frame.origin
-                if hypot(o.x - d.x, o.y - d.y) > 4 { self.model.pinned = true }
+                if hypot(o.x - d.x, o.y - d.y) > 4 && Prefs.shared.pinMoved { self.model.pinned = true }
                 self.downAt = nil
             }
             return e
@@ -80,6 +81,7 @@ final class CardController {
     func show(text: String?, source: lexipeek.Source, bounds: CGRect?, focus: Bool) {
         close()
         model.pinned = false
+        shown = text ?? ""
         model.reset(input: text == nil)
         let view = CardView(model: model, focusInput: focus)
         hosting?.removeFromSuperview()

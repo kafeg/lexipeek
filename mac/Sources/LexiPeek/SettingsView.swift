@@ -95,6 +95,13 @@ struct GeneralPane: View {
                 }
             }
             Section {
+                Toggle("Show an icon next to selected text", isOn: $prefs.selectionIcon)
+                Toggle("Keep a card open after moving it", isOn: $prefs.pinMoved)
+            } footer: {
+                Note("The icon opens the card with a click, without the hotkey. It reads the selection by Accessibility "
+                    + "only and never touches the clipboard.")
+            }
+            Section {
                 AppList(ids: $prefs.copyApps)
             } header: {
                 Text("Read the selection with ⌘C in")
@@ -104,7 +111,7 @@ struct GeneralPane: View {
             Section {
                 AppList(ids: $prefs.offApps)
             } header: {
-                Text("The hotkey does nothing in")
+                Text("The hotkey and the icon do nothing in")
             }
         }
     }
