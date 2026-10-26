@@ -78,7 +78,7 @@ struct NotesView: View {
                 Text(model.look.empty).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(model.look.rows) { row($0) }
-                    .listStyle(.inset(alternatesRowBackgrounds: true))
+                    .listStyle(.inset)
             }
             if model.look.clear {
                 HStack {
