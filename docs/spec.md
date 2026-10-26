@@ -149,10 +149,15 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   text and one line (the saved line, else the newest kept answer, else "—"), History also its looks; a click opens
   the card, ✕ removes, "Clear history…" (asks) under History. Rows and texts come from the core (`notes_view`).
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · Notes… · language pair · Settings… ⌘, · Quit.
-- **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per
-  method with sizes; download with progress, remove) · Translation (answer language, method, "Show the English": Fast's English in between,
-  smaller, under the translation, as InkPeek's; "Set Up…" while no pair is installed) · Permissions (status; after a macOS update remove LexiPeek from the list and add it
-  again; run from `/Applications`).
+- **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
+  standard settings window, each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
+  language, method, Mozilla's English in between) · Other dictionaries (a folder, InkPeek's catalog of public
+  sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·
+  Article (the dictionary view: short line or full entry, the header's grammar, the sections shown, dictionary order)
+  · Appearance (desktop: width, text size, font, height limit) · **AI** (M5) — Connection · Modules · **Notes** —
+  Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
+  the icon at the selection, per-app rules, a moved card stays, open at login, Accessibility, the app's language,
+  updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **First run** (a window of its own, at launch while no pair is installed, or Accessibility is off and it was never
   finished; again from Settings → Translation): why Accessibility → open System Settings → continue by itself when
   granted (no restart; "Later" skips it) → pick the first pair (answer language: the system's when the packs offer it,
