@@ -19,12 +19,12 @@ final class Prefs: ObservableObject {
     @Published var error = ""
 
     private init() {
-        let s = lexipeek.mac.settings(std.string())
+        let s = lexipeek.app.settings(std.string())
         translateKey = Self.shortcut(s.lookup) ?? .translate
         inputKey = Self.shortcut(s.input) ?? .input
         offApps = s.ignore_apps.map { String($0) }
         copyApps = s.copy_apps.map { String($0) }
-        method = String(lexipeek.mac.method_of(s))
+        method = String(lexipeek.app.method_id(s))
         answer = String(s.answer)
         openAtLogin = s.open_at_login
         selectionIcon = s.selection_icon
@@ -59,16 +59,16 @@ final class Prefs: ObservableObject {
 
     // Read again first: fields this shell does not show stay as they are.
     private func save() {
-        var s = lexipeek.mac.settings(std.string())
+        var s = lexipeek.app.settings(std.string())
         s.lookup = Self.hotkey(translateKey)
         s.input = Self.hotkey(inputKey)
         s.ignore_apps = Self.strings(offApps)
         s.copy_apps = Self.strings(copyApps)
-        lexipeek.mac.set_method(&s, std.string(method))
+        lexipeek.app.set_method(&s, std.string(method))
         s.answer = std.string(answer.isEmpty ? "ru" : answer)
         s.open_at_login = openAtLogin
         s.selection_icon = selectionIcon
         s.pin_moved = pinMoved
-        error = String(lexipeek.mac.save(std.string(), s))
+        error = String(lexipeek.app.save(std.string(), s))
     }
 }

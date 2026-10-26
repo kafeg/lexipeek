@@ -7,6 +7,7 @@
 #include <vector>
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
+#include "lexipeek/settings.hpp"
 #include "lexipeek/store.hpp"
 
 namespace lexipeek {
@@ -60,6 +61,11 @@ struct Card {
   std::string error;
 };
 
+// The version an offline answer is kept under, as InkPeek's OfflineTranslation: Java's hashCode of the
+// installed models' sha256 (fast: the steps' model-* joined by ", "; direct, llm: the covering component's).
+std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::string> &installed, const std::string &from,
+                            const std::string &to, Method method);
+
 // The text's language among the packs' book languages into an answer language; other: named, without a pack.
 struct LanguageGuess {
   std::string lang, other;
@@ -80,6 +86,8 @@ class Core {
   Core(const Core &) = delete;
   Core &operator=(const Core &) = delete;
 
+  // Changed settings (answer language, method) and, when given, this machine: the next cards use them.
+  void configure(const Settings &s, const std::optional<Device> &device = std::nullopt);
   // Fast (no model loads): language, dictionary, gloss, methods.
   Card lookup(const Request &r);
   LanguageGuess language(const std::string &text, const std::string &answer);
@@ -94,7 +102,7 @@ class Core {
   Store &store();
   // Builds the dictionaries' indexes and loads language id: at launch, off the main thread (slow once per pack).
   void prepare();
-  // The packs changed on disk (installed, removed): look at the dictionaries again.
+  // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.
   void reload();
   Translator &translator();
 

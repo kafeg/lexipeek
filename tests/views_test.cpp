@@ -1,0 +1,255 @@
+// The card's view model, the facade's pack helpers, answers' versions, configure.
+#include <doctest/doctest.h>
+#include <fstream>
+#include "lexipeek/app.hpp"
+#include "lexipeek/core.hpp"
+#include "lexipeek/views.hpp"
+
+using namespace lexipeek;
+namespace fs = std::filesystem;
+using Style = CardRow::Style;
+
+namespace {
+
+Card word() {
+  Card c;
+  c.kind = Card::Kind::word;
+  c.text = "Häusern";
+  c.lang = "de", c.answer = "ru", c.lang_name = "German", c.answer_name = "Russian";
+  c.header = "das Haus (Hauses, pl. Häuser)";
+  c.base = "Haus";
+  c.entries = {{"InkPeek · de → ru", "дом", "<b>Haus</b> дом"}};
+  c.looks = 3;
+  c.methods = {{Method::fast, "Fast · Mozilla", true, ""},
+               {Method::direct, "Direct · OPUS-MT", false, "Not installed: opus-x"},
+               {Method::llm, "AI model · Hy-MT2", true, ""}};
+  c.method = Method::fast;
+  return c;
+}
+
+Card phrase() {
+  auto c = word();
+  c.kind = Card::Kind::phrase;
+  c.text = "Ich mache die Tür zu";
+  c.header = c.base = "";
+  c.entries = {};
+  c.gloss = {{"Ich", "ich", "я"}, {"Tür", "Tür", "дверь"}, {"die", "", ""}};
+  c.separable = {{"mache … zu", "zumachen", "закрывать"}};
+  return c;
+}
+
+}  // namespace
+
+TEST_CASE("views: a word opens on Dictionary with its header, entries and looks") {
+  auto c = word();
+  auto s = first_state(c);
+  CHECK(s.tab == CardTab::dictionary);
+  REQUIRE(s.has_method);
+  CHECK(s.method == Method::fast);
+  auto v = card_view(c, s);
+  CHECK(v.style == HeaderStyle::word);
+  CHECK(v.title == "das Haus (Hauses, pl. Häuser)");
+  CHECK(v.subtitle == "→ Haus");
+  CHECK(v.tooltip == "Häusern");
+  CHECK(v.badge == "de → ru");
+  CHECK(!v.wide);
+  CHECK(v.tabs);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].style == Style::entry);
+  CHECK(v.rows[0].label == "InkPeek · de → ru");
+  CHECK(v.rows[0].text == "дом");
+  CHECK(v.rows[0].html.empty());
+  CHECK(v.entry_toggle == "Full entry ⏎");
+  CHECK(!v.menu);
+  CHECK(v.looks == "Looked up 3×");
+  s.full_entry = true;
+  v = card_view(c, s);
+  CHECK(v.rows[0].html == "<b>Haus</b> дом");
+  CHECK(v.rows[0].text.empty());
+  CHECK(v.entry_toggle == "Short ⏎");
+  c.looks = 1;
+  CHECK(card_view(c, s).looks.empty());
+  c.header = "";
+  c.base = "";
+  v = card_view(c, s);
+  CHECK(v.title == "Häusern");
+  CHECK(v.subtitle.empty());
+}
+
+TEST_CASE("views: a word without entries opens on Translate; Dictionary says so") {
+  auto c = word();
+  c.entries = {};
+  auto s = first_state(c);
+  CHECK(s.tab == CardTab::translate);
+  s.tab = CardTab::dictionary;
+  auto v = card_view(c, s);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].style == Style::note);
+  CHECK(v.rows[0].text == "No entry in the dictionaries");
+  CHECK(v.entry_toggle.empty());
+}
+
+TEST_CASE("views: Translate — progress, the translation, an error, the methods' menu") {
+  auto c = word();
+  auto s = first_state(c);
+  s.tab = CardTab::translate;
+  s.translating = true;
+  auto v = card_view(c, s);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].style == Style::progress);
+  CHECK(v.rows[0].text == "Translating…");
+  CHECK(v.entry_toggle.empty());
+  REQUIRE(v.menu);
+  CHECK(v.menu_title == "Fast · Mozilla");
+  REQUIRE(v.methods.size() == 3);
+  CHECK(v.methods[1].title == "Direct · OPUS-MT — Not installed: opus-x");
+  CHECK(!v.methods[1].enabled);
+  CHECK(v.methods[2].enabled);
+  // A finished one stays while another method runs.
+  s.translated = true;
+  s.translation.text = "домам";
+  v = card_view(c, s);
+  CHECK(v.rows[0].style == Style::text);
+  CHECK(v.rows[0].text == "домам");
+  s.translation.error = "Cancelled";
+  CHECK(card_view(c, s).rows[0].style == Style::error);
+  CHECK(card_view(c, s).rows[0].text == "Cancelled");
+  s = {};
+  CHECK(card_view(c, s).menu_title == "No method available");
+  c.methods[0].available = false;
+  c.methods[0].reason = "No Mozilla model de-en (model-de-en)";
+  c.method.reset();
+  s = first_state(c);
+  CHECK(!s.has_method);
+  s.tab = CardTab::translate;
+  v = card_view(c, s);
+  CHECK(v.rows[0].text == "No Mozilla model de-en (model-de-en)");
+}
+
+TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
+  auto c = phrase();
+  auto s = first_state(c);
+  CHECK(s.tab == CardTab::translate);
+  auto v = card_view(c, s);
+  CHECK(v.style == HeaderStyle::phrase);
+  CHECK(v.title == "Ich mache die Tür zu");
+  CHECK(v.subtitle.empty());
+  CHECK(v.tabs);
+  CHECK(v.looks.empty());
+  s.tab = CardTab::dictionary;
+  v = card_view(c, s);
+  REQUIRE(v.rows.size() == 4);
+  CHECK(v.rows[0].style == Style::gloss);
+  CHECK(v.rows[0].label == "mache … zu (zumachen)");
+  CHECK(v.rows[0].text == "закрывать");
+  CHECK(v.rows[1].label == "Ich (ich)");
+  CHECK(v.rows[2].label == "Tür");
+  CHECK(v.rows[3].label == "die");
+  CHECK(v.rows[3].text.empty());
+  CHECK(v.entry_toggle.empty());
+  CHECK(!v.menu);
+}
+
+TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
+  auto c = phrase();
+  c.kind = Card::Kind::passage;
+  c.gloss = {};
+  c.separable = {};
+  auto s = first_state(c);
+  s.tab = CardTab::dictionary;  // ignored without tabs
+  auto v = card_view(c, s);
+  CHECK(v.style == HeaderStyle::passage);
+  CHECK(v.wide);
+  CHECK(!v.tabs);
+  CHECK(v.tab == CardTab::translate);
+  CHECK(v.menu);
+}
+
+TEST_CASE("views: same language, no pack, unknown language, nothing to translate with") {
+  auto c = phrase();
+  c.lang = "ru";
+  c.lang_name = "Russian";
+  c.methods = {};
+  auto v = card_view(c, first_state(c));
+  CHECK(v.badge == "Russian");
+  CHECK(v.rows[0].text == "Already in Russian.");
+  CHECK(!v.menu);
+  c.lang = c.lang_name = "";
+  c.other_name = "French";
+  v = card_view(c, first_state(c));
+  CHECK(v.badge.empty());
+  CHECK(v.rows[0].text == "No language pack from French into Russian yet.");
+  c.other_name = "";
+  CHECK(card_view(c, first_state(c)).rows[0].text == "Could not tell the language of this text.");
+  c.lang = "de";
+  CHECK(card_view(c, first_state(c)).rows[0].text == "Nothing can translate this text here.");
+  c.error = "broken index";
+  CHECK(card_view(c, first_state(c)).rows[0].text == "broken index");
+}
+
+TEST_CASE("views: what a pair needs, what removing it frees, answer languages") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "dict-de-ru", "kind": "dict", "from": "de", "to": "ru", "file": {"name": "a", "size": 1, "sha256": "d1"}},
+    {"id": "dict-fr-ru", "kind": "dict", "from": "fr", "to": "ru", "file": {"name": "b", "size": 1, "sha256": "d2"}},
+    {"id": "dict-de-en", "kind": "dict", "from": "de", "to": "en", "file": {"name": "c", "size": 1, "sha256": "d3"}},
+    {"id": "model-de-en", "kind": "model", "from": "de", "to": "en", "file": {"name": "d", "size": 1, "sha256": "m1"}},
+    {"id": "model-fr-en", "kind": "model", "from": "fr", "to": "en", "file": {"name": "e", "size": 1, "sha256": "m2"}},
+    {"id": "model-en-ru", "kind": "model", "from": "en", "to": "ru", "file": {"name": "f", "size": 1, "sha256": "m3"}},
+    {"id": "langid", "kind": "langid", "file": {"name": "g", "size": 1, "sha256": "l"}}]})");
+  std::map<std::string, std::string> have{{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"},
+                                          {"dict-fr-ru", "d2"}, {"model-fr-en", "m2"}};
+  CHECK(missing_ids(m, have, {"de", "en"}) == std::vector<std::string>{"dict-de-en"});
+  CHECK(missing_ids(m, have, {"de", "ru"}).empty());
+  // fr-ru still needs en-ru and langid.
+  CHECK(freed_ids(m, have, {"de", "ru"}) == std::vector<std::string>{"dict-de-ru", "model-de-en"});
+  CHECK(answer_languages(m) == std::vector<std::string>{"en", "ru"});
+}
+
+TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "opus-a", "kind": "opus", "covers": ["de-ru"], "file": {"name": "a", "size": 1, "sha256": "new"}},
+    {"id": "llm-b", "kind": "llm", "covers": ["de-ru"], "file": {"name": "b", "size": 1, "sha256": "x"}}]})");
+  std::string a = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+  std::string b = "60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752";
+  std::map<std::string, std::string> have{{"model-de-en", a}, {"model-en-ru", b}, {"opus-a", a}, {"llm-b", "hello"}};
+  // Kotlin: steps.joinToString { installed["model-$a-$b"] }.hashCode(), c.sha256.hashCode().
+  CHECK(answer_version(m, have, "de", "ru", Method::fast) == 189589710);
+  CHECK(answer_version(m, have, "de", "en", Method::fast) == -651348412);
+  CHECK(answer_version(m, have, "de", "ru", Method::direct) == -651348412);
+  CHECK(answer_version(m, have, "de", "ru", Method::llm) == 99162322);
+  CHECK(answer_version(m, {}, "fr", "ru", Method::direct) == 0);
+}
+
+TEST_CASE("core: configure changes the answer language and the method without a new core") {
+  auto d = fs::temp_directory_path() / "lexipeek-configure";
+  fs::remove_all(d);
+  CoreOptions o;
+  o.data = d;
+  Core core(o);
+  CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).answer == "ru");
+  Settings s;
+  s.answer = "en";
+  s.method = Method::direct;
+  core.configure(s);
+  CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).answer == "en");
+  CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli, .answer = "de"}).answer == "de");
+  fs::remove_all(d);
+}
+
+TEST_CASE("app: settings by data dir, method ids") {
+  auto d = (fs::temp_directory_path() / "lexipeek-app").string();
+  fs::remove_all(d);
+  auto s = app::settings(d);
+  CHECK(app::method_id(s).empty());
+  app::set_method(s, "llm");
+  CHECK(app::method_id(s) == "llm");
+  CHECK(app::save(d, s).empty());
+  CHECK(app::settings(d).method == Method::llm);
+  app::set_method(s, "");
+  CHECK(!s.method);
+  CHECK(app::method_id(Method::direct) == "direct");
+  CHECK(app::language("de") == "German");
+  CHECK(app::rows(d, app::device(8192, true)).empty());
+  CHECK(app::answers(d).empty());
+  fs::remove_all(d);
+}

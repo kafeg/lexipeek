@@ -2,18 +2,19 @@ import AppKit
 import LexiPeekCore
 import SwiftUI
 
-// The card. A word: its header and the dictionary first. A phrase: the translation first, word by word in Dictionary.
-// A passage: only its translation. The body scrolls inside a height limit; the card never outgrows half the screen.
+// The card: draws what the core's card_view says (header, tabs, rows, footer); the HTML of a full entry by AppKit.
+// The body scrolls inside a height limit; the card never outgrows half the screen.
 struct CardView: View {
     @ObservedObject var model: CardModel
     @FocusState private var focused: Bool
     var focusInput = false
     @State private var bodyHeight: CGFloat = 0
 
-    static func width(_ card: CardData?) -> CGFloat { card?.kind == .passage ? 460 : 400 }
+    static func width(_ look: CardLook?) -> CGFloat { look?.wide == true ? 460 : 400 }
     private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * 0.45 }
 
     var body: some View {
+        let look = model.look
         VStack(alignment: .leading, spacing: 10) {
             if let u = model.unread { unread(u) }
             if model.showInput {
@@ -22,19 +23,19 @@ struct CardView: View {
                     .focused($focused)
                     .onSubmit { model.lookup(model.input, source: .input) }
             }
-            if let card = model.card {
-                header(card)
-                if tabs(card) {
-                    Picker("", selection: $model.tab) {
-                        Text("Dictionary").tag(CardModel.Tab.dictionary)
-                        Text("Translate").tag(CardModel.Tab.translate)
+            if let look {
+                header(look)
+                if look.tabs {
+                    Picker("", selection: $model.state.tab) {
+                        Text("Dictionary").tag(lexipeek.CardTab.dictionary)
+                        Text("Translate").tag(lexipeek.CardTab.translate)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        if tabs(card) && model.tab == .dictionary { dictionary(card) } else { translate(card) }
+                        ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(GeometryReader { g in Color.clear.preference(key: HeightKey.self, value: g.size.height) })
@@ -46,22 +47,15 @@ struct CardView: View {
                     bodyHeight = $0
                     model.objectWillChange.send()
                 }
-                footer(card)
+                footer(look)
             } else if !model.showInput {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
         }
         .padding(14)
-        .frame(width: Self.width(model.card), alignment: .leading)
+        .frame(width: Self.width(look), alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear { focused = focusInput }
-    }
-
-    private func tabs(_ card: CardData) -> Bool {
-        switch card.kind {
-        case .word: true
-        case .phrase, .passage: !card.gloss.isEmpty || !card.separable.isEmpty
-        }
     }
 
     private func unread(_ u: (id: String, name: String)) -> some View {
@@ -79,90 +73,60 @@ struct CardView: View {
     }
 
     // Not selectable: a selectable Text drops its line limit on a click and spills over the card.
-    private func header(_ card: CardData) -> some View {
+    private func header(_ look: CardLook) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                switch card.kind {
+                switch look.style {
                 case .word:
-                    Text(card.header.isEmpty ? card.text : card.header).font(.title3.weight(.semibold)).lineLimit(1)
-                    if !card.base.isEmpty { Text("→ \(card.base)").foregroundStyle(.secondary) }
+                    Text(look.title).font(.title3.weight(.semibold)).lineLimit(1)
+                    if !look.subtitle.isEmpty { Text(look.subtitle).foregroundStyle(.secondary) }
                 case .phrase:
-                    Text(card.text).font(.headline).lineLimit(2).truncationMode(.tail)
-                case .passage:
-                    Text(card.text).font(.callout).foregroundStyle(.secondary).lineLimit(2).truncationMode(.tail)
+                    Text(look.title).font(.headline).lineLimit(2).truncationMode(.tail)
+                default:
+                    Text(look.title).font(.callout).foregroundStyle(.secondary).lineLimit(2).truncationMode(.tail)
                 }
             }
-            .help(card.text)
+            .help(look.tooltip)
             Spacer(minLength: 8)
-            if !badge(card).isEmpty { Text(badge(card)).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            if !look.badge.isEmpty { Text(look.badge).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             Button { model.pinned.toggle() } label: { Image(systemName: model.pinned ? "pin.fill" : "pin") }
                 .buttonStyle(.borderless)
                 .help("Keep the card open (⌘P)")
         }
     }
 
-    private func badge(_ card: CardData) -> String {
-        if card.lang.isEmpty { return "" }
-        return card.lang == card.answer ? card.langName : "\(card.lang) → \(card.answer)"
-    }
-
     @ViewBuilder
-    private func dictionary(_ card: CardData) -> some View {
-        if card.kind == .word {
-            if card.entries.isEmpty { Text("No entry in the dictionaries").foregroundStyle(.secondary) }
-            ForEach(card.entries.indices, id: \.self) { i in
-                let e = card.entries[i]
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(e.dictionary).font(.caption).foregroundStyle(.secondary)
-                    (model.fullEntry ? Text(Self.html(e.article)) : Text(e.line))
-                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                }
+    private func row(_ r: CardLook.Row) -> some View {
+        switch r.style {
+        case .entry:
+            VStack(alignment: .leading, spacing: 2) {
+                Text(r.label).font(.caption).foregroundStyle(.secondary)
+                (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html)))
+                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
-        } else {
-            ForEach(Array((card.separable + card.gloss).enumerated()), id: \.offset) { _, g in
-                (Text(g.base.isEmpty || g.base == g.word ? g.word : "\(g.word) (\(g.base))").bold()
-                    + Text(g.meaning.isEmpty ? "" : "  \(g.meaning)").foregroundColor(.secondary))
-                    .lineLimit(1).truncationMode(.tail)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func translate(_ card: CardData) -> some View {
-        if card.lang == card.answer && !card.lang.isEmpty {
-            Text("Already in \(card.answerName).").foregroundStyle(.secondary)
-        } else if card.lang.isEmpty {
-            Text(card.other.isEmpty ? "Could not tell the language of this text."
-                 : "No language pack from \(card.other) into \(card.answerName) yet.")
-                .foregroundStyle(.secondary)
-        } else if card.methods.isEmpty {
-            Text(card.error.isEmpty ? "Nothing can translate this text here." : card.error).foregroundStyle(.secondary)
-        } else if let t = model.translation {
-            if t.error.isEmpty {
-                Text(t.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text(t.error).foregroundStyle(.red)
-            }
-        } else if model.translating {
+        case .gloss:
+            (Text(r.label).bold() + Text(r.text.isEmpty ? "" : "  \(r.text)").foregroundColor(.secondary))
+                .lineLimit(1).truncationMode(.tail)
+        case .text:
+            Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .error:
+            Text(r.text).foregroundStyle(.red)
+        case .progress:
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
-                Text("Translating…").foregroundStyle(.secondary)
+                Text(r.text).foregroundStyle(.secondary)
             }
-        } else if model.method == nil {
-            Text(card.methods.first?.reason ?? "").foregroundStyle(.secondary)
+        default:
+            Text(r.text).foregroundStyle(.secondary)
         }
     }
 
-    @ViewBuilder
-    private func footer(_ card: CardData) -> some View {
-        let dict = tabs(card) && model.tab == .dictionary
+    private func footer(_ look: CardLook) -> some View {
         HStack {
-            if dict && card.kind == .word && !card.entries.isEmpty {
-                Button(model.fullEntry ? "Short ⏎" : "Full entry ⏎") { model.fullEntry.toggle() }.buttonStyle(.link)
-            }
-            if !dict && !card.methods.isEmpty { methods(card) }
+            if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link) }
+            if look.menu { methods(look) }
             Spacer()
-            if card.kind == .word && card.looks > 1 { Text("Looked up \(card.looks)×").foregroundStyle(.secondary) }
+            if !look.looks.isEmpty { Text(look.looks).foregroundStyle(.secondary) }
         }
         .font(.caption)
     }
@@ -179,17 +143,13 @@ struct CardView: View {
     }
 
     // The current method by name; the others in its menu, unavailable ones dimmed with the reason.
-    private func methods(_ card: CardData) -> some View {
-        let current = card.methods.first { $0.id == model.method }
-        return Menu {
-            ForEach(card.methods) { m in
-                Button { model.choose(m.id) } label: {
-                    Text(m.available ? m.name : "\(m.name) — \(m.reason)")
-                }
-                .disabled(!m.available)
+    private func methods(_ look: CardLook) -> some View {
+        Menu {
+            ForEach(look.methods) { m in
+                Button { model.choose(m.id) } label: { Text(m.title) }.disabled(!m.enabled)
             }
         } label: {
-            Text(current?.name ?? "No method available")
+            Text(look.menuTitle)
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

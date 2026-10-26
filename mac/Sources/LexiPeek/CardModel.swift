@@ -1,18 +1,60 @@
 import Foundation
 import LexiPeekCore
 
-// The card's state: one request at a time, its translation by the chosen method.
-final class CardModel: ObservableObject {
-    enum Tab { case dictionary, translate }
+// What the card draws, copied out of the core's CardView.
+struct CardLook {
+    struct Row {
+        var style: lexipeek.CardRow.Style
+        var label: String
+        var text: String
+        var html: String
+    }
 
+    struct Item: Identifiable {
+        var id: lexipeek.Method
+        var title: String
+        var enabled: Bool
+    }
+
+    var style = lexipeek.HeaderStyle.word
+    var title = ""
+    var subtitle = ""
+    var tooltip = ""
+    var badge = ""
+    var wide = false
+    var tabs = false
+    var tab = lexipeek.CardTab.translate
+    var rows: [Row] = []
+    var entryToggle = ""
+    var menu = false
+    var menuTitle = ""
+    var methods: [Item] = []
+    var looks = ""
+
+    init(_ v: lexipeek.CardView) {
+        style = v.style
+        title = String(v.title)
+        subtitle = String(v.subtitle)
+        tooltip = String(v.tooltip)
+        badge = String(v.badge)
+        wide = v.wide
+        tabs = v.tabs
+        tab = v.tab
+        rows = v.rows.map { Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html)) }
+        entryToggle = String(v.entry_toggle)
+        menu = v.menu
+        menuTitle = String(v.menu_title)
+        methods = v.methods.map { Item(id: $0.method, title: String($0.title), enabled: $0.enabled) }
+        looks = String(v.looks)
+    }
+}
+
+// The card's state: one request at a time, its translation by the chosen method; the core says what it shows.
+final class CardModel: ObservableObject {
     @Published var input = ""
     @Published var showInput = false
-    @Published var card: CardData?
-    @Published var tab = Tab.translate
-    @Published var method: lexipeek.Method?
-    @Published var translation: TranslationData?
-    @Published var translating = false
-    @Published var fullEntry = false
+    @Published var card: lexipeek.Card?
+    @Published var state = lexipeek.CardState()
     @Published var pinned = false
     // The hotkey found no selection in this app (bundle id, name): the card says so and offers Cmd+C there.
     @Published var unread: (id: String, name: String)?
@@ -23,49 +65,51 @@ final class CardModel: ObservableObject {
 
     init(client: CoreClient) { self.client = client }
 
+    var look: CardLook? { card.map { CardLook(lexipeek.card_view($0, state)) } }
+
     func reset(input: Bool) {
         request = 0
         self.input = ""
         showInput = input
         card = nil
-        translation = nil
-        translating = false
-        fullEntry = false
+        state = lexipeek.CardState()
         unread = nil
     }
 
     func lookup(_ text: String, source: lexipeek.Source) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        translation = nil
-        translating = false
-        fullEntry = false
+        state = lexipeek.CardState()
         request = client.lookup(t, source: source) { [weak self] id, card in
             guard let self, id == self.request else { return }
+            var s = lexipeek.first_state(card)
+            if Snapshot.dictionary { s.tab = .dictionary }
             self.card = card
-            self.tab = (card.kind == .word && !card.entries.isEmpty) || Snapshot.dictionary ? .dictionary : .translate
-            self.method = card.method
-            if let m = card.method { self.translate(m) }
+            self.state = s
+            if s.has_method { self.translate(s.method) }
         }
     }
 
     func translate(_ m: lexipeek.Method) {
         guard request != 0 else { return }
-        method = m
-        translating = true
+        state.has_method = true
+        state.method = m
+        state.translating = true
         let id = request
         client.translate(id, method: m) { [weak self] t in
-            guard let self, id == self.request, m == self.method else { return }
-            self.translation = t
-            self.translating = false
+            guard let self, id == self.request, self.state.has_method, m == self.state.method else { return }
+            self.state.translation = t
+            self.state.translated = true
+            self.state.translating = false
         }
     }
 
     // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
     func choose(_ m: lexipeek.Method) {
-        Prefs.shared.method = m == .fast ? "fast" : m == .direct ? "direct" : "llm"
+        Prefs.shared.method = String(lexipeek.app.method_id(m))
         translate(m)
     }
 
-    func switchTab() { tab = tab == .dictionary ? .translate : .dictionary }
+    func switchTab() { state.tab = state.tab == .dictionary ? .translate : .dictionary }
+    func toggleEntry() { state.full_entry.toggle() }
 }

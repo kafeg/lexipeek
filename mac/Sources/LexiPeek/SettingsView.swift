@@ -213,7 +213,7 @@ struct TranslationPane: View {
     @ObservedObject var prefs: Prefs
 
     private var answers: [String] {
-        let a = lexipeek.mac.answers(std.string()).map { String($0) }
+        let a = lexipeek.app.answers(std.string()).map { String($0) }
         return a.contains(prefs.answer) ? a : [prefs.answer] + a
     }
 
@@ -222,7 +222,7 @@ struct TranslationPane: View {
             Section {
                 Picker("Translate into", selection: $prefs.answer) {
                     ForEach(answers, id: \.self) { code in
-                        Text(String(lexipeek.mac.name_of(std.string(code)))).tag(code)
+                        Text(String(lexipeek.app.language(std.string(code)))).tag(code)
                     }
                 }
                 Picker("Method", selection: $prefs.method) {

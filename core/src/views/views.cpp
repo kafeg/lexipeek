@@ -45,4 +45,101 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
   return rows;
 }
 
+std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair) {
+  std::vector<std::string> ids;
+  for (auto &c : needed(m, {pair}))
+    if (!installed.contains(c.id)) ids.push_back(c.id);
+  return ids;
+}
+
+std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair) {
+  std::vector<LangPair> have;
+  for (auto &r : pack_rows(m, installed))
+    if (r.installed) have.push_back({r.from, r.to});
+  std::vector<std::string> ids;
+  for (auto &c : freed(m, have, pair)) ids.push_back(c.id);
+  return ids;
+}
+
+std::vector<std::string> answer_languages(const Manifest &m) {
+  std::vector<std::string> out;
+  for (auto &p : pairs(m))
+    if (std::find(out.begin(), out.end(), p.to) == out.end()) out.push_back(p.to);
+  std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return language_name(a) < language_name(b); });
+  return out;
+}
+
+CardTab first_tab(const Card &c) { return c.kind == Card::Kind::word && !c.entries.empty() ? CardTab::dictionary : CardTab::translate; }
+
+CardState first_state(const Card &c) {
+  CardState s;
+  s.tab = first_tab(c);
+  s.has_method = c.method.has_value();
+  s.method = c.method.value_or(Method::fast);
+  return s;
+}
+
+namespace {
+
+using Style = CardRow::Style;
+
+std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
+  std::vector<CardRow> rows;
+  if (c.kind == Card::Kind::word) {
+    if (c.entries.empty()) rows.push_back({Style::note, "", "No entry in the dictionaries", ""});
+    for (auto &e : c.entries) rows.push_back({Style::entry, e.dictionary, s.full_entry ? "" : e.line, s.full_entry ? e.article : ""});
+    return rows;
+  }
+  auto all = c.separable;
+  all.insert(all.end(), c.gloss.begin(), c.gloss.end());
+  for (auto &g : all) rows.push_back({Style::gloss, g.base.empty() || g.base == g.word ? g.word : g.word + " (" + g.base + ")", g.meaning, ""});
+  return rows;
+}
+
+std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
+  auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
+  if (!c.lang.empty() && c.lang == c.answer) return note("Already in " + c.answer_name + ".");
+  if (c.lang.empty())
+    return note(c.other_name.empty() ? "Could not tell the language of this text."
+                                     : "No language pack from " + c.other_name + " into " + c.answer_name + " yet.");
+  if (c.methods.empty()) return note(c.error.empty() ? "Nothing can translate this text here." : c.error);
+  if (s.translated)
+    return {s.translation.ok() ? CardRow{Style::text, "", s.translation.text, ""} : CardRow{Style::error, "", s.translation.error, ""}};
+  if (s.translating) return {{Style::progress, "", "Translating…", ""}};
+  if (!s.has_method) return note(c.methods.front().reason);
+  return {};
+}
+
+}  // namespace
+
+CardView card_view(const Card &c, const CardState &s) {
+  CardView v;
+  v.tooltip = c.text;
+  if (c.kind == Card::Kind::word) {
+    v.style = HeaderStyle::word;
+    v.title = c.header.empty() ? c.text : c.header;
+    if (!c.base.empty()) v.subtitle = "→ " + c.base;
+  } else {
+    v.style = c.kind == Card::Kind::phrase ? HeaderStyle::phrase : HeaderStyle::passage;
+    v.title = c.text;
+  }
+  if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang_name : c.lang + " → " + c.answer;
+  v.wide = v.style == HeaderStyle::passage;
+  v.tabs = c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty();
+  v.tab = v.tabs ? s.tab : CardTab::translate;
+  bool dict = v.tab == CardTab::dictionary;
+  v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
+  if (dict && c.kind == Card::Kind::word && !c.entries.empty()) v.entry_toggle = s.full_entry ? "Short ⏎" : "Full entry ⏎";
+  v.menu = !dict && !c.methods.empty();
+  if (v.menu) {
+    v.menu_title = "No method available";
+    for (auto &m : c.methods) {
+      v.methods.push_back({m.method, m.available ? m.name : m.name + " — " + m.reason, m.available});
+      if (s.has_method && m.method == s.method) v.menu_title = m.name;
+    }
+  }
+  if (c.kind == Card::Kind::word && c.looks > 1) v.looks = "Looked up " + std::to_string(c.looks) + "×";
+  return v;
+}
+
 }  // namespace lexipeek
