@@ -135,7 +135,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   In the card: ←/→ switch tabs, Return opens the full entry.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
-  one-line PopClip extension uses it).
+  one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.
 - **Per-app rules:** apps where the hotkey does nothing, apps where Cmd+C is allowed (off by default).
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · language pair · Settings… ⌘, · Quit.
 - **Settings:** General (hotkeys, open at login, updates) · Packs (a language pair → its dictionary and a model per

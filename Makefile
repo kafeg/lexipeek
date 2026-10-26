@@ -1,9 +1,13 @@
-# Build the core and lexipeek-cli (CMake + vcpkg manifest from the vcpkg submodule).
+# Build the core and lexipeek-cli (CMake + vcpkg manifest from the vcpkg submodule); the macOS app in mac/ (XcodeGen).
 BUILD ?= build
 TYPE ?= Release
 GEN := $(shell command -v ninja >/dev/null 2>&1 && echo "-G Ninja")
 
-.PHONY: deps build test bench asan clean
+.PHONY: deps build test bench asan clean app app-test install
+# The app's signing identity: ad-hoc by default (Accessibility must then be granted again after each build).
+SIGN ?= -
+APP := mac/build/Build/Products/Release/LexiPeek.app
+XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDataPath mac/build CODE_SIGN_IDENTITY="$(SIGN)"
 
 deps:
 	git submodule update --init vcpkg tests/inkpeek engines/fasttext engines/llama engines/pcre2
@@ -22,5 +26,21 @@ bench: build
 asan:
 	$(MAKE) test BUILD=build-asan TYPE=RelWithDebInfo CMAKE_ARGS=-DLEXIPEEK_SANITIZE=ON
 
+app: build
+	cd mac && xcodegen generate --quiet
+	$(XCODE) -configuration Release build -quiet
+
+app-test:
+	cd mac && xcodegen generate --quiet
+	$(XCODE) -configuration Debug test -quiet
+
+# In place: deleting the bundle first would drop its Accessibility entry.
+install: app
+	-pkill -x LexiPeek
+	mkdir -p /Applications/LexiPeek.app
+	rsync -a --delete $(APP)/ /Applications/LexiPeek.app/
+	/System/Library/CoreServices/pbs -update
+	open /Applications/LexiPeek.app
+
 clean:
-	rm -rf build build-asan
+	rm -rf build build-asan mac/build mac/LexiPeek.xcodeproj

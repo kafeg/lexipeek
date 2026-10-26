@@ -1,0 +1,5 @@
+module LexiPeekCore {
+  header "LexiPeekBridge.hpp"
+  requires cplusplus
+  export *
+}

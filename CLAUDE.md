@@ -21,6 +21,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Models (M0, by hand; M1: the pack manager): `scripts/fetch-models.sh <data-dir> <id>…` from InkPeek's `packs`
   release, sha256 checked; layout as InkPeek's (`models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`, `langid.ftz`).
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
+- App (macOS): `make app` (core + `mac/` by XcodeGen, Release, ad-hoc signed; `SIGN=<identity>` keeps the
+  Accessibility grant across builds), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
+  (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
+  `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`; `LEXIPEEK_SNAPSHOT=<dir>` makes the app write
+  its own card and settings as PNGs (no Screen Recording needed).
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`.
 
 ## Code layout and gotchas
@@ -36,6 +41,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
 - CI (`.github/workflows/ci.yml`): macOS arm64, Linux x64, Windows x64, Linux ASan + UBSan; models from the packs
   release on macOS and Linux (cached), none on Windows.
+- `mac/`: `cmake/apple_bundle.cmake` walks `lexipeek_core`'s link closure and `libtool`s it into
+  `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
+  `mac/Bridge` (module `LexiPeekCore`: `lexipeek::mac::Engine`, a copyable `shared_ptr<Core>` built from strings).
+  `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
+  serial queues (look-ups, one translation worker), a newer request turns older ones into no-ops.
+- A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 
 ## Rules

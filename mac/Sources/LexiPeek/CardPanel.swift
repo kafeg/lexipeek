@@ -1,0 +1,121 @@
+import AppKit
+import Combine
+import LexiPeekCore
+import LexiPeekKit
+import SwiftUI
+
+// A non-activating panel: the frontmost app keeps focus; the panel becomes key only for typing.
+final class CardPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
+// Shows the card at the selection or the cursor, keeps its top edge and its height while it is open.
+final class CardController {
+    private static let escapeKey: UInt32 = 100, pinKey: UInt32 = 101
+
+    let model: CardModel
+    private let panel: CardPanel
+    private let effect = NSVisualEffectView()
+    private var hosting: NSHostingView<CardView>?
+    private var screen = CGRect.zero
+    private var monitors: [Any] = []
+    private var changes: AnyCancellable?
+
+    var isVisible: Bool { panel.isVisible }
+
+    init(model: CardModel) {
+        self.model = model
+        panel = CardPanel(contentRect: NSRect(x: 0, y: 0, width: 400, height: 120),
+                          styleMask: [.nonactivatingPanel, .borderless], backing: .buffered, defer: true)
+        panel.level = .popUpMenu
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        effect.material = .popover
+        effect.blendingMode = .behindWindow
+        effect.state = .active
+        effect.wantsLayer = true
+        effect.layer?.cornerRadius = 12
+        effect.layer?.masksToBounds = true
+        panel.contentView = effect
+        changes = model.objectWillChange.sink { [weak self] in DispatchQueue.main.async { self?.fit() } }
+    }
+
+    // text nil: the input field (focused at once when typing was asked for).
+    func show(text: String?, source: lexipeek.Source, bounds: CGRect?, focus: Bool) {
+        close()
+        model.reset(input: text == nil)
+        let view = CardView(model: model, focusInput: focus)
+        hosting?.removeFromSuperview()
+        let h = NSHostingView(rootView: view)
+        h.translatesAutoresizingMaskIntoConstraints = true
+        effect.addSubview(h)
+        hosting = h
+        let mouse = NSEvent.mouseLocation
+        let anchor = bounds ?? CGRect(origin: mouse, size: .zero)
+        let scr = NSScreen.screens.first { $0.frame.contains(anchor.origin) } ?? NSScreen.main
+        screen = scr?.visibleFrame ?? .zero
+        let size = h.fittingSize
+        panel.setFrame(Placement.frame(size: size, anchor: anchor, screen: screen), display: false)
+        layout()
+        if let text { model.lookup(text, source: source) }
+        if focus { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
+        watch()
+    }
+
+    func close() {
+        guard panel.isVisible else { return }
+        panel.orderOut(nil)
+        model.pinned = false
+        Hotkeys.shared.unregister(Self.escapeKey)
+        Hotkeys.shared.unregister(Self.pinKey)
+        monitors.forEach(NSEvent.removeMonitor)
+        monitors = []
+    }
+
+    // Esc and ⌘P as hotkeys while the card is open: they work while another app has the focus.
+    private func watch() {
+        Hotkeys.shared.register(Self.escapeKey, Shortcut(keyCode: 0x35, modifiers: 0, key: "⎋")) { [weak self] in self?.close() }
+        Hotkeys.shared.register(Self.pinKey, Shortcut(keyCode: 0x23, modifiers: Shortcut.cmd, key: "P")) { [weak self] in
+            self?.model.pinned.toggle()
+        }
+        if let m = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
+            guard let self, !self.model.pinned else { return }
+            self.close()
+        }) { monitors.append(m) }
+        if let m = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: { [weak self] e in self?.key(e) ?? e }) {
+            monitors.append(m)
+        }
+    }
+
+    // In the card (when it has the focus): ←/→ tabs, Return the full entry; the input field keeps its own keys.
+    private func key(_ e: NSEvent) -> NSEvent? {
+        guard e.window === panel, model.card != nil, !(panel.firstResponder is NSTextView) else { return e }
+        switch e.keyCode {
+        case 0x7B, 0x7C: model.switchTab()
+        case 0x24: model.fullEntry.toggle()
+        default: return e
+        }
+        return nil
+    }
+
+    private func fit() {
+        guard panel.isVisible, let h = hosting else { return }
+        let height = min(max(h.fittingSize.height, panel.frame.height), screen.height)
+        if height != panel.frame.height {
+            panel.setFrame(Placement.resized(panel.frame, height: height, screen: screen), display: true)
+        }
+        layout()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { Snapshot.write(self.effect, "card.png") }
+    }
+
+    private func layout() {
+        effect.frame = NSRect(origin: .zero, size: panel.frame.size)
+        hosting?.frame = effect.bounds
+        panel.invalidateShadow()
+    }
+}

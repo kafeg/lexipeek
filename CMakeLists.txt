@@ -51,6 +51,9 @@ endfunction()
 
 add_subdirectory(core)
 add_subdirectory(cli)
+if(APPLE)
+  include(cmake/apple_bundle.cmake)
+endif()
 
 enable_testing()
 add_subdirectory(tests)
