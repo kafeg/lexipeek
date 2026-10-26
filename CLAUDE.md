@@ -18,8 +18,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `make test` — ctest: `core` (doctest, `tests/*_test.cpp`), `engine-pins`, `cli-usage`. Model tests run when
   `LEXIPEEK_MODELS` names a data dir with the models, else they say "skipped".
 - `make asan` — the same with ASan + UBSan on our code (`build-asan/`). `make bench` — `lexipeek-cli bench`.
-- Models (M0, by hand; M1: the pack manager): `scripts/fetch-models.sh <data-dir> <id>…` from InkPeek's `packs`
-  release, sha256 checked; layout as InkPeek's (`models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`, `langid.ftz`).
+- Packs: `lexipeek-cli packs list | status | install <id>… | remove <id>… | update [--base URL]` from InkPeek's `packs`
+  release (sha256, resumable); layout as InkPeek's (`dicts/<id>/`, `models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`,
+  `langid.ftz`, `installed.json`). CI still fetches models with `scripts/fetch-models.sh` (cache key, runs before the build).
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
@@ -30,6 +31,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   chunks), `library` (lookup across packs, heads, gloss, separable verbs, rank). `core/src/text/`: PCRE2 wrapper, InkPeek's
   lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card`, language by
   the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv`.
+- `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
+  progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
   thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).
 - Sentences: `mt/sentences.cpp`, UAX #29 as ICU without suppressions; table `mt/sentence_break.inc` from
