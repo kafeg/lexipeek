@@ -48,7 +48,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, self.settingsState.trusted != Selection.trusted else { return }
             self.settingsState.trusted = Selection.trusted
         }
-        if Snapshot.dir != nil { snapshotSettings() }
+        if Snapshot.dir != nil {
+            Snapshot.start { [weak self] in self?.application(NSApp, open: [$0]) }
+            snapshotSettings()
+            return
+        }
         if !Selection.trusted && !UserDefaults.standard.bool(forKey: "onboarded") {
             UserDefaults.standard.set(true, forKey: "onboarded")
             openSettings(.permissions)
@@ -57,6 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
+            if Snapshot.take(url) {
+                card.show(text: nil, source: .input, bounds: nil, focus: false)
+                model.unread = ("com.example.app", "Example")
+                continue
+            }
             switch LookupURL(url) {
             case .lookup(let t): card.show(text: t, source: .url, bounds: nil, focus: false)
             case .input: card.show(text: nil, source: .input, bounds: nil, focus: true)
@@ -124,13 +133,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
-    // Each settings pane drawn off screen, without showing a window.
+    // Each settings pane in the real window (with its toolbar), off screen; settings.done when all are written.
     private func snapshotSettings() {
-        for pane in SettingsPane.allCases {
-            let w = NSWindow(contentViewController: NSHostingController(rootView: SettingsWindow.view(pane, state: SettingsState(), client: client)))
-            w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { Snapshot.write(w.contentView, "settings-\(pane.rawValue).png") }
+        let w = SettingsWindow.make(state: SettingsState(), client: client)
+        w.setFrameOrigin(NSPoint(x: -10000, y: -10000))
+        w.orderBack(nil)
+        func shot(_ i: Int) {
+            guard i < SettingsPane.allCases.count else { w.orderOut(nil); Snapshot.mark("settings.done"); return }
+            let pane = SettingsPane.allCases[i]
+            SettingsWindow.select(w, pane)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                Snapshot.write(w.contentView?.superview, "settings-\(pane.rawValue).png")
+                Snapshot.writeEnd(w.contentView?.superview, "settings-\(pane.rawValue)-end.png")
+                shot(i + 1)
+            }
         }
+        shot(0)
     }
 
     // Rebuilt on every open: hotkey labels and Recents stay current.

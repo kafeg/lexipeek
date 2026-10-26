@@ -3,7 +3,7 @@ BUILD ?= build
 TYPE ?= Release
 GEN := $(shell command -v ninja >/dev/null 2>&1 && echo "-G Ninja")
 
-.PHONY: deps build test bench asan clean app app-test install
+.PHONY: deps build test bench asan clean app app-test install snapshots
 # The app's signing identity: ad-hoc by default (Accessibility must then be granted again after each build).
 SIGN ?= -
 APP := mac/build/Build/Products/Release/LexiPeek.app
@@ -34,6 +34,10 @@ app: build
 app-test:
 	cd mac && xcodegen generate --quiet
 	$(XCODE) -configuration Debug test -quiet
+
+# The app's own PNGs of a fixed set of cards and the settings panes, light and dark: build/snapshots/index.html.
+snapshots: app
+	scripts/snapshots.sh
 
 # In place: deleting the bundle first would drop its Accessibility entry; the build's copy stops claiming lexipeek://.
 install: app

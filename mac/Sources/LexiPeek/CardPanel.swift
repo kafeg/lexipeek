@@ -98,7 +98,8 @@ final class CardController {
         layout()
         if let text { model.lookup(text, source: source) }
         if focus { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
-        watch()
+        // Snapshot mode: no Esc, ⌘P or outside clicks (the person keeps using the Mac meanwhile).
+        if Snapshot.dir == nil { watch() }
     }
 
     func close() {
@@ -148,7 +149,7 @@ final class CardController {
             panel.setFrame(f, display: true)
         }
         layout()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { Snapshot.write(self.effect, "card.png") }
+        Snapshot.card(effect, model)
     }
 
     private func layout() {
