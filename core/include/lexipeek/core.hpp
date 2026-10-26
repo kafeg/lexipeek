@@ -93,6 +93,10 @@ struct Card {
   int more = 0;                  // the text's words past the gloss's limit
   int rank = 0;                  // the word's rank in its language's frequency list (0: not in it)
   std::int64_t looks = 0;        // looks of the word here, across its forms (this one included)
+  // What ☆ saves (InkPeek's saveKey): a word as its base form, also after its article ("das Haus" → "Haus"), else the text.
+  std::string save_text, save_kind;  // save_kind: "word" / "phrase"
+  std::string save_line;             // the dictionary's first line of that word, "" for a phrase
+  bool saved = false;                // saved as save_text or as the text itself
   std::vector<MethodState> methods;
   std::optional<Method> method;  // the one to translate with (the setting, else the first available)
   std::string error;
@@ -136,9 +140,13 @@ class Core {
   void cancel();
   // Memory pressure, idle: frees the held model.
   void release();
+  // ☆: saves the card's save_text with one short line (its translation, else the dictionary's), or removes it
+  // (and the text itself, saved so before); → whether it is saved now.
+  bool toggle_saved(const Card &card, const std::string &translation);
   // The newest looks, one per word (the menu's Recents).
   std::vector<Seen> recents(int n);
   Store &store();
+  std::string answer();  // the answer language of the next cards
   // Builds the dictionaries' indexes and loads language id: at launch, off the main thread (slow once per pack).
   void prepare();
   // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.

@@ -28,11 +28,16 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
   (word, full entry with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
-  to the end, same language, no pack, unknown, input, selection failed) and every settings pane in its toolbar window, light and dark, into
-  `build/snapshots/index.html`. **Look at every image before handing over UI work**; a new card state → a new case
+  to the end, same language, no pack, unknown, input, selection failed, saved ★), the Notes window's three tabs and every
+  settings pane in its toolbar window, light and dark, into `build/snapshots/index.html`. **Look at every image before
+  handing over UI work**. The run is invisible
+  (accessory app, windows off screen, no menu-bar item, no hotkeys, never activated): it must never show a window on
+  the owner's screen; a new card state → a new case
   in the script. How: `LEXIPEEK_SNAPSHOT=<dir>` (`Snapshot.swift`) — the app reads `lexipeek://…&snap=<name>[&tab=
-  dictionary][&full=1][&open=<word>][&section=<key>]` (open: a word clicked in the card; section: entry 0's) from `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
-  `<name>-end.png` when the body scrolls, then `<name>.done`; no Esc/⌘P/outside-click closing; packs symlinked from
+  dictionary][&full=1][&open=<word>][&section=<key>]` (open: a word clicked in the card; section: entry 0's) from
+  `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
+  `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final,
+  `lexipeek://notes?tab=words|phrases|history&snap=<name>` shoots Notes; no Esc/⌘P/outside-click closing; packs symlinked from
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
 
@@ -40,8 +45,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`, `core.hpp`, `views.hpp`, `app.hpp`);
   `core/src/<module>/` — one folder per module of the spec's Architecture, empty ones are stubs for their milestone.
 - `core/src/views/`: `views` — what screens show: `card_view(Card, CardState)` → `CardView` (header and its style, badge,
-  tabs and the open one, body rows per tab, every state's text, footer: "←", method menu, "Full entry ⏎", a section's pager),
-  `first_state`, the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`); `app` — the facade for
+  tabs and the open one, body rows per tab, every state's text, ☆, footer: "←", method menu, "Full entry ⏎", a section's pager),
+  `first_state`, Notes (`notes_view`, `remove_note`: Words · Phrases · History rows), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`); `app` — the facade for
   Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
   no `std::function` / `std::filesystem::path` / `std::optional` in what Swift calls.
 - `Core::configure(Settings)` applies the answer language and method to the next cards; `Core::reload()` after a
@@ -77,6 +82,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
   The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. A clicked word
   (row `link`) opens in the same card; `CardModel` keeps the cards before it (`CardState.before` names the last), "←" restores them.
+  ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`; `NotesWindow`
+  draws `notes_view` and reloads on `.notesChanged` (posted by the card). ⌘S is a local key (not a hotkey: a pinned
+  card would steal the frontmost app's Save).
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker), a newer request turns older ones into no-ops.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.

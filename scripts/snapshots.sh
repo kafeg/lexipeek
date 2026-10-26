@@ -1,5 +1,5 @@
 #!/bin/sh
-# The app's own snapshots of a fixed set of cards and of every settings pane, light and dark, + index.html.
+# The app's own snapshots of a fixed set of cards, of Notes and of every settings pane, light and dark, + index.html.
 # Usage: scripts/snapshots.sh [out-dir]   (after `make app`; packs from the default data dir or LEXIPEEK_DATA)
 set -eu
 cd "$(dirname "$0")/.."
@@ -32,7 +32,8 @@ Ende gab ihr Chef ihr die Hand und sagte, er freue sich auf die Zusammenarbeit. 
 der Schnee schmolz, und Anna lachte zum ersten Mal seit Wochen ohne Grund. Zu Hause rief sie ihre Schwester an \
 und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
-# name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry)
+# name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
+# notes?tab=…: the Notes window, after the cards that fill it)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
@@ -55,6 +56,14 @@ unknown-symbols|lookup?text=+++ 42 ### 17 *** 9
 unknown-words|lookup?text=Blorvik tanquo meseral fintu dravok.
 input|input
 selection-failed|unread
+word-saved|lookup?text=Häusern&save=1
+word-baume-saved|lookup?text=Bäume&tab=dictionary&save=1
+article-saved|lookup?text=das Haus
+phrase-saved|lookup?text=Ich mache die Tür zu&save=1
+passage-saved|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&save=1
+notes-words|notes?tab=words
+notes-phrases|notes?tab=phrases
+notes-history|notes?tab=history
 EOF
 }
 

@@ -57,6 +57,7 @@ struct CardState {
   bool full_entry = false;
   SectionPage section;  // the entry's section open on Dictionary (key "": none)
   std::string before;   // the text this card was opened from ("" = none): "←" goes back to it
+  bool saved = false;  // ★: the card's text is in Notes
 };
 
 // One line of the card's body.
@@ -104,6 +105,8 @@ struct CardView {
   std::string pager;  // a section's page: "21–40 of 63", "" (one page)
   bool prev = false, next = false;  // the section has a page before, after
   bool footer = false;              // anything in the footer (else it is not drawn)
+  std::string star;       // "☆", "★" (saved), "" (nothing to save)
+  std::string star_help;  // "Save to Notes", "Remove from Notes"
 };
 
 // The tab a new card opens on: Dictionary for a word with entries, else Translate.
@@ -113,5 +116,26 @@ CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
 // The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
 std::string frequency(int rank);
+
+// Notes: saved words, saved phrases (a passage counts as one), the history; newest first.
+enum class NotesTab { words, phrases, history };
+
+struct NotesRow {
+  std::string text;   // what opens the card
+  std::string line;   // one short line: the saved meaning, else the newest answer, else "—"
+  std::string looks;  // History: "3×"; "" elsewhere
+};
+
+struct NotesView {
+  std::vector<std::string> tabs;  // "Words (3)", "Phrases (1)", "History (12)"
+  NotesTab tab = NotesTab::words;
+  std::vector<NotesRow> rows;
+  std::string empty;   // shown instead of rows when there are none
+  bool clear = false;  // "Clear history" under the list
+};
+
+NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer);
+// ✕ of a row: unsave, or forget the look.
+std::string remove_note(Store &s, NotesTab tab, const std::string &text);
 
 }  // namespace lexipeek

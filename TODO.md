@@ -23,4 +23,6 @@
 - Same as InkPeek (not changed here): unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
   when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — a change belongs in InkPeek first;
   a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
+- M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; Notes window). Open: Notes has no TSV export / import
+  (spec's "Then"); an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).

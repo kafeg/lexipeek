@@ -97,7 +97,8 @@ final class CardController {
         panel.setFrame(Placement.frame(size: size, anchor: anchor, screen: screen), display: false)
         layout()
         if let text { model.lookup(text, source: source) }
-        if focus { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
+        Snapshot.hide(panel)
+        if focus && Snapshot.dir == nil { panel.makeKeyAndOrderFront(nil) } else { panel.orderFrontRegardless() }
         // Snapshot mode: no Esc, ⌘P or outside clicks (the person keeps using the Mac meanwhile).
         if Snapshot.dir == nil { watch() }
     }
@@ -127,9 +128,14 @@ final class CardController {
         }
     }
 
-    // In the card (when it has the focus): ←/→ tabs, Return the full entry, Delete or ⌘[ back; the input field keeps its own keys.
+    // In the card (when it has the focus): ←/→ tabs, Return the full entry, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
     private func key(_ e: NSEvent) -> NSEvent? {
-        guard e.window === panel, model.card != nil, !(panel.firstResponder is NSTextView) else { return e }
+        guard e.window === panel, model.card != nil else { return e }
+        if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
+            model.toggleSaved()
+            return nil
+        }
+        guard !(panel.firstResponder is NSTextView) else { return e }
         switch e.keyCode {
         case 0x7B, 0x7C: model.switchTab()
         case 0x24: model.toggleEntry()
@@ -148,6 +154,7 @@ final class CardController {
             var f = Placement.resized(panel.frame, height: height, screen: screen)
             f.size.width = fitting.width
             if f.maxX > screen.maxX { f.origin.x = max(screen.minX, screen.maxX - f.width) }
+            if Snapshot.dir != nil { f.origin = Snapshot.away }
             panel.setFrame(f, display: true)
         }
         layout()

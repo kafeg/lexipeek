@@ -38,6 +38,8 @@ struct CardLook {
     var prev = false
     var next = false
     var footer = false
+    var star = ""
+    var starHelp = ""
 
     init(_ v: lexipeek.CardView) {
         style = v.style
@@ -61,6 +63,8 @@ struct CardLook {
         prev = v.prev
         next = v.next
         footer = v.footer
+        star = String(v.star)
+        starHelp = String(v.star_help)
     }
 }
 
@@ -107,6 +111,7 @@ final class CardModel: ObservableObject {
             s.before = std.string(before)
             self.card = card
             self.state = s
+            NotificationCenter.default.post(name: .notesChanged, object: nil)
             if s.has_method { self.translate(s.method) }
         }
     }
@@ -129,6 +134,13 @@ final class CardModel: ObservableObject {
     func choose(_ m: lexipeek.Method) {
         Prefs.shared.method = String(lexipeek.app.method_id(m))
         translate(m)
+    }
+
+    // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
+    func toggleSaved() {
+        guard let card, !lexipeek.card_view(card, state).star.empty() else { return }
+        state.saved = client.toggleSaved(card, translation: state.translated && state.translation.ok() ? String(state.translation.text) : "")
+        NotificationCenter.default.post(name: .notesChanged, object: nil)
     }
 
     // A word clicked in the card (the gloss, a section): its card here, "←" comes back to this one.
