@@ -43,7 +43,7 @@ class SettingsWindow : public QWidget {
   SettingsShell sh_;
   QTabBar *sections_;
   QVBoxLayout *body_;
-  QWidget *packs_ = nullptr;  // kept while the window lives: a download goes on across redraws
+  QWidget *packs_ = nullptr, *dicts_ = nullptr;  // kept while the window lives: a download goes on across redraws
   SettingsSection section_ = SettingsSection::general;
   std::map<SettingsSection, int> tabs_;
   std::string error_;

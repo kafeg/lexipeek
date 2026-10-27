@@ -21,6 +21,7 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <thread>
+#include "dicts_pane.hpp"
 #include "packs_pane.hpp"
 #include "platform.hpp"
 #include "ui.hpp"
@@ -171,7 +172,8 @@ void SettingsWindow::after(const std::string &error) {
 }
 
 void SettingsWindow::draw() {
-  if (packs_) body_->removeWidget(packs_), packs_->hide();
+  for (auto *pane : {packs_, dicts_})
+    if (pane) body_->removeWidget(pane), pane->hide();
   ui::clear(body_);
   auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], sh_.state());
   if (!page.tabs.empty()) {
@@ -200,7 +202,10 @@ void SettingsWindow::draw() {
     return;
   }
   if (page.pane == "other") {
-    body_->addWidget(ui::text(QString("…"), 0, true), 1, Qt::AlignCenter);
+    if (!dicts_) dicts_ = new DictsPane(sh_.client);
+    static_cast<DictsPane *>(dicts_)->draw();
+    body_->addWidget(dicts_, 1);
+    dicts_->show();
     return;
   }
   auto *rows = new QWidget;
