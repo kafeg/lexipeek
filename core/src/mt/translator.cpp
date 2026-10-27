@@ -112,6 +112,12 @@ struct Translator::Impl {
       p.llm = true;
       p.gguf = layout.llm(c->id);
       if (!std::filesystem::exists(p.gguf)) p.error = tr("not_installed", {c->id});
+      // This build's llama.cpp runs only with them on x86-64 (AVX2, FMA): without, it would stop on its first one.
+      if (cpu_arch() == "x86_64") {
+        auto have = cpu_features();
+        for (auto f : {"avx2", "fma"})
+          if (std::find(have.begin(), have.end(), f) == have.end()) p.error = tr("mt_cannot_features", {"avx2, fma"});
+      }
     }
     return p;
   }

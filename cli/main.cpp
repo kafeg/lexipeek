@@ -3,6 +3,9 @@
 #include <iterator>
 #include "command.hpp"
 #include "lexipeek/packs.hpp"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace lexipeek::cli {
 
@@ -35,6 +38,9 @@ int usage(int code) {
 }  // namespace
 
 int main(int argc, char **argv) {
+#ifdef _WIN32
+  SetConsoleOutputCP(CP_UTF8);  // with utf8.manifest: argv and the console in UTF-8, not the code page
+#endif
   Args a;
   a.exe = argv[0];
   std::string name;

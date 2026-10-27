@@ -72,10 +72,22 @@ std::vector<Component> freed(const Manifest &m, const std::vector<LangPair> &ins
 std::vector<Component> updates(const Manifest &m, const std::map<std::string, std::string> &installed);
 
 // What this machine can run; the shell fills it (Apple Silicon has int8 dot product: "asimddp").
+// The architecture this build is for: "arm64", "x86_64".
+inline std::string cpu_arch() {
+#if defined(__aarch64__) || defined(_M_ARM64)
+  return "arm64";
+#else
+  return "x86_64";
+#endif
+}
+// The CPU's features the packs name, as Linux's /proc/cpuinfo: on x86-64 "avx2", "fma" (cpuid, with the OS saving
+// AVX state); elsewhere none (the shell knows: Apple Silicon's "asimddp").
+std::vector<std::string> cpu_features();
+
 struct Device {
   int ram_mb = 0;
   std::vector<std::string> features;  // Linux's /proc/cpuinfo names ("asimddp", "avx2", "fma")
-  std::string arch = "arm64";         // "arm64", "x86_64"
+  std::string arch = cpu_arch();
 };
 // Why [c] cannot run on [d]; "" when it can.
 std::string cannot(const Component &c, const Device &d);
