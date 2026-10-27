@@ -1,6 +1,8 @@
 #include <QApplication>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QTextStream>
 #include <QLocale>
 #include <QStyle>
 #include <QStyleFactory>
@@ -152,11 +154,49 @@ int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   return failed;
 }
 
+// `--self-test <file>`: the OS parts that need no desktop (the Credential Manager, the Run key put back as it was,
+// hotkeys, memory), one line each "ok|FAIL what", into file; the exit code the failures' count.
+int self_test(const QString &path) {
+  QFile f(path);
+  if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return 1;
+  QTextStream out(&f);
+  int failed = 0;
+  auto check = [&](bool ok, const QString &what) {
+    out << (ok ? "ok   " : "FAIL ") << what << "\n";
+    failed += !ok;
+  };
+  const std::string provider = "self-test";
+  check(platform::set_secret(provider, "k-123 ключ"), "secret: written");
+  check(platform::secret(provider) == "k-123 ключ", "secret: read back as written");
+  check(platform::set_secret(provider, ""), "secret: removed");
+  check(platform::secret(provider).empty(), "secret: gone");
+  check(platform::set_secret(provider, ""), "secret: removing a missing one is fine");
+  bool was = platform::login();
+  platform::set_login(!was);
+  check(platform::login() == !was, "login: switched");
+  platform::set_login(was);
+  check(platform::login() == was, "login: back as it was");
+  check(platform::ram_mb() > 512, "ram: " + QString::number(platform::ram_mb()) + " MB");
+  Hotkey h{"Q", true, false, true, true};
+  bool reg = platform::register_hotkey(90, h, [] {});
+  check(reg, "hotkey: Ctrl+Alt+Shift+Q registered");
+  platform::unregister_hotkey(90);
+  check(platform::register_hotkey(90, h, [] {}), "hotkey: registered again after unregistering");
+  platform::unregister_hotkey(90);
+  check(platform::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
+  check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
+  out << "info front app: " << q(platform::front_app()) << ", selection: " << (platform::selection() ? "some" : "none") << "\n";
+  out << "info data dir: " << q(app::data_dir()) << ", version " << q(version()) << ", cpu " << q(cpu_arch());
+  for (auto &x : cpu_features()) out << " " << q(x);
+  out << "\n";
+  return failed;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
   for (int i = 1; i < argc; ++i)
-    if (std::string(argv[i]) == "--snapshots") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
+    if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
   QApplication app(argc, argv);
   auto args = app.arguments();
   std::string data;
@@ -166,6 +206,7 @@ int main(int argc, char **argv) {
   app::set_language(data, QLocale::system().name().left(2).toStdString());
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);
+  if (auto i = args.indexOf("--self-test"); i > 0 && i + 1 < args.size()) return self_test(args[i + 1]);
   Shell shell(client);
   if (app::first_run_at_launch(data, true)) shell.open_first_run();
   return app.exec();
