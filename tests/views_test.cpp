@@ -205,7 +205,7 @@ TEST_CASE("views: Translate — progress, the translation, an error, the methods
   s.translation.ms = 1500;
   CHECK(card_view(c, s).menu_help == "Translated in 1.5 s");
   s.translation.kept = true;
-  CHECK(card_view(c, s).menu_help.starts_with("Translated before"));
+  CHECK(card_view(c, s).menu_help.starts_with("Already translated"));
   s.translation.error = "Cancelled";
   CHECK(card_view(c, s).rows[0].style == Style::error);
   CHECK(card_view(c, s).rows[0].text == "Cancelled");
@@ -394,7 +394,7 @@ TEST_CASE("views: the menu's line about the held model") {
   CHECK(v.held);
   CHECK(v.line == "In memory: OPUS-MT de → ru · 410 MB");
   CHECK(v.detail == "unloads in 3 min");
-  CHECK(v.unload == "Unload now");
+  CHECK(v.unload == "Unload Now");
   CHECK(memory_view({"k", "t", 0, 10}).detail == "unloads in less than a minute");
   CHECK(memory_view({"k", "t", 0, -1}).detail == "stays until LexiPeek quits");
 }

@@ -102,7 +102,7 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   auto english = toggle("mt_english", tr("mt_english_t"), tr("mt_english_about"), s.mt_english);
   english.enabled = !s.mt_off && (!s.method || *s.method == Method::fast);  // only Fast goes through English
   rows.push_back(english);
-  if (st.has_pair) rows.push_back(valued(Kind::button, "setup", tr("firstrun_t"), tr("firstrun_d"), tr("open_btn")));
+  if (st.has_pair) rows.push_back(valued(Kind::button, "setup", tr("firstrun_t"), tr("firstrun_d"), tr("setup_btn")));
   // The methods as InkPeek's cards: what each does, what it needs for the installed pairs, why it cannot run here.
   auto gb = [](int mb) { return decimal(mb / 1024.0); };
   rows.push_back(heading(tr("mt_t"), st.device.ram_mb > 0 ? tr("mt_this", {gb(st.device.ram_mb), tr(st.device.features.empty() ? "mt_no" : "mt_yes")}) : ""));

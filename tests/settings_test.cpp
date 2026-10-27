@@ -117,7 +117,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   CHECK(cards[1].on);  // no method set: Fast
   CHECK(cards[1].detail.empty());
   CHECK(cards[2].value == "direct");
-  CHECK(cards[2].detail == "For your pairs: 2 model(s) · 610 MB\nNo model for de→pl: Mozilla translates them.");
+  CHECK(cards[2].detail == "Models for your pairs: 2 · 610 MB\nNo model for de→pl: Mozilla translates them.");
   CHECK(cards[2].ids == std::vector<std::string>{"opus-a"});
   CHECK(cards[2].button == "Download 300 MB");
   CHECK(!cards[3].enabled);
@@ -136,7 +136,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   for (auto &r : p.rows)
     if (r.kind == Kind::method) CHECK(r.progress == (r.value == "direct" ? 0.5 : -1));
   st = state();
-  CHECK(row(p, "setup")->value == "Open…");
+  CHECK(row(p, "setup")->value == "Set Up…");
   st.has_pair = false;
   p = settings_view(SettingsSection::languages, 1, s, st);
   CHECK(p.rows.front().key == "setup");
@@ -202,7 +202,7 @@ TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → O
   CHECK(row(p, "open_at_login"));
   CHECK(row(p, "keep_model"));
   CHECK(row(p, "ui_lang")->choices.size() == 9);
-  CHECK(row(p, "ui_lang")->choices[0] == "As the system");
+  CHECK(row(p, "ui_lang")->choices[0] == "Same as System");
   CHECK(row(p, "ui_lang")->choices[2] == "Русский");
   CHECK(!row(p, "updates"));
   st.trusted = false;

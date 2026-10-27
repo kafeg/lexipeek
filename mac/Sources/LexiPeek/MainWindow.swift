@@ -60,7 +60,7 @@ struct MainView: View {
                         Label(i < notes.counts.count ? notes.counts[i] : "", systemImage: ["star", "text.quote", "clock"][i]).tag(MainPage.notes(tab))
                     }
                 }
-                Label(L.t("help_t"), systemImage: "questionmark.circle").tag(MainPage.help)
+                Section { Label(L.t("help_t"), systemImage: "questionmark.circle").tag(MainPage.help) }
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)
             // Under the list: what is in memory, Settings and About.
