@@ -18,11 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let m = MainModel(client: client)
         m.openSettings = { [weak self] in self?.openSettings(nil) }
         m.openAbout = { [weak self] in self?.showAbout() }
-        m.openPane = { [weak self] section, tab in
-            guard let self, let s = SettingsSection.allCases.first(where: { $0.core == section }) else { return }
-            self.openSettings(s)
-            SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
-        }
+        m.openPane = { section, tab in NotificationCenter.default.post(name: .openPane, object: (section, tab)) }
         return m
     }()
     private var mainWindow: NSWindow?
@@ -73,6 +69,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.settings.trusted = Selection.trusted
         }
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
+        NotificationCenter.default.addObserver(forName: .openPane, object: nil, queue: .main) { [weak self] n in
+            guard let self, let (section, tab) = n.object as? (lexipeek.SettingsSection, Int),
+                  let s = SettingsSection.allCases.first(where: { $0.core == section }) else { return }
+            self.openSettings(s)
+            SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
+        }
         settings.relabel = { [weak self] in
             SettingsWindow.relabel(self?.settingsWindow)
             if Snapshot.dir == nil { NSApp.mainMenu = self?.mainMenu() }

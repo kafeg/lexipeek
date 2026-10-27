@@ -121,7 +121,7 @@ EOF
 # tab=analysis|context: that AI tab clicked.
 ai_cases() {
   cat <<EOF
-ai-word-translate|lookup?text=Häusern&method=ai|word
+ai-word-translate|lookup?text=Häusern&method=ai&tab=translate|word
 ai-word-analysis|lookup?text=Häusern&tab=analysis|word
 ai-word-context|lookup?text=Häusern&tab=context|word
 ai-phrase-translate|lookup?text=Ich mache die Tür zu&method=ai|phrase

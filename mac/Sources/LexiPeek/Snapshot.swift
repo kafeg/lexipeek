@@ -50,7 +50,7 @@ enum Snapshot {
         pending?.cancel()
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        let tabs: [String: lexipeek.CardTab] = ["dictionary": .dictionary, "analysis": .analysis, "context": .context]
+        let tabs: [String: lexipeek.CardTab] = ["dictionary": .dictionary, "translate": .translate, "analysis": .analysis, "context": .context]
         request = v("snap").map {
             Request(name: $0, tab: v("tab").flatMap { tabs[$0] }, full: v("full") == "1", save: v("save") == "1", open: v("open"),
                     section: v("section"),

@@ -5,6 +5,8 @@ import SwiftUI
 extension Notification.Name {
     // A card saved, removed or looked up something: the window's Notes read their list again.
     static let notesChanged = Notification.Name("lexipeek.notesChanged")
+    // A settings pane to open (object: (lexipeek.SettingsSection, tab)): a card's button, Help.
+    static let openPane = Notification.Name("lexipeek.openPane")
 }
 
 // What Notes draws, copied out of the core's NotesView.

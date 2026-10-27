@@ -1,4 +1,5 @@
 #include "packs/http.hpp"
+#include "lexipeek/l10n.hpp"
 #include "text/text.hpp"
 #include <curl/curl.h>
 #include <cstdio>
@@ -35,7 +36,12 @@ void common(CURL *h, const std::string &url) {
 #endif
 }
 
-std::string message(CURLcode c, const char *err) { return *err ? err : curl_easy_strerror(c); }
+// What a person can do something about in their language; curl's own words for the rest.
+std::string message(CURLcode c, const char *err) {
+  if (c == CURLE_COULDNT_RESOLVE_HOST || c == CURLE_COULDNT_RESOLVE_PROXY) return tr("net_offline");
+  if (c == CURLE_COULDNT_CONNECT || c == CURLE_OPERATION_TIMEDOUT) return tr("net_unreachable");
+  return *err ? err : curl_easy_strerror(c);
+}
 
 size_t to_string(char *p, size_t size, size_t n, void *body) {
   static_cast<std::string *>(body)->append(p, size * n);

@@ -41,9 +41,9 @@ Card german(const std::string &text) {
 }  // namespace
 
 TEST_CASE("first run: sizes, at launch, the default answer language") {
-  CHECK(size_text(84'400'000) == "84 MB");
-  CHECK(size_text(10) == "1 MB");
-  CHECK(size_text(1'230'000'000) == "1.2 GB");
+  CHECK(size_text(84'400'000) == "84 MB");
+  CHECK(size_text(10) == "1 MB");
+  CHECK(size_text(1'230'000'000) == "1.2 GB");
   CHECK(first_run_at_launch(false, true, true));
   CHECK(first_run_at_launch(true, false, false));
   CHECK(!first_run_at_launch(true, false, true));
@@ -76,13 +76,13 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   CHECK(v.answers[0].title == "English");
   REQUIRE(v.books.size() == 3);
   CHECK(v.books[0].title == "German");
-  CHECK(v.books[0].detail == "Full · 65 MB");
+  CHECK(v.books[0].detail == "Full · 65 MB");
   CHECK(v.books[1].code == "fr");
-  CHECK(v.books[2].detail == "Experimental · 36 MB");
+  CHECK(v.books[2].detail == "Experimental · 36 MB");
   CHECK(v.book == "de");
-  CHECK(v.button == "Download 65 MB");
+  CHECK(v.button == "Download 65 MB");
   s.book = "fr";
-  CHECK(first_run_view(m, {}, s).button == "Download 55 MB");
+  CHECK(first_run_view(m, {}, s).button == "Download 55 MB");
 
   // Another answer language: its books; a book it has not is replaced by its first.
   s.answer = "en";
@@ -105,7 +105,7 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   CHECK(v.title == "Downloading German → Russian");
   CHECK(v.progress);
   CHECK(v.fraction == doctest::Approx(0.2));
-  CHECK(v.progress_text == "13 MB of 65 MB");
+  CHECK(v.progress_text == "13 MB of 65 MB");
   CHECK(v.button == "Cancel");
   s.downloading = false, s.error = "sha256 mismatch";
   v = first_run_view(m, {}, s);
@@ -117,7 +117,7 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   CHECK(v.step == FirstStep::done);
   CHECK(v.number == 3);
   CHECK(v.text == "Select a word or a sentence in any app and press ⌥D.");
-  CHECK(v.button == "Done");
+  CHECK(v.button == "Close");
 
   // Later on Accessibility: the pair anyway; done says what works without it.
   FirstRunState later;
@@ -136,7 +136,7 @@ TEST_CASE("first run: no packs list yet") {
   auto v = first_run_view({}, {}, s);
   CHECK(v.step == FirstStep::list);
   CHECK(v.progress);
-  CHECK(!v.button_enabled);
+  CHECK(v.button.empty());  // no "Try again" while it is fetched
   CHECK(v.text == "Getting the list of language packs…");
   s.fetching = false;
   s.list_error = "Could not resolve host";

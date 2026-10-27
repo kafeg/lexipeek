@@ -180,7 +180,7 @@ struct FirstRunView: View {
             if !look.text.isEmpty { Text(look.text).fixedSize(horizontal: false, vertical: true) }
             content(look)
             if !look.error.isEmpty {
-                Label(look.error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.callout)
+                Label { Text(look.error) } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }.font(.callout)
             }
             if !look.note.isEmpty { Note(look.note) }
             Spacer(minLength: 0)

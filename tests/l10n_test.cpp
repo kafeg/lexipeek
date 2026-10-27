@@ -105,7 +105,7 @@ TEST_CASE("l10n: the app's language, texts, counts and numbers") {
     CHECK(decimal(1.26) == "1,3");
     CHECK(language_name("de") == "Немецкий");
     CHECK(language_name("kha") == "kha");
-    CHECK(size_text(84'000'000) == "84 МБ");
+    CHECK(size_text(84'000'000) == "84 МБ");
     CHECK(frequency(800) == "в 1 000 самых частых слов");
   }
   {

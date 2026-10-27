@@ -178,7 +178,7 @@ void section_rows(std::vector<CardRow> &rows, const Related &r, int entry, const
   std::string ipa;
   for (auto &i : r.ipa) ipa += (ipa.empty() ? "" : ", ") + i;
   row("rel", few(r.rel), tr("sec_rel") + " · " + n(r.rel));
-  row("syn", few(r.syn) + (r.ant.empty() ? "" : " ≠ " + few(r.ant)), tr("sec_syn") + " · " + n(r.syn) + (r.ant.empty() ? "" : " · " + tr("sec_ant") + " " + n(r.ant)));
+  row("syn", few(r.syn) + (r.ant.empty() ? "" : " ≠ " + few(r.ant)), tr("sec_syn") + " · " + n(r.syn) + (r.ant.empty() ? "" : " · " + tr("sec_ant") + " · " + n(r.ant)));
   row("expr", few(r.expr, "; "), tr("sec_expr") + " · " + n(r.expr));
   row("forms", few(forms), tr("sec_forms") + (ipa.empty() ? "" : " · " + ipa));
   row("ety", cut(r.origin, 120), tr("sec_ety"));
@@ -354,6 +354,19 @@ CardView card_view(const Card &c, const CardState &s) {
   if (v.tab == CardTab::analysis) v.rows = ai_rows(ai::Ask::analysis, s.analysis, word);
   else if (v.tab == CardTab::context) v.rows = ai_rows(ai::Ask::context, s.context, word);
   else v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
+  // Copy: the first row that says what to copy, else the AI answer as plain text.
+  static const text::Regex marks("\\*\\*|\\*");
+  for (auto &r : v.rows)
+    if (!r.copy.empty()) {
+      v.copy = r.copy;
+      break;
+    }
+  if (v.copy.empty())
+    for (auto &r : v.rows)
+      if (r.style == Style::markdown || r.style == Style::heading)
+        v.copy += (v.copy.empty() ? "" : "\n\n") + marks.replace(r.text, "");
+  bool ai_tab = v.tab == CardTab::analysis || v.tab == CardTab::context || (v.tab == CardTab::translate && s.by_ai);
+  if (ai_tab && !v.rows.empty() && v.rows.front().style == Style::error) v.fix = tr("ai_open_settings");
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
   bool one = s.entry_open >= 0;
   if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section && !one) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
@@ -367,7 +380,7 @@ CardView card_view(const Card &c, const CardState &s) {
   else if (!s.before.empty()) v.back = "← " + s.before;
   v.menu = v.tab == CardTab::translate && (!c.methods.empty() || c.ai.translate);
   if (v.menu) {
-    v.menu_title = tr("card_no_methods");
+    v.menu_title = tr(c.methods.empty() ? "mt_ask_ai" : "card_no_methods");
     for (auto &m : c.methods) {
       auto name = method_title(m.method);
       v.methods.push_back({m.method, m.available ? name : name + " — " + m.reason, m.available});
@@ -494,7 +507,7 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
     v.title = tr("fr_ready");
     v.text = tr("fr_done", {key});
     v.note = s.trusted ? tr("fr_done_note") : tr("fr_done_untrusted", {s.input});
-    v.button = tr("done");
+    v.button = tr("m_close");
     return v;
   }
   v.title = tr("fr_pick");
@@ -503,8 +516,7 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
     v.progress = s.fetching;
     v.text = s.fetching ? tr("fr_fetching") : "";
     v.error = s.fetching ? "" : s.list_error.empty() ? tr("fr_no_list") : s.list_error;
-    v.button = tr("try_again");
-    v.button_enabled = !s.fetching;
+    v.button = s.fetching ? "" : tr("try_again");
     return v;
   }
   v.step = FirstStep::pair;

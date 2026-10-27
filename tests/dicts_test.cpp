@@ -305,11 +305,11 @@ TEST_CASE("catalog: rows into the answer language first, WikDict recommended, a 
   CHECK(v.rows[0].title == "★ French → Russian");
   CHECK(v.rows[1].title == "★ German → Russian");
   CHECK(v.rows[1].item == 4);
-  CHECK(v.rows[2].detail == "Wiktionary (xxyzz) · 2.0 MB · ✓ downloaded");
+  CHECK(v.rows[2].detail == "Wiktionary (xxyzz) · 2.0 MB · ✓ downloaded");
   CHECK(v.rows[3].detail == "FreeDict");
   CHECK(v.rows[4].title == "German → English");
   CHECK(v.info == "5 of 5");
-  CHECK(v.rows[0].about.ends_with("1.0 MB · CC"));
+  CHECK(v.rows[0].about.ends_with("1.0 MB · CC"));
   CHECK(catalog_view(l, s, "ru", " de-ru ", {}).rows.size() == 3);
   CHECK(catalog_view(l, s, "ru", "french", {}).rows.size() == 1);
   set_source_on(s, "wikdict", false);

@@ -103,7 +103,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   MethodInfo fast, direct, llm;
   direct.method = Method::direct, direct.models = 2, direct.size = 610'000'000, direct.missing = {"opus-a"}, direct.left = 300'000'000;
   direct.bare = {"de→pl"};
-  llm.method = Method::llm, llm.cannot = "Needs 6 GB of memory; this machine has 4.0 GB.";
+  llm.method = Method::llm, llm.cannot = "Needs 6 GB of memory; this machine has 4.0 GB.";
   st.methods = {fast, direct, llm};
   p = settings_view(SettingsSection::languages, 1, s, st);
   std::vector<SettingRow> cards;
@@ -117,9 +117,9 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   CHECK(cards[1].on);  // no method set: Fast
   CHECK(cards[1].detail.empty());
   CHECK(cards[2].value == "direct");
-  CHECK(cards[2].detail == "For your pairs: 2 model(s), 610 MB\nNo model for de→pl: Mozilla translates them.");
+  CHECK(cards[2].detail == "For your pairs: 2 model(s) · 610 MB\nNo model for de→pl: Mozilla translates them.");
   CHECK(cards[2].ids == std::vector<std::string>{"opus-a"});
-  CHECK(cards[2].button == "Download 300 MB");
+  CHECK(cards[2].button == "Download 300 MB");
   CHECK(!cards[3].enabled);
   CHECK(cards[3].detail == llm.cannot);
   CHECK(cards[3].ids.empty());

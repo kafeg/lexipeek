@@ -160,6 +160,8 @@ struct CardView {
   std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
   std::string pager;  // a section's page: "21–40 of 63", "" (one page)
   bool prev = false, next = false;  // the section has a page before, after
+  std::string copy;       // what the copy button copies: the translation, the first dictionary line, an AI answer ("" = none)
+  std::string fix;        // a failed AI answer: the button to its settings ("Open Settings → AI"), "" = none
   std::string star;       // "☆", "★" (saved), "" (nothing to save)
   bool can_save = false, saved = false;
   std::string star_help;  // "Save to Notes", "Remove from Notes"

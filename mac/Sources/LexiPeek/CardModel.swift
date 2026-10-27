@@ -55,6 +55,8 @@ struct CardLook {
     var prev = false
     var next = false
     var star = ""
+    var copy = ""
+    var fix = ""
     var canSave = false
     var saved = false
     var starHelp = ""
@@ -88,6 +90,8 @@ struct CardLook {
         prev = v.prev
         next = v.next
         star = String(v.star)
+        copy = String(v.copy)
+        fix = String(v.fix)
         canSave = v.can_save
         saved = v.saved
         starHelp = String(v.star_help)

@@ -15,7 +15,7 @@ std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &i
   std::vector<HelpTopic> out;
   out.push_back({tr("hs_start_t"),
                  {item("hs_access_t", tr("hs_access")), item("hs_keys_t", tr("hs_keys", {lookup, input})),
-                  item("hs_icon_t", tr("hs_icon")), item("hs_other_t", tr("hs_other"))}});
+                  item("hs_icon_t", tr("hs_icon")), item("hs_other_t", tr("hs_other", {tr("lookup_service")}))}});
   out.push_back(go({tr("hc_card_t"),
                     {item("hc_kinds_t", tr("hc_kinds")), item("hc_nav_t", tr("hc_nav")), item("hc_bar_t", tr("hc_bar")),
                      item("hc_keys_t", tr("hc_keys"))}},

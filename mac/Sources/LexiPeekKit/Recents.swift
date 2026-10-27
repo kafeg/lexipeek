@@ -6,6 +6,7 @@ public enum Recents {
     // A menu title: one line, at most 40 characters.
     public static func title(_ text: String) -> String {
         let line = text.split(whereSeparator: \.isNewline).joined(separator: " ")
-        return line.count > 40 ? String(line.prefix(39)) + "…" : line
+        guard line.count > 40 else { return line }
+        return String(line.prefix(39)).trimmingCharacters(in: .whitespaces) + "…"
     }
 }

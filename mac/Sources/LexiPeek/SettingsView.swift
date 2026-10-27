@@ -270,7 +270,10 @@ struct SectionView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
-                .padding(.top, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(.bar)
+                .overlay(alignment: .bottom) { Divider() }
             }
             switch String(page.pane) {
             case "packs": PacksPane(client: model.client)
@@ -374,21 +377,23 @@ struct RowsView: View {
         case .toggle:
             Toggle(isOn: Binding(get: { r.on }, set: { model.toggle(r.key, $0) })) { label(r) }.disabled(!r.enabled)
         case .text:
-            LabeledContent {
+            VStack(alignment: .leading, spacing: 6) {
+                label(r)
                 LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
-            } label: { label(r) }
+            }
         case .secret:
             VStack(alignment: .leading, spacing: 6) {
                 label(r)
                 KeyField(saved: r.on) { model.saveKey($0) }
             }
         case .model:
-            LabeledContent {
+            VStack(alignment: .leading, spacing: 6) {
+                label(r)
                 HStack {
                     LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
                     if r.on { Button(L.t("model_choose")) { model.choosingModel = true } }
                 }
-            } label: { label(r) }
+            }
         case .choice:
             Picker(selection: Binding(get: { r.selected }, set: { model.choose(r.key, $0) })) {
                 ForEach(r.choices.indices, id: \.self) { Text(r.choices[$0]).tag($0) }
@@ -451,7 +456,8 @@ extension RowsView {
                 Text(r.title).fontWeight(r.on ? .semibold : .regular)
                 Text(r.about).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if !r.detail.isEmpty {
-                    Text(r.detail).font(.caption).foregroundStyle(r.enabled ? .secondary : Color.orange).fixedSize(horizontal: false, vertical: true)
+                    Label { Text(r.detail) } icon: { if !r.enabled { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) } }
+                        .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
                 if r.progress >= 0 {
                     ProgressView(value: r.progress).controlSize(.small)
@@ -686,6 +692,7 @@ private struct AppList: View {
     @Binding var ids: [String]
 
     var body: some View {
+        if ids.isEmpty { Text(L.t("no_apps")).foregroundStyle(.tertiary) }
         ForEach(ids, id: \.self) { id in
             HStack {
                 icon(id)
@@ -752,7 +759,7 @@ struct AboutView: View {
             .padding(.top, 10)
             RowsView(rows: model.about(), model: model)
         }
-        .frame(width: 460, height: 560)
+        .frame(width: 460, height: 470)
     }
 }
 

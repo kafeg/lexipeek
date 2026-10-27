@@ -176,9 +176,9 @@ struct OtherDictionariesPane: View {
         let i = model.rows.firstIndex(of: r) ?? 0
         return HStack {
             if r.pack {
-                Image(systemName: "shippingbox").foregroundStyle(.secondary).frame(width: 18)
+                Image(systemName: "shippingbox").foregroundStyle(.secondary).frame(width: 34)
             } else {
-                Toggle("", isOn: Binding(get: { r.on }, set: { model.setOn(r, $0) })).labelsHidden()
+                Toggle("", isOn: Binding(get: { r.on }, set: { model.setOn(r, $0) })).labelsHidden().frame(width: 34)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(r.title).lineLimit(1)

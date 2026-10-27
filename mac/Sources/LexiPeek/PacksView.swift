@@ -72,8 +72,8 @@ struct PacksPane: View {
                         if !b.isEmpty { Button(L.t("cancel")) { model.cancel() }.controlSize(.small) }
                     }
                 }
-                ForEach([model.error, model.listError].filter { !$0.isEmpty }, id: \.self) {
-                    Label($0, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.callout)
+                ForEach([model.error, model.listError].filter { !$0.isEmpty }, id: \.self) { e in
+                    Label { Text(e) } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }.font(.callout)
                 }
                 LabeledContent {
                     Button(L.t("check_t")) { model.refresh() }.disabled(model.busy != nil)

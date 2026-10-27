@@ -140,7 +140,7 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   CHECK(v.rows[6].text == "Related words · 11 ›");
   CHECK(v.rows[6].open == "rel");
   CHECK(v.rows[7].label == "Gebäude ≠ Hütte");
-  CHECK(v.rows[7].text == "Synonyms · 1 · antonyms 1 ›");
+  CHECK(v.rows[7].text == "Synonyms · 1 · antonyms · 1 ›");
   CHECK(v.rows[8].text == "Forms and pronunciation · [haʊ̯s] ›");
   CHECK(v.rows[9].label == std::string(120, 'x') + " …");
   CHECK(v.rows[9].open == "ety");
@@ -279,7 +279,7 @@ TEST_CASE("views: same language, no pack, unknown language, nothing to translate
   c.methods = {};
   auto v = card_view(c, first_state(c));
   CHECK(v.badge == "ru");
-  CHECK(v.rows[0].text == "Already in Russian.");
+  CHECK(v.rows[0].text == "Already in the answer language (Russian).");
   CHECK(!v.menu);
   c.lang = c.lang_name = "";
   c.other = "fr";
@@ -392,7 +392,7 @@ TEST_CASE("views: the menu's line about the held model") {
   CHECK(memory_view({}).line == "No model in memory");
   auto v = memory_view({"direct:opus-de-ru", "OPUS-MT de → ru", 410'000'000, 150});
   CHECK(v.held);
-  CHECK(v.line == "In memory: OPUS-MT de → ru · 410 MB");
+  CHECK(v.line == "In memory: OPUS-MT de → ru · 410 MB");
   CHECK(v.detail == "unloads in 3 min");
   CHECK(v.unload == "Unload now");
   CHECK(memory_view({"k", "t", 0, 10}).detail == "unloads in less than a minute");
@@ -534,4 +534,16 @@ TEST_CASE("help: topics in the app's language, each with its items; a pane to op
   CHECK(h[3].tab == 1);
   for (auto &t : h)
     for (auto &i : t.items) CHECK(!i.text.empty());
+}
+
+TEST_CASE("views: copy takes the translation, a dictionary's line or an AI answer; a failed AI answer offers its settings") {
+  auto c = word();
+  auto s = first_state(c);
+  CHECK(card_view(c, s).copy == "дом");
+  c.ai.analysis = true;
+  s.tab = CardTab::analysis;
+  s.analysis = {false, true, false, false, "", "Key rejected"};
+  auto v = card_view(c, s);
+  CHECK(v.fix == "Open Settings → AI");
+  CHECK(v.copy.empty());
 }

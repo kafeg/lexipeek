@@ -66,16 +66,21 @@ struct CardView: View {
                 if look == nil && model.input.isEmpty && !recents.isEmpty { recentList() }
             }
             if let look {
-                header(look)
+                if !(embedded && look.style == .passage) { header(look) }
                 if look.tabs { embedded ? AnyView(segments(look)) : AnyView(tabs(look)) }
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
+                            if !look.fix.isEmpty {
+                                Button(look.fix) { NotificationCenter.default.post(name: .openPane, object: (lexipeek.SettingsSection.ai, 0)) }
+                                    .controlSize(.small)
+                            }
                             // In the window the bar follows the text, not the page's bottom.
                             if embedded { bar(look).padding(.top, 6) }
                         }
                         .id("top")
+                        .padding(.trailing, 10)  // clear of the scroller
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(GeometryReader { g in Color.clear.preference(key: HeightKey.self, value: g.size.height) })
                     }
@@ -133,7 +138,7 @@ struct CardView: View {
                     (Text(Recents.title(recents[i].text)) + Text(recents[i].meaning.isEmpty ? "" : " — \(recents[i].meaning)").foregroundColor(.secondary))
                         .lineLimit(1).truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 3).padding(.horizontal, 6)
+                        .padding(.vertical, 3).padding(.leading, 8).padding(.trailing, 6)
                         .background(RoundedRectangle(cornerRadius: 5).fill(picked == i ? Color.accentColor.opacity(0.18) : .clear))
                         .contentShape(Rectangle())
                 }
@@ -151,7 +156,7 @@ struct CardView: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .fixedSize()
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
     }
 
@@ -259,8 +264,10 @@ struct CardView: View {
                     titleHeight = $0
                     model.objectWillChange.send()
                 }
+                Divider()
                 Button { titleOpen = false } label: { Image(systemName: "chevron.up").frame(maxWidth: .infinity) }
                     .buttonStyle(.borderless)
+                    .padding(.bottom, 2)
                     .help(L.t("card_collapse"))
             }
             .padding(EdgeInsets(top: 14, leading: 14, bottom: 6, trailing: 14))
@@ -285,8 +292,7 @@ struct CardView: View {
                 Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
             }
             Spacer(minLength: 4)
-            // The translation shown, else the first dictionary line.
-            if let copy = look.rows.first(where: { !$0.copy.isEmpty })?.copy { copyButton(copy) }
+            if !look.copy.isEmpty { copyButton(look.copy) }
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if look.canSave {
                 Button { model.toggleSaved() } label: { Image(systemName: look.saved ? "star.fill" : "star") }
@@ -410,7 +416,10 @@ struct CardView: View {
         guard let ns = try? NSMutableAttributedString(data: Data(doc.utf8), options: [
             .documentType: NSAttributedString.DocumentType.html, .characterEncoding: String.Encoding.utf8.rawValue,
         ], documentAttributes: nil) else { return AttributedString(html) }
-        ns.addAttribute(.foregroundColor, value: NSColor.labelColor, range: NSRange(location: 0, length: ns.length))
+        // The system's colours, light and dark: the article's own backgrounds out (white on white in the dark).
+        let all = NSRange(location: 0, length: ns.length)
+        ns.addAttribute(.foregroundColor, value: NSColor.labelColor, range: all)
+        ns.removeAttribute(.backgroundColor, range: all)
         while ns.string.hasSuffix("\n") { ns.deleteCharacters(in: NSRange(location: ns.length - 1, length: 1)) }
         return (try? AttributedString(ns, including: \.appKit)) ?? AttributedString(ns.string)
     }

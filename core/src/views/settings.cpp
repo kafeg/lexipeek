@@ -99,14 +99,12 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   auto codes = answer_codes(s, st);
   for (auto &c : codes) langs.push_back(language_name(c));
   rows.push_back(choice("answer", tr("answer_t"), tr("answer_d"), langs, index_of(codes, s.answer)));
-  rows.push_back(toggle("mt_english", tr("mt_english_t"), tr("mt_english_about"), s.mt_english));
+  auto english = toggle("mt_english", tr("mt_english_t"), tr("mt_english_about"), s.mt_english);
+  english.enabled = !s.mt_off && (!s.method || *s.method == Method::fast);  // only Fast goes through English
+  rows.push_back(english);
   if (st.has_pair) rows.push_back(valued(Kind::button, "setup", tr("firstrun_t"), tr("firstrun_d"), tr("open_btn")));
   // The methods as InkPeek's cards: what each does, what it needs for the installed pairs, why it cannot run here.
-  auto gb = [](int mb) {
-    char b[16];
-    std::snprintf(b, sizeof b, "%.1f", mb / 1024.0);
-    return std::string(b);
-  };
+  auto gb = [](int mb) { return decimal(mb / 1024.0); };
   rows.push_back(heading(tr("mt_t"), st.device.ram_mb > 0 ? tr("mt_this", {gb(st.device.ram_mb), tr(st.device.features.empty() ? "mt_no" : "mt_yes")}) : ""));
   auto picked = s.method.value_or(Method::fast);
   if (!st.methods.empty()) {
@@ -174,7 +172,7 @@ std::vector<SettingRow> connection(const Settings &s, const SettingsState &st) {
     titles.push_back(ps[i].id == "custom" ? tr("ai_custom") : ps[i].title);
     if (ps[i].id == s.ai.provider) at = static_cast<int>(i) + 1;
   }
-  std::vector<SettingRow> rows{choice("ai_provider", tr("ai_title"), tr("ai_title_d"), titles, at)};
+  std::vector<SettingRow> rows{choice("ai_provider", tr("ai_title"), tr(s.ai.provider.empty() ? "ai_title_d" : "ai_title_on"), titles, at)};
   auto *p = ai::provider(s.ai.provider);
   if (!p) return rows;
   if (p->id == "custom") {
@@ -274,8 +272,7 @@ std::vector<SettingRow> appearance(const Settings &s) {
 // app's language, the model in memory).
 std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int tab) {
   if (tab == 0)
-    return {heading(tr("hotkeys_t")),
-            valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
+    return {valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
             valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
             heading(tr("apps_t")),
             valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), "")};
