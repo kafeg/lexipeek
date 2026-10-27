@@ -278,7 +278,9 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int 
             valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), "")};
   std::vector<SettingRow> rows;
   auto access = tr("access_d", {st.input});
-  if (st.trusted) {
+  if (ui_platform() != "mac") {
+    // Windows reads the selection without a permission.
+  } else if (st.trusted) {
     auto r = valued(Kind::status, "access", tr("access_t"), access, tr("allowed"));
     r.on = true;
     rows.push_back(r);

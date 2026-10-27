@@ -82,6 +82,31 @@ TEST_CASE("l10n: every key in every language, its placeholders, its plural forms
   }
 }
 
+TEST_CASE("l10n: a Windows text replaces its key there, with no placeholder the key lacks") {
+  auto all = texts("en");
+  std::map<std::string, std::string> en(all.begin(), all.end());
+  int n = 0;
+  for (auto &[k, t] : en) {
+    auto at = k.find("@win");
+    if (at == std::string::npos) continue;
+    ++n;
+    auto b = k.substr(0, at);
+    REQUIRE_MESSAGE(en.contains(b), k);
+    for (auto &m : marks(t, true)) CHECK_MESSAGE(marks(en[b], true).contains(m), k << " " << m);
+  }
+  CHECK(n > 10);
+  CHECK(ui_platform() == "mac");
+  CHECK(tr("show_finder") == "Show in Finder");
+  set_ui_platform("windows");
+  CHECK(tr("show_finder") == "Show in Explorer");
+  CHECK(tr("tab_dictionary") == "Dictionary");
+  {
+    Lang de("de");
+    CHECK(tr("show_finder") == "Im Explorer zeigen");
+  }
+  set_ui_platform("mac");
+}
+
 TEST_CASE("l10n: the app's language, texts, counts and numbers") {
   CHECK(ui_language("", "de") == "de");
   CHECK(ui_language("", "ja") == "en");

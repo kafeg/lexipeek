@@ -56,6 +56,21 @@ TEST_CASE("first run: sizes, at launch, the default answer language") {
   CHECK(has_pair(m, {{"dict-de-en", "d3"}, {"model-de-en", "m1"}, {"langid", "l"}}));
 }
 
+TEST_CASE("first run on Windows: no Accessibility step, the pair is 1 of 2") {
+  auto m = manifest();
+  FirstRunState s;
+  s.trusted = true;
+  set_ui_platform("windows");
+  auto v = first_run_view(m, {}, s);
+  CHECK(v.step == FirstStep::pair);
+  CHECK(v.number == 1);
+  CHECK(v.steps == 2);
+  v = first_run_view(m, {{"dict-de-en", "d3"}, {"model-de-en", "m1"}, {"langid", "l"}}, s);
+  CHECK(v.step == FirstStep::done);
+  CHECK(v.number == 2);
+  set_ui_platform("mac");
+}
+
 TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   auto m = manifest();
   FirstRunState s;

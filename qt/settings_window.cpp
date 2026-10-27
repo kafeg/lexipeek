@@ -31,7 +31,7 @@ std::string version() { return LEXIPEEK_VERSION; }
 SettingsState SettingsShell::state() const {
   SettingsState s;
   auto data = client.data();
-  s.trusted = true;  // Windows reads the selection without a permission
+  s.trusted = true;  // no permission to read the selection (the core drops Accessibility off macOS)
   s.has_pair = app::has_pair(data);
   s.login = platform::login();
   s.version = version();
@@ -228,8 +228,6 @@ void SettingsWindow::draw() {
   rl->setContentsMargins(20, 12, 20, 16);
   rl->setSpacing(12);
   for (auto &r : page.rows) {
-    if (r.kind == SettingRow::Kind::button && r.key == "access") continue;  // macOS only
-    if (r.kind == SettingRow::Kind::status && r.key == "access") continue;
     if (r.kind == SettingRow::Kind::heading) rl->addSpacing(6);
     rl->addWidget(row(r));
   }

@@ -155,6 +155,7 @@ int main(int argc, char **argv) {
   std::string data;
   if (auto i = args.indexOf("--data"); i > 0 && i + 1 < args.size()) data = args[i + 1].toStdString();
   else if (auto *env = std::getenv("LEXIPEEK_DATA")) data = env;
+  set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
   app::set_language(data, QLocale::system().name().left(2).toStdString());
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);

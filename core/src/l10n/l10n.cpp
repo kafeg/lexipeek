@@ -52,6 +52,7 @@ const std::vector<std::map<std::string, std::string, std::less<>>> &maps() {
 }
 
 std::atomic<int> current{0};
+std::atomic<bool> windows{false};
 std::mutex missing_mu;
 std::set<std::string> missing;
 
@@ -90,8 +91,17 @@ std::string ui_language(const std::string &setting, const std::string &system) {
 void set_ui_language(const std::string &code) { current = std::max(0, index_of(code)); }
 std::string ui_language() { return ui_languages()[static_cast<size_t>(current.load())]; }
 
+void set_ui_platform(const std::string &platform) { windows = platform == "windows"; }
+std::string ui_platform() { return windows ? "windows" : "mac"; }
+
 std::string tr(std::string_view key, const std::vector<std::string> &args) {
-  auto *t = find(current, key);
+  const std::string *t = nullptr;
+  if (windows) {
+    auto w = std::string(key) + "@win";
+    t = find(current, w);
+    if (!t) t = find(0, w);
+  }
+  if (!t) t = find(current, key);
   if (!t) t = find(0, key);
   if (!t) {
     std::lock_guard g(missing_mu);

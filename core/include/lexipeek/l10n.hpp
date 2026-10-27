@@ -14,6 +14,11 @@ std::string ui_language(const std::string &setting, const std::string &system);
 void set_ui_language(const std::string &code);
 std::string ui_language();
 
+// The OS whose words the texts use: "mac" (the default), "windows". There a key's "<key>@win" text, when it has one,
+// replaces it (the Credential Manager, Ctrl, "this computer"); for all threads.
+void set_ui_platform(const std::string &platform);
+std::string ui_platform();
+
 // The text of key with {1}, {2}… filled in; English when the language lacks it, the key when English does.
 std::string tr(std::string_view key, const std::vector<std::string> &args = {});
 bool has_text(std::string_view key);

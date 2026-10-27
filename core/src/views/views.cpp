@@ -485,7 +485,10 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
         break;
       }
   if (picked) v.book = picked->from;
-  v.number = 2;
+  // Windows has no Accessibility step: the pair is step 1 of 2.
+  bool access = ui_platform() == "mac";
+  v.steps = access ? 3 : 2;
+  v.number = access ? 2 : 1;
   auto pair = picked ? picked->title : std::string();
   if (s.downloading || !s.error.empty()) {
     v.step = FirstStep::download;
@@ -503,7 +506,7 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
   }
   if (has_pair(m, installed)) {
     v.step = FirstStep::done;
-    v.number = 3;
+    v.number = v.steps;
     v.title = tr("fr_ready");
     v.text = tr("fr_done", {key});
     v.note = s.trusted ? tr("fr_done_note") : tr("fr_done_untrusted", {s.input});
