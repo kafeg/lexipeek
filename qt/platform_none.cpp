@@ -25,6 +25,9 @@ bool login() { return false; }
 void set_login(bool) {}
 std::string secret(const std::string &) { return ""; }
 bool set_secret(const std::string &, const std::string &) { return false; }
+bool hand_over(const QStringList &) { return false; }
+void receive(std::function<void(const QStringList &)>) {}
+void register_scheme() {}
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

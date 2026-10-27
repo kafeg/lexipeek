@@ -2,6 +2,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QSettings>
 #include <QTextStream>
 #include <QLocale>
 #include <QStyle>
@@ -185,6 +186,9 @@ int self_test(const QString &path) {
   platform::unregister_hotkey(90);
   check(platform::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
   check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
+  platform::register_scheme();
+  QSettings scheme("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek\\shell\\open\\command", QSettings::NativeFormat);
+  check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
   out << "info front app: " << q(platform::front_app()) << ", selection: " << (platform::selection() ? "some" : "none") << "\n";
   out << "info data dir: " << q(app::data_dir()) << ", version " << q(version()) << ", cpu " << q(cpu_arch());
   for (auto &x : cpu_features()) out << " " << q(x);
@@ -207,7 +211,12 @@ int main(int argc, char **argv) {
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);
   if (auto i = args.indexOf("--self-test"); i > 0 && i + 1 < args.size()) return self_test(args[i + 1]);
+  // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
+  if (platform::hand_over(args.mid(1))) return 0;
   Shell shell(client);
+  platform::receive([&shell](const QStringList &a) { shell.handle(a); });
+  platform::register_scheme();
   if (app::first_run_at_launch(data, true)) shell.open_first_run();
+  else if (args.size() > 1) shell.handle(args.mid(1));
   return app.exec();
 }

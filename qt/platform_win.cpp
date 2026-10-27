@@ -255,6 +255,56 @@ bool set_secret(const std::string &provider, const std::string &value) {
   return CredWriteW(&c, 0);
 }
 
+namespace {
+const wchar_t *receiver = L"LexiPeek receiver";
+
+// WM_COPYDATA to the hidden receiver window: a second launch's arguments, one per line.
+struct Receiver : QWidget {
+  std::function<void(const QStringList &)> got;
+  bool nativeEvent(const QByteArray &, void *message, qintptr *result) override {
+    auto *msg = static_cast<MSG *>(message);
+    if (msg->message != WM_COPYDATA) return false;
+    auto *cd = reinterpret_cast<COPYDATASTRUCT *>(msg->lParam);
+    auto args = QString::fromUtf8(static_cast<const char *>(cd->lpData), static_cast<int>(cd->cbData)).split('\n');
+    QMetaObject::invokeMethod(this, [this, args] { got(args); }, Qt::QueuedConnection);
+    *result = 1;
+    return true;
+  }
+};
+}  // namespace
+
+bool hand_over(const QStringList &args) {
+  CreateMutexW(nullptr, FALSE, L"Local\\LexiPeek");
+  if (GetLastError() != ERROR_ALREADY_EXISTS) return false;
+  // The first one may still be starting: its window comes within a few seconds.
+  for (int i = 0; i < 50; ++i) {
+    if (HWND w = FindWindowW(nullptr, receiver)) {
+      auto bytes = args.join('\n').toUtf8();
+      COPYDATASTRUCT cd{1, static_cast<DWORD>(bytes.size()), bytes.data()};
+      AllowSetForegroundWindow(ASFW_ANY);
+      SendMessageW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd));
+      return true;
+    }
+    Sleep(100);
+  }
+  return true;
+}
+
+void receive(std::function<void(const QStringList &)> got) {
+  auto *r = new Receiver;
+  r->got = std::move(got);
+  r->setWindowTitle(QString::fromWCharArray(receiver));
+  r->winId();  // the native window, never shown
+}
+
+void register_scheme() {
+  QSettings s("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek", QSettings::NativeFormat);
+  s.setValue("Default", "URL:LexiPeek");
+  s.setValue("URL Protocol", "");
+  auto exe = "\"" + QDir::toNativeSeparators(QCoreApplication::applicationFilePath()) + "\" \"%1\"";
+  s.setValue("shell/open/command/Default", exe);
+}
+
 void round(QWidget *w) {
   auto pref = DWMWCP_ROUND;
   DwmSetWindowAttribute(reinterpret_cast<HWND>(w->winId()), DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof pref);

@@ -3,6 +3,8 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QStyleHints>
+#include <QUrl>
+#include <QUrlQuery>
 #include <algorithm>
 
 namespace lexipeek::qt {
@@ -121,6 +123,20 @@ void Shell::open_about() {
   if (!about_) about_ = new AboutWindow(c_);
   about_->refresh();
   present(about_);
+}
+
+// lexipeek://lookup?text=… (the card with it) and lexipeek://input (the card to type in); a launch without one opens the window.
+void Shell::handle(const QStringList &args) {
+  for (auto &a : args) {
+    QUrl url(a);
+    if (url.scheme().toLower() != "lexipeek") continue;
+    auto host = url.host().toLower();
+    if (host == "input") return popup_.show_card(std::nullopt, Source::input, {}, true);
+    auto text = QUrlQuery(url).queryItemValue("text", QUrl::FullyDecoded).trimmed();
+    if (host == "lookup" && !text.isEmpty()) return popup_.show_card(text.toStdString(), Source::url, {}, false);
+    return;
+  }
+  open_main();
 }
 
 // Built on every open: Recents and the memory line stay current.

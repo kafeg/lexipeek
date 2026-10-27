@@ -1,6 +1,7 @@
 // What the OS does for the shell (Windows: platform_win.cpp; elsewhere platform_none.cpp, nothing yet).
 #pragma once
 #include <QRect>
+#include <QStringList>
 #include <functional>
 #include <optional>
 #include <string>
@@ -42,6 +43,13 @@ void set_login(bool on);
 // The AI key per provider in the OS's store (Windows: Credential Manager); "" none.
 std::string secret(const std::string &provider);
 bool set_secret(const std::string &provider, const std::string &value);  // "" removes it
+
+// One app per user: another one running gets these arguments (true: this launch quits); receive hands them over.
+bool hand_over(const QStringList &args);
+void receive(std::function<void(const QStringList &)> got);
+
+// lexipeek:// links open this program (Windows: HKCU\Software\Classes, per user).
+void register_scheme();
 
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);

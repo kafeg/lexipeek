@@ -22,6 +22,8 @@ class Shell : public QObject {
   void open_about();
   void open_first_run();
   void apply();  // settings.json changed: hotkeys, theme, the core
+  // A launch's arguments (this one's or a second launch's): a lexipeek:// link, else the LexiPeek window.
+  void handle(const QStringList &args);
 
  private:
   void fill_menu();
