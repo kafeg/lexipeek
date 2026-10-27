@@ -391,7 +391,8 @@ private struct LineField: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        TextField("", text: $text, prompt: Text(placeholder))
+            .labelsHidden()
             .textFieldStyle(.roundedBorder)
             .frame(minWidth: 200)
             .focused($focused)
@@ -410,7 +411,8 @@ private struct KeyField: View {
 
     var body: some View {
         HStack {
-            SecureField(L.t("key_t"), text: $key)
+            SecureField("", text: $key, prompt: Text(L.t("key_t")))
+                .labelsHidden()
                 .textFieldStyle(.roundedBorder)
                 .onSubmit { store() }
             Button(L.t("save_key")) { store() }.disabled(key.isEmpty)
