@@ -6,6 +6,8 @@ set(VCPKG_OVERLAY_TRIPLETS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/triplets CACHE STRI
 if(WIN32)
   # Bergamot builds with the static CRT (/MT): everything does.
   set(VCPKG_TARGET_TRIPLET x64-windows-static CACHE STRING "")
+  # Host tools (Qt's moc, rcc) from the same build: no second, dynamic Qt with ICU for the host.
+  set(VCPKG_HOST_TRIPLET x64-windows-static CACHE STRING "")
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   cmake_policy(SET CMP0091 NEW)
 endif()
