@@ -182,7 +182,10 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
 - **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
-  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts; under them what is in
+  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts · **Help** (InkPeek's ?
+  page in desktop form, `help_view`: topics — getting started, the card, packs, translation methods, other
+  dictionaries, AI, what is sent, Notes — InkPeek's texts where they say the same, each topic with its settings
+  pane; also the app's Help menu, ⌘?); under them what is in
   memory, Settings… and About — and the page (empty Look up: a short hint, the hotkeys). Every window opens in the
   middle of the screen with the cursor. Look up: a
   field on top (focused on open; it grows to a few lines for a pasted text, Return looks it up), its card drawn in the

@@ -430,6 +430,20 @@ struct MemoryView {
 };
 MemoryView memory_view(const Translator::Memory &m);
 
+// Help (InkPeek's ? page in desktop form): topics, each a few items, and the settings pane it is about.
+struct HelpItem {
+  std::string title, text;
+};
+struct HelpTopic {
+  std::string title;
+  std::vector<HelpItem> items;
+  std::string go = "";  // "Open Translation" ("" = no pane)
+  SettingsSection section = SettingsSection::general;
+  int tab = 0;
+};
+// lookup, input: the hotkeys' labels ("⌥D", "⌥A").
+std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &input);
+
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);
 std::string pair_detail(const PairRow &r);

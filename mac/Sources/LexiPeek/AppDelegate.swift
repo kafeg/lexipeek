@@ -18,6 +18,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let m = MainModel(client: client)
         m.openSettings = { [weak self] in self?.openSettings(nil) }
         m.openAbout = { [weak self] in self?.showAbout() }
+        m.openPane = { [weak self] section, tab in
+            guard let self, let s = SettingsSection.allCases.first(where: { $0.core == section }) else { return }
+            self.openSettings(s)
+            SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
+        }
         return m
     }()
     private var mainWindow: NSWindow?
@@ -161,6 +166,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showMain() { openMain(nil) }
 
+    @objc private func showHelp() { openMain(.help) }
+
     // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
     private func openMain(_ page: MainPage?) {
         if mainWindow == nil {
@@ -279,6 +286,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         main.addItem(edit)
         main.addItem(sub(L.t("m_window"), [(L.t("m_minimize"), #selector(NSWindow.performMiniaturize(_:)), "m"),
                                            (L.t("m_close"), #selector(NSWindow.performClose(_:)), "w")]))
+        let help = sub(L.t("help_t"), [(L.t("help_menu"), #selector(showHelp), "?")])
+        help.submenu?.items.first?.target = self
+        main.addItem(help)
+        NSApp.helpMenu = help.submenu
         return main
     }
 

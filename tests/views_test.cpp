@@ -522,3 +522,16 @@ TEST_CASE("core: prepare() goes one dictionary at a time and stops when the libr
   CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).kind == Card::Kind::word);
   fs::remove_all(d);
 }
+
+TEST_CASE("help: topics in the app's language, each with its items; a pane to open where there is one") {
+  auto h = help_view("⌥D", "⌥A");
+  REQUIRE(h.size() == 8);
+  CHECK(h[0].title == "Getting started");
+  CHECK(h[0].items[1].text.find("⌥D") != std::string::npos);
+  CHECK(h[0].go.empty());
+  CHECK(h[3].go == "Open Translation");
+  CHECK(h[3].section == SettingsSection::languages);
+  CHECK(h[3].tab == 1);
+  for (auto &t : h)
+    for (auto &i : t.items) CHECK(!i.text.empty());
+}

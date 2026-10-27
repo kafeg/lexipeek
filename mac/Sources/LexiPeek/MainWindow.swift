@@ -6,7 +6,7 @@ import SwiftUI
 // The LexiPeek window: Look up (a word, a phrase or a pasted text: its card here) · Notes (Words · Phrases · History);
 // the app is in the Dock while it is open.
 enum MainPage: Hashable {
-    case lookup, notes(lexipeek.NotesTab)
+    case lookup, notes(lexipeek.NotesTab), help
 }
 
 final class MainModel: ObservableObject {
@@ -14,6 +14,7 @@ final class MainModel: ObservableObject {
     @Published var query = ""
     @Published var memory = ""  // the sidebar's line: what is in memory
     var openSettings: () -> Void = {}
+    var openPane: (lexipeek.SettingsSection, Int) -> Void = { _, _ in }
     var openAbout: () -> Void = {}
     private let client: CoreClient
     let card: CardModel
@@ -59,6 +60,7 @@ struct MainView: View {
                         Label(i < notes.counts.count ? notes.counts[i] : "", systemImage: ["star", "text.quote", "clock"][i]).tag(MainPage.notes(tab))
                     }
                 }
+                Label(L.t("help_t"), systemImage: "questionmark.circle").tag(MainPage.help)
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)
             // Under the list: what is in memory, Settings and About.
@@ -78,6 +80,7 @@ struct MainView: View {
             switch model.page {
             case .lookup: lookup
             case .notes: NotesList(model: notes).onAppear { notes.refresh() }
+            case .help: HelpPane(open: model.openPane)
             }
         }
         .frame(minWidth: 720, minHeight: 460)
@@ -112,6 +115,34 @@ struct MainView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear { focused = true }
+    }
+}
+
+// Help: every topic on one page, each with the settings pane it is about.
+struct HelpPane: View {
+    var open: (lexipeek.SettingsSection, Int) -> Void
+
+    var body: some View {
+        let topics = lexipeek.help_view(std.string(Prefs.shared.translateKey.label), std.string(Prefs.shared.inputKey.label))
+        Form {
+            ForEach(Array(topics.enumerated()), id: \.offset) { _, t in
+                Section {
+                    ForEach(Array(t.items.enumerated()), id: \.offset) { _, i in
+                        VStack(alignment: .leading, spacing: 3) {
+                            if !i.title.empty() { Text(String(i.title)).fontWeight(.medium) }
+                            Text(String(i.text)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    if !t.go.empty() {
+                        Button(String(t.go)) { open(t.section, Int(t.tab)) }.buttonStyle(.link)
+                    }
+                } header: {
+                    Text(String(t.title))
+                }
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 

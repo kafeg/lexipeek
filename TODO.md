@@ -20,7 +20,6 @@ with TSV / Export / Import. Next: M6 Windows (Qt). Milestones: `docs/spec.md` �
   folders).
 - Check the selection and ⌥D's position (AX bounds) in Safari, Chrome, Firefox, Vivaldi and native apps.
 - OPUS-MT on an 8 GB Mac: its working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.
-- Help (InkPeek's ? page in desktop form).
 - Translations of the UI not reviewed by native speakers; low-level errors (libcurl, libarchive) stay English.
 
 ## Kept as InkPeek, by decision
