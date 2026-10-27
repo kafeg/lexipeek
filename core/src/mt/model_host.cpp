@@ -2,6 +2,10 @@
 
 namespace lexipeek::mt {
 
+static ModelHost::clock::time_point due(std::chrono::milliseconds idle) {
+  return idle.count() <= 0 ? ModelHost::clock::time_point::max() : ModelHost::clock::now() + idle;
+}
+
 ModelHost::ModelHost() : idle_([this] { watch(); }) {}
 
 ModelHost::~ModelHost() {
@@ -25,11 +29,11 @@ void ModelHost::with(const std::string &key, std::chrono::milliseconds idle, con
   try {
     use(*model_);
   } catch (...) {
-    deadline_ = clock::now() + idle;
+    deadline_ = due(idle);
     cv_.notify_all();
     throw;
   }
-  deadline_ = clock::now() + idle;
+  deadline_ = due(idle);
   cv_.notify_all();
 }
 
@@ -44,10 +48,15 @@ std::string ModelHost::held() const {
   return key_;
 }
 
+ModelHost::clock::time_point ModelHost::until() const {
+  std::lock_guard g(mu_);
+  return deadline_;
+}
+
 void ModelHost::watch() {
   std::unique_lock g(mu_);
   while (!stop_) {
-    if (!model_) {
+    if (!model_ || deadline_ == clock::time_point::max()) {
       cv_.wait(g);
     } else if (clock::now() >= deadline_) {
       model_.reset();

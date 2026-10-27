@@ -313,6 +313,13 @@ void settings_prompts(Settings &s, const std::vector<std::string> &ids, const st
 // A text row's change (ai_url, ai_command, ai_model).
 void settings_text(Settings &s, const std::string &key, const std::string &value);
 
+// The menu bar's lines about the held model: "In memory: OPUS-MT de → ru · 410 MB", "unloads in 3 min".
+struct MemoryView {
+  bool held = false;
+  std::string line, detail, unload;  // unload: the button's label
+};
+MemoryView memory_view(const Translator::Memory &m);
+
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);
 std::string pair_detail(const PairRow &r);

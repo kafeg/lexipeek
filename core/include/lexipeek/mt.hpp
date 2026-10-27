@@ -1,6 +1,7 @@
 // Offline translation and language id: the three methods of InkPeek, one heavy model in memory.
 #pragma once
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -54,6 +55,15 @@ class Translator {
   void release();
   // What is held: "" none, else the key ("fast:de-ru", "direct:<id>", "llm:<id>").
   std::string held() const;
+  // How long a model stays after a use from now on (0: until release()).
+  void set_idle(std::chrono::milliseconds idle);
+  // The held model for the menu: its name ("OPUS-MT de → ru"), its files' size, seconds left (-1: kept).
+  struct Memory {
+    std::string key, title;
+    std::int64_t bytes = 0;
+    long long seconds = 0;
+  };
+  Memory memory() const;
 
  private:
   struct Impl;

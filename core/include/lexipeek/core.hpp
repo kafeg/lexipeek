@@ -164,6 +164,7 @@ class Core {
   void cancel();
   // Memory pressure, idle: frees the held model.
   void release();
+  Translator::Memory memory() const;
   // ☆: saves the card's save_text with one short line (its translation, else the dictionary's), or removes it
   // (and the text itself, saved so before); → whether it is saved now.
   bool toggle_saved(const Card &card, const std::string &translation);

@@ -360,3 +360,15 @@ TEST_CASE("app: settings by data dir, method ids") {
   CHECK(app::answers(d).empty());
   fs::remove_all(d);
 }
+
+TEST_CASE("views: the menu's line about the held model") {
+  CHECK(!memory_view({}).held);
+  CHECK(memory_view({}).line == "No model in memory");
+  auto v = memory_view({"direct:opus-de-ru", "OPUS-MT de → ru", 410'000'000, 150});
+  CHECK(v.held);
+  CHECK(v.line == "In memory: OPUS-MT de → ru · 410 MB");
+  CHECK(v.detail == "unloads in 3 min");
+  CHECK(v.unload == "Unload now");
+  CHECK(memory_view({"k", "t", 0, 10}).detail == "unloads in less than a minute");
+  CHECK(memory_view({"k", "t", 0, -1}).detail == "stays until LexiPeek quits");
+}

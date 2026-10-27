@@ -21,11 +21,13 @@ class ModelHost {
   ~ModelHost();
 
   // Runs use with the model of key under the host's lock, loading it (after freeing another) when it is not held.
-  // idle: how long it stays after this use. A throwing load leaves nothing held.
+  // idle: how long it stays after this use (0: until release). A throwing load leaves nothing held.
   void with(const std::string &key, std::chrono::milliseconds idle, const std::function<std::unique_ptr<Held>()> &load,
             const std::function<void(Held &)> &use);
   void release();
   std::string held() const;
+  // When the held model goes (time_point::max(): kept until release; meaningless when none is held).
+  clock::time_point until() const;
 
  private:
   void watch();

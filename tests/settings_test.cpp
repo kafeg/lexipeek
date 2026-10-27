@@ -176,6 +176,9 @@ TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, 
   st.trusted = false;
   CHECK(row(settings_view(SettingsSection::general, 0, s, st), "access")->kind == Kind::button);
   settings_toggle(s, "selection_icon", true);
+  CHECK(s.keep_model == 5);
+  settings_choose(s, "keep_model", 4, {});
+  CHECK(s.keep_model == 0);
   settings_toggle(s, "pin_moved", true);
   settings_choose(s, "ui_lang", 1, st);
   CHECK(s.selection_icon);

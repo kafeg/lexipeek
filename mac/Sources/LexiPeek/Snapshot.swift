@@ -8,10 +8,10 @@ enum Snapshot {
     static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
-    // [&section=<key>][&method=fast|ai] (save: ☆ once it is final; open: that word clicked in the card; section: the first
+    // [&section=<key>][&method=fast|ai][&whole=1] (save: ☆ once it is final; open: that word clicked in the card; section: the first
     // entry's section opened; tab=analysis|context: that AI tab clicked; method=ai: AI translation picked).
     private struct Request {
-        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool
+        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool
     }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
@@ -53,7 +53,7 @@ enum Snapshot {
             Request(name: $0, tab: v("tab").flatMap { tabs[$0] }, full: v("full") == "1", save: v("save") == "1", open: v("open"),
                     section: v("section"),
                     method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
-                    ai: v("method") == "ai")
+                    ai: v("method") == "ai", whole: v("whole") == "1")
         }
         return url.host == "unread"
     }
@@ -67,6 +67,8 @@ enum Snapshot {
     // &method=fast: the card translates with it, whatever the settings say; &method=ai: by AI.
     static var method: lexipeek.Method? { request?.method }
     static var ai: Bool { request?.ai ?? false }
+    // &whole=1: a cut title is shown whole (as clicked).
+    static var whole: Bool { request?.whole ?? false }
 
     // lexipeek://firstrun?snap=<name>&step=<step>: the first-run window in that step (its name); nil for other URLs.
     static func firstRun(_ url: URL) -> String? {

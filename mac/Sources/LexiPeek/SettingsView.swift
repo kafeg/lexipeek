@@ -7,11 +7,12 @@ import SwiftUI
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
 enum SettingsSection: Int, CaseIterable {
-    case languages, card, ai, notes, general
+    case general, languages, card, ai, notes
 
-    var core: lexipeek.SettingsSection { [.languages, .card, .ai, .notes, .general][rawValue] }
-    var key: String { ["languages", "card", "ai", "notes", "general"][rawValue] }
-    var title: String { String(lexipeek.settings_sections()[rawValue]) }
+    // General first, as macOS settings; the core keeps InkPeek's order.
+    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai, .notes][rawValue] }
+    var key: String { ["general", "languages", "card", "ai", "notes"][rawValue] }
+    var title: String { String(lexipeek.settings_sections()[Int(core.rawValue)]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
     var symbol: String {

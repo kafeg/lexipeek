@@ -61,6 +61,8 @@ struct Engine {
   void prepare() const;
   void reload() const;
   void release() const;
+  // The held model for the menu bar's menu.
+  MemoryView memory() const;
   void cancel() const;
 };
 

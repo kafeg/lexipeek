@@ -21,6 +21,7 @@ const std::vector<std::string> width_names{"width_narrow", "width_medium", "widt
 const std::vector<int> sizes{12, 13, 14, 15, 16, 18};
 const std::vector<std::pair<std::string, std::string>> fonts{{"", "ui_lang_system"}, {"serif", "font_serif"}, {"rounded", "font_rounded"}, {"mono", "font_mono"}};
 const std::vector<int> heights{30, 45, 60, 75};
+const std::vector<int> keeps_min{1, 5, 15, 60, 0};
 // Each UI language by its own name.
 const std::vector<std::pair<std::string, std::string>> ui_langs{{"", ""},         {"en", "English"},  {"ru", "Русский"},   {"de", "Deutsch"},
                                                                 {"fr", "Français"}, {"es", "Español"}, {"it", "Italiano"}, {"pt", "Português"},
@@ -236,6 +237,9 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st) {
                                valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), ""),
                                heading(tr("system_t")),
                                toggle("open_at_login", tr("login_t"), tr("login_d"), st.login)};
+  std::vector<std::string> keeps;
+  for (auto m : keeps_min) keeps.push_back(m == 0 ? tr("keep_forever") : m == 60 ? tr("keep_hour") : tr("keep_min", {digits(m)}));
+  rows.push_back(choice("keep_model", tr("keep_t"), tr("keep_d"), keeps, index_of(keeps_min, s.keep_model)));
   auto access = tr("access_d", {st.input});
   if (st.trusted) {
     auto r = valued(Kind::status, "access", tr("access_t"), access, tr("allowed"));
@@ -357,6 +361,7 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "font") s.card.font = at(fonts).first;
   else if (key == "height") s.card.height = at(heights);
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
+  else if (key == "keep_model") s.keep_model = at(keeps_min);
 }
 
 void settings_text(Settings &s, const std::string &key, const std::string &value) {

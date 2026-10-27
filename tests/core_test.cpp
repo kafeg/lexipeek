@@ -125,6 +125,11 @@ TEST_CASE("model host: one model, idle unload") {
   host.with("d", 1h, load, [](mt::Held &) {});
   host.release();
   CHECK(alive == 0);
+  host.with("e", 0ms, load, [](mt::Held &) {});  // 0: kept until release
+  CHECK(host.until() == mt::ModelHost::clock::time_point::max());
+  std::this_thread::sleep_for(50ms);
+  CHECK(host.held() == "e");
+  host.release();
 }
 
 TEST_CASE("core: an empty data dir gives a card without methods") {

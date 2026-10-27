@@ -152,6 +152,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showSettings() { openSettings(nil) }
 
+    @objc private func unload() { client.release() }
+
     @objc private func showNotes() { openSettings(.notes) }
 
     // Settings → Notes on one tab, off screen: <name>.png, then <name>.done.
@@ -241,6 +243,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let n = NSMenuItem(title: L.t("notes_more"), action: #selector(showNotes), keyEquivalent: "")
         n.target = self
         menu.addItem(n)
+        menu.addItem(.separator())
+        // What is in memory now, and a way to free it.
+        let mem = client.memory()
+        menu.addItem(NSMenuItem(title: String(mem.line), action: nil, keyEquivalent: ""))
+        if mem.held {
+            menu.addItem(NSMenuItem(title: String(mem.detail), action: nil, keyEquivalent: ""))
+            let u = NSMenuItem(title: String(mem.unload), action: #selector(unload), keyEquivalent: "")
+            u.target = self
+            menu.addItem(u)
+        }
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: L.t("menu_answer", String(lexipeek.app.language(std.string(prefs.answer)))), action: nil, keyEquivalent: ""))
         menu.addItem(.separator())

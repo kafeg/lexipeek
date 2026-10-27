@@ -108,6 +108,8 @@ final class CoreClient {
     }
 
     // Memory pressure: free the held model now.
+    func memory() -> lexipeek.MemoryView { engine.memory() }
+
     func release() {
         DispatchQueue.global(qos: .utility).async { [engine] in engine.release() }
     }

@@ -55,6 +55,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.dicts = s.dicts;
   o.card = s.card;
   o.ai = s.ai;
+  o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   return {std::make_shared<Core>(std::move(o))};
 }
@@ -83,6 +84,7 @@ void Engine::clear_history() const { core->store().clear_history(); }
 void Engine::prepare() const { core->prepare(); }
 void Engine::reload() const { core->reload(); }
 void Engine::release() const { core->release(); }
+MemoryView Engine::memory() const { return memory_view(core->memory()); }
 void Engine::cancel() const { core->cancel(); }
 
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {

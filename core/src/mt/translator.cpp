@@ -1,6 +1,9 @@
 // The three methods (as InkPeek's mt/Engine.kt, mt/Llm.kt): models found in the data dir by the packs list.
 #include <algorithm>
+#include <atomic>
+#include <cstdint>
 #include <fstream>
+#include <map>
 #include <mutex>
 #include <sstream>
 #include <thread>
@@ -66,6 +69,9 @@ struct Translator::Impl {
   std::mutex lid_mu;
   std::unique_ptr<LangIdModel> lid;
   std::atomic<bool> stop{false};
+  std::atomic<long long> idle_ms{-1};  // set_idle's; -1: the options'
+  std::mutex about_mu;
+  std::map<std::string, std::pair<std::string, std::int64_t>> about;  // key → title, bytes of what was loaded
 
   Plan plan(const std::string &from, const std::string &to, Method m) {
     Plan p;
@@ -110,7 +116,19 @@ struct Translator::Impl {
     return p;
   }
 
-  std::unique_ptr<Held> load(const Plan &p) {
+  std::unique_ptr<Held> load(const Plan &p, const std::string &from, const std::string &to) {
+    std::int64_t bytes = 0;
+    std::error_code ec;
+    auto add = [&](const std::filesystem::path &f) {
+      if (std::filesystem::is_regular_file(f, ec)) bytes += static_cast<std::int64_t>(std::filesystem::file_size(f, ec));
+    };
+    for (auto &d : p.dirs)
+      for (auto &e : std::filesystem::recursive_directory_iterator(d, ec)) add(e.path());
+    if (p.llm) add(p.gguf);
+    {
+      std::lock_guard g(about_mu);
+      about[p.key] = {p.by + " " + from + " → " + to, bytes};
+    }
     if (p.llm) {
       auto h = std::make_unique<Llm>();
       int threads = o.threads > 0 ? o.threads : std::max(1, std::clamp(static_cast<int>(std::thread::hardware_concurrency()), 1, 8) / 2);
@@ -126,7 +144,10 @@ struct Translator::Impl {
     return h;
   }
 
-  std::chrono::milliseconds idle(const Plan &p) const { return p.llm ? o.idle_llm : o.idle_bergamot; }
+  std::chrono::milliseconds idle(const Plan &p) const {
+    auto ms = idle_ms.load();
+    return ms >= 0 ? std::chrono::milliseconds(ms) : p.llm ? o.idle_llm : o.idle_bergamot;
+  }
 };
 
 Translator::Translator(TranslatorOptions o) : impl_(std::make_unique<Impl>()) {
@@ -144,7 +165,7 @@ std::string Translator::load(const std::string &from, const std::string &to, Met
   auto p = impl_->plan(from, to, m);
   if (!p.error.empty()) return p.error;
   try {
-    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p); }, [](Held &) {});
+    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p, from, to); }, [](Held &) {});
   } catch (const std::exception &e) {
     return e.what();
   }
@@ -165,7 +186,7 @@ Translation Translator::translate(const std::string &from, const std::string &to
     return r;
   }
   try {
-    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p); }, [&](Held &h) {
+    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p, from, to); }, [&](Held &h) {
       if (p.llm) {
         auto &model = *static_cast<Llm &>(h).model;
         auto name = [&](const std::string &code) {
@@ -226,5 +247,21 @@ void Translator::cancel() { impl_->stop = true; }
 void Translator::release() { impl_->host.release(); }
 
 std::string Translator::held() const { return impl_->host.held(); }
+
+void Translator::set_idle(std::chrono::milliseconds idle) { impl_->idle_ms = idle.count(); }
+
+Translator::Memory Translator::memory() const {
+  Memory m;
+  m.key = impl_->host.held();
+  if (m.key.empty()) return m;
+  {
+    std::lock_guard g(impl_->about_mu);
+    if (auto a = impl_->about.find(m.key); a != impl_->about.end()) m.title = a->second.first, m.bytes = a->second.second;
+  }
+  auto until = impl_->host.until();
+  if (until == ModelHost::clock::time_point::max()) m.seconds = -1;
+  else m.seconds = std::max<long long>(0, std::chrono::duration_cast<std::chrono::seconds>(until - ModelHost::clock::now()).count());
+  return m;
+}
 
 }  // namespace lexipeek

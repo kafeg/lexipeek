@@ -118,6 +118,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   impl_->o.mt_english = s.mt_english;
+  impl_->tr->set_idle(std::chrono::minutes(s.keep_model));
   impl_->o.dicts = s.dicts;
   impl_->lib->configure(own(impl_->o.data, s.dicts));
   impl_->o.card = s.card;
@@ -369,6 +370,8 @@ SectionPage Core::section(const Card &card, int entry, const std::string &key, i
 void Core::cancel() { impl_->tr->cancel(); }
 
 void Core::release() { impl_->tr->release(); }
+
+Translator::Memory Core::memory() const { return impl_->tr->memory(); }
 
 void Core::prepare() {
   std::lock_guard g(impl_->mu);

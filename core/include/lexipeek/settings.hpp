@@ -57,6 +57,7 @@ struct Settings {
   bool pin_moved = false;       // a dragged card stays open, as pinned
   bool mt_english = false;      // Mozilla's English in between, under a translation through English
   bool first_run = false;       // the first-run window was finished once
+  int keep_model = 5;           // minutes a model stays in memory after a use, 0: until quit
   std::vector<std::string> ignore_apps;  // bundle ids where the hotkey does nothing
   std::vector<std::string> copy_apps;    // bundle ids where Cmd+C may read the selection (the clipboard is restored)
   DictSettings dicts;

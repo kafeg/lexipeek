@@ -71,6 +71,16 @@ std::vector<std::string> answer_languages(const Manifest &m) {
 
 std::string method_title(Method m) { return tr(m == Method::fast ? "mt_fast_t" : m == Method::direct ? "mt_direct_t" : "mt_llm_t"); }
 
+MemoryView memory_view(const Translator::Memory &m) {
+  MemoryView v;
+  v.held = !m.key.empty();
+  if (!v.held) return v.line = tr("mem_none"), v;
+  v.line = tr("mem_line", {m.title.empty() ? m.key : m.title, size_text(m.bytes)});
+  v.detail = m.seconds < 0 ? tr("mem_kept") : m.seconds < 60 ? tr("mem_soon") : tr("mem_until", {tr("keep_min", {digits((m.seconds + 59) / 60)})});
+  v.unload = tr("mem_unload");
+  return v;
+}
+
 CardTab first_tab(const Card &c) {
   if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
   bool words = !c.gloss.empty() || !c.separable.empty();

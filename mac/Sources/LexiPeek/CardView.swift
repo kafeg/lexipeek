@@ -12,6 +12,9 @@ struct CardView: View {
     @State private var bodyHeight: CGFloat = 0
     @State private var recents: [(text: String, meaning: String)] = []
     @State private var picked: Int?
+    @State private var titleCut = false
+    @State private var titleOpen = false
+    @State private var titleHeight: CGFloat = 0
 
     private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * CGFloat(model.look?.height ?? 45) / 100 }
 
@@ -76,6 +79,48 @@ struct CardView: View {
         .onAppear {
             focused = focusInput
             if model.showInput { recents = model.client.recents().map { (text: $0.0, meaning: $0.1) } }
+        }
+    }
+
+    // As InkPeek's title: cut with "…" (not selectable: a selection inside spills over); a click on a cut one shows it whole
+    // in its place, selectable, at most half the card high, ▲ folds it again.
+    @ViewBuilder
+    private func title(_ s: String, _ f: Font, lines: Int, secondary: Bool) -> some View {
+        if titleOpen {
+            VStack(alignment: .leading, spacing: 4) {
+                ScrollView {
+                    Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(GeometryReader { g in Color.clear.preference(key: TitleKey.self, value: g.size.height) })
+                }
+                .frame(height: min(max(titleHeight, 16), limit / 2))
+                .onPreferenceChange(TitleKey.self) {
+                    titleHeight = $0
+                    model.objectWillChange.send()
+                }
+                Button { titleOpen = false } label: { Image(systemName: "chevron.up").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderless)
+                    .help(L.t("card_collapse"))
+            }
+        } else {
+            Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary).lineLimit(lines).truncationMode(.tail)
+                .background(GeometryReader { cut in
+                    // The whole text at the same width, unseen: taller means the title is cut.
+                    Text(s).font(f).fixedSize(horizontal: false, vertical: true)
+                        .frame(width: cut.size.width, alignment: .leading)
+                        .hidden()
+                        .background(GeometryReader { whole in
+                            Color.clear.preference(key: CutKey.self, value: whole.size.height > cut.size.height + 1)
+                        })
+                })
+                .onPreferenceChange(CutKey.self) {
+                    titleCut = $0
+                    if $0 && Snapshot.whole { titleOpen = true }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { if titleCut { titleOpen = true } }
+                .help(titleCut ? L.t("card_whole") : "")
         }
     }
 
@@ -188,21 +233,21 @@ struct CardView: View {
 
     // Not selectable: a selectable Text drops its line limit on a click and spills over the card.
     private func header(_ look: CardLook) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: titleOpen ? .top : .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 switch look.style {
                 case .word:
-                    Text(look.title).font(font(4, .semibold)).lineLimit(2).truncationMode(.tail)
+                    title(look.title, font(4, .semibold), lines: 2, secondary: false)
                     if !look.subtitle.isEmpty {
                         Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 case .phrase:
-                    Text(look.title).font(font(0, .semibold)).lineLimit(2).truncationMode(.tail)
+                    title(look.title, font(0, .semibold), lines: 2, secondary: false)
                 default:
-                    Text(look.title).font(font(-1)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                    title(look.title, font(-1), lines: 1, secondary: true)
                 }
             }
-            .help(look.tooltip)
+            .onChange(of: look.title) { titleOpen = false }
             Spacer(minLength: 8)
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if !look.star.isEmpty {
@@ -336,6 +381,16 @@ struct CardView: View {
         .menuStyle(.borderlessButton)
         .fixedSize()
     }
+}
+
+private struct TitleKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct CutKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
 }
 
 private struct HeightKey: PreferenceKey {

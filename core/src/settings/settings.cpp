@@ -90,6 +90,7 @@ Settings load_settings(const fs::path &data) {
     s.pin_moved = j.value("pin_moved", s.pin_moved);
     s.mt_english = j.value("mt_english", s.mt_english);
     s.first_run = j.value("first_run", s.first_run);
+    s.keep_model = j.value("keep_model", s.keep_model);
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
     if (auto d = j.value("dicts", json::object()); d.is_object()) {
@@ -119,6 +120,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["pin_moved"] = s.pin_moved;
   j["mt_english"] = s.mt_english;
   j["first_run"] = s.first_run;
+  j["keep_model"] = s.keep_model;
   j["ignore_apps"] = s.ignore_apps;
   j["copy_apps"] = s.copy_apps;
   j["dicts"] = {{"order", s.dicts.order}, {"off", s.dicts.off}, {"folders", s.dicts.folders}, {"sources_off", s.dicts.sources_off}, {"got", s.dicts.got}};

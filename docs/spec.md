@@ -131,7 +131,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
   translation only (its text in one line above it). At most 45% of the screen high, the rest scrolls inside; the card
   keeps its height while something loads, then fits what it shows (smaller too).
-  A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
+  A cut header (InkPeek's title) ends in "…"; a click shows it whole in its place, selectable, at most half the card
+  high, ▲ folds it. A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
   words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the
   dictionary's name only when there are more. The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
   offer a choice it is a menu: the text's language (the packs' into the answer) and the answer language — a pick looks
@@ -177,9 +178,10 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Notes** (menu bar → Notes…; a normal window): Words · Phrases · History with counts, newest first; a row is the
   text and one line (the saved line, else the newest kept answer, else "—"), History also its looks; a click opens
   the card, ✕ removes, "Clear history…" (asks) under History. Rows and texts come from the core (`notes_view`).
-- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · Notes… · language pair · Settings… ⌘, · Quit.
+- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · Notes… · what is in memory ("In memory: OPUS-MT
+  de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
-  standard settings window, each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
+  standard settings window (**General** first, as macOS settings), each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
   language, method, Mozilla's English in between) · Other dictionaries (a folder, InkPeek's catalog of public
   sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·
   Article (the dictionary view: short line or full entry, the header's grammar, the sections shown, dictionary order)
@@ -189,7 +191,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
   every prompt back to the original) · **Notes** —
   Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
-  the icon at the selection, per-app rules, a moved card stays, open at login, Accessibility, the app's language,
+  the icon at the selection, per-app rules, a moved card stays, open at login, how long a model stays in memory after
+  a use (1, 5, 15 min, 1 h, until quit; 5 min by default), Accessibility, the app's language,
   updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as
   InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
