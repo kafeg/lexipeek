@@ -4,7 +4,9 @@
 #include <QFontDatabase>
 #include <QFontMetrics>
 #include <QHBoxLayout>
+#include <QGraphicsOpacityEffect>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QRegularExpression>
 #include <QScreen>
@@ -23,6 +25,8 @@ void CardModel::relook() {
 
 void CardModel::reset() {
   request_ = 0;
+  pinned = false;
+  unread.clear();
   nav.reset();
   relook();
 }
@@ -74,6 +78,11 @@ void CardModel::choose_ai() {
 void CardModel::toggle_saved() {
   if (!nav.has_card() || !look_.can_save) return;
   nav.state.saved = c_.engine.toggle_saved(nav.card(), shown_translation(nav.state));
+  relook();
+}
+
+void CardModel::toggle_pin() {
+  pinned = !pinned;
   relook();
 }
 
@@ -205,17 +214,24 @@ void CardWidget::rebuild() {
     delete item;
   }
   if (!embedded_) setFixedWidth(v_.width > 0 ? v_.width : 400);
-  if (!m_.has_card()) {
-    if (m_.looking()) box_->addWidget(label("…", font(), false, false));
-    return;
-  }
   auto *top = new QWidget;
   auto *tl = new QVBoxLayout(top);
   tl->setContentsMargins(14, 14, 14, 8);
   tl->setSpacing(8);
-  tl->addWidget(header(v_));
-  if (v_.tabs) tl->addWidget(tabs(v_));
   box_->addWidget(top);
+  if (!m_.unread.empty()) {
+    auto *u = label(t("card_unread", m_.unread), font(-1), false, false);
+    grey(u);
+    tl->addWidget(u);
+  }
+  if (m_.input) tl->addWidget(field());
+  if (!m_.has_card()) {
+    if (m_.looking()) tl->addWidget(label("…", font(), false, false));
+    if (!embedded_) adjustSize();
+    return;
+  }
+  if (!(embedded_ && v_.style == HeaderStyle::passage)) tl->addWidget(header(v_));
+  if (v_.tabs) tl->addWidget(tabs(v_));
 
   auto *body = new QWidget;
   auto *bl = new QVBoxLayout(body);
@@ -223,6 +239,7 @@ void CardWidget::rebuild() {
   bl->setSpacing(8);
   for (auto &r : v_.rows) bl->addWidget(row(r, v_));
   if (!v_.fix.empty()) bl->addWidget(link(q(v_.fix), font(-2), [this] { emit openPane(static_cast<int>(SettingsSection::ai), 0); }));
+  if (embedded_) bl->addWidget(bar(v_));  // in the window the bar follows the text
   bl->addStretch();
   auto *scroll = new QScrollArea;
   scroll->setWidget(body);
@@ -237,7 +254,7 @@ void CardWidget::rebuild() {
     scroll->setFixedHeight(std::min(body->sizeHint().height(), limit));
   }
   box_->addWidget(scroll, 1);
-  box_->addWidget(bar(v_));
+  if (!embedded_) box_->addWidget(bar(v_));
   if (!embedded_) adjustSize();
 }
 
@@ -434,7 +451,28 @@ QWidget *CardWidget::bar(const CardView &v) {
     s->setToolTip(q(v.star_help));
     l->addWidget(s);
   }
+  if (!embedded_) {
+    auto *p = link("📌", font(-1), [this] { m_.toggle_pin(); });
+    p->setToolTip(t("card_pin"));
+    if (!m_.pinned) {
+      auto *dim = new QGraphicsOpacityEffect(p);
+      dim->setOpacity(0.35);
+      p->setGraphicsEffect(dim);
+    }
+    l->addWidget(p);
+  }
   return w;
+}
+
+// The card's text field (typing): Return looks it up.
+QWidget *CardWidget::field() {
+  auto *e = new QLineEdit(typed_);
+  e->setPlaceholderText(t("card_input_hint"));
+  e->setFont(font());
+  connect(e, &QLineEdit::textChanged, this, [this](const QString &s) { typed_ = s; });
+  connect(e, &QLineEdit::returnPressed, this, [this] { emit submitted(typed_); });
+  if (!m_.has_card()) QMetaObject::invokeMethod(e, [e] { e->setFocus(); }, Qt::QueuedConnection);
+  return e;
 }
 
 }  // namespace lexipeek::qt

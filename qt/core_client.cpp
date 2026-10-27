@@ -4,9 +4,9 @@ namespace lexipeek::qt {
 
 QString t(const char *key) { return q(app::text(key)); }
 QString t(const char *key, const std::string &a) { return q(app::text(key, a)); }
+QString t(const char *key, const std::string &a, const std::string &b) { return q(app::text(key, a, b)); }
 
-CoreClient::CoreClient(const std::string &data)
-    : engine(app::Engine::make(data, app::device(0, cpu_features(), cpu_arch()))), data_(data) {
+CoreClient::CoreClient(const std::string &data, const Device &d) : device(d), engine(app::Engine::make(data, d)), data_(data) {
   lookups.setMaxThreadCount(1);
   worker.setMaxThreadCount(1);
   indexing.setMaxThreadCount(1);

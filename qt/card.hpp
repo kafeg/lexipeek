@@ -18,6 +18,9 @@ class CardModel : public QObject {
   CardView look() const { return look_; }
   bool looking() const { return request_ != 0 && !nav.has_card(); }
   bool busy() const { return nav.busy(); }
+  bool pinned = false;  // the pop-up card stays open on an outside click
+  std::string unread;   // the app whose selection could not be read ("" = none)
+  bool input = false;   // the card shows its text field (typing)
   // Source::cli writes nothing (snapshots).
   Source source = Source::input;
   // The AI key for a request ("" none): the platform's credential store.
@@ -37,6 +40,7 @@ class CardModel : public QObject {
   void choose(Method m);
   void choose_ai();
   void toggle_saved();
+  void toggle_pin();
 
  signals:
   void changed();
@@ -60,6 +64,7 @@ class CardWidget : public QWidget {
 
  signals:
   void openPane(int section, int tab);  // a failed AI answer's settings
+  void submitted(const QString &text);  // the text field's Return
 
  private:
   QWidget *row(const CardRow &r, const CardView &v);
@@ -67,9 +72,11 @@ class CardWidget : public QWidget {
   QWidget *tabs(const CardView &v);
   QWidget *bar(const CardView &v);
   QFont font(int delta = 0, bool bold = false) const;
+  QWidget *field();
   CardModel &m_;
   bool embedded_;
   QVBoxLayout *box_;
+  QString typed_;
   CardView v_;
 };
 

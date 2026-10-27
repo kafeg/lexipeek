@@ -14,7 +14,7 @@ namespace {
 std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : text::path_of(data); }
 }  // namespace
 
-std::string data_dir() { return default_data_dir().string(); }
+std::string data_dir() { return text::utf8_of(default_data_dir()); }
 Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) { return {ram_mb, features, arch}; }
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }

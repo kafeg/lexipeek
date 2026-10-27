@@ -1,0 +1,183 @@
+#include "packs_pane.hpp"
+#include <QDesktopServices>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QMenu>
+#include <QProgressBar>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QTimer>
+#include <QToolButton>
+#include <QUrl>
+#include <QVBoxLayout>
+
+namespace lexipeek::qt {
+
+namespace {
+
+QLabel *text(const std::string &s, int delta = 0, bool grey = false, bool bold = false) {
+  auto *l = new QLabel(q(s));
+  l->setWordWrap(true);
+  auto f = l->font();
+  f.setPointSizeF(f.pointSizeF() + delta);
+  f.setBold(bold);
+  l->setFont(f);
+  if (grey) {
+    auto p = l->palette();
+    p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
+    l->setPalette(p);
+  }
+  return l;
+}
+
+}  // namespace
+
+PacksPane::PacksPane(CoreClient &client) : c_(client) {
+  auto *scroll = new QScrollArea;
+  auto *inner = new QWidget;
+  body_ = new QVBoxLayout(inner);
+  body_->setContentsMargins(20, 12, 20, 16);
+  body_->setSpacing(10);
+  scroll->setWidget(inner);
+  scroll->setWidgetResizable(true);
+  scroll->setFrameShape(QFrame::NoFrame);
+  auto *l = new QVBoxLayout(this);
+  l->setContentsMargins(0, 0, 0, 0);
+  l->addWidget(scroll);
+  poll_ = new QTimer(this);
+  connect(poll_, &QTimer::timeout, this, [this] {
+    auto total = dl_.get_total();
+    progress_ = total > 0 ? static_cast<double>(dl_.get_done()) / total : 0;
+    draw();
+  });
+  view_ = app::packs(c_.data(), c_.device);
+  draw();
+}
+
+void PacksPane::draw() {
+  while (auto *item = body_->takeAt(0)) {
+    if (auto *l = item->layout()) {
+      while (auto *i = l->takeAt(0)) delete i->widget(), delete i;
+    }
+    delete item->widget();
+    delete item;
+  }
+  if (busy_) {
+    auto *row = new QHBoxLayout;
+    row->addWidget(text(busy_->empty() ? t("packs_checking").toStdString() : *busy_));
+    auto *p = new QProgressBar;
+    p->setRange(0, busy_->empty() ? 0 : 1000);
+    p->setValue(static_cast<int>(progress_ * 1000));
+    p->setTextVisible(false);
+    row->addWidget(p, 1);
+    if (!busy_->empty()) {
+      auto *c = new QPushButton(t("cancel"));
+      connect(c, &QPushButton::clicked, this, [this] { dl_.cancel(); });
+      row->addWidget(c);
+    }
+    body_->addLayout(row);
+  }
+  for (auto *e : {&error_, &list_error_})
+    if (!e->empty()) body_->addWidget(text("⚠ " + *e, -1));
+  auto *top = new QHBoxLayout;
+  auto *col = new QVBoxLayout;
+  col->addWidget(text(view_.summary));
+  auto *open = new QToolButton;
+  open->setText(t("show_finder"));
+  open->setAutoRaise(true);
+  open->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
+  connect(open, &QToolButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(q(c_.data().empty() ? app::data_dir() : c_.data()))); });
+  col->addWidget(open, 0, Qt::AlignLeft);
+  top->addLayout(col, 1);
+  auto *check = new QPushButton(t("check_t"));
+  check->setEnabled(!busy_);
+  connect(check, &QPushButton::clicked, this, &PacksPane::refresh);
+  top->addWidget(check, 0, Qt::AlignTop);
+  body_->addLayout(top);
+  auto group = [this](const std::string &title, const std::vector<PackLine> &lines) {
+    if (lines.empty()) return;
+    body_->addSpacing(6);
+    body_->addWidget(text(title, 0, false, true));
+    for (auto &l : lines) body_->addWidget(line(l));
+  };
+  group(view_.installed_title, view_.installed);
+  group(view_.available_title, view_.available);
+  if (!view_.empty.empty()) body_->addWidget(text(view_.empty, 0, true));
+  body_->addStretch();
+}
+
+QWidget *PacksPane::line(const PackLine &l) {
+  auto *w = new QWidget;
+  auto *row = new QHBoxLayout(w);
+  row->setContentsMargins(0, 2, 0, 2);
+  auto *col = new QVBoxLayout;
+  col->setSpacing(1);
+  col->addWidget(text(l.title));
+  col->addWidget(text(l.detail, -2, true));
+  row->addLayout(col, 1);
+  if (!l.button.label.empty()) {
+    auto *b = new QPushButton(q(l.button.label));
+    b->setEnabled(!busy_);
+    auto a = l.button;
+    connect(b, &QPushButton::clicked, this, [this, a] { run(a); });
+    row->addWidget(b);
+  }
+  if (!l.menu.empty()) {
+    auto *b = new QToolButton;
+    b->setText("⋯");
+    b->setPopupMode(QToolButton::InstantPopup);
+    b->setEnabled(!busy_);
+    auto *menu = new QMenu(b);
+    for (auto &a : l.menu) {
+      if (a.divider) menu->addSeparator();
+      auto *x = menu->addAction(q(a.label));
+      x->setEnabled(a.enabled);
+      connect(x, &QAction::triggered, this, [this, a] { run(a); });
+    }
+    b->setMenu(menu);
+    row->addWidget(b);
+  }
+  return w;
+}
+
+void PacksPane::refresh() {
+  busy_ = "";
+  draw();
+  auto data = c_.data();
+  c_.run<std::string>(c_.ai, [data] { return app::refresh(data); }, [this](std::string e) {
+    busy_.reset();
+    list_error_ = e;
+    view_ = app::packs(c_.data(), c_.device);
+    draw();
+  }, this);
+}
+
+void PacksPane::run(const PackAction &a) {
+  if (busy_ || a.ids.empty()) return;
+  busy_ = a.what;
+  progress_ = 0;
+  error_.clear();
+  auto data = c_.data();
+  auto ids = a.ids;
+  if (a.remove) {
+    c_.run<Status>(c_.ai, [data, ids] { return app::remove(data, ids); }, [this](Status s) { finished(s); }, this);
+    return draw();
+  }
+  dl_ = app::Download();
+  auto dl = dl_;
+  poll_->start(300);
+  c_.run<Status>(c_.ai, [data, ids, dl] { return app::install(data, ids, dl); }, [this](Status s) { finished(s); }, this);
+  draw();
+}
+
+void PacksPane::finished(const Status &s) {
+  poll_->stop();
+  busy_.reset();
+  error_ = s.cancelled ? "" : s.error;
+  view_ = app::packs(c_.data(), c_.device);
+  c_.reload();
+  draw();
+  emit changed();
+}
+
+}  // namespace lexipeek::qt

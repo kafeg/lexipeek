@@ -1,5 +1,5 @@
 #!/bin/sh
-# The app icon and the menu-bar glyph from mac/Icon/*.svg into the asset catalog (needs rsvg-convert: brew install librsvg).
+# The app icon and the menu-bar glyph from mac/Icon/*.svg into the asset catalog and qt/icons (needs rsvg-convert: brew install librsvg).
 set -eu
 cd "$(dirname "$0")/../mac"
 set_dir=Sources/LexiPeek/Assets.xcassets/AppIcon.appiconset
@@ -18,3 +18,5 @@ cp Icon/MenuBarIcon.svg Sources/LexiPeek/Assets.xcassets/MenuBarIcon.imageset/Me
 cat > Sources/LexiPeek/Assets.xcassets/MenuBarIcon.imageset/Contents.json <<'J'
 {"images":[{"idiom":"universal","filename":"MenuBarIcon.svg"}],"info":{"version":1,"author":"xcode"},"properties":{"template-rendering-intent":"template","preserves-vector-representation":true}}
 J
+# The Qt shell's window and tray icons.
+for s in 16 32 64 256; do cp "$set_dir/icon_$s.png" ../qt/icons/; done
