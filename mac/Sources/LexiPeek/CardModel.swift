@@ -133,6 +133,9 @@ final class CardModel: ObservableObject {
                answer: answer.isEmpty ? String(card.answer) : answer)
     }
 
+    // A look-up asked and not answered yet.
+    var looking: Bool { request != 0 && card == nil }
+
     // Something is on its way: the card keeps its height meanwhile (no jumps), then fits what it shows.
     var loading: Bool {
         if card == nil { return !showInput }

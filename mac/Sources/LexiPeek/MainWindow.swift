@@ -37,6 +37,7 @@ final class MainModel: ObservableObject {
 struct MainView: View {
     @ObservedObject var model: MainModel
     @ObservedObject var notes: NotesModel
+    @ObservedObject var card: CardModel
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -71,7 +72,7 @@ struct MainView: View {
                 .onSubmit { model.look(model.query) }
                 .padding(14)
             Divider()
-            if model.card.card != nil || model.card.loading {
+            if card.card != nil || card.looking {
                 CardView(model: model.card, embedded: true).frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
             } else {
                 Spacer()
@@ -84,7 +85,7 @@ struct MainView: View {
 
 enum MainWindow {
     static func make(model: MainModel) -> NSWindow {
-        let host = NSHostingController(rootView: MainView(model: model, notes: model.notes))
+        let host = NSHostingController(rootView: MainView(model: model, notes: model.notes, card: model.card))
         host.sizingOptions = []  // the window keeps its size; a long card scrolls inside
         let w = NSWindow(contentViewController: host)
         w.title = ProcessInfo.processInfo.processName

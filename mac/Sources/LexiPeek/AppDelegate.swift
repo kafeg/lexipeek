@@ -151,8 +151,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func unload() { client.release() }
 
-    @objc private func showNotes() { openMain(.notes(.words)) }
-
     @objc private func showMain() { openMain(nil) }
 
     // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
@@ -243,6 +241,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item(L.t("hk_lookup_t"), #selector(translateSelection), prefs.translateKey))
         menu.addItem(item(L.t("menu_type"), #selector(typeText), prefs.inputKey))
+        let o = NSMenuItem(title: L.t("menu_open"), action: #selector(showMain), keyEquivalent: "o")
+        o.target = self
+        menu.addItem(o)
         let recents = NSMenuItem(title: L.t("recents"), action: nil, keyEquivalent: "")
         let sub = NSMenu()
         for (t, meaning) in client.recents() {
@@ -255,12 +256,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if sub.items.isEmpty { sub.addItem(NSMenuItem(title: L.t("nothing_yet"), action: nil, keyEquivalent: "")) }
         recents.submenu = sub
         menu.addItem(recents)
-        let o = NSMenuItem(title: L.t("menu_open"), action: #selector(showMain), keyEquivalent: "o")
-        o.target = self
-        menu.insertItem(o, at: 2)
-        let n = NSMenuItem(title: L.t("notes_more"), action: #selector(showNotes), keyEquivalent: "")
-        n.target = self
-        menu.addItem(n)
         menu.addItem(.separator())
         // What is in memory now, and a way to free it.
         let mem = client.memory()

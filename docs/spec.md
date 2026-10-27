@@ -183,7 +183,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   paragraph is a passage card with its translation. Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
   the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
   (asks) under History.
-- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Open LexiPeek ⌘O · Recents (5) · Notes… (the window's Words) · what is in memory ("In memory: OPUS-MT
+- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Open LexiPeek ⌘O · Recents (5) · what is in memory ("In memory: OPUS-MT
   de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
   standard settings window (**General** first, as macOS settings), each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer

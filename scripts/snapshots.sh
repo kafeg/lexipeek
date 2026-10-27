@@ -77,6 +77,7 @@ passage-saved|lookup?text=Der Hund schläft im Garten. Die Kinder spielen drauß
 notes-words|window?page=words
 notes-phrases|window?page=phrases
 notes-history|window?page=history
+window-empty|window?page=lookup
 window-lookup|window?page=lookup&look=Häusern
 window-passage|window?page=lookup&look=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.
 EOF
