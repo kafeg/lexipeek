@@ -397,3 +397,17 @@ TEST_CASE("views: the menu's line about the held model") {
   CHECK(memory_view({"k", "t", 0, 10}).detail == "unloads in less than a minute");
   CHECK(memory_view({"k", "t", 0, -1}).detail == "stays until LexiPeek quits");
 }
+
+TEST_CASE("views: offline translation off — Translate says so, or is the AI translation") {
+  auto c = phrase();
+  c.methods.clear();
+  c.method.reset();
+  c.mt_off = true;
+  auto s = first_state(c);
+  CHECK(!s.by_ai);
+  CHECK(s.tab == CardTab::dictionary);  // word by word
+  s.tab = CardTab::translate;
+  CHECK(card_view(c, s).rows[0].text.starts_with("Offline translation is off"));
+  c.ai.translate = true;
+  CHECK(first_state(c).by_ai);
+}

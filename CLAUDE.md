@@ -38,7 +38,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   dictionary][&full=1][&open=<word>][&section=<key>]` (open: a word clicked in the card; section: entry 0's) from
   `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
   `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final, `&method=fast` overrides the method,
-  `lexipeek://window?page=lookup|translate|words|phrases|history[&look=…][&text=…]&snap=<name>` shoots the LexiPeek window; no Esc/⌘P/outside-click closing; packs symlinked from
+  `lexipeek://window?page=lookup|words|phrases|history[&look=…]&snap=<name>` shoots the LexiPeek window; no Esc/⌘P/outside-click closing; packs symlinked from
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.

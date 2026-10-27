@@ -15,7 +15,7 @@ using Kind = SettingRow::Kind;
 const std::vector<std::pair<std::string, std::string>> phrase_opens{{"offline", "open_offline"}, {"ai", "open_ai"},       {"dict", "open_dict"},
                                                                     {"analysis", "a_analysis"},  {"context", "a_context"}};
 const std::vector<std::pair<std::string, std::string>> methods{
-    {"", "mt_first"}, {"fast", "mt_fast_t"}, {"direct", "mt_direct_t"}, {"llm", "mt_llm_t"}};
+    {"", "mt_first"}, {"fast", "mt_fast_t"}, {"direct", "mt_direct_t"}, {"llm", "mt_llm_t"}, {"off", "mt_off_t"}};
 const std::vector<int> widths{360, 400, 460, 520};
 const std::vector<std::string> width_names{"width_narrow", "width_medium", "width_wide", "width_widest"};
 const std::vector<int> sizes{12, 13, 14, 15, 16, 18};
@@ -107,10 +107,15 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   };
   rows.push_back(heading(tr("mt_t"), st.ram_mb > 0 ? tr("mt_this", {gb(st.ram_mb), tr(st.dotprod ? "mt_yes" : "mt_no")}) : ""));
   auto picked = s.method.value_or(Method::fast);
+  if (!st.methods.empty()) {
+    SettingRow off{Kind::method, "method", tr("mt_off_t"), tr("mt_off_d")};
+    off.value = "off", off.on = s.mt_off;
+    rows.push_back(off);
+  }
   for (auto &m : st.methods) {
     auto id = std::string(method_name(m.method));
     SettingRow r{Kind::method, "method", method_title(m.method), tr("mt_" + id + "_d")};
-    r.value = id, r.on = m.method == picked, r.enabled = m.cannot.empty();
+    r.value = id, r.on = !s.mt_off && m.method == picked, r.enabled = m.cannot.empty();
     std::vector<std::string> lines;
     if (!m.cannot.empty()) lines.push_back(m.cannot);
     else if (m.method != Method::fast && m.models > 0)
@@ -377,7 +382,10 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   // Behind a first "Off" / "Fill in from a preset…".
   auto at1 = [&](const auto &xs) { return xs.at(static_cast<size_t>(std::clamp(i - 1, 0, static_cast<int>(xs.size()) - 1))); };
   if (key == "answer") s.answer = at(answer_codes(s, st));
-  else if (key == "method") s.method = method_from(at(methods).first);
+  else if (key == "method") {
+    s.mt_off = at(methods).first == "off";
+    s.method = method_from(at(methods).first);
+  }
   else if (key == "phrase_open") s.card.phrase_open = at(opens(s)).first;
   else if (key == "ai_provider") s.ai.provider = i <= 0 ? "" : at1(ai::providers()).id;
   else if (key == "ai_preset" && i > 0) s.ai.url = at1(ai::presets()).url;

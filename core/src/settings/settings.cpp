@@ -80,7 +80,10 @@ Settings load_settings(const fs::path &data) {
   Settings s;
   try {
     s.answer = j.value("answer", s.answer);
-    if (j.contains("method") && j["method"].is_string()) s.method = method_from(j["method"].get<std::string>());
+    if (j.contains("method") && j["method"].is_string()) {
+      s.mt_off = j["method"] == "off";
+      s.method = method_from(j["method"].get<std::string>());
+    }
     if (j.contains("hotkeys")) {
       s.lookup = hotkey(j["hotkeys"].value("lookup", json()), s.lookup);
       s.input = hotkey(j["hotkeys"].value("input", json()), s.input);
@@ -112,7 +115,8 @@ Settings load_settings(const fs::path &data) {
 std::string save_settings(const fs::path &data, const Settings &s) {
   auto j = read(data);
   j["answer"] = s.answer;
-  if (s.method) j["method"] = std::string(method_name(*s.method));
+  if (s.mt_off) j["method"] = "off";
+  else if (s.method) j["method"] = std::string(method_name(*s.method));
   else j.erase("method");
   j["hotkeys"] = {{"lookup", to_json(s.lookup)}, {"input", to_json(s.input)}};
   j["open_at_login"] = s.open_at_login;

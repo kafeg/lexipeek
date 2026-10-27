@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 continue
             }
             if let w = Snapshot.window(url) {
-                snapshotMain(w.page, w.name, look: w.look, text: w.text)
+                snapshotMain(w.page, w.name, look: w.look)
                 continue
             }
             if Snapshot.take(url) {
@@ -176,14 +176,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainWindow?.makeKeyAndOrderFront(nil)
     }
 
-    // The window on a page, off screen: <name>.png, then <name>.done (look: a text looked up; text: translated).
-    private func snapshotMain(_ page: MainPage, _ name: String, look: String?, text: String?) {
+    // The window on a page, off screen: <name>.png, then <name>.done (look: a text looked up there).
+    private func snapshotMain(_ page: MainPage, _ name: String, look: String?) {
         openMain(page)
         if let look { main.look(look) }
-        if let text {
-            main.text.text = text
-            main.text.go()
-        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
             Snapshot.write(self.mainWindow?.contentView?.superview, "\(name).png")
             Snapshot.mark("\(name).done")

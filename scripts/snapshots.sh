@@ -44,7 +44,7 @@ und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
 # open=<word> clicks that word in the card; section=<key> opens the first entry's section;
-# window?page=…: the LexiPeek window, notes after the cards that fill them; look= / text= look up / translate there)
+# window?page=…: the LexiPeek window, notes after the cards that fill them; look= looks up there)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
@@ -78,7 +78,7 @@ notes-words|window?page=words
 notes-phrases|window?page=phrases
 notes-history|window?page=history
 window-lookup|window?page=lookup&look=Häusern
-window-translate|window?page=translate&text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.
+window-passage|window?page=lookup&look=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.
 EOF
 }
 

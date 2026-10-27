@@ -109,16 +109,26 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   std::vector<SettingRow> cards;
   for (auto &r : p.rows)
     if (r.kind == Kind::method) cards.push_back(r);
-  REQUIRE(cards.size() == 3);
-  CHECK(cards[0].on);  // no method set: Fast
-  CHECK(cards[0].detail.empty());
-  CHECK(cards[1].value == "direct");
-  CHECK(cards[1].detail == "For your pairs: 2 model(s), 610 MB\nNo model for de→pl: Mozilla translates them.");
-  CHECK(cards[1].ids == std::vector<std::string>{"opus-a"});
-  CHECK(cards[1].button == "Download 300 MB");
-  CHECK(!cards[2].enabled);
-  CHECK(cards[2].detail == llm.cannot);
-  CHECK(cards[2].ids.empty());
+  REQUIRE(cards.size() == 4);
+  CHECK(cards[0].value == "off");  // InkPeek's Off first
+  CHECK(!cards[0].on);
+  CHECK(cards[1].on);  // no method set: Fast
+  CHECK(cards[1].detail.empty());
+  CHECK(cards[2].value == "direct");
+  CHECK(cards[2].detail == "For your pairs: 2 model(s), 610 MB\nNo model for de→pl: Mozilla translates them.");
+  CHECK(cards[2].ids == std::vector<std::string>{"opus-a"});
+  CHECK(cards[2].button == "Download 300 MB");
+  CHECK(!cards[3].enabled);
+  CHECK(cards[3].detail == llm.cannot);
+  CHECK(cards[3].ids.empty());
+  settings_choose(s, "method", 4, st);
+  CHECK(s.mt_off);
+  CHECK(!s.method);
+  p = settings_view(SettingsSection::languages, 1, s, st);
+  CHECK(row(p, "method")->on);  // Off picked
+  settings_choose(s, "method", 1, st);
+  CHECK(!s.mt_off);
+  CHECK(s.method == Method::fast);
   st.downloading = "direct", st.progress = 0.5;
   p = settings_view(SettingsSection::languages, 1, s, st);
   for (auto &r : p.rows)
@@ -300,4 +310,15 @@ TEST_CASE("settings: the packs' summary and a pair's second line") {
   CHECK(packs_summary({a, a}) == "2 language pairs installed");
   CHECK(pair_detail(a) == "Full · Mozilla · OPUS-MT");
   CHECK(pair_detail(b) == "Basic · " + size_text(b.missing));
+}
+
+TEST_CASE("settings: offline translation off is kept as \"off\"") {
+  auto d = fs::temp_directory_path() / "lexipeek-mt-off";
+  fs::remove_all(d);
+  Settings s;
+  s.mt_off = true;
+  CHECK(save_settings(d, s).empty());
+  CHECK(load_settings(d).mt_off);
+  CHECK(!load_settings(d).method);
+  fs::remove_all(d);
 }

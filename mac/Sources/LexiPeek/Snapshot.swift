@@ -33,15 +33,14 @@ enum Snapshot {
         }
     }
 
-    // lexipeek://window?page=lookup|translate|words|phrases|history[&look=<text>][&text=<text>]&snap=<name>: the LexiPeek
-    // window on that page (look: that text looked up; text: that text translated).
-    static func window(_ url: URL) -> (page: MainPage, name: String, look: String?, text: String?)? {
+    // lexipeek://window?page=lookup|words|phrases|history[&look=<text>]&snap=<name>: the LexiPeek window on that page
+    // (look: that text looked up there).
+    static func window(_ url: URL) -> (page: MainPage, name: String, look: String?)? {
         guard dir != nil, url.host == "window" else { return nil }
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        let pages: [String: MainPage] = ["lookup": .lookup, "translate": .translate, "words": .notes(.words), "phrases": .notes(.phrases),
-                                         "history": .notes(.history)]
-        return (pages[v("page") ?? ""] ?? .lookup, v("snap") ?? "window", v("look"), v("text"))
+        let pages: [String: MainPage] = ["lookup": .lookup, "words": .notes(.words), "phrases": .notes(.phrases), "history": .notes(.history)]
+        return (pages[v("page") ?? ""] ?? .lookup, v("snap") ?? "window", v("look"))
     }
 
     // Reads the snapshot options of a lexipeek:// URL; true for lexipeek://unread (the selection-failed card).

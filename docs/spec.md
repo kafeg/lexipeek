@@ -176,18 +176,18 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
 - **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
-  open): a sidebar — **Look up** · **Translate text** · Notes: **Words** · **Phrases** · **History** with counts — and
-  the page. Look up: a field on top (focused on open), its card drawn in the window as in the pop-up (same tabs, rows,
-  ←, ☆; no height limit, the window scrolls). Translate text: a pasted text left, its translation right; the text's
-  language and the answer language as menus (the packs'), the method menu, Translate (⌘↩); looked up as `Source::text`
-  (no history, answers kept). Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
+  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts — and the page. Look up: a
+  field on top (focused on open; it grows to a few lines for a pasted text, Return looks it up), its card drawn in the
+  window as in the pop-up (same tabs, rows, ←, ☆, badge menu, methods; no height limit, the page scrolls): a pasted
+  paragraph is a passage card with its translation. Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
   the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
   (asks) under History.
 - **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Open LexiPeek ⌘O · Recents (5) · Notes… (the window's Words) · what is in memory ("In memory: OPUS-MT
   de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
   standard settings window (**General** first, as macOS settings), each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
-  language, Mozilla's English in between, the methods as InkPeek's cards: what each does, what it needs for the
+  language, Mozilla's English in between, the methods as InkPeek's cards — Off first (dictionaries only; Translate is
+  the AI translation when AI is on, else says so), then what each does, what it needs for the
   installed pairs and whether it is downloaded, pairs no model covers, why this machine cannot run it; a click picks
   one, its Download button fetches its models with progress) · Other dictionaries (a folder, InkPeek's catalog of public
   sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·

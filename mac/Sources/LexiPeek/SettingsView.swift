@@ -144,7 +144,7 @@ final class SettingsModel: ObservableObject {
 
     // A method's card: picked (as in InkPeek, its models download from the card's button).
     func pickMethod(_ id: String) {
-        choose("method", ["fast": 1, "direct": 2, "llm": 3][id] ?? 0)
+        choose("method", ["fast": 1, "direct": 2, "llm": 3, "off": 4][id] ?? 0)
     }
 
     func downloadMethod(_ id: String, _ ids: [String]) {

@@ -118,6 +118,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->notes_answer = s.answer;
   impl_->o.method = s.method;
   impl_->o.mt_english = s.mt_english;
+  impl_->o.mt_off = s.mt_off;
   impl_->tr->set_idle(std::chrono::minutes(s.keep_model));
   impl_->o.dicts = s.dicts;
   impl_->lib->configure(own(impl_->o.data, s.dicts));
@@ -203,7 +204,7 @@ Card Core::lookup(const Request &r) {
       add(c.answers, d->answer());
       if (d->answer() == c.answer) add(c.books, d->book());
     }
-  if (r.source != Source::cli && r.source != Source::text && c.error.empty()) {
+  if (r.source != Source::cli && c.error.empty()) {
     auto kind = c.kind == Card::Kind::word ? "word" : "phrase";
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }
@@ -214,7 +215,8 @@ Card Core::lookup(const Request &r) {
   c.answer_name = language_name(c.answer);
   if (!c.lang.empty()) c.lang_name = language_name(c.lang);
   if (!c.other.empty()) c.other_name = language_name(c.other);
-  if (c.lang.empty() || c.lang == c.answer) return c;
+  c.mt_off = impl_->o.mt_off;
+  if (c.lang.empty() || c.lang == c.answer || c.mt_off) return c;
   auto manifest = Packs(impl_->o.data, "").cached();
   for (auto m : {Method::fast, Method::direct, Method::llm}) {
     MethodState s{m, method_title(m), false, ""};

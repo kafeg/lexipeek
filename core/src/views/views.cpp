@@ -125,6 +125,8 @@ CardTab first_tab(const Card &c) {
   auto &o = c.prefs.phrase_open;
   if (o == "analysis" && c.ai.analysis) return CardTab::analysis;
   if (o == "context" && c.ai.context) return CardTab::context;
+  // Nothing translates offline and no AI: word by word.
+  if (words && c.mt_off && !c.ai.translate) return CardTab::dictionary;
   return words && o == "dict" ? CardTab::dictionary : CardTab::translate;
 }
 
@@ -135,7 +137,8 @@ CardState first_state(const Card &c) {
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
   s.saved = c.saved;
-  s.by_ai = c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai" && c.ai.translate;
+  // Offline translation off (InkPeek's "off"): Translate is the AI translation, when AI is on.
+  s.by_ai = c.ai.translate && (c.mt_off || (c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai"));
   return s;
 }
 
@@ -290,6 +293,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   if (!c.lang.empty() && c.lang == c.answer) return note(tr("card_already", {name(c.answer, c.answer_name)}));
   if (c.lang.empty())
     return note(c.other_name.empty() ? tr("card_no_lang") : tr("card_no_pack", {name(c.other, c.other_name), name(c.answer, c.answer_name)}));
+  if (c.mt_off) return note(tr("card_mt_off"));
   if (c.methods.empty()) return note(c.error.empty() ? tr("card_no_method") : c.error);
   if (s.translated)
   {

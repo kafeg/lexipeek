@@ -16,9 +16,12 @@ Device device(int ram_mb, bool dotprod) { return {ram_mb, dotprod ? std::vector<
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }
 std::string save(const std::string &data, const Settings &s) { return save_settings(dir(data), s); }
-std::string method_id(const Settings &s) { return s.method ? method_id(*s.method) : ""; }
+std::string method_id(const Settings &s) { return s.mt_off ? "off" : s.method ? method_id(*s.method) : ""; }
 std::string method_id(Method m) { return std::string(method_name(m)); }
-void set_method(Settings &s, const std::string &id) { s.method = method_from(id); }
+void set_method(Settings &s, const std::string &id) {
+  s.mt_off = id == "off";
+  s.method = method_from(id);
+}
 std::string language(const std::string &code) { return language_name(code); }
 
 std::string set_language(const std::string &data, const std::string &system) {
@@ -52,6 +55,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.method = s.method;
   o.device = d;
   o.mt_english = s.mt_english;
+  o.mt_off = s.mt_off;
   o.dicts = s.dicts;
   o.card = s.card;
   o.ai = s.ai;

@@ -14,8 +14,7 @@
 
 namespace lexipeek {
 
-// text: the window's Translate text (no history, answers kept); cli: neither.
-enum class Source { hotkey, input, service, url, extension, cli, text };
+enum class Source { hotkey, input, service, url, extension, cli };
 
 struct Request {
   std::string text;
@@ -115,6 +114,7 @@ struct Card {
   CardAi ai = {};
   // The packs' languages for the badge's menu: the texts' into answer, the answers' (codes).
   std::vector<std::string> books = {}, answers = {};
+  bool mt_off = false;  // offline translation is off: Translate is AI only
 };
 
 
@@ -135,6 +135,7 @@ struct CoreOptions {
   TranslatorOptions translator;  // data is filled from [data]
   std::optional<Device> device;  // this machine (from the shell); none: not checked
   bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
+  bool mt_off = false;           // no offline translation (the card has no methods)
   DictSettings dicts;            // the own dictionaries: folders, off, order
   CardPrefs card;                // copied into every card
   AiSettings ai;                 // the AI layer
