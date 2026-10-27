@@ -210,18 +210,6 @@ struct CardView: View {
             .help(L.t("card_copy"))
     }
 
-    // A row with its copy button on the right, when it has something to copy.
-    @ViewBuilder
-    private func copyable(_ r: CardLook.Row, @ViewBuilder _ content: () -> some View) -> some View {
-        if r.copy.isEmpty {
-            content()
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                content().frame(maxWidth: .infinity, alignment: .leading)
-                copyButton(r.copy)
-            }
-        }
-    }
 
     private func unread(_ u: (id: String, name: String)) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -306,6 +294,8 @@ struct CardView: View {
                 Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
             }
             Spacer(minLength: 4)
+            // The translation shown, else the first dictionary line.
+            if let copy = look.rows.first(where: { !$0.copy.isEmpty })?.copy { copyButton(copy) }
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if !look.star.isEmpty {
                 Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
@@ -331,10 +321,8 @@ struct CardView: View {
         case .entry:
             VStack(alignment: .leading, spacing: 2) {
                 if !r.label.isEmpty { Text(r.label).font(font(-2)).foregroundStyle(.secondary) }
-                copyable(r) {
-                    (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html, size: model.look?.text ?? 13, font: model.look?.font ?? "")))
-                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                }
+                (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html, size: model.look?.text ?? 13, font: model.look?.font ?? "")))
+                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }
         case .gloss:
             // Whole, as InkPeek's rows: a long meaning wraps; a click opens the word here.
@@ -365,7 +353,7 @@ struct CardView: View {
             .padding(.top, 4)
             .overlay(alignment: .top) { Divider() }
         case .text:
-            copyable(r) { Text(r.text).font(font(1)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
+            Text(r.text).font(font(1)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .markdown:
             Text(Self.markdown(r.text)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .english:
@@ -428,6 +416,7 @@ struct CardView: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .help(look.menuHelp)
     }
 }
 

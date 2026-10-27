@@ -203,6 +203,10 @@ TEST_CASE("views: Translate — progress, the translation, an error, the methods
   CHECK(v.rows[0].style == Style::text);
   CHECK(v.rows[0].text == "домам");
   CHECK(v.rows[0].copy == "домам");
+  s.translation.ms = 1500;
+  CHECK(card_view(c, s).menu_help == "Translated in 1.5 s");
+  s.translation.kept = true;
+  CHECK(card_view(c, s).menu_help.starts_with("Translated before"));
   s.translation.error = "Cancelled";
   CHECK(card_view(c, s).rows[0].style == Style::error);
   CHECK(card_view(c, s).rows[0].text == "Cancelled");

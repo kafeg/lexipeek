@@ -132,8 +132,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
   translation only (its text in one line above it). At most 45% of the screen high, the rest scrolls inside; the card
   keeps its height while something loads, then fits what it shows (smaller too).
-  The header has the card's whole width; every button is in the bottom row (InkPeek's): ←, Full entry, the method, a
-  section's pager on the left; the badge, ☆ and the pin on the right. A cut header (InkPeek's title) ends in "…"; a
+  The header has the card's whole width; every button is in the bottom row (InkPeek's): ←, Full entry, the method (its tooltip: how long the
+  translation took, or that it was kept from before), a
+  section's pager on the left; copy (the translation, else the first dictionary line), the badge, ☆ and the pin on the right. A cut header (InkPeek's title) ends in "…"; a
   click shows it whole over the card at full width (a shadow, the card dimmed under it), selectable, at most half the
   height limit (then it scrolls); ▲ or a click on the card folds it. A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
   words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the

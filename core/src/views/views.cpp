@@ -368,6 +368,8 @@ CardView card_view(const Card &c, const CardState &s) {
       v.methods.push_back({m.method, m.available ? name : name + " — " + m.reason, m.available});
       if (s.has_method && m.method == s.method && !s.by_ai) v.menu_title = name;
     }
+    if (s.translated && s.translation.ok() && !s.by_ai)
+      v.menu_help = s.translation.kept ? tr("mt_kept") : tr("mt_took", {decimal(static_cast<double>(s.translation.ms) / 1000.0)});
     if (c.ai.translate) {
       v.methods.push_back({Method::fast, c.ai.method, true, true});
       if (s.by_ai) v.menu_title = c.ai.method;

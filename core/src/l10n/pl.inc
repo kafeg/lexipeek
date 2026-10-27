@@ -59,6 +59,8 @@
 {"card_no_pack", "Brak jeszcze pakietu językowego {1} → {2}."},
 {"card_no_method", "Tutaj nic nie przetłumaczy tego tekstu."},
 {"mt_working", "Tłumaczenie…"},
+{"mt_took", "Przetłumaczono w {1} s"},
+{"mt_kept", "Przetłumaczono wcześniej: zapisane, model nie działał"},
 {"looks.one", "sprawdzano {n} raz"},
 {"looks.few", "sprawdzano {n} razy"},
 {"looks.many", "sprawdzano {n} razy"},

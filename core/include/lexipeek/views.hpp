@@ -132,6 +132,7 @@ struct CardView {
   std::string entry_toggle;  // "Full entry ⏎", "Short ⏎", "" (none)
   bool menu = false;         // the methods' menu is shown
   std::string menu_title;    // the current method's name or "No method available"
+  std::string menu_help;     // its tooltip: "Translated in 0.8 s", "Translated before: kept", ""
   std::vector<MethodItem> methods;
   std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
   std::string pager;  // a section's page: "21–40 of 63", "" (one page)

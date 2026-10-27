@@ -49,6 +49,7 @@ struct CardLook {
     var entryToggle = ""
     var menu = false
     var menuTitle = ""
+    var menuHelp = ""
     var methods: [Item] = []
     var back = ""
     var pager = ""
@@ -81,6 +82,7 @@ struct CardLook {
         entryToggle = String(v.entry_toggle)
         menu = v.menu
         menuTitle = String(v.menu_title)
+        menuHelp = String(v.menu_help)
         methods = v.methods.enumerated().map { Item(id: $0.offset, method: $0.element.method, title: String($0.element.title), enabled: $0.element.enabled, ai: $0.element.ai) }
         back = String(v.back)
         pager = String(v.pager)

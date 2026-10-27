@@ -58,6 +58,8 @@
 {"card_no_pack", "Ancora nessun pacchetto linguistico {1} → {2}."},
 {"card_no_method", "Qui niente può tradurre questo testo."},
 {"mt_working", "Traduzione…"},
+{"mt_took", "Tradotto in {1} s"},
+{"mt_kept", "Tradotto in precedenza: salvato, nessun modello avviato"},
 {"looks.one", "cercata {n} volta"},
 {"looks.other", "cercata {n} volte"},
 {"form_of_sel", "forma: {1}"},

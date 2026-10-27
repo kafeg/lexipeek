@@ -58,6 +58,8 @@
 {"card_no_pack", "No language pack from {1} into {2} yet."},
 {"card_no_method", "Nothing can translate this text here."},
 {"mt_working", "Translating…"},
+{"mt_took", "Translated in {1} s"},
+{"mt_kept", "Translated before: kept, no model ran"},
 {"looks.one", "looked up {n} time"},
 {"looks.other", "looked up {n} times"},
 {"form_of_sel", "form: {1}"},

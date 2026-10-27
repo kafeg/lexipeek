@@ -1,5 +1,6 @@
 // Core: request → card (as InkPeek's CardActivity, DictionaryPage, LangId.source), then its translation.
 #include <algorithm>
+#include <chrono>
 #include <map>
 #include <mutex>
 #include <set>
@@ -262,8 +263,11 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   Translation t;
   if (auto a = impl_->store->answer(card.text, card.answer, section, ver)) {
     t = {*a, "", method_title(*method), ""};
+    t.kept = true;
   } else {
+    auto start = std::chrono::steady_clock::now();
     t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
+    t.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
     if (t.ok() && keep) impl_->store->put_answer(card.text, card.answer, section, ver, answer_model(*method), t.text);
     if (t.ok() && pivot && !t.english.empty()) keep_english(t.english);
   }

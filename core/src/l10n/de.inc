@@ -58,6 +58,8 @@
 {"card_no_pack", "Noch kein Sprachpaket {1} → {2}."},
 {"card_no_method", "Hier kann nichts diesen Text übersetzen."},
 {"mt_working", "Übersetze…"},
+{"mt_took", "Übersetzt in {1} s"},
+{"mt_kept", "Schon früher übersetzt: gespeichert, kein Modell lief"},
 {"looks.one", "{n}-mal nachgeschlagen"},
 {"looks.other", "{n}-mal nachgeschlagen"},
 {"form_of_sel", "Form: {1}"},

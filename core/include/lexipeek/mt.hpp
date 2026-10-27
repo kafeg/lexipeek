@@ -20,6 +20,8 @@ struct Translation {
   std::string english;  // the step in between (fast, neither side English)
   std::string by;       // "Mozilla", "OPUS-MT" or the model's name
   std::string error;
+  std::int64_t ms = 0;  // how long it took
+  bool kept = false;    // an answer kept from before (no model ran)
   bool ok() const { return error.empty(); }
 };
 
