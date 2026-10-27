@@ -46,7 +46,16 @@ std::vector<std::string> answer_languages(const Manifest &m);
 std::string method_title(Method m);
 
 // The card: what the shell draws from a Card and its state.
-enum class CardTab { dictionary, translate };
+enum class CardTab { dictionary, translate, analysis, context };
+
+// One AI answer of the card (InkPeek's Answers): asked, then its answer or its error's text.
+struct AiState {
+  bool asking = false;
+  bool answered = false;  // json or error holds the outcome
+  bool ok = false;
+  bool saved = false;     // it came from the store (offline)
+  std::string json, error;
+};
 enum class HeaderStyle { word, phrase, passage };
 
 // The card's state in the shell; plain fields (no optionals) for Swift.
@@ -61,6 +70,8 @@ struct CardState {
   SectionPage section;  // the entry's section open on Dictionary (key "": none)
   std::string before;   // the text this card was opened from ("" = none): "←" goes back to it
   bool saved = false;  // ★: the card's text is in Notes
+  bool by_ai = false;  // Translate shows the AI translation (a method picked in the card, or Card → Opening)
+  AiState quick, analysis, context;
 };
 
 // One line of the card's body.
@@ -76,7 +87,8 @@ struct CardRow {
     sense,     // a sense of an article: label its number ("1."), text its meaning
     example,   // an example under a sense, indented: "◆ Ich gehe nach Hause — Я иду домой."
     section,   // a section under an article: label its preview (two lines at most), text its caption ("Related words · 133 ›")
-    english    // Mozilla's English in between, smaller, selectable, under the translation
+    english,   // Mozilla's English in between, smaller, selectable, under the translation
+    markdown   // an AI answer's paragraph: light Markdown (**bold**, *italic*), "• " lists, selectable
   };
   Style style = Style::note;
   std::string label, text, html;
@@ -89,6 +101,12 @@ struct MethodItem {
   Method method = Method::fast;
   std::string title;  // "Direct · OPUS-MT" or "Direct · OPUS-MT — reason"
   bool enabled = false;
+  bool ai = false;    // the AI translation ("AI · claude-sonnet-5-5"), not an offline method
+};
+
+struct TabItem {
+  CardTab tab = CardTab::translate;
+  std::string title;  // "Dictionary", "Translate", "Analysis · AI"
 };
 
 struct CardView {
@@ -98,7 +116,8 @@ struct CardView {
   std::string tooltip;   // the text as asked
   std::string badge;     // "de → ru", "Russian" (already in it), "French" (no pack from it), ""
   bool wide = false;     // a passage: a wider card
-  bool tabs = false;     // Dictionary · Translate are shown
+  bool tabs = false;     // more than one tab: tab_items are shown
+  std::vector<TabItem> tab_items;    // Dictionary · Translate · Analysis · AI · Context · AI, those the card has
   CardTab tab = CardTab::translate;  // the one shown
   std::vector<CardRow> rows;
   std::string entry_toggle;  // "Full entry ⏎", "Short ⏎", "" (none)
@@ -122,6 +141,14 @@ CardTab first_tab(const Card &c);
 // A new card's state: its first tab, the full entry when set so, its method (none when no method is available).
 CardState first_state(const Card &c);
 CardView card_view(const Card &c, const CardState &s);
+// The AI requests to send now, the shown one first (only on the person's action: its tab opened, AI translation picked,
+// or Card → Opening set so); the others the card shows go with it when prefetch is on. A failed shown one asks again.
+std::vector<ai::Ask> card_asks(const Card &c, const CardState &s);
+AiState card_answer(const CardState &s, ai::Ask a);
+// The state with an answer set (or asking marked).
+CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer);
+// What ☆ saves as the line: the translation shown (the AI's brief one when by AI), "" when none.
+std::string shown_translation(const CardState &s);
 // The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
 std::string frequency(int rank);
 
@@ -194,7 +221,7 @@ std::string first_answer(const Manifest &m, const std::string &system);
 FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s);
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
-enum class SettingsSection { languages, card, notes, general };
+enum class SettingsSection { languages, card, ai, notes, general };
 
 // What the shell knows and the core does not: this Mac and the app.
 struct SettingsState {
@@ -207,6 +234,9 @@ struct SettingsState {
   bool checking = false;              // the update check is running
   std::string update;                 // its last answer ("" = not checked), update_check's text
   std::string update_version, update_url;  // a newer release and its page
+  bool ai_key = false;                // the provider's API key is in the Keychain
+  bool ai_testing = false;            // AI → Connection's test is running
+  std::string ai_test;                // its last answer ("" = not tried)
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -219,7 +249,10 @@ struct SettingRow {
     apps,     // a list of apps by bundle id: key "copy_apps" / "ignore_apps"
     button,   // value: the button's label; the shell does what key names ("setup", "access", "order", "updates")
     status,   // value: the state ("Allowed"), on: good
-    link      // value: a URL
+    link,     // value: a URL
+    text,     // a line to type: value, placeholder (key "ai_url", "ai_command")
+    secret,   // the API key: the shell's field and Save (the key never comes here); on: one is kept
+    model     // the model: value (a line to type), placeholder its default; on: "Choose model…" from the provider's list
   };
   Kind kind = Kind::heading;
   std::string key = "", title = "", about = "";
@@ -227,6 +260,8 @@ struct SettingRow {
   std::vector<std::string> choices = {};
   int selected = 0;
   std::string value = "";
+  std::string placeholder = "";
+  std::string edit = "";  // a prompt id: ✎ opens its editor (prompt_editor)
 };
 
 struct SettingsPage {
@@ -253,6 +288,21 @@ struct UpdateCheck {
 UpdateCheck update_check(const std::string &version, long status, const std::string &body, const std::string &error);
 // "0.10" > "0.9"; a leading "v" ignored.
 bool newer_version(const std::string &release, const std::string &current);
+
+// AI → Modules' prompt editor: one field per edited part (its id, a label or none, the text now and the original).
+struct PromptField {
+  std::string id, label, text, original;
+};
+struct PromptEditor {
+  std::string title, note;
+  std::vector<PromptField> fields;
+  std::string cancel, reset, save;  // the buttons
+};
+PromptEditor prompt_editor(const Settings &s, const std::string &id);
+// The editor's texts: an empty one or the original is "not edited" (a later version can improve it).
+void settings_prompts(Settings &s, const std::vector<std::string> &ids, const std::vector<std::string> &texts);
+// A text row's change (ai_url, ai_command, ai_model).
+void settings_text(Settings &s, const std::string &key, const std::string &value);
 
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);

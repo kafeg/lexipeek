@@ -1,6 +1,7 @@
 // Settings' panes (InkPeek's MainActivity sections and *Settings.kt, its ⚙ page as General): rows and their changes.
 #include <algorithm>
 #include <array>
+#include "lexipeek/ai.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
 
@@ -11,7 +12,8 @@ namespace {
 using Kind = SettingRow::Kind;
 
 // Choices: the value and its text's key.
-const std::vector<std::pair<std::string, std::string>> phrase_opens{{"offline", "open_offline"}, {"dict", "open_dict"}};
+const std::vector<std::pair<std::string, std::string>> phrase_opens{{"offline", "open_offline"}, {"ai", "open_ai"},       {"dict", "open_dict"},
+                                                                    {"analysis", "a_analysis"},  {"context", "a_context"}};
 const std::vector<std::pair<std::string, std::string>> methods{
     {"", "mt_first"}, {"fast", "mt_fast_t"}, {"direct", "mt_direct_t"}, {"llm", "mt_llm_t"}};
 const std::vector<int> widths{360, 400, 460, 520};
@@ -100,8 +102,103 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   return rows;
 }
 
+// What a phrase can open on with these settings (InkPeek's Opening.choices): AI ones only when AI and the module are on.
+std::vector<std::pair<std::string, std::string>> opens(const Settings &s) {
+  bool on = ai::provider(s.ai.provider) != nullptr;
+  std::vector<std::pair<std::string, std::string>> out;
+  for (auto &o : phrase_opens) {
+    if (o.first == "ai" && !(on && s.ai.translate && ai::module_on(ai::Ask::quick, s.ai))) continue;
+    if (o.first == "analysis" && !(on && ai::module_on(ai::Ask::analysis, s.ai))) continue;
+    if (o.first == "context" && !(on && ai::module_on(ai::Ask::context, s.ai))) continue;
+    out.push_back(o);
+  }
+  return out;
+}
+
 std::vector<SettingRow> opening(const Settings &s) {
-  return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), names(phrase_opens), index_of(phrase_opens, s.card.phrase_open))};
+  auto o = opens(s);
+  std::vector<std::string> titles;
+  for (auto &x : o) titles.push_back(tr(x.second) + (x.first == "analysis" || x.first == "context" ? " · " + tr("tab_ai") : ""));
+  return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open))};
+}
+
+std::string mark(bool edited, const std::string &about) { return edited ? tr("prompt_edited") + " · " + about : about; }
+
+bool edited(const Settings &s, const std::string &id) { return s.ai.prompts.contains(id); }
+
+// AI → Connection (InkPeek's AiSettings.buildMain): provider, its server or program, key, model, answers, style, a test.
+std::vector<SettingRow> connection(const Settings &s, const SettingsState &st) {
+  auto &ps = ai::providers();
+  std::vector<std::string> titles{tr("ai_none")};
+  int at = 0;
+  for (size_t i = 0; i < ps.size(); i++) {
+    titles.push_back(ps[i].id == "custom" ? tr("ai_custom") : ps[i].title);
+    if (ps[i].id == s.ai.provider) at = static_cast<int>(i) + 1;
+  }
+  std::vector<SettingRow> rows{choice("ai_provider", tr("ai_title"), tr("ai_title_d"), titles, at)};
+  auto *p = ai::provider(s.ai.provider);
+  if (!p) return rows;
+  if (p->id == "custom") {
+    std::vector<std::string> pre{"—"};
+    for (auto &x : ai::presets()) pre.push_back(x.name);
+    rows.push_back(choice("ai_preset", tr("preset_pick"), tr("server_d"), pre, 0));
+    auto url = valued(Kind::text, "ai_url", tr("server_t"), tr("server_url"), s.ai.url);
+    url.placeholder = ai::presets().front().url;
+    rows.push_back(url);
+  }
+  if (p->cli) {
+    auto i = s.ai.commands.find(p->id);
+    auto cmd = valued(Kind::text, "ai_command", tr("ai_cli_t"), tr("ai_cli_d"), i == s.ai.commands.end() ? "" : i->second);
+    cmd.placeholder = p->id == "codex-cli" ? "codex" : "claude";
+    rows.push_back(cmd);
+  } else {
+    auto key = valued(Kind::secret, "ai_key", tr("key_t"), st.ai_key ? tr("key_saved") : p->key ? tr("key_missing") : tr("key_optional"), "");
+    key.on = st.ai_key;
+    rows.push_back(key);
+  }
+  auto i = s.ai.models.find(p->id);
+  auto m = valued(Kind::model, "ai_model", tr("model_t"), tr(p->cli ? "model_cli_d" : "model_d"), i == s.ai.models.end() ? "" : i->second);
+  m.placeholder = p->model;
+  m.on = p->list;
+  rows.push_back(m);
+  rows.push_back(heading(tr("ai_answers_t")));
+  rows.push_back(valued(Kind::button, "answer_lang", tr("ans_row", {language_name(s.answer)}), tr("ans_lang_d"), tr("open_btn")));
+  auto style = valued(Kind::button, "edit", tr("prompt_system_t"), mark(edited(s, "system"), tr("prompt_system_d")), tr("edit_btn"));
+  style.edit = "system";
+  rows.push_back(style);
+  auto test = valued(Kind::button, "ai_test", tr("ai_test_t"), st.ai_testing ? tr("ai_testing") : st.ai_test.empty() ? tr("ai_test_d") : st.ai_test,
+                     tr("ai_test_btn"));
+  test.enabled = !st.ai_testing;
+  rows.push_back(test);
+  return rows;
+}
+
+// AI → Modules (InkPeek's refreshModules): AI translation, then each module's parts with ✎, then asking ahead.
+std::vector<SettingRow> modules(const Settings &s) {
+  std::vector<SettingRow> rows{heading(tr("prompt_quick_t"))};
+  bool quick = false;
+  for (auto &k : ai::keys(ai::Ask::quick)) quick |= edited(s, "quick." + k.name);
+  auto tr_row = toggle("ai_translate", tr("ai_tr_t"), mark(quick, tr("ai_tr_d")), s.ai.translate);
+  tr_row.edit = "quick";
+  rows.push_back(tr_row);
+  for (auto a : {ai::Ask::analysis, ai::Ask::context}) {
+    auto sec = ai::section(a);
+    rows.push_back(heading(tr("a_" + sec), tr("a_" + sec + "_d")));
+    auto on = ai::active(a, s.ai);
+    for (auto &k : ai::keys(a)) {
+      auto id = sec + "." + k.name;
+      bool picked = std::any_of(on.begin(), on.end(), [&](auto &x) { return x.name == k.name; });
+      auto r = toggle("ai_key." + id, tr("ak_" + k.name), mark(edited(s, id), tr("ak_" + k.name + "_d")), picked);
+      r.edit = id;
+      rows.push_back(r);
+    }
+  }
+  rows.push_back(heading(tr("ai_requests_t")));
+  rows.push_back(toggle("ai_prefetch", tr("prefetch_t"), tr("prefetch_d"), s.ai.prefetch));
+  auto reset = valued(Kind::button, "ai_reset", tr("reset_prompts_t"), tr("reset_prompts_d"), tr("prompt_reset"));
+  reset.enabled = !s.ai.prompts.empty();
+  rows.push_back(reset);
+  return rows;
 }
 
 std::vector<SettingRow> article(const Settings &s) {
@@ -167,12 +264,13 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st) {
 
 }  // namespace
 
-std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_words", "sec_general"}); }
+std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_ai", "tab_words", "sec_general"}); }
 
 std::vector<std::string> settings_tab_keys(SettingsSection section) {
   switch (section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};
     case SettingsSection::card: return {"opening", "article", "appearance"};
+    case SettingsSection::ai: return {"connection", "modules"};
     case SettingsSection::notes: return {"words", "phrases", "history"};
     case SettingsSection::general: return {};
   }
@@ -183,6 +281,7 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
   switch (section) {
     case SettingsSection::languages: return names({"lang_packs", "lang_translation", "lang_own"});
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
+    case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
     case SettingsSection::notes: return names({"list_words", "list_phrases", "list_history"});
     case SettingsSection::general: return {};
   }
@@ -203,6 +302,7 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
     case SettingsSection::card:
       p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s);
       break;
+    case SettingsSection::ai: p.rows = p.tab == 0 ? connection(s, st) : modules(s); break;
     case SettingsSection::notes: p.pane = "notes"; break;
     case SettingsSection::general: p.rows = general(s, st); break;
   }
@@ -215,6 +315,19 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
   else if (key == "selection_icon") s.selection_icon = on;
   else if (key == "pin_moved") s.pin_moved = on;
   else if (key == "open_at_login") s.open_at_login = on;
+  else if (key == "ai_translate") s.ai.translate = on;
+  else if (key == "ai_prefetch") s.ai.prefetch = on;
+  else if (key.starts_with("ai_key.")) {
+    // An answer key off or on: kept only when it differs from its default (an extra one is off).
+    auto id = key.substr(7);
+    auto dot = id.find('.');
+    for (auto a : {ai::Ask::quick, ai::Ask::analysis, ai::Ask::context})
+      for (auto &k : ai::keys(a))
+        if (dot != std::string::npos && ai::section(a) == id.substr(0, dot) && k.name == id.substr(dot + 1)) {
+          if (on == !k.extra) s.ai.picked.erase(id);
+          else s.ai.picked[id] = on;
+        }
+  }
   else if (key.starts_with("section.")) {
     auto k = key.substr(8);
     auto &v = s.card.sections;
@@ -231,15 +344,73 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
 
 void settings_choose(Settings &s, const std::string &key, int i, const SettingsState &st) {
   auto at = [&](const auto &xs) { return xs.at(static_cast<size_t>(std::clamp(i, 0, static_cast<int>(xs.size()) - 1))); };
+  // Behind a first "Off" / "Fill in from a preset…".
+  auto at1 = [&](const auto &xs) { return xs.at(static_cast<size_t>(std::clamp(i - 1, 0, static_cast<int>(xs.size()) - 1))); };
   if (key == "answer") s.answer = at(answer_codes(s, st));
   else if (key == "method") s.method = method_from(at(methods).first);
-  else if (key == "phrase_open") s.card.phrase_open = at(phrase_opens).first;
+  else if (key == "phrase_open") s.card.phrase_open = at(opens(s)).first;
+  else if (key == "ai_provider") s.ai.provider = i <= 0 ? "" : at1(ai::providers()).id;
+  else if (key == "ai_preset" && i > 0) s.ai.url = at1(ai::presets()).url;
   else if (key == "full") s.card.full = i == 1;
   else if (key == "width") s.card.width = at(widths);
   else if (key == "text") s.card.text = at(sizes);
   else if (key == "font") s.card.font = at(fonts).first;
   else if (key == "height") s.card.height = at(heights);
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
+}
+
+void settings_text(Settings &s, const std::string &key, const std::string &value) {
+  auto v = value;
+  while (!v.empty() && (v.back() == ' ' || v.back() == '\n')) v.pop_back();
+  while (!v.empty() && v.front() == ' ') v.erase(0, 1);
+  auto set = [&](std::map<std::string, std::string> &m) {
+    if (v.empty()) m.erase(s.ai.provider);
+    else m[s.ai.provider] = v;
+  };
+  if (key == "ai_url") s.ai.url = v;
+  else if (key == "ai_command") set(s.ai.commands);
+  else if (key == "ai_model") set(s.ai.models);
+}
+
+PromptEditor prompt_editor(const Settings &s, const std::string &id) {
+  PromptEditor e;
+  e.cancel = tr("cancel"), e.reset = tr("prompt_reset"), e.save = tr("save");
+  auto field = [&](const std::string &fid, const std::string &label, const std::string &original) {
+    auto i = s.ai.prompts.find(fid);
+    e.fields.push_back({fid, label, i == s.ai.prompts.end() ? original : i->second, original});
+  };
+  if (id == "system") {
+    e.title = tr("prompt_system_t"), e.note = tr("prompt_system_note");
+    field("system", "", ai::system_prompt());
+    return e;
+  }
+  e.note = tr("prompt_keys");
+  if (id == "quick") {
+    e.title = tr("prompt_quick_t") + " · " + tr("tab_ai");
+    for (auto &k : ai::keys(ai::Ask::quick)) field("quick." + k.name, k.name, k.about);
+    return e;
+  }
+  for (auto a : {ai::Ask::analysis, ai::Ask::context})
+    for (auto &k : ai::keys(a))
+      if (ai::section(a) + "." + k.name == id) {
+        e.title = tr("ak_" + k.name) + " · " + tr("tab_ai");
+        field(id, "", k.about);
+      }
+  return e;
+}
+
+void settings_prompts(Settings &s, const std::vector<std::string> &ids, const std::vector<std::string> &texts) {
+  for (size_t i = 0; i < ids.size() && i < texts.size(); i++) {
+    std::string original = ids[i] == "system" ? ai::system_prompt() : "";
+    for (auto a : {ai::Ask::quick, ai::Ask::analysis, ai::Ask::context})
+      for (auto &k : ai::keys(a))
+        if (ai::section(a) + "." + k.name == ids[i]) original = k.about;
+    auto t = texts[i];
+    while (!t.empty() && (t.back() == ' ' || t.back() == '\n')) t.pop_back();
+    while (!t.empty() && (t.front() == ' ' || t.front() == '\n')) t.erase(0, 1);
+    if (t.empty() || t == original) s.ai.prompts.erase(ids[i]);
+    else s.ai.prompts[ids[i]] = t;
+  }
 }
 
 std::string packs_summary(const std::vector<PairRow> &rows) {

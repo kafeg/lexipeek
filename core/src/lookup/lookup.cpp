@@ -3,8 +3,11 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include "ai/ai.hpp"
 #include "dict/library.hpp"
 #include "lexipeek/core.hpp"
+#include "lexipeek/dicts.hpp"
+#include "lexipeek/settings.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
 #include "mt/text.hpp"
@@ -24,21 +27,6 @@ Card::Kind kind_of(const std::string &s) {
   auto words = word_count(s);
   if (words == 1) return Card::Kind::word;
   return words <= 8 && ends.all(s).empty() ? Card::Kind::phrase : Card::Kind::passage;
-}
-
-// Java's String.hashCode over UTF-16 units.
-std::int32_t java_hash(const std::string &s) {
-  std::uint32_t h = 0;
-  for (char32_t cp : mt::utf32(s)) {
-    if (cp < 0x10000) {
-      h = h * 31 + cp;
-    } else {
-      cp -= 0x10000;
-      h = h * 31 + (0xD800 + (cp >> 10));
-      h = h * 31 + (0xDC00 + (cp & 0x3FF));
-    }
-  }
-  return static_cast<std::int32_t>(h);
 }
 
 // InkPeek's names of the model kinds in its answers' model field.
@@ -64,7 +52,7 @@ std::int64_t answer_version(const Manifest &m, const std::map<std::string, std::
   } else if (auto c = covering(m, method == Method::direct ? "opus" : "llm", from, to)) {
     key = sha(c->id);
   }
-  return java_hash(key);
+  return text::java_hash(key);
 }
 
 // The name of a dictionary in the card: a pack's "InkPeek · de → ru", another's own name.
@@ -78,6 +66,7 @@ struct Core::Impl {
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
   std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
   std::string notes_answer;
+  ai::Transport transport;
 
   // The text's language among the packs' book languages into answer (InkPeek's LangId.source): (lang, other).
   std::pair<std::string, std::string> source(const std::string &txt, const std::string &answer) {
@@ -116,6 +105,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index", own(o.data, o.dicts));
   impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
   impl_->notes_answer = o.answer;
+  impl_->transport = o.ai_replies.empty() ? ai::default_transport() : ai::file_transport(o.ai_replies);
   impl_->o = std::move(o);
 }
 
@@ -131,6 +121,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->o.dicts = s.dicts;
   impl_->lib->configure(own(impl_->o.data, s.dicts));
   impl_->o.card = s.card;
+  impl_->o.ai = s.ai;
   if (device) impl_->o.device = device;
 }
 
@@ -139,6 +130,10 @@ Card Core::lookup(const Request &r) {
   Card c;
   c.source = r.source;
   c.prefs = impl_->o.card;
+  if (auto &a = impl_->o.ai; ai::provider(a.provider)) {
+    c.ai = {a.translate && ai::module_on(ai::Ask::quick, a), ai::module_on(ai::Ask::analysis, a), ai::module_on(ai::Ask::context, a),
+            a.prefetch, ai::method_title(a)};
+  }
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);
   if (raw.empty()) return c;
@@ -266,6 +261,28 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   return t;
 }
 
+ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
+  AiSettings s;
+  {
+    std::lock_guard g(impl_->mu);
+    s = impl_->o.ai;
+  }
+  static const text::Regex words("\\S+");
+  ai::Query q{a, key, card.text, static_cast<int>(words.all(card.text).size()), card.kind == Card::Kind::passage,
+              catalog_language(card.answer), card.lang.empty() ? "" : catalog_language(card.lang)};
+  auto recall = s.recall;
+  auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport);
+  // What worked is kept for the next requests (InkPeek's remember), in the settings and here.
+  if (recall != s.recall) {
+    std::lock_guard g(impl_->mu);
+    impl_->o.ai.recall = recall;
+    auto disk = load_settings(impl_->o.data);
+    disk.ai.recall = recall;
+    save_settings(impl_->o.data, disk);
+  }
+  return r;
+}
+
 bool Core::toggle_saved(const Card &card, const std::string &translation) {
   auto &st = *impl_->store;
   if (card.save_text.empty()) return false;
@@ -281,6 +298,8 @@ bool Core::toggle_saved(const Card &card, const std::string &translation) {
 std::vector<Seen> Core::recents(int n) { return impl_->store->recents(n); }
 
 Store &Core::store() { return *impl_->store; }
+
+std::filesystem::path Core::data() const { return impl_->o.data; }
 
 std::string Core::answer() {
   std::lock_guard g(impl_->answer_mu);

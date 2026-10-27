@@ -49,6 +49,9 @@ struct Engine {
   std::vector<Seen> recents(int n) const;
   // ☆ in the card → whether it is saved now.
   bool toggle_saved(const Card &card, const std::string &translation) const;
+  // Blocking, only on the person's action: the card's AI answer (the saved one offline), its error as a text; key: the
+  // provider's API key from the Keychain, "" for none.
+  AiState ask(const Card &card, ai::Ask a, const std::string &key) const;
   // Notes, in the settings' answer language.
   NotesView notes(NotesTab tab) const;
   void remove_note(NotesTab tab, const std::string &text) const;
@@ -63,6 +66,26 @@ struct Engine {
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
 std::string toggle(const std::string &data, const std::string &key, bool on);
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
+
+// Settings → AI. The provider's id ("" = off; the shell keeps its key under it) and whether it needs a key.
+std::string ai_provider(const std::string &data);
+bool ai_needs_key(const std::string &data);
+std::string ai_provider_title(const std::string &data);
+// A text row's change (ai_url, ai_command, ai_model), the prompt editor and its save, every prompt back to the original.
+std::string set_text(const std::string &data, const std::string &key, const std::string &value);
+PromptEditor prompt_editor(const std::string &data, const std::string &id);
+std::string set_prompts(const std::string &data, const std::vector<std::string> &ids, const std::vector<std::string> &texts);
+std::string reset_prompts(const std::string &data);
+// The provider's models (network, blocking): the list, or the error's text.
+struct AiModels {
+  std::vector<ai::Model> list;
+  std::string error;
+};
+AiModels ai_models(const std::string &data, const std::string &key);
+std::vector<std::string> model_titles(const std::vector<ai::Model> &list);
+std::vector<ai::Model> filter_models(const std::vector<ai::Model> &list, const std::string &filter, bool free_only);
+// AI → Connection's test (network, blocking): one short request, its answer's line or the error's text.
+std::string ai_test(const std::string &data, const std::string &key);
 
 // Settings → Packs.
 std::vector<PairRow> rows(const std::string &data, const Device &d);

@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "lexipeek/ai.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/settings.hpp"
@@ -75,6 +76,14 @@ struct MethodState {
   std::string reason;  // why not, when not available
 };
 
+// What the card offers of the AI layer (the settings when it was looked up): each only when on.
+struct CardAi {
+  bool translate = false;  // AI translation, a Translate method
+  bool analysis = false, context = false;  // the AI tabs
+  bool prefetch = true;    // opening one asks the others too
+  std::string method;      // "AI · claude-sonnet-5-5"
+};
+
 struct Card {
   // As InkPeek's Kind.of: a word; a phrase (up to 8 words, one sentence); a passage (more).
   enum class Kind { empty, word, phrase, passage };
@@ -101,6 +110,7 @@ struct Card {
   std::optional<Method> method;  // the one to translate with (the setting, else the first available)
   std::string error;
   CardPrefs prefs = {};  // the card's settings when it was looked up (what it opens on, shows, its look)
+  CardAi ai = {};
 };
 
 
@@ -123,6 +133,8 @@ struct CoreOptions {
   bool mt_english = false;       // Translation::english filled (fast through English), as InkPeek's mtEnglish
   DictSettings dicts;            // the own dictionaries: folders, off, order
   CardPrefs card;                // copied into every card
+  AiSettings ai;                 // the AI layer
+  std::filesystem::path ai_replies;  // answers from files instead of a provider (snapshots, tests): ai/ai.hpp file_transport
 };
 
 class Core {
@@ -142,6 +154,9 @@ class Core {
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   // Fast through English: the English is kept as the text's translation into English (InkPeek's), shown when asked.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
+  // Blocking, only on the person's action: the card's text's AI answer, the saved one when there is (offline); key: the
+  // provider's API key, from the shell (never kept here).
+  ai::Answer ask(const Card &card, ai::Ask a, const std::string &key);
   // A newer request: stops a running AI translation.
   void cancel();
   // Memory pressure, idle: frees the held model.
@@ -158,6 +173,7 @@ class Core {
   // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.
   void reload();
   Translator &translator();
+  std::filesystem::path data() const;
 
  private:
   struct Impl;

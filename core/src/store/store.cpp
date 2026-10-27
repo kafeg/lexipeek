@@ -278,11 +278,11 @@ std::optional<std::string> Store::answer(const std::string &text, const std::str
   return std::nullopt;
 }
 
-std::string Store::newest_answer(const std::string &text, const std::string &lang) const {
+std::string Store::newest_answer(const std::string &text, const std::string &lang, const std::string &section) const {
   std::lock_guard g(impl_->m);
   if (!impl_->db) return "";
-  Stmt q(impl_->db, "SELECT answer FROM ai WHERE text=? AND lang=? ORDER BY created DESC, rowid DESC LIMIT 1");
-  return q.bind(text).bind(lang).row() ? q.text(0) : "";
+  Stmt q(impl_->db, "SELECT answer FROM ai WHERE text=? AND lang=? AND (?='' OR section=?) ORDER BY created DESC, rowid DESC LIMIT 1");
+  return q.bind(text).bind(lang).bind(section).bind(section).row() ? q.text(0) : "";
 }
 
 bool Store::is_saved(const std::string &text) const {

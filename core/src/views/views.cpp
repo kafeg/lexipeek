@@ -74,7 +74,12 @@ std::string method_title(Method m) { return tr(m == Method::fast ? "mt_fast_t" :
 CardTab first_tab(const Card &c) {
   if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
   bool words = !c.gloss.empty() || !c.separable.empty();
-  return c.kind == Card::Kind::phrase && words && c.prefs.phrase_open == "dict" ? CardTab::dictionary : CardTab::translate;
+  if (c.kind != Card::Kind::phrase) return CardTab::translate;
+  // Card → Opening: an AI tab asks at once (the person chose so); one that is off falls back to the translation.
+  auto &o = c.prefs.phrase_open;
+  if (o == "analysis" && c.ai.analysis) return CardTab::analysis;
+  if (o == "context" && c.ai.context) return CardTab::context;
+  return words && o == "dict" ? CardTab::dictionary : CardTab::translate;
 }
 
 CardState first_state(const Card &c) {
@@ -84,6 +89,7 @@ CardState first_state(const Card &c) {
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
   s.saved = c.saved;
+  s.by_ai = c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai" && c.ai.translate;
   return s;
 }
 
@@ -189,7 +195,42 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
 // A card's language by its code in the app's language now, else the name the card was given.
 std::string name(const std::string &code, const std::string &named) { return code.empty() ? named : language_name(code); }
 
+// An AI answer: "Thinking…", its error, or its light Markdown in paragraphs under the app's headings.
+std::vector<CardRow> ai_rows(ai::Ask a, const AiState &st, bool word) {
+  if (!st.answered) return {{Style::progress, "", tr("thinking") + "…", ""}};
+  if (!st.ok) return {{Style::error, "", st.error, ""}};
+  std::vector<CardRow> rows;
+  auto md = ai::render(a, st.json, word);
+  size_t at = 0;
+  while (at <= md.size()) {
+    auto end = md.find("\n\n", at);
+    auto para = md.substr(at, end == std::string::npos ? std::string::npos : end - at);
+    at = end == std::string::npos ? md.size() + 1 : end + 2;
+    // "**Grammar**\n…": the app's heading, then its text.
+    if (para.starts_with("**")) {
+      auto close = para.find("**\n", 2);
+      if (close != std::string::npos) {
+        rows.push_back({Style::heading, "", para.substr(2, close - 2), ""});
+        para = para.substr(close + 3);
+      }
+    }
+    std::string out;
+    size_t from = 0;
+    while (from <= para.size()) {
+      auto nl = para.find('\n', from);
+      auto line = para.substr(from, nl == std::string::npos ? std::string::npos : nl - from);
+      from = nl == std::string::npos ? para.size() + 1 : nl + 1;
+      if (line.starts_with("- ")) line = "• " + line.substr(2);
+      out += (out.empty() ? "" : "\n") + line;
+    }
+    if (!out.empty()) rows.push_back({Style::markdown, "", out, ""});
+  }
+  if (rows.empty()) rows.push_back({Style::note, "", "—", ""});
+  return rows;
+}
+
 std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
+  if (s.by_ai && c.ai.translate) return ai_rows(ai::Ask::quick, s.quick, c.kind == Card::Kind::word);
   auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
   if (!c.lang.empty() && c.lang == c.answer) return note(tr("card_already", {name(c.answer, c.answer_name)}));
   if (c.lang.empty())
@@ -230,10 +271,19 @@ CardView card_view(const Card &c, const CardState &s) {
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? name(c.lang, c.lang_name) : c.lang + " → " + c.answer;
   else if (!c.other_name.empty()) v.badge = name(c.other, c.other_name);  // a language without a pack, named
   v.wide = v.style == HeaderStyle::passage;
-  v.tabs = c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty();
-  v.tab = v.tabs ? s.tab : CardTab::translate;
+  if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty()) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
+  v.tab_items.push_back({CardTab::translate, tr("tab_translate")});
+  if (c.ai.analysis) v.tab_items.push_back({CardTab::analysis, tr("a_analysis") + " · " + tr("tab_ai")});
+  if (c.ai.context) v.tab_items.push_back({CardTab::context, tr("a_context") + " · " + tr("tab_ai")});
+  v.tabs = v.tab_items.size() > 1;
+  v.tab = CardTab::translate;
+  for (auto &t : v.tab_items)
+    if (t.tab == s.tab) v.tab = s.tab;
   bool dict = v.tab == CardTab::dictionary;
-  v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
+  bool word = c.kind == Card::Kind::word;
+  if (v.tab == CardTab::analysis) v.rows = ai_rows(ai::Ask::analysis, s.analysis, word);
+  else if (v.tab == CardTab::context) v.rows = ai_rows(ai::Ask::context, s.context, word);
+  else v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
   if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
   if (in_section && s.section.pages > 1) {
@@ -243,13 +293,17 @@ CardView card_view(const Card &c, const CardState &s) {
   }
   if (in_section) v.back = tr("card_back_entry");
   else if (!s.before.empty()) v.back = "← " + s.before;
-  v.menu = !dict && !c.methods.empty();
+  v.menu = v.tab == CardTab::translate && (!c.methods.empty() || c.ai.translate);
   if (v.menu) {
     v.menu_title = tr("card_no_methods");
     for (auto &m : c.methods) {
       auto name = method_title(m.method);
       v.methods.push_back({m.method, m.available ? name : name + " — " + m.reason, m.available});
-      if (s.has_method && m.method == s.method) v.menu_title = name;
+      if (s.has_method && m.method == s.method && !s.by_ai) v.menu_title = name;
+    }
+    if (c.ai.translate) {
+      v.methods.push_back({Method::fast, c.ai.method, true, true});
+      if (s.by_ai) v.menu_title = c.ai.method;
     }
   }
   if (!c.save_text.empty()) {
@@ -260,6 +314,39 @@ CardView card_view(const Card &c, const CardState &s) {
   v.width = c.prefs.width + (v.wide ? 60 : 0);
   v.text = c.prefs.text, v.font = c.prefs.font, v.height = c.prefs.height;
   return v;
+}
+
+std::vector<ai::Ask> card_asks(const Card &c, const CardState &s) {
+  std::vector<ai::Ask> out;
+  auto shown = [&](ai::Ask a) {
+    return a == ai::Ask::quick ? c.ai.translate : a == ai::Ask::analysis ? c.ai.analysis : c.ai.context;
+  };
+  std::optional<ai::Ask> open;
+  if (s.tab == CardTab::analysis && c.ai.analysis) open = ai::Ask::analysis;
+  else if (s.tab == CardTab::context && c.ai.context) open = ai::Ask::context;
+  else if (s.tab == CardTab::translate && s.by_ai && c.ai.translate) open = ai::Ask::quick;
+  if (!open) return out;
+  auto st = card_answer(s, *open);
+  if (!st.asking && !(st.answered && st.ok)) out.push_back(*open);
+  if (c.ai.prefetch)
+    for (auto a : {ai::Ask::quick, ai::Ask::analysis, ai::Ask::context}) {
+      auto x = card_answer(s, a);
+      if (a != *open && shown(a) && !x.asking && !x.answered) out.push_back(a);
+    }
+  return out;
+}
+
+AiState card_answer(const CardState &s, ai::Ask a) { return a == ai::Ask::quick ? s.quick : a == ai::Ask::analysis ? s.analysis : s.context; }
+
+CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer) {
+  auto out = s;
+  (a == ai::Ask::quick ? out.quick : a == ai::Ask::analysis ? out.analysis : out.context) = answer;
+  return out;
+}
+
+std::string shown_translation(const CardState &s) {
+  if (s.by_ai) return s.quick.ok ? ai::brief(s.quick.json) : "";
+  return s.translated && s.translation.ok() ? s.translation.text : "";
 }
 
 std::string size_text(std::int64_t bytes) {
@@ -365,7 +452,10 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
   v.tab = tab;
   auto line = [&](const std::string &text, const std::string &meaning, const std::string &lang) {
     if (!meaning.empty()) return meaning;
-    auto a = st.newest_answer(text, lang.empty() ? answer : lang);
+    auto code = lang.empty() ? answer : lang;
+    auto a = st.newest_answer(text, code);
+    // Else the AI translation's brief line (AI answers are kept under the language's English name, as InkPeek's).
+    if (a.empty()) a = ai::brief(st.newest_answer(text, catalog_language(code), "quick"));
     return a.empty() ? std::string("—") : a;
   };
   std::size_t words = 0, phrases = 0;

@@ -95,6 +95,34 @@ std::string get(const std::string &url, std::string &body, long *status) {
   return r == CURLE_OK ? "" : message(r, err);
 }
 
+Reply request(const std::string &method, const std::string &url, const std::vector<std::pair<std::string, std::string>> &headers,
+              const std::string &body, long timeout_s) {
+  Reply out;
+  Curl c;
+  if (!c.h) return out.error = "curl_easy_init failed", out;
+  char err[CURL_ERROR_SIZE] = "";
+  common(c.h, url);
+  curl_easy_setopt(c.h, CURLOPT_FAILONERROR, 0L);
+  curl_easy_setopt(c.h, CURLOPT_TIMEOUT, timeout_s);
+  curl_easy_setopt(c.h, CURLOPT_ERRORBUFFER, err);
+  curl_easy_setopt(c.h, CURLOPT_WRITEFUNCTION, to_string);
+  curl_easy_setopt(c.h, CURLOPT_WRITEDATA, &out.body);
+  std::unique_ptr<curl_slist, decltype(&curl_slist_free_all)> list(nullptr, curl_slist_free_all);
+  for (auto &[k, v] : headers) list.reset(curl_slist_append(list.release(), (k + ": " + v).c_str()));
+  curl_easy_setopt(c.h, CURLOPT_HTTPHEADER, list.get());
+  if (method == "POST") {
+    curl_easy_setopt(c.h, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(c.h, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(body.size()));
+  }
+  auto r = curl_easy_perform(c.h);
+  curl_easy_getinfo(c.h, CURLINFO_RESPONSE_CODE, &out.status);
+  if (r != CURLE_OK) {
+    out.error = message(r, err);
+    out.resolve = r == CURLE_COULDNT_RESOLVE_HOST;
+  }
+  return out;
+}
+
 Status download(const std::string &url, const std::filesystem::path &file, std::int64_t total, const Progress &progress, const Cancel &cancel) {
   Curl c;
   if (!c.h) return {"curl_easy_init failed"};

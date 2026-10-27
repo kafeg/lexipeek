@@ -1,6 +1,8 @@
 #include "lexipeek/app.hpp"
+#include <cstdlib>
 #include <filesystem>
 #include "lexipeek/l10n.hpp"
+#include "ai/ai.hpp"
 #include "packs/http.hpp"
 
 namespace lexipeek::app {
@@ -52,6 +54,8 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.mt_english = s.mt_english;
   o.dicts = s.dicts;
   o.card = s.card;
+  o.ai = s.ai;
+  if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   return {std::make_shared<Core>(std::move(o))};
 }
 
@@ -61,6 +65,15 @@ Translation Engine::translate(const Card &card, Method m) const { return core->t
 SectionPage Engine::section(const Card &card, int entry, const std::string &key, int page) const { return core->section(card, entry, key, page); }
 std::vector<Seen> Engine::recents(int n) const { return core->recents(n); }
 bool Engine::toggle_saved(const Card &card, const std::string &translation) const { return core->toggle_saved(card, translation); }
+
+AiState Engine::ask(const Card &card, ai::Ask a, const std::string &key) const {
+  auto r = core->ask(card, a, key);
+  AiState st;
+  st.answered = true, st.ok = r.ok(), st.saved = r.saved;
+  if (r.ok()) st.json = r.json;
+  else st.error = ai::error_text(r, load_settings(core->data()).ai);
+  return st;
+}
 NotesView Engine::notes(NotesTab tab) const { return notes_view(core->store(), tab, core->answer()); }
 void Engine::remove_note(NotesTab tab, const std::string &text) const { lexipeek::remove_note(core->store(), tab, text); }
 void Engine::clear_history() const { core->store().clear_history(); }
@@ -83,6 +96,69 @@ std::string choose(const std::string &data, const std::string &key, int index, c
   auto s = load_settings(dir(data));
   settings_choose(s, key, index, state);
   return save_settings(dir(data), s);
+}
+
+std::string ai_provider(const std::string &data) { return load_settings(dir(data)).ai.provider; }
+
+bool ai_needs_key(const std::string &data) {
+  auto *p = ai::provider(ai_provider(data));
+  return p && p->key;
+}
+
+std::string ai_provider_title(const std::string &data) {
+  auto *p = ai::provider(ai_provider(data));
+  return !p ? "" : p->id == "custom" ? tr("ai_custom") : p->title;
+}
+
+std::string set_text(const std::string &data, const std::string &key, const std::string &value) {
+  auto s = load_settings(dir(data));
+  settings_text(s, key, value);
+  return save_settings(dir(data), s);
+}
+
+PromptEditor prompt_editor(const std::string &data, const std::string &id) { return lexipeek::prompt_editor(load_settings(dir(data)), id); }
+
+std::string set_prompts(const std::string &data, const std::vector<std::string> &ids, const std::vector<std::string> &texts) {
+  auto s = load_settings(dir(data));
+  settings_prompts(s, ids, texts);
+  return save_settings(dir(data), s);
+}
+
+std::string reset_prompts(const std::string &data) {
+  auto s = load_settings(dir(data));
+  s.ai.prompts.clear();
+  return save_settings(dir(data), s);
+}
+
+namespace {
+ai::Transport transport() {
+  auto *r = std::getenv("LEXIPEEK_AI_REPLIES");
+  return r ? ai::file_transport(r) : ai::default_transport();
+}
+}  // namespace
+
+AiModels ai_models(const std::string &data, const std::string &key) {
+  auto s = load_settings(dir(data));
+  auto m = ai::models(s.ai, key, transport());
+  return {m.list, m.error.ok() ? "" : ai::error_text(m.error, s.ai)};
+}
+
+std::vector<std::string> model_titles(const std::vector<ai::Model> &list) { return ai::model_titles(list); }
+std::vector<ai::Model> filter_models(const std::vector<ai::Model> &list, const std::string &filter, bool free_only) {
+  return ai::filter_models(list, filter, free_only);
+}
+
+std::string ai_test(const std::string &data, const std::string &key) {
+  auto s = load_settings(dir(data));
+  auto lang = catalog_language(s.answer);
+  ai::Query q{ai::Ask::quick, key, s.answer == "en" ? "Haus" : "house", 1, false, lang, s.answer == "en" ? "German" : "English"};
+  auto recall = s.ai.recall;
+  auto r = ai::ask(q, s.ai, recall, transport());
+  if (recall != s.ai.recall) {
+    s.ai.recall = recall;
+    save_settings(dir(data), s);
+  }
+  return r.ok() ? tr("ai_test_ok", {ai::brief(r.json)}) : ai::error_text(r, s.ai);
 }
 
 std::vector<PairRow> rows(const std::string &data, const Device &d) {

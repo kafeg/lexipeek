@@ -130,6 +130,21 @@ std::string lower(std::string_view s) {
 
 bool is_lower(std::string_view s) { return lower(s) == s; }
 
+std::int32_t java_hash(std::string_view s) {
+  std::uint32_t h = 0;
+  each(s, [&](utf8proc_int32_t c) {
+    auto cp = static_cast<std::uint32_t>(c);
+    if (cp < 0x10000) {
+      h = h * 31 + cp;
+    } else {
+      cp -= 0x10000;
+      h = h * 31 + (0xD800 + (cp >> 10));
+      h = h * 31 + (0xDC00 + (cp & 0x3FF));
+    }
+  });
+  return static_cast<std::int32_t>(h);
+}
+
 std::string nfc(std::string_view s) {
   utf8proc_uint8_t *r = nullptr;
   auto n = utf8proc_map(reinterpret_cast<const utf8proc_uint8_t *>(s.data()), static_cast<utf8proc_ssize_t>(s.size()), &r,

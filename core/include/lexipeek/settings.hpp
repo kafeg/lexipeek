@@ -1,6 +1,7 @@
 // One JSON for the app and the CLI: <data>/settings.json. Unknown fields are kept as they are.
 #pragma once
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -34,6 +35,19 @@ struct CardPrefs {
   int height = 45;      // % of the screen at most
 };
 
+// The optional AI layer (InkPeek's AI → Connection · Modules). The API key is never here: the shell keeps it (Keychain).
+struct AiSettings {
+  std::string provider;                         // "" off, "anthropic", "openai", "openrouter", "custom", "claude-cli", "codex-cli"
+  std::map<std::string, std::string> models;    // per provider; none: its default
+  std::string url;                              // the OpenAI-compatible server's address
+  std::map<std::string, std::string> commands;  // a CLI provider's program; none: "claude", "codex"
+  bool translate = true;                        // AI translation as a Translate method
+  bool prefetch = true;                         // opening one AI tab asks the others too
+  std::map<std::string, std::string> prompts;   // edited prompt parts: "system", "analysis.grammar"
+  std::map<std::string, bool> picked;           // answer keys switched from their default: "analysis.related"
+  std::map<std::string, int> recall;            // which least-reasoning variant a (host, model) accepts
+};
+
 struct Settings {
   std::string answer = "ru";     // the answer language
   std::optional<Method> method;  // none: the first available
@@ -48,6 +62,7 @@ struct Settings {
   DictSettings dicts;
   CardPrefs card;
   std::string ui_lang;                  // the app's language, "" = the system's
+  AiSettings ai;
 };
 
 // Missing or broken file: the defaults.

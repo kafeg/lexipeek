@@ -75,8 +75,8 @@ class Store {
 
   std::optional<std::string> answer(const std::string &text, const std::string &lang, const std::string &section,
                                     std::int64_t ver) const;
-  // The text's newest answer in lang, any section and version ("" = none): a saved or seen entry's line.
-  std::string newest_answer(const std::string &text, const std::string &lang) const;
+  // The text's newest answer in lang, any version, any section (or that one) ("" = none): a saved or seen entry's line.
+  std::string newest_answer(const std::string &text, const std::string &lang, const std::string &section = "") const;
   bool is_saved(const std::string &text) const;
   std::vector<Seen> history(int limit = history_limit) const;  // newest first
   std::vector<Saved> saved() const;                            // newest first

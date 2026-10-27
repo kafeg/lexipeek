@@ -53,6 +53,26 @@ json to_json(const CardPrefs &c) {
           {"width", c.width}, {"text", c.text}, {"font", c.font}, {"height", c.height}};
 }
 
+AiSettings ai(const json &j) {
+  AiSettings a;
+  if (!j.is_object()) return a;
+  a.provider = j.value("provider", a.provider);
+  a.models = j.value("models", a.models);
+  a.url = j.value("url", a.url);
+  a.commands = j.value("commands", a.commands);
+  a.translate = j.value("translate", a.translate);
+  a.prefetch = j.value("prefetch", a.prefetch);
+  a.prompts = j.value("prompts", a.prompts);
+  a.picked = j.value("picked", a.picked);
+  a.recall = j.value("recall", a.recall);
+  return a;
+}
+
+json to_json(const AiSettings &a) {
+  return {{"provider", a.provider}, {"models", a.models},       {"url", a.url},         {"commands", a.commands}, {"translate", a.translate},
+          {"prefetch", a.prefetch}, {"prompts", a.prompts},     {"picked", a.picked},   {"recall", a.recall}};
+}
+
 }  // namespace
 
 Settings load_settings(const fs::path &data) {
@@ -81,6 +101,7 @@ Settings load_settings(const fs::path &data) {
     }
     s.card = card(j.value("card", json()));
     s.ui_lang = j.value("ui_lang", s.ui_lang);
+    s.ai = ai(j.value("ai", json()));
   } catch (const std::exception &) {
     return Settings{};
   }
@@ -103,6 +124,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["dicts"] = {{"order", s.dicts.order}, {"off", s.dicts.off}, {"folders", s.dicts.folders}, {"sources_off", s.dicts.sources_off}, {"got", s.dicts.got}};
   j["card"] = to_json(s.card);
   j["ui_lang"] = s.ui_lang;
+  j["ai"] = to_json(s.ai);
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";

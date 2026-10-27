@@ -130,9 +130,31 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   (an option keeps a dragged card open, as pinned). By the text: a word — header, dictionary first; a phrase (up to 8
   words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
   translation only. At most 45% of the screen high, the rest scrolls inside.
-  Tabs Dictionary · Translate (· AI from M5: Analysis, Context — marked, asks only when opened). Translate shows one method with its name; the others are a switch (a switch
+  Tabs Dictionary · Translate (· Analysis · AI, Context · AI when AI is on — see AI below). Translate shows one method with its name; the others are a switch (a switch
   translates again and is kept for the next cards), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
   No selection → an input field in the card (it takes focus only on a click).
+- **AI** (optional, InkPeek's AI layer; off by default): a provider in Settings → AI — Claude (Anthropic Messages API),
+  OpenAI, OpenRouter, an OpenAI-compatible server (presets: LM Studio, Ollama, llama.cpp, vLLM on this Mac, Groq,
+  DeepSeek, Qwen, Mistral, Gemini), or a program on this Mac: Claude Code (`claude -p`) or Codex (`codex exec`), run as
+  a child process with its own login. InkPeek's three requests, each answered as one JSON object, word for word its
+  prompts (so the answers' versions, Java's `hashCode` of the original prompt, are the same and synced answers match):
+  **Quick** (AI translation: base, article, plural, part of speech, forms, irregular, form, meanings, translation),
+  **Analysis** (Grammar, Words; extra: related words, synonyms) and **Context** (Explanation, Examples; extra: idioms,
+  origin). The card's tabs **Analysis · AI** and **Context · AI** (only the modules that are on) ask only when opened,
+  the open one first and, with "ask the others at once" on, the others with it; **AI translation** is a Translate method
+  ("AI · <model>" in its menu: this card only), or what a phrase opens on (Card → Opening: AI translation, Analysis,
+  Context — an AI choice asks on every opening). "Thinking…", then the answer as light Markdown (**bold**, *italic*,
+  lists) under the app's headings, or a short actionable error (InkPeek's AiErrors: no network, server unreachable, the
+  service refused — network, VPN or key —, key rejected, limit, credits, no key, no model, the server of one's own does
+  not answer, the program was not found); a failed tab asks again when opened. Answers are kept through the store
+  (`ai.put`, sections `quick` / `analysis` / `context`, `lang` = the answer language's English name, as InkPeek) and
+  come back offline; Notes shows a quick answer's line when nothing else is saved. The answer language is Translation's;
+  the text's language from the packs goes along as a hint. Least reasoning per host as InkPeek (Claude: effort low,
+  thinking off — `between_tools` on Sonnet 5.5, none on Opus 5.5 / Fable —, a 400 asks once more plainly and is
+  remembered, refusal fallback on the models that offer it; OpenAI-compatible: the host's "no reasoning" field, then a
+  weaker one, then none, JSON mode then without; what worked is kept in settings.json per host and model); 45 s
+  timeout, 120 s for a server of one's own. The API key is in the macOS Keychain (one item per provider), given to the
+  core per request: never in settings.json, logs, snapshots or the UI. Data sent: only the text and the prompt.
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc and a click
   outside close it. ⌥D with a card open: another selection → its card at once; the same one or none → closes.
   In the card: ←/→ switch tabs, Return opens the full entry, ⌘S is ☆.
@@ -155,7 +177,11 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   language, method, Mozilla's English in between) · Other dictionaries (a folder, InkPeek's catalog of public
   sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·
   Article (the dictionary view: short line or full entry, the header's grammar, the sections shown, dictionary order)
-  · Appearance (desktop: width, text size, font, height limit) · **AI** (M5) — Connection · Modules · **Notes** —
+  · Appearance (desktop: width, text size, font, height limit) · **AI** — Connection (provider, the server's address
+  or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
+  the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
+  translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
+  every prompt back to the original) · **Notes** —
   Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
   the icon at the selection, per-app rules, a moved card stays, open at login, Accessibility, the app's language,
   updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
@@ -201,9 +227,9 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
 - **M4 Dictionaries and settings parity.** Own StarDict dictionaries (a folder, InkPeek's catalog of public
   sources, import), dictionary order and on / off; settings in InkPeek's sections (Languages · Card · AI · Notes) in
   desktop form; the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl); updates and About.
-- **M5 AI.** InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context** (Explanation,
-  Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter) and CLI providers (`claude -p`, `codex exec`);
-  editable prompts; answers cached through `ai.put`.
+- **M5 AI** (done, branch m5-ai). InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context**
+  (Explanation, Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter, an OpenAI-compatible server) and CLI
+  providers (`claude -p`, `codex exec`); editable prompts; answers cached through `ai.put`.
 - **M6 Windows app.** Qt Widgets shell, Windows platform parts, installer.
 - Then: release (signing, notarization, GitHub Releases, update check) · TSV for Anki, export / import · browser
   extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).

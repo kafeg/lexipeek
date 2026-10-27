@@ -1,5 +1,6 @@
 // Text helpers shared by the modules: PCRE2 regex, InkPeek's lookup key, lower case, HTML of the packs' articles.
 #pragma once
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -45,5 +46,7 @@ std::string strip_tags(std::string_view html);
 std::string unescape(std::string_view s);
 std::string escape(std::string_view s);
 bool is_lower(std::string_view s);  // equal to its lower case
+// Java's String.hashCode over UTF-16 units (InkPeek's versions of kept answers).
+std::int32_t java_hash(std::string_view s);
 
 }  // namespace lexipeek::text
