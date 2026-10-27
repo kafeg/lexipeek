@@ -34,6 +34,23 @@ struct CardView: View {
 
     var body: some View {
         let look = model.look
+        VStack(spacing: 0) {
+            content(look)
+            // The buttons under the text (InkPeek's bottom row): the header keeps the whole width.
+            if let look, !embedded { bar(look) }
+        }
+        .font(font())
+        .frame(width: embedded ? nil : CGFloat(look?.width ?? 400), alignment: .leading)
+        .frame(maxWidth: embedded ? .infinity : nil, alignment: .leading)
+        .frame(minHeight: titleOpen ? min(titleHeight, limit / 2) + 80 : nil, maxHeight: .infinity, alignment: .top)
+        .overlay(alignment: .top) { if titleOpen, let look { wholeTitle(look) } }
+        .onAppear {
+            focused = focusInput
+            if model.showInput { recents = model.client.recents().map { (text: $0.0, meaning: $0.1) } }
+        }
+    }
+
+    private func content(_ look: CardLook?) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if let u = model.unread { unread(u) }
             if model.showInput {
@@ -55,8 +72,8 @@ struct CardView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
-                            // In the window the footer follows the text, not the page's bottom.
-                            if embedded && look.footer { footer(look).padding(.top, 6) }
+                            // In the window the bar follows the text, not the page's bottom.
+                            if embedded { bar(look).padding(.top, 6) }
                         }
                         .id("top")
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,62 +89,33 @@ struct CardView: View {
                     bodyHeight = $0
                     model.objectWillChange.send()
                 }
-                if !embedded && look.footer { footer(look) }
             } else if !model.showInput {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
         }
-        .font(font())
         .padding(14)
-        .frame(width: embedded ? nil : CGFloat(look?.width ?? 400), alignment: .leading)
-        .frame(maxWidth: embedded ? .infinity : nil, alignment: .leading)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .onAppear {
-            focused = focusInput
-            if model.showInput { recents = model.client.recents().map { (text: $0.0, meaning: $0.1) } }
-        }
     }
 
     // As InkPeek's title: cut with "…" (not selectable: a selection inside spills over); a click on a cut one shows it whole
-    // in its place, selectable, at most half the card high, ▲ folds it again.
-    @ViewBuilder
+    // over the card (wholeTitle).
     private func title(_ s: String, _ f: Font, lines: Int, secondary: Bool) -> some View {
-        if titleOpen {
-            VStack(alignment: .leading, spacing: 4) {
-                ScrollView {
-                    Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary)
-                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(GeometryReader { g in Color.clear.preference(key: TitleKey.self, value: g.size.height) })
-                }
-                .frame(height: min(max(titleHeight, 16), limit / 2))
-                .onPreferenceChange(TitleKey.self) {
-                    titleHeight = $0
-                    model.objectWillChange.send()
-                }
-                Button { titleOpen = false } label: { Image(systemName: "chevron.up").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderless)
-                    .help(L.t("card_collapse"))
+        Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary).lineLimit(lines).truncationMode(.tail)
+            .background(GeometryReader { cut in
+                // The whole text at the same width, unseen: taller means the title is cut.
+                Text(s).font(f).fixedSize(horizontal: false, vertical: true)
+                    .frame(width: cut.size.width, alignment: .leading)
+                    .hidden()
+                    .background(GeometryReader { whole in
+                        Color.clear.preference(key: CutKey.self, value: whole.size.height > cut.size.height + 1)
+                    })
+            })
+            .onPreferenceChange(CutKey.self) {
+                titleCut = $0
+                if $0 && Snapshot.whole { titleOpen = true }
             }
-        } else {
-            Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary).lineLimit(lines).truncationMode(.tail)
-                .background(GeometryReader { cut in
-                    // The whole text at the same width, unseen: taller means the title is cut.
-                    Text(s).font(f).fixedSize(horizontal: false, vertical: true)
-                        .frame(width: cut.size.width, alignment: .leading)
-                        .hidden()
-                        .background(GeometryReader { whole in
-                            Color.clear.preference(key: CutKey.self, value: whole.size.height > cut.size.height + 1)
-                        })
-                })
-                .onPreferenceChange(CutKey.self) {
-                    titleCut = $0
-                    if $0 && Snapshot.whole { titleOpen = true }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { if titleCut { titleOpen = true } }
-                .help(titleCut ? L.t("card_whole") : model.look?.tooltip ?? "")
-        }
+            .contentShape(Rectangle())
+            .onTapGesture { if titleCut { titleOpen = true } }
+            .help(titleCut ? L.t("card_whole") : model.look?.tooltip ?? "")
     }
 
     // ↑↓ in the empty input field: a recent lookup, Return opens it.
@@ -251,22 +239,73 @@ struct CardView: View {
 
     // Not selectable: a selectable Text drops its line limit on a click and spills over the card.
     private func header(_ look: CardLook) -> some View {
-        HStack(alignment: titleOpen ? .top : .firstTextBaseline, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                switch look.style {
-                case .word:
-                    title(look.title, font(4, .semibold), lines: 2, secondary: false)
-                    if !look.subtitle.isEmpty {
-                        Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }
-                case .phrase:
-                    title(look.title, font(0, .semibold), lines: 2, secondary: false)
-                default:
-                    title(look.title, font(-1), lines: 1, secondary: true)
+        VStack(alignment: .leading, spacing: 2) {
+            switch look.style {
+            case .word:
+                title(look.title, titleFont(look), lines: 2, secondary: false)
+                if !look.subtitle.isEmpty {
+                    Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
+            case .phrase:
+                title(look.title, titleFont(look), lines: 2, secondary: false)
+            default:
+                title(look.title, titleFont(look), lines: 1, secondary: true)
             }
-            .onChange(of: look.title) { titleOpen = false }
-            Spacer(minLength: 8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: look.title) { titleOpen = false }
+    }
+
+    private func titleFont(_ look: CardLook) -> Font {
+        switch look.style {
+        case .word: font(4, .semibold)
+        case .phrase: font(0, .semibold)
+        default: font(-1)
+        }
+    }
+
+    // A cut title whole: over the card at full width, selectable, at most half the card's limit high (then it scrolls);
+    // ▲ or a click on the card under it folds it.
+    private func wholeTitle(_ look: CardLook) -> some View {
+        ZStack(alignment: .top) {
+            Color.black.opacity(0.08).contentShape(Rectangle()).onTapGesture { titleOpen = false }
+            VStack(spacing: 4) {
+                ScrollView {
+                    Text(look.title).font(titleFont(look)).foregroundStyle(look.style == .passage ? .secondary : .primary)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(GeometryReader { g in Color.clear.preference(key: TitleKey.self, value: g.size.height) })
+                }
+                .frame(height: min(max(titleHeight, 16), limit / 2))
+                .onPreferenceChange(TitleKey.self) {
+                    titleHeight = $0
+                    model.objectWillChange.send()
+                }
+                Button { titleOpen = false } label: { Image(systemName: "chevron.up").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderless)
+                    .help(L.t("card_collapse"))
+            }
+            .padding(EdgeInsets(top: 14, leading: 14, bottom: 6, trailing: 14))
+            .background(.regularMaterial)
+            .overlay(alignment: .bottom) { Divider() }
+            .shadow(color: .black.opacity(0.18), radius: 9, y: 5)
+        }
+    }
+
+    // The bottom row: back, the full entry, the method, a section's pager; the badge, ☆ and the pin on the right.
+    private func bar(_ look: CardLook) -> some View {
+        HStack(spacing: 12) {
+            if !look.back.isEmpty {
+                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help(L.t("card_back"))
+            }
+            if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link).fixedSize() }
+            if look.menu { methods(look) }
+            if !look.pager.isEmpty {
+                Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(!look.prev)
+                Text(look.pager).foregroundStyle(.secondary).monospacedDigit().fixedSize()
+                Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
+            }
+            Spacer(minLength: 4)
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if !look.star.isEmpty {
                 Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
@@ -279,6 +318,11 @@ struct CardView: View {
                     .help(L.t("card_pin"))
             }
         }
+        .font(font(-2))
+        .padding(.horizontal, embedded ? 0 : 14)
+        .padding(.vertical, 7)
+        .background(embedded ? Color.clear : Color.primary.opacity(0.04))
+        .overlay(alignment: .top) { if !embedded { Divider() } }
     }
 
     @ViewBuilder
@@ -350,22 +394,6 @@ struct CardView: View {
         }
     }
 
-    private func footer(_ look: CardLook) -> some View {
-        HStack {
-            if !look.back.isEmpty {
-                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help(L.t("card_back"))
-            }
-            if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link) }
-            if look.menu { methods(look) }
-            Spacer()
-            if !look.pager.isEmpty {
-                Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(!look.prev)
-                Text(look.pager).foregroundStyle(.secondary).monospacedDigit()
-                Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
-            }
-        }
-        .font(font(-2))
-    }
 
     // The entry's HTML in the card's font and the system's colours (AppKit's importer: main thread only).
     static func html(_ html: String, size: Int, font: String) -> AttributedString {

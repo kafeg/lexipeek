@@ -61,6 +61,7 @@ passage-translate|lookup?text=Der Hund schläft im Garten. Die Kinder spielen dr
 passage-dictionary|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&tab=dictionary
 long-translate|lookup?text=$LONG
 long-dictionary|lookup?text=$LONG&tab=dictionary
+long-whole|lookup?text=$LONG&whole=1
 passage-english|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&method=fast
 passage-whole|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&whole=1
 passage-ru|lookup?text=Вчера мы долго гуляли по парку. Погода была тёплой, и мы не хотели возвращаться домой.
