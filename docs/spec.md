@@ -265,7 +265,17 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
 - **M5 AI** (done, branch m5-ai). InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context**
   (Explanation, Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter, an OpenAI-compatible server) and CLI
   providers (`claude -p`, `codex exec`); editable prompts; answers cached through `ai.put`.
-- **M6 Windows app.** Qt Widgets shell, Windows platform parts, installer.
+- **M6 Windows app.** The Mac app's UI and UX as they are (frozen before the port), drawn by a Qt Widgets shell (`qt/`,
+  qtbase only: gui, widgets, png, concurrent; static on Windows through vcpkg's manifest feature `qt`, option
+  `LEXIPEEK_QT`, on by default on Windows and Linux). The shell draws the core's views and carries out its steps, as
+  `mac/` does: the card (`card_view`, `CardNav`; a frameless tool window that takes no focus, at the selection, the
+  bottom row, the whole title over the card), the tray icon and its menu (the menu bar's), the LexiPeek window, Settings
+  (the sections as tabs, their sub-tabs, the core's rows), About, the first run. Platform parts per OS behind small
+  interfaces: Windows — hotkeys (`RegisterHotKey`), the selection by UI Automation (TextPattern; never the clipboard),
+  open at login (the Run key), the AI key in the Credential Manager, the icon at the selection (a low-level mouse
+  hook); Linux later. Snapshots: `lexipeek-qt --snapshots <dir>` draws the same cases as `make snapshots` on Qt's
+  `minimal` platform (no window anywhere), on any OS. AI models: llama.cpp on the CPU (AVX2, FMA); a GPU through
+  Vulkan later. Installer: later in M6 (signed when there is a certificate).
 - Then: release (signing, notarization, GitHub Releases, update check) · browser
   extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).
 
