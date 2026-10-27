@@ -249,13 +249,14 @@ TEST_CASE("views: same language, no pack, unknown language, nothing to translate
   c.lang_name = "Russian";
   c.methods = {};
   auto v = card_view(c, first_state(c));
-  CHECK(v.badge == "Russian");
+  CHECK(v.badge == "ru");
   CHECK(v.rows[0].text == "Already in Russian.");
   CHECK(!v.menu);
   c.lang = c.lang_name = "";
+  c.other = "fr";
   c.other_name = "French";
   v = card_view(c, first_state(c));
-  CHECK(v.badge == "French");
+  CHECK(v.badge == "fr → ru");
   CHECK(!v.footer);
   CHECK(v.rows[0].text == "No language pack from French into Russian yet.");
   c.other_name = "";

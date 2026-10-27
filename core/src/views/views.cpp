@@ -268,8 +268,9 @@ CardView card_view(const Card &c, const CardState &s) {
     v.style = c.kind == Card::Kind::phrase ? HeaderStyle::phrase : HeaderStyle::passage;
     v.title = c.text;
   }
-  if (!c.lang.empty()) v.badge = c.lang == c.answer ? name(c.lang, c.lang_name) : c.lang + " → " + c.answer;
-  else if (!c.other_name.empty()) v.badge = name(c.other, c.other_name);  // a language without a pack, named
+  // Codes only: "de → ru"; "ru" when the text is in the answer language; "fr → ru" for a language without a pack.
+  if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang : c.lang + " → " + c.answer;
+  else if (!c.other.empty()) v.badge = c.other + " → " + c.answer;
   v.wide = v.style == HeaderStyle::passage;
   if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty()) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
   v.tab_items.push_back({CardTab::translate, tr("tab_translate")});
