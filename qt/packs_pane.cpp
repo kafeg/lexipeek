@@ -119,8 +119,8 @@ QWidget *PacksPane::line(const PackLine &l) {
 void PacksPane::refresh() {
   busy_ = "";
   draw();
-  auto data = c_.data();
-  c_.run<std::string>(c_.ai, [data] { return app::refresh(data); }, [this](std::string e) {
+  auto dir = c_.data();
+  c_.run<std::string>(c_.ai, [dir] { return app::refresh(dir); }, [this](std::string e) {
     busy_.reset();
     list_error_ = e;
     view_ = app::packs(c_.data(), c_.device);
@@ -133,16 +133,16 @@ void PacksPane::run(const PackAction &a) {
   busy_ = a.what;
   progress_ = 0;
   error_.clear();
-  auto data = c_.data();
+  auto dir = c_.data();
   auto ids = a.ids;
   if (a.remove) {
-    c_.run<Status>(c_.ai, [data, ids] { return app::remove(data, ids); }, [this](Status s) { finished(s); }, this);
+    c_.run<Status>(c_.ai, [dir, ids] { return app::remove(dir, ids); }, [this](Status s) { finished(s); }, this);
     return draw();
   }
   dl_ = app::Download();
   auto dl = dl_;
   poll_->start(300);
-  c_.run<Status>(c_.ai, [data, ids, dl] { return app::install(data, ids, dl); }, [this](Status s) { finished(s); }, this);
+  c_.run<Status>(c_.ai, [dir, ids, dl] { return app::install(dir, ids, dl); }, [this](Status s) { finished(s); }, this);
   draw();
 }
 

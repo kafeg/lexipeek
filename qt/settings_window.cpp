@@ -33,16 +33,16 @@ std::string version() { return LEXIPEEK_VERSION; }
 
 SettingsState SettingsShell::state() const {
   SettingsState s;
-  auto data = client.data();
+  auto dir = client.data();
   s.trusted = true;  // no permission to read the selection (the core drops Accessibility off macOS)
-  s.has_pair = app::has_pair(data);
+  s.has_pair = app::has_pair(dir);
   s.login = platform::login();
   s.version = version();
-  s.answers = app::answers(data);
-  s.input = platform::hotkey_label(app::settings(data).input);
+  s.answers = app::answers(dir);
+  s.input = platform::hotkey_label(app::settings(dir).input);
   s.checking = checking;
   s.update = update.text, s.update_version = update.version, s.update_url = update.url;
-  s.ai_key = !platform::secret(app::ai_provider(data)).empty();
+  s.ai_key = !platform::secret(app::ai_provider(dir)).empty();
   s.ai_testing = testing;
   s.ai_test = test;
   s.device = client.device;
@@ -238,7 +238,7 @@ void SettingsWindow::draw() {
 
 QWidget *SettingsWindow::row(const SettingRow &r) {
   using K = SettingRow::Kind;
-  auto data = sh_.client.data();
+  auto dir = sh_.client.data();
   auto key = r.key;
   switch (r.kind) {
     case K::heading: {
@@ -254,9 +254,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *box = new QCheckBox;
       box->setChecked(r.on);
       box->setEnabled(r.enabled);
-      connect(box, &QCheckBox::toggled, this, [this, key, data](bool on) {
+      connect(box, &QCheckBox::toggled, this, [this, key, dir](bool on) {
         if (key == "open_at_login") platform::set_login(on), on = platform::login();
-        after(app::toggle(data, key, on));
+        after(app::toggle(dir, key, on));
       });
       if (r.edit.empty()) return beside(r, box);
       auto *w = new QWidget;
@@ -276,11 +276,11 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       for (auto &x : r.choices) c->addItem(q(x));
       c->setCurrentIndex(r.selected);
       c->setEnabled(r.enabled);
-      connect(c, &QComboBox::activated, this, [this, key, data](int i) { after(app::choose(data, key, i, sh_.state())); });
+      connect(c, &QComboBox::activated, this, [this, key, dir](int i) { after(app::choose(dir, key, i, sh_.state())); });
       return beside(r, c);
     }
     case K::hotkey: {
-      auto s = app::settings(data);
+      auto s = app::settings(dir);
       bool input = key == "input";
       auto *w = new QWidget;
       auto *l = new QVBoxLayout(w);
@@ -288,12 +288,12 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *e = new QKeySequenceEdit(sequence(input ? s.input : s.lookup));
       e->setMaximumSequenceLength(1);
       e->setFixedWidth(160);
-      connect(e, &QKeySequenceEdit::editingFinished, this, [this, e, input, data] {
+      connect(e, &QKeySequenceEdit::editingFinished, this, [this, e, input, dir] {
         auto h = hotkey_of(e->keySequence());
         if (!h) return draw();
-        auto s = app::settings(data);
+        auto s = app::settings(dir);
         (input ? s.input : s.lookup) = *h;
-        after(app::save(data, s));
+        after(app::save(dir, s));
       });
       l->addWidget(e);
       auto err = input ? sh_.input_error : sh_.lookup_error;
@@ -309,29 +309,29 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *w = new QWidget;
       auto *l = new QVBoxLayout(w);
       l->setContentsMargins(0, 0, 0, 0);
-      auto s = app::settings(data);
+      auto s = app::settings(dir);
       for (auto &id : s.ignore_apps) {
         auto *row = new QHBoxLayout;
         row->addWidget(ui::text(id), 1);
         auto *x = new QToolButton;
         x->setText("✕");
         x->setAutoRaise(true);
-        connect(x, &QToolButton::clicked, this, [this, id, data] {
-          auto s = app::settings(data);
+        connect(x, &QToolButton::clicked, this, [this, id, dir] {
+          auto s = app::settings(dir);
           std::erase(s.ignore_apps, id);
-          after(app::save(data, s));
+          after(app::save(dir, s));
         });
         row->addWidget(x);
         l->addLayout(row);
       }
       auto *add = new QLineEdit;
       add->setPlaceholderText("app.exe");
-      connect(add, &QLineEdit::returnPressed, this, [this, add, data] {
+      connect(add, &QLineEdit::returnPressed, this, [this, add, dir] {
         auto id = add->text().trimmed().toLower().toStdString();
         if (id.empty()) return;
-        auto s = app::settings(data);
+        auto s = app::settings(dir);
         if (std::find(s.ignore_apps.begin(), s.ignore_apps.end(), id) == s.ignore_apps.end()) s.ignore_apps.push_back(id);
-        after(app::save(data, s));
+        after(app::save(dir, s));
       });
       l->addWidget(add);
       return under(r, w);
@@ -366,21 +366,21 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->setContentsMargins(0, 0, 0, 0);
       auto *e = new QLineEdit(q(r.value));
       e->setPlaceholderText(q(r.placeholder));
-      connect(e, &QLineEdit::editingFinished, this, [this, e, key, data, was = r.value] {
-        if (e->text().toStdString() != was) after(app::set_text(data, key, e->text().toStdString()));
+      connect(e, &QLineEdit::editingFinished, this, [this, e, key, dir, was = r.value] {
+        if (e->text().toStdString() != was) after(app::set_text(dir, key, e->text().toStdString()));
       });
       l->addWidget(e, 1);
       if (r.kind == K::model && r.on) {
         auto *choose = new QPushButton(t("model_choose"));
-        connect(choose, &QPushButton::clicked, this, [this, key, data] {
-          auto k = platform::secret(app::ai_provider(data));
-          auto m = app::ai_models(data, k);
+        connect(choose, &QPushButton::clicked, this, [this, key, dir] {
+          auto k = platform::secret(app::ai_provider(dir));
+          auto m = app::ai_models(dir, k);
           if (!m.error.empty()) return after(m.error);
           QStringList names;
           for (auto &x : app::model_titles(m.list)) names << q(x);
           bool ok = false;
           auto picked = QInputDialog::getItem(this, t("model_choose"), {}, names, 0, false, &ok);
-          if (ok) after(app::set_text(data, key, m.list[names.indexOf(picked)].id));
+          if (ok) after(app::set_text(dir, key, m.list[names.indexOf(picked)].id));
         });
         l->addWidget(choose);
       }
@@ -395,9 +395,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       e->setEchoMode(QLineEdit::Password);
       e->setPlaceholderText(t("key_t"));
       auto *save = new QPushButton(t("save_key"));
-      auto store = [this, e, data] {
+      auto store = [this, e, dir] {
         if (e->text().isEmpty()) return;
-        platform::set_secret(app::ai_provider(data), e->text().toStdString());
+        platform::set_secret(app::ai_provider(dir), e->text().toStdString());
         e->clear();
         sh_.test.clear();
         draw();
@@ -408,8 +408,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->addWidget(save);
       if (r.on) {
         auto *remove = new QPushButton(t("remove"));
-        connect(remove, &QPushButton::clicked, this, [this, data] {
-          platform::set_secret(app::ai_provider(data), "");
+        connect(remove, &QPushButton::clicked, this, [this, dir] {
+          platform::set_secret(app::ai_provider(dir), "");
           draw();
         });
         l->addWidget(remove);
@@ -421,7 +421,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       card->setFrameShape(QFrame::StyledPanel);
       card->setCursor(r.enabled ? Qt::PointingHandCursor : Qt::ArrowCursor);
       auto selected = r.selected;
-      if (r.enabled) card->pick = [this, key, data, selected] { after(app::choose(data, key, selected, sh_.state())); };
+      if (r.enabled) card->pick = [this, key, dir, selected] { after(app::choose(dir, key, selected, sh_.state())); };
       auto *l = new QHBoxLayout(card);
       auto *dot = ui::text(QString(r.on ? "◉" : "○"), 2);
       l->addWidget(dot, 0, Qt::AlignTop);
@@ -454,9 +454,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
 
 // A button's action, or ✎ of a prompt.
 void SettingsWindow::press(const SettingRow &r) {
-  auto data = sh_.client.data();
+  auto dir = sh_.client.data();
   if (!r.edit.empty()) {
-    auto e = app::prompt_editor(data, r.edit);
+    auto e = app::prompt_editor(dir, r.edit);
     QDialog d(this);
     d.setWindowTitle(q(e.title));
     auto *l = new QVBoxLayout(&d);
@@ -483,10 +483,10 @@ void SettingsWindow::press(const SettingRow &r) {
     std::vector<std::string> ids, texts;
     for (size_t i = 0; i < e.fields.size(); ++i)
       ids.push_back(e.fields[i].id), texts.push_back(cleared ? "" : fields[i]->toPlainText().toStdString());
-    return after(app::set_prompts(data, ids, texts));
+    return after(app::set_prompts(dir, ids, texts));
   }
   if (r.key == "setup") return emit openFirstRun();
-  if (r.key == "ai_reset") return after(app::reset_prompts(data));
+  if (r.key == "ai_reset") return after(app::reset_prompts(dir));
   if (r.key == "updates" && !sh_.checking) {
     sh_.checking = true;
     draw();
@@ -499,8 +499,8 @@ void SettingsWindow::press(const SettingRow &r) {
   if (r.key == "ai_test" && !sh_.testing) {
     sh_.testing = true;
     draw();
-    auto k = platform::secret(app::ai_provider(data));
-    sh_.client.run<std::string>(sh_.client.ai, [data, k] { return app::ai_test(data, k); }, [this](std::string s) {
+    auto k = platform::secret(app::ai_provider(dir));
+    sh_.client.run<std::string>(sh_.client.ai, [dir, k] { return app::ai_test(dir, k); }, [this](std::string s) {
       sh_.test = s;
       sh_.testing = false;
       draw();
@@ -520,8 +520,8 @@ void SettingsWindow::download(const std::string &method, const std::vector<std::
     draw();
   });
   timer->start(500);
-  auto data = sh_.client.data();
-  sh_.client.run<Status>(sh_.client.ai, [data, ids, dl] { return app::install(data, ids, dl); }, [this, timer](Status s) {
+  auto dir = sh_.client.data();
+  sh_.client.run<Status>(sh_.client.ai, [dir, ids, dl] { return app::install(dir, ids, dl); }, [this, timer](Status s) {
     timer->deleteLater();
     sh_.downloading.clear();
     sh_.download_error = s.cancelled ? "" : s.error;

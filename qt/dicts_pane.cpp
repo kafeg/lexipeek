@@ -55,14 +55,14 @@ void DictsPane::draw() {
   auto *area = findChild<QScrollArea *>();
   int scrolled = area->verticalScrollBar()->value();
   ui::clear(body_);
-  auto data = c_.data();
-  auto v = app::dictionaries(data);
+  auto dir = c_.data();
+  auto v = app::dictionaries(dir);
   auto *buttons = new QHBoxLayout;
   auto *folder = new QPushButton(t("add_folder_more"));
-  connect(folder, &QPushButton::clicked, this, [this, data] {
+  connect(folder, &QPushButton::clicked, this, [this, dir] {
     auto d = QFileDialog::getExistingDirectory(this, t("folder_panel"));
     if (d.isEmpty()) return;
-    message_ = app::add_folder(data, d.toStdString());
+    message_ = app::add_folder(dir, d.toStdString());
     changed(true);
   });
   auto *import = new QPushButton(t("import_more"));
@@ -103,8 +103,8 @@ void DictsPane::draw() {
       on->setChecked(r.on);
       on->setFixedWidth(24);
       auto id = r.id;
-      connect(on, &QCheckBox::toggled, this, [this, data, id](bool b) {
-        app::set_dict_on(data, id, b);
+      connect(on, &QCheckBox::toggled, this, [this, dir, id](bool b) {
+        app::set_dict_on(dir, id, b);
         changed(false);
       });
       row->addWidget(on);
@@ -118,23 +118,23 @@ void DictsPane::draw() {
     col->addWidget(detail);
     row->addLayout(col, 1);
     auto id = r.id;
-    row->addWidget(small("▲", t("up"), i > 0, [this, data, id] {
-      app::move_dict(data, id, -1);
+    row->addWidget(small("▲", t("up"), i > 0, [this, dir, id] {
+      app::move_dict(dir, id, -1);
       changed(false);
     }));
-    row->addWidget(small("▼", t("down"), i + 1 < v.rows.size(), [this, data, id] {
-      app::move_dict(data, id, 1);
+    row->addWidget(small("▼", t("down"), i + 1 < v.rows.size(), [this, dir, id] {
+      app::move_dict(dir, id, 1);
       changed(false);
     }));
     if (r.removable) {
       auto title_text = r.title;
-      row->addWidget(small("✕", t("delete"), true, [this, data, id, title_text] {
+      row->addWidget(small("✕", t("delete"), true, [this, dir, id, title_text] {
         QMessageBox box(QMessageBox::Warning, t("delete_q", title_text), t("delete_d"), QMessageBox::NoButton, this);
         auto *del = box.addButton(t("delete"), QMessageBox::DestructiveRole);
         box.addButton(t("cancel"), QMessageBox::RejectRole);
         box.exec();
         if (box.clickedButton() != del) return;
-        message_ = app::remove_dict(data, id);
+        message_ = app::remove_dict(dir, id);
         changed(true);
       }));
     }
@@ -154,8 +154,8 @@ void DictsPane::draw() {
       row->addLayout(col, 1);
       auto *remove = new QPushButton(t("remove"));
       auto path = f.path;
-      connect(remove, &QPushButton::clicked, this, [this, data, path] {
-        app::remove_folder(data, path);
+      connect(remove, &QPushButton::clicked, this, [this, dir, path] {
+        app::remove_folder(dir, path);
         changed(true);
       });
       row->addWidget(remove);
@@ -170,8 +170,8 @@ void DictsPane::import(const std::vector<std::string> &files) {
   busy_ = true;
   message_ = t("importing").toStdString();
   draw();
-  auto data = c_.data();
-  c_.run<std::string>(c_.ai, [data, files] { return app::imported_text(app::import_dicts(data, files)); }, [this](std::string text) {
+  auto dir = c_.data();
+  c_.run<std::string>(c_.ai, [dir, files] { return app::imported_text(app::import_dicts(dir, files)); }, [this](std::string text) {
     busy_ = false;
     message_ = text;
     changed(true);
@@ -235,8 +235,8 @@ CatalogDialog::CatalogDialog(CoreClient &client, QWidget *parent) : QDialog(pare
 void CatalogDialog::fetch() {
   loading_ = true;
   draw();
-  auto data = c_.data();
-  c_.run<CatalogList>(c_.ai, [data] { return app::catalog(data); }, [this](CatalogList l) {
+  auto dir = c_.data();
+  c_.run<CatalogList>(c_.ai, [dir] { return app::catalog(dir); }, [this](CatalogList l) {
     list_ = l;
     failed_.clear();
     for (auto &f : l.failed) failed_ += (failed_.empty() ? "" : "\n") + f;
@@ -246,8 +246,8 @@ void CatalogDialog::fetch() {
 }
 
 void CatalogDialog::draw() {
-  auto data = c_.data();
-  auto v = app::catalog_view(data, list_, filter_);
+  auto dir = c_.data();
+  auto v = app::catalog_view(dir, list_, filter_);
   filter_edit_->setPlaceholderText(q(v.filter_hint));
   auto *sources = findChild<QHBoxLayout *>("sources");
   ui::clear(sources);
@@ -256,8 +256,8 @@ void CatalogDialog::draw() {
     b->setChecked(s.on);
     b->setToolTip(q(s.about));
     auto id = s.id;
-    connect(b, &QCheckBox::toggled, this, [this, data, id](bool on) {
-      app::set_source_on(data, id, on);
+    connect(b, &QCheckBox::toggled, this, [this, dir, id](bool on) {
+      app::set_source_on(dir, id, on);
       QMetaObject::invokeMethod(this, [this] { fetch(); }, Qt::QueuedConnection);
     });
     sources->addWidget(b);
@@ -308,10 +308,10 @@ void CatalogDialog::get(int item, const std::string &title) {
   message_.clear();
   dl_ = app::Download();
   auto dl = dl_;
-  auto data = c_.data();
+  auto dir = c_.data();
   auto list = list_;
   poll_->start(300);
-  c_.run<std::string>(c_.ai, [data, list, item, dl] { return app::imported_text(app::download_dict(data, list, item, dl)); },
+  c_.run<std::string>(c_.ai, [dir, list, item, dl] { return app::imported_text(app::download_dict(dir, list, item, dl)); },
                       [this](std::string text) {
                         poll_->stop();
                         downloading_.clear();

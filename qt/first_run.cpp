@@ -143,8 +143,8 @@ void FirstRunWindow::fetch() {
   if (state.fetching) return;
   state.fetching = true;
   refresh();
-  auto data = c_.data();
-  c_.run<std::string>(c_.ai, [data] { return app::refresh(data); }, [this](std::string e) {
+  auto dir = c_.data();
+  c_.run<std::string>(c_.ai, [dir] { return app::refresh(dir); }, [this](std::string e) {
     state.list_error = e;
     state.fetching = false;
     refresh();
@@ -154,21 +154,21 @@ void FirstRunWindow::fetch() {
 // The picked pair: its answer language for the next cards, then what it still needs, with progress.
 void FirstRunWindow::install() {
   if (state.downloading || look_.book.empty()) return;
-  auto data = c_.data();
+  auto dir = c_.data();
   auto answer = look_.answer, book = look_.book;
-  auto s = app::settings(data);
+  auto s = app::settings(dir);
   s.answer = answer;
-  app::save(data, s);
+  app::save(dir, s);
   c_.configure();
   state.answer = answer, state.book = book;
-  auto ids = app::missing_ids(data, book, answer);
+  auto ids = app::missing_ids(dir, book, answer);
   state.error.clear();
   state.done = state.total = 0;
   state.downloading = true;
   dl_ = app::Download();
   auto dl = dl_;
   poll_->start(300);
-  c_.run<Status>(c_.ai, [data, ids, dl] { return app::install(data, ids, dl); }, [this](Status s) {
+  c_.run<Status>(c_.ai, [dir, ids, dl] { return app::install(dir, ids, dl); }, [this](Status s) {
     poll_->stop();
     state.error = s.cancelled ? "" : s.error;
     state.downloading = false;
