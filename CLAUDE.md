@@ -150,6 +150,15 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker) and a concurrent AI queue; each `CardModel` asks through its `CardLane` (a newer request turns its older ones into no-ops).
+- `qt/` (M6, Windows; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, on
+  by default off macOS; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
+  runs CardNav's steps, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
+  `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
+  done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets). OS parts only in `platform.hpp`
+  (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key; `platform_none.cpp` elsewhere).
+  Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
+  `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
+  platform with fonts: nothing on the screen) — look at every image.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` (PNGs committed). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
