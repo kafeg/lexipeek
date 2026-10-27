@@ -317,6 +317,7 @@
 {"menu_answer", "Traduzir para: {1}"},
 {"settings_more", "Definições…"},
 {"quit", "Sair do LexiPeek"},
+{"menu_about", "Acerca do LexiPeek"},
 {"m_edit", "Editar"},
 {"m_undo", "Desfazer"},
 {"m_redo", "Refazer"},

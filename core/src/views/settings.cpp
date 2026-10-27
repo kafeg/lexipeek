@@ -154,7 +154,9 @@ std::vector<SettingRow> opening(const Settings &s) {
   auto o = opens(s);
   std::vector<std::string> titles;
   for (auto &x : o) titles.push_back(tr(x.second) + (x.first == "analysis" || x.first == "context" ? " · " + tr("tab_ai") : ""));
-  return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open))};
+  return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open)),
+          toggle("selection_icon", tr("icon_t"), tr("icon_d"), s.selection_icon),
+          toggle("pin_moved", tr("pin_moved_t"), tr("pin_moved_d"), s.pin_moved)};
 }
 
 std::string mark(bool edited, const std::string &about) { return edited ? tr("prompt_edited") + " · " + about : about; }
@@ -259,21 +261,17 @@ std::vector<SettingRow> appearance(const Settings &s) {
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
-std::vector<SettingRow> general(const Settings &s, const SettingsState &st) {
-  std::vector<SettingRow> rows{heading(tr("hotkeys_t")),
-                               valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
-                               valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
-                               heading(tr("tab_card")),
-                               toggle("selection_icon", tr("icon_t"), tr("icon_d"), s.selection_icon),
-                               toggle("pin_moved", tr("pin_moved_t"), tr("pin_moved_d"), s.pin_moved),
-                               heading(tr("apps_t")),
-                               valued(Kind::apps, "copy_apps", tr("copy_apps_t"), tr("copy_apps_d"), ""),
-                               valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), ""),
-                               heading(tr("system_t")),
-                               toggle("open_at_login", tr("login_t"), tr("login_d"), st.login)};
-  std::vector<std::string> keeps;
-  for (auto m : keeps_min) keeps.push_back(m == 0 ? tr("keep_forever") : m == 60 ? tr("keep_hour") : tr("keep_min", {digits(m)}));
-  rows.push_back(choice("keep_model", tr("keep_t"), tr("keep_d"), keeps, index_of(keeps_min, s.keep_model)));
+// General (InkPeek's ⚙ page in desktop form): Hotkeys (the keys, per-app rules) · System (Accessibility, login, the
+// app's language, the model in memory).
+std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int tab) {
+  if (tab == 0)
+    return {heading(tr("hotkeys_t")),
+            valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
+            valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
+            heading(tr("apps_t")),
+            valued(Kind::apps, "copy_apps", tr("copy_apps_t"), tr("copy_apps_d"), ""),
+            valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), "")};
+  std::vector<SettingRow> rows;
   auto access = tr("access_d", {st.input});
   if (st.trusted) {
     auto r = valued(Kind::status, "access", tr("access_t"), access, tr("allowed"));
@@ -282,21 +280,13 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st) {
   } else {
     rows.push_back(valued(Kind::button, "access", tr("access_t"), access, tr("allow_btn")));
   }
+  rows.push_back(toggle("open_at_login", tr("login_t"), tr("login_d"), st.login));
   std::vector<std::string> langs{tr("ui_lang_system")};
   for (size_t i = 1; i < ui_langs.size(); i++) langs.push_back(ui_langs[i].second);
   rows.push_back(choice("ui_lang", tr("ui_lang"), tr("ui_lang_about"), langs, index_of(ui_langs, s.ui_lang)));
-  rows.push_back(heading(tr("updates_t")));
-  auto upd = valued(Kind::button, "updates", tr("check_t"), st.checking ? tr("checking") : st.update.empty() ? tr("update_never") : st.update,
-                    tr("check_now"));
-  upd.enabled = !st.checking;
-  rows.push_back(upd);
-  if (!st.update_url.empty()) rows.push_back(valued(Kind::link, "release", tr("update_get", {st.update_version}), tr("update_get_d"), st.update_url));
-  rows.push_back(heading(tr("ht_about")));
-  rows.push_back(valued(Kind::status, "version", "LexiPeek " + st.version, tr("about_d"), ""));
-  rows.push_back(valued(Kind::link, "source", tr("source_t"), "github.com/kafeg/lexipeek", "https://github.com/kafeg/lexipeek"));
-  rows.push_back(valued(Kind::link, "inkpeek", "InkPeek", tr("inkpeek_d"), "https://github.com/kafeg/inkpeek"));
-  rows.push_back(heading(tr("licenses_t")));
-  for (auto &[title, about, url] : licenses) rows.push_back(valued(Kind::link, "license", title, tr(about), url));
+  std::vector<std::string> keeps;
+  for (auto m : keeps_min) keeps.push_back(m == 0 ? tr("keep_forever") : m == 60 ? tr("keep_hour") : tr("keep_min", {digits(m)}));
+  rows.push_back(choice("keep_model", tr("keep_t"), tr("keep_d"), keeps, index_of(keeps_min, s.keep_model)));
   return rows;
 }
 
@@ -309,7 +299,7 @@ std::vector<std::string> settings_tab_keys(SettingsSection section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};
     case SettingsSection::card: return {"opening", "article", "appearance"};
     case SettingsSection::ai: return {"connection", "modules"};
-    case SettingsSection::general: return {};
+    case SettingsSection::general: return {"keys", "system"};
   }
   return {};
 }
@@ -319,9 +309,23 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::languages: return names({"lang_packs", "lang_translation", "lang_own"});
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
-    case SettingsSection::general: return {};
+    case SettingsSection::general: return names({"hotkeys_t", "system_t"});
   }
   return {};
+}
+
+std::vector<SettingRow> about_rows(const SettingsState &st) {
+  std::vector<SettingRow> rows{valued(Kind::status, "version", "LexiPeek " + st.version, tr("about_d"), "")};
+  auto upd = valued(Kind::button, "updates", tr("check_t"), st.checking ? tr("checking") : st.update.empty() ? tr("update_never") : st.update,
+                    tr("check_now"));
+  upd.enabled = !st.checking;
+  rows.push_back(upd);
+  if (!st.update_url.empty()) rows.push_back(valued(Kind::link, "release", tr("update_get", {st.update_version}), tr("update_get_d"), st.update_url));
+  rows.push_back(valued(Kind::link, "source", tr("source_t"), "github.com/kafeg/lexipeek", "https://github.com/kafeg/lexipeek"));
+  rows.push_back(valued(Kind::link, "inkpeek", "InkPeek", tr("inkpeek_d"), "https://github.com/kafeg/inkpeek"));
+  rows.push_back(heading(tr("licenses_t")));
+  for (auto &[title, about, url] : licenses) rows.push_back(valued(Kind::link, "license", title, tr(about), url));
+  return rows;
 }
 
 SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, const SettingsState &st) {
@@ -339,7 +343,7 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
       p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s);
       break;
     case SettingsSection::ai: p.rows = p.tab == 0 ? connection(s, st) : modules(s); break;
-    case SettingsSection::general: p.rows = general(s, st); break;
+    case SettingsSection::general: p.rows = general(s, st, p.tab); break;
   }
   return p;
 }

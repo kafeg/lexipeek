@@ -79,7 +79,7 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
   CHECK(p.pane == "packs");
   CHECK(settings_view(SettingsSection::languages, 2, s, st).pane == "other");
   CHECK(settings_view(SettingsSection::card, 9, s, st).tab == 2);  // clamped
-  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs.empty());
+  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs == std::vector<std::string>{"Hotkeys", "System"});
   // Every row has a title and a one-line description, but headings.
   s.ai.provider = "custom";
   for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general})
@@ -186,7 +186,7 @@ TEST_CASE("settings: Card — opening, article, sections, appearance") {
   CHECK(s.card.height == 75);
 }
 
-TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, language, updates, About") {
+TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → Opening; About its own rows") {
   Settings s;
   auto st = state();
   auto p = settings_view(SettingsSection::general, 0, s, st);
@@ -194,19 +194,22 @@ TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, 
   CHECK(row(p, "input")->kind == Kind::hotkey);
   CHECK(row(p, "copy_apps")->kind == Kind::apps);
   CHECK(row(p, "ignore_apps")->kind == Kind::apps);
+  CHECK(!row(p, "access"));
+  p = settings_view(SettingsSection::general, 1, s, st);
   CHECK(row(p, "access")->kind == Kind::status);
   CHECK(row(p, "access")->value == "Allowed");
-  CHECK(row(p, "updates")->enabled);
-  CHECK(row(p, "updates")->about == "Not checked yet.");
-  CHECK(!row(p, "release"));
+  CHECK(row(p, "open_at_login"));
+  CHECK(row(p, "keep_model"));
   CHECK(row(p, "ui_lang")->choices.size() == 9);
   CHECK(row(p, "ui_lang")->choices[0] == "As the system");
   CHECK(row(p, "ui_lang")->choices[2] == "Русский");
-  CHECK(std::count_if(p.rows.begin(), p.rows.end(), [](auto &r) { return r.key == "license"; }) == 4);
-  CHECK(row(p, "version")->title == "LexiPeek 0.1 (5)");
-  CHECK(row(p, "source")->value == "https://github.com/kafeg/lexipeek");
+  CHECK(!row(p, "updates"));
   st.trusted = false;
-  CHECK(row(settings_view(SettingsSection::general, 0, s, st), "access")->kind == Kind::button);
+  CHECK(row(settings_view(SettingsSection::general, 1, s, st), "access")->kind == Kind::button);
+  st.trusted = true;
+  p = settings_view(SettingsSection::card, 0, s, st);
+  CHECK(row(p, "selection_icon"));
+  CHECK(row(p, "pin_moved"));
   settings_toggle(s, "selection_icon", true);
   CHECK(s.keep_model == 5);
   settings_choose(s, "keep_model", 4, {});
@@ -220,15 +223,28 @@ TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, 
   CHECK(s.ui_lang == "pl");
   settings_choose(s, "ui_lang", 0, st);
   CHECK(s.ui_lang.empty());
-  // The update check's answer and a newer release's page.
+  // About: version, the update check, links, licenses.
+  auto a = about_rows(st);
+  auto in = [&](const std::string &key) -> const SettingRow * {
+    for (auto &r : a)
+      if (r.key == key) return &r;
+    return nullptr;
+  };
+  CHECK(in("version")->title == "LexiPeek 0.1 (5)");
+  CHECK(in("source")->value == "https://github.com/kafeg/lexipeek");
+  CHECK(in("updates")->enabled);
+  CHECK(in("updates")->about == "Not checked yet.");
+  CHECK(!in("release"));
+  CHECK(std::count_if(a.begin(), a.end(), [](auto &r) { return r.key == "license"; }) == 4);
   st.checking = true;
-  CHECK(!row(settings_view(SettingsSection::general, 0, s, st), "updates")->enabled);
+  a = about_rows(st);
+  CHECK(!in("updates")->enabled);
   st.checking = false;
   st.update = "LexiPeek 0.2 is out", st.update_version = "0.2", st.update_url = "https://github.com/kafeg/lexipeek/releases/tag/v0.2";
-  p = settings_view(SettingsSection::general, 0, s, st);
-  CHECK(row(p, "updates")->about == "LexiPeek 0.2 is out");
-  CHECK(row(p, "release")->title == "Download LexiPeek 0.2");
-  CHECK(row(p, "release")->value == st.update_url);
+  a = about_rows(st);
+  CHECK(in("updates")->about == "LexiPeek 0.2 is out");
+  CHECK(in("release")->title == "Download LexiPeek 0.2");
+  CHECK(in("release")->value == st.update_url);
 }
 
 TEST_CASE("updates: GitHub's latest release against this version") {

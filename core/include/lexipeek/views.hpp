@@ -312,6 +312,8 @@ std::vector<std::string> settings_tab_keys(SettingsSection section);
 SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, const SettingsState &state);
 // A row's change → the settings ("" when the key is not the row's). Toggles and choices by the row's key and index.
 void settings_toggle(Settings &s, const std::string &key, bool on);
+// The About window: version, the update check, links, the packs' licenses.
+std::vector<SettingRow> about_rows(const SettingsState &state);
 void settings_choose(Settings &s, const std::string &key, int index, const SettingsState &state);
 // The update check's answer from GitHub's latest release (status 404: none yet): its text; the release when it is newer.
 struct UpdateCheck {

@@ -321,6 +321,7 @@
 {"menu_answer", "Перевод на: {1}"},
 {"settings_more", "Настройки…"},
 {"quit", "Завершить LexiPeek"},
+{"menu_about", "О программе LexiPeek"},
 {"m_edit", "Правка"},
 {"m_undo", "Отменить"},
 {"m_redo", "Повторить"},

@@ -317,6 +317,7 @@
 {"menu_answer", "Übersetzen in: {1}"},
 {"settings_more", "Einstellungen…"},
 {"quit", "LexiPeek beenden"},
+{"menu_about", "Über LexiPeek"},
 {"m_edit", "Bearbeiten"},
 {"m_undo", "Widerrufen"},
 {"m_redo", "Wiederholen"},

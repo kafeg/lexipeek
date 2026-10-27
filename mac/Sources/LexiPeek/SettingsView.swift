@@ -82,6 +82,11 @@ final class SettingsModel: ObservableObject {
         return lexipeek.app.settings_page(std.string(), section.core, Int32(tabs[section] ?? 0), state())
     }
 
+    func about() -> [SettingLine] {
+        _ = revision
+        return lexipeek.app.about(state()).map { SettingLine($0) }
+    }
+
     func select(_ section: SettingsSection, _ tab: Int) {
         tabs[section] = tab
     }
@@ -709,5 +714,29 @@ private struct AppList: View {
         if let url = url(id) {
             Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 18, height: 18)
         }
+    }
+}
+
+// About LexiPeek (menu bar and the app menu): version, the update check, links, the packs' licenses.
+struct AboutView: View {
+    @ObservedObject var model: SettingsModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72).padding(.top, 18)
+            RowsView(rows: model.about(), model: model)
+        }
+        .frame(width: 460, height: 560)
+    }
+}
+
+enum AboutWindow {
+    static func make(model: SettingsModel) -> NSWindow {
+        let w = NSWindow(contentViewController: NSHostingController(rootView: AboutView(model: model)))
+        w.styleMask = [.titled, .closable]
+        w.title = L.t("menu_about")
+        w.isReleasedWhenClosed = false
+        w.center()
+        return w
     }
 }

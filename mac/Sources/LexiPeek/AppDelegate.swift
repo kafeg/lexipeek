@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var main = MainModel(client: client)
     private var mainWindow: NSWindow?
     private var settingsWindow: NSWindow?
+    private var aboutWindow: NSWindow?
     private lazy var firstRun = FirstRunModel(client: client)
     private var firstRunWindow: NSWindow?
     private var item: NSStatusItem?
@@ -153,6 +154,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func unload() { client.release() }
 
+    @objc private func showAbout() {
+        if aboutWindow == nil { aboutWindow = AboutWindow.make(model: settings) }
+        aboutWindow?.title = L.t("menu_about")
+        NSApp.activate(ignoringOtherApps: true)
+        aboutWindow?.makeKeyAndOrderFront(nil)
+    }
+
     @objc private func showMain() { openMain(nil) }
 
     // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
@@ -226,7 +234,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             s.tabKeys.isEmpty ? [(s, 0, "settings-\(s.key)")] : s.tabKeys.enumerated().map { (s, $0.offset, "settings-\(s.key)-\($0.element)") }
         }
         func shot(_ i: Int) {
-            guard i < shots.count else { w.orderOut(nil); Snapshot.mark("settings.done"); return }
+            guard i < shots.count else {
+                w.orderOut(nil)
+                let about = AboutWindow.make(model: settings)
+                Snapshot.hide(about)
+                about.orderBack(nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    Snapshot.write(about.contentView?.superview, "about.png")
+                    about.orderOut(nil)
+                    Snapshot.mark("settings.done")
+                }
+                return
+            }
             let (section, tab, name) = shots[i]
             SettingsWindow.select(w, section, tab: tab, model: settings)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -249,8 +268,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return i
         }
         let main = NSMenu()
-        let app = sub("LexiPeek", [(L.t("settings_more"), #selector(showSettings), ","), (L.t("quit"), #selector(NSApplication.terminate), "q")])
-        app.submenu?.items.first?.target = self
+        let app = sub("LexiPeek", [(L.t("menu_about"), #selector(showAbout), ""), (L.t("settings_more"), #selector(showSettings), ","),
+                                   (L.t("quit"), #selector(NSApplication.terminate), "q")])
+        app.submenu?.items[0].target = self
+        app.submenu?.items[1].target = self
         main.addItem(app)
         let edit = sub(L.t("m_edit"), [(L.t("m_undo"), Selector(("undo:")), "z"), (L.t("m_redo"), Selector(("redo:")), "Z"),
                                        (L.t("m_cut"), #selector(NSText.cut(_:)), "x"), (L.t("m_copy"), #selector(NSText.copy(_:)), "c"),
@@ -294,6 +315,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: L.t("menu_answer", String(lexipeek.app.language(std.string(prefs.answer)))), action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
+        let about = NSMenuItem(title: L.t("menu_about"), action: #selector(showAbout), keyEquivalent: "")
+        about.target = self
+        menu.addItem(about)
         let s = NSMenuItem(title: L.t("settings_more"), action: #selector(showSettings), keyEquivalent: ",")
         s.target = self
         menu.addItem(s)

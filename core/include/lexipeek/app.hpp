@@ -69,6 +69,7 @@ struct Engine {
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
 std::string toggle(const std::string &data, const std::string &key, bool on);
+inline std::vector<SettingRow> about(const SettingsState &state) { return about_rows(state); }
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
 
 // Settings → AI. The provider's id ("" = off; the shell keeps its key under it) and whether it needs a key.

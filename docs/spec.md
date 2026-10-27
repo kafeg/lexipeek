@@ -198,15 +198,16 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
-  every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
-  the icon at the selection, per-app rules, a moved card stays, open at login, how long a model stays in memory after
-  a use (1, 5, 15 min, 1 h, until quit; 5 min by default), Accessibility, the app's language,
-  updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
+  every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form) — Hotkeys
+  (the two hotkeys, per-app rules) · System (Accessibility, open at login, the app's language, how long a model stays
+  in memory after a use: 1, 5, 15 min, 1 h, until quit; 5 min by default). The icon at the selection and "a moved card
+  stays" are on Card → Opening. **About LexiPeek** is a window of its own (menu bar and the app menu): version, "Check
+  now", links, the packs' licenses. Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as
   InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
   answers in it (an existing settings.json keeps its answer). Every text of the core's `views` and of a shell comes from
   the core's table; dictionaries and the card's articles are data, not translated.
-- **About and updates** (General): version, MIT, links to the repo and InkPeek, the packs' licenses (Wiktionary
+- **About and updates** (the About window): version, MIT, links to the repo and InkPeek, the packs' licenses (Wiktionary
   CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0). "Check now" asks GitHub's Releases API for LexiPeek's
   latest release — only on that click; none yet → "No releases yet", a newer one → a link to its page.
 - **Other dictionaries** (Languages → Other dictionaries; InkPeek's own StarDict dictionaries): `<data>/dicts-own/`
