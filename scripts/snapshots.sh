@@ -50,6 +50,9 @@ cases() {
 word-hausern|lookup?text=Häusern
 word-haus-full|lookup?text=Haus&full=1
 word-entry-one|lookup?text=Haus&entry=1
+section-page-2|lookup?text=machen&full=1&section=rel&page=1
+gloss-back|lookup?text=Ich mache die Tür zu&tab=dictionary&open=Tür&back=1
+word-answer-en|lookup?text=Häusern&answer=en
 word-machen-sections|lookup?text=machen&full=1
 section-related|lookup?text=machen&full=1&section=rel
 section-forms|lookup?text=machen&full=1&section=forms

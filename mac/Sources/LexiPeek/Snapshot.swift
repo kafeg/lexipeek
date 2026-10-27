@@ -6,10 +6,13 @@ enum Snapshot {
     static let dir = ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT"]
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
-    // [&section=<key>][&method=fast|ai][&whole=1][&entry=<n>] (save: ☆ once it is final; open: that word clicked in the card; section: the first
-    // entry's section opened; tab=analysis|context: that AI tab clicked; method=ai: AI translation picked).
+    // [&section=<key>][&page=1][&entry=<n>][&back=1][&answer=<code>][&method=fast|ai][&whole=1] — save: ☆ once it is
+    // final; open: that word clicked in the card; section: the first entry's section opened, page: its next page;
+    // entry: that dictionary's line clicked; back: ← once; answer: the badge's other answer language; tab=analysis|context:
+    // that AI tab clicked; method=ai: AI translation picked; whole: a cut title opened.
     private struct Request {
-        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool, entry: Int?
+        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool, entry: Int?,
+            back: Bool, page: Bool, answer: String?
     }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
@@ -52,7 +55,8 @@ enum Snapshot {
             Request(name: $0, tab: v("tab").flatMap { tabs[$0] }, full: v("full") == "1", save: v("save") == "1", open: v("open"),
                     section: v("section"),
                     method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
-                    ai: v("method") == "ai", whole: v("whole") == "1", entry: v("entry").flatMap { Int($0) })
+                    ai: v("method") == "ai", whole: v("whole") == "1", entry: v("entry").flatMap { Int($0) },
+                    back: v("back") == "1", page: v("page") == "1", answer: v("answer"))
         }
         return url.host == "unread"
     }
@@ -127,6 +131,9 @@ enum Snapshot {
                 if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
                 if let k = r.section { request?.section = nil; model.openSection(0, k); return }
                 if let e = r.entry { request?.entry = nil; model.openEntry(e); return }
+                if r.page && model.state.section.page == 0 && !String(model.state.section.key).isEmpty { request?.page = false; model.turn(1); return }
+                if r.back { request?.back = false; model.back(); return }
+                if let a = r.answer { request?.answer = nil; model.relookup(answer: a); return }
             }
             if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
             request = nil
