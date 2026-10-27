@@ -14,8 +14,8 @@ with TSV / Export / Import. Next: M6 Windows (Qt). Milestones: `docs/spec.md` �
 - CI on Linux / Windows not run since M0 (macOS first); CLI providers (`claude -p`, `codex exec`) have no timeout and
   their shell line is POSIX only.
 - No request sent to a real AI provider from here: try each once.
-- Indexes of own dictionaries are built on the look-up queue (`Core::prepare` holds the library for seconds at launch
-  and after a packs change; a card waits); no "indexing…" state.
+- Own dictionaries are indexed in the background one at a time (a card waits for one index at most); no
+  "indexing…" state in their rows.
 - `Library::all()` rescans the folders and `translate()` re-reads packs.json on every call (~1 ms now; grows with
   folders).
 - Check the selection and ⌥D's position (AX bounds) in Safari, Chrome, Firefox, Vivaldi and native apps.

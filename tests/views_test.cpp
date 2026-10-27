@@ -1,6 +1,7 @@
 // The card's view model, the facade's pack helpers, answers' versions, configure.
 #include <doctest/doctest.h>
 #include <fstream>
+#include <thread>
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/views.hpp"
@@ -506,4 +507,18 @@ TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back 
   CHECK(v.entry_toggle.empty());
   n.back();
   CHECK(card_view(n.card(), n.state).rows.size() == 2);
+}
+
+TEST_CASE("core: prepare() goes one dictionary at a time and stops when the library is made again") {
+  auto d = fs::temp_directory_path() / "lexipeek-prepare";
+  fs::remove_all(d);
+  CoreOptions o;
+  o.data = d;
+  Core core(o);
+  std::thread t([&] { core.prepare(); });
+  core.reload();
+  t.join();
+  core.prepare();
+  CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).kind == Card::Kind::word);
+  fs::remove_all(d);
 }

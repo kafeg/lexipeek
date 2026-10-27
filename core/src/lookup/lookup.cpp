@@ -65,7 +65,8 @@ struct Core::Impl {
   std::unique_ptr<dict::Library> lib;
   std::unique_ptr<Store> store;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
-  std::mutex opt_mu;  // the options too (written under both): translate() and ask() read them without waiting for a lookup
+  std::mutex opt_mu;
+  std::size_t gen = 0;  // the library's generation: a reload or new own dictionaries stop a prepare() going on  // the options too (written under both): translate() and ask() read them without waiting for a lookup
   std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
   std::string notes_answer;
   ai::Transport transport;
@@ -125,6 +126,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->tr->set_idle(std::chrono::minutes(s.keep_model));
   impl_->o.dicts = s.dicts;
   impl_->lib->configure(own(impl_->o.data, s.dicts));
+  impl_->gen++;
   impl_->o.card = s.card;
   impl_->o.ai = s.ai;
   if (device) impl_->o.device = device;
@@ -383,19 +385,29 @@ void Core::release() { impl_->tr->release(); }
 
 Translator::Memory Core::memory() const { return impl_->tr->memory(); }
 
+// One dictionary at a time under the lock: a look-up waits for one index at most, not all of them.
 void Core::prepare() {
-  std::lock_guard g(impl_->mu);
-  for (auto *d : impl_->lib->all()) {
+  impl_->tr->langid("Haus", 1);
+  std::size_t gen = 0;
+  {
+    std::lock_guard g(impl_->mu);
+    gen = impl_->gen;
+  }
+  for (std::size_t i = 0;; i++) {
+    std::lock_guard g(impl_->mu);
+    if (gen != impl_->gen) return;  // the library was made again: its own prepare follows
+    auto all = impl_->lib->all();
+    if (i >= all.size()) return;
     try {
-      d->prepare();
+      all[i]->prepare();
     } catch (const std::exception &) {
     }
   }
-  impl_->tr->langid("Haus", 1);
 }
 
 void Core::reload() {
   std::lock_guard g(impl_->mu);
+  impl_->gen++;
   impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index", own(impl_->o.data, impl_->o.dicts));
   impl_->tr->release();
 }

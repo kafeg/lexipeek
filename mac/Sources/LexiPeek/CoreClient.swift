@@ -3,7 +3,8 @@ import Foundation
 import LexiPeekCore
 import LexiPeekKit
 
-// The core on serial queues for look-ups and translations and a concurrent one for AI; each card asks through its CardLane.
+// The core on serial queues for look-ups, translations and indexing and a concurrent one for AI; each card asks through
+// its CardLane.
 final class CoreClient {
     fileprivate let engine: lexipeek.app.Engine
     fileprivate let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)
@@ -22,21 +23,29 @@ final class CoreClient {
         return lexipeek.app.device(Int32(ProcessInfo.processInfo.physicalMemory / 1_048_576), (dot ? ["asimddp"] : []).cxx, std.string("arm64"))
     }()
 
+    // The dictionaries' indexes, built in the background (one at a time: look-ups go on meanwhile).
+    private let indexing = DispatchQueue(label: "lexipeek.prepare", qos: .utility)
+
     init() {
         engine = lexipeek.app.Engine.make(std.string(), Self.device)
-        lookups.async { [engine] in engine.prepare() }
+        prepare()
     }
 
-    // Changed settings: the next cards use them.
+    private func prepare() { indexing.async { [engine] in engine.prepare() } }
+
+    // Changed settings: the next cards use them (own dictionaries may have come: indexed in the background).
     func configure() {
-        lookups.async { [engine] in engine.configure(std.string()) }
+        lookups.async { [engine] in
+            engine.configure(std.string())
+            self.prepare()  // after the change, on the library it made
+        }
     }
 
     // Changed packs: the dictionaries again, the held model freed.
     func reload() {
         lookups.async { [engine] in
             engine.reload()
-            engine.prepare()
+            self.prepare()
         }
     }
 
