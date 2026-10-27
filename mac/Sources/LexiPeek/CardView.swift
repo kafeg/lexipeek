@@ -50,11 +50,13 @@ struct CardView: View {
             }
             if let look {
                 header(look)
-                if look.tabs { tabs(look) }
+                if look.tabs { embedded ? AnyView(segments(look)) : AnyView(tabs(look)) }
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
+                            // In the window the footer follows the text, not the page's bottom.
+                            if embedded && look.footer { footer(look).padding(.top, 6) }
                         }
                         .id("top")
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,7 +72,7 @@ struct CardView: View {
                     bodyHeight = $0
                     model.objectWillChange.send()
                 }
-                if look.footer { footer(look) }
+                if !embedded && look.footer { footer(look) }
             } else if !model.showInput {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
@@ -151,6 +153,18 @@ struct CardView: View {
             }
             Text(L.t("card_recent_keys")).font(font(-3)).foregroundStyle(.tertiary).padding(.top, 2)
         }
+    }
+
+    // In the window: a segmented control in the middle, as Settings' sub-tabs.
+    private func segments(_ look: CardLook) -> some View {
+        Picker("", selection: Binding(get: { look.tab }, set: { model.select($0) })) {
+            ForEach(look.tabItems.indices, id: \.self) { Text(look.tabItems[$0].title).tag(look.tabItems[$0].tab) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
     }
 
     // Text tabs with a line under the open one: lighter than a segmented control.

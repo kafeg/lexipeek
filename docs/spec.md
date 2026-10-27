@@ -178,7 +178,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
   open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts — and the page. Look up: a
   field on top (focused on open; it grows to a few lines for a pasted text, Return looks it up), its card drawn in the
-  window as in the pop-up (same tabs, rows, ←, ☆, badge menu, methods; no height limit, the page scrolls): a pasted
+  window as in the pop-up (same rows, ←, ☆, badge menu, methods; its tabs a segmented control as Settings', the footer
+  right under the text; no height limit, the page scrolls): a pasted
   paragraph is a passage card with its translation. Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
   the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
   (asks) under History.
