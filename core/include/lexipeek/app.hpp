@@ -20,7 +20,7 @@ Device device(int ram_mb, bool dotprod);
 
 Settings settings(const std::string &data);
 std::string save(const std::string &data, const Settings &s);
-// The method's id ("fast", "direct", "llm"); "" for none.
+// The method's id ("fast", "direct", "llm", "off"); "" for none.
 std::string method_id(const Settings &s);
 std::string method_id(Method m);
 void set_method(Settings &s, const std::string &id);
@@ -73,12 +73,10 @@ struct Engine {
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
 std::string toggle(const std::string &data, const std::string &key, bool on);
-inline std::vector<SettingRow> about(const SettingsState &state, int tab) { return about_rows(state, tab); }
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
 
 // Settings → AI. The provider's id ("" = off; the shell keeps its key under it) and whether it needs a key.
 std::string ai_provider(const std::string &data);
-bool ai_needs_key(const std::string &data);
 std::string ai_provider_title(const std::string &data);
 // A text row's change (ai_url, ai_command, ai_model), the prompt editor and its save, every prompt back to the original.
 std::string set_text(const std::string &data, const std::string &key, const std::string &value);

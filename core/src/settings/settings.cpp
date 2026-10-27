@@ -97,7 +97,6 @@ Settings load_settings(const fs::path &data) {
     // One of Settings → General's choices (minutes; 0: until quit), else the default.
     if (s.keep_model != 0 && s.keep_model != 1 && s.keep_model != 15 && s.keep_model != 60) s.keep_model = 5;
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
-    s.copy_apps = j.value("copy_apps", s.copy_apps);
     if (auto d = j.value("dicts", json::object()); d.is_object()) {
       s.dicts.order = d.value("order", s.dicts.order);
       s.dicts.off = d.value("off", s.dicts.off);
@@ -128,7 +127,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["first_run"] = s.first_run;
   j["keep_model"] = s.keep_model;
   j["ignore_apps"] = s.ignore_apps;
-  j["copy_apps"] = s.copy_apps;
+  j.erase("copy_apps");  // the ⌘C reading is gone
   j["dicts"] = {{"order", s.dicts.order}, {"off", s.dicts.off}, {"folders", s.dicts.folders}, {"sources_off", s.dicts.sources_off}, {"got", s.dicts.got}};
   j["card"] = to_json(s.card);
   j["ui_lang"] = s.ui_lang;

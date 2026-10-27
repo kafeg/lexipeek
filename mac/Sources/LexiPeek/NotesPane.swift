@@ -3,7 +3,7 @@ import LexiPeekCore
 import SwiftUI
 
 extension Notification.Name {
-    // A card saved, removed or looked up something: Settings → Notes reads its list again.
+    // A card saved, removed or looked up something: the window's Notes read their list again.
     static let notesChanged = Notification.Name("lexipeek.notesChanged")
 }
 
@@ -104,7 +104,7 @@ final class NotesModel: ObservableObject {
     }
 }
 
-// Settings → Notes: the open tab's rows (Words · Phrases · History are the section's tabs), newest first; a click opens
+// The window's Notes: the open page's rows (Words · Phrases · History), newest first; a click opens
 // the card, ✕ removes, "Clear history" under History.
 struct NotesList: View {
     @ObservedObject var model: NotesModel

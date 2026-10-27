@@ -111,6 +111,8 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
     if (r.kind == Kind::method) cards.push_back(r);
   REQUIRE(cards.size() == 4);
   CHECK(cards[0].value == "off");  // InkPeek's Off first
+  CHECK(cards[0].selected == 4);
+  CHECK(cards[2].selected == 2);  // direct
   CHECK(!cards[0].on);
   CHECK(cards[1].on);  // no method set: Fast
   CHECK(cards[1].detail.empty());
@@ -192,7 +194,6 @@ TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → O
   auto p = settings_view(SettingsSection::general, 0, s, st);
   CHECK(row(p, "lookup")->kind == Kind::hotkey);
   CHECK(row(p, "input")->kind == Kind::hotkey);
-  CHECK(row(p, "copy_apps")->kind == Kind::apps);
   CHECK(row(p, "ignore_apps")->kind == Kind::apps);
   CHECK(!row(p, "access"));
   p = settings_view(SettingsSection::general, 1, s, st);

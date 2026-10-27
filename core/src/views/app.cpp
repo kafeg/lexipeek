@@ -139,11 +139,6 @@ std::string choose(const std::string &data, const std::string &key, int index, c
 
 std::string ai_provider(const std::string &data) { return load_settings(dir(data)).ai.provider; }
 
-bool ai_needs_key(const std::string &data) {
-  auto *p = ai::provider(ai_provider(data));
-  return p && p->key;
-}
-
 std::string ai_provider_title(const std::string &data) {
   auto *p = ai::provider(ai_provider(data));
   return !p ? "" : p->id == "custom" ? tr("ai_custom") : p->title;

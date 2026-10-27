@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             if Snapshot.take(url) {
                 card.show(text: nil, source: .input, bounds: nil, focus: false)
-                model.unread = ("com.example.app", "Example")
+                model.unread = "Example"
                 continue
             }
             switch LookupURL(url) {
@@ -124,23 +124,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let app = NSWorkspace.shared.frontmostApplication
         let id = app?.bundleIdentifier ?? ""
         if prefs.offApps.contains(id) { if card.isVisible { card.close() }; return }
-        let allowCopy = prefs.copyApps.contains(id)
         let open = card.isVisible
         Task { @MainActor in
-            let s = await Selection.read(app: app, allowCopy: allowCopy)
+            let s = await Selection.read(app: app)
             if open && (s == nil || s?.text == card.shown) { card.close(); return }
             if let s {
                 card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false)
             } else {
-                // Nothing read: say where, offer Cmd+C there (not when it was allowed already), type meanwhile.
+                // Nothing read: say which app, type meanwhile.
                 card.show(text: nil, source: .input, bounds: nil, focus: true)
-                if Selection.trusted && !allowCopy && !id.isEmpty {
-                    model.unread = (id, app?.localizedName ?? id)
-                    model.retry = { [weak self] in
-                        self?.card.close()
-                        self?.translateSelection()
-                    }
-                }
+                if Selection.trusted && !id.isEmpty { model.unread = app?.localizedName ?? id }
             }
         }
     }
@@ -202,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // nil: the section shown last.
     private func openSettings(_ section: SettingsSection?) {
         if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
+        settings.refresh()
         if let section { SettingsWindow.select(settingsWindow, section, model: settings) }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.present()

@@ -41,7 +41,6 @@ struct CardLook {
     var badge = ""
     var books: [Lang] = []
     var answers: [Lang] = []
-    var wide = false
     var tabs = false
     var tabItems: [Tab] = []
     var tab = lexipeek.CardTab.translate
@@ -55,8 +54,9 @@ struct CardLook {
     var pager = ""
     var prev = false
     var next = false
-    var footer = false
     var star = ""
+    var canSave = false
+    var saved = false
     var starHelp = ""
     var width = 400
     var text = 13
@@ -71,7 +71,6 @@ struct CardLook {
         badge = String(v.badge)
         books = v.books.map { Lang(id: String($0.code), title: String($0.title), on: $0.on) }
         answers = v.answers.map { Lang(id: String($0.code), title: String($0.title), on: $0.on) }
-        wide = v.wide
         tabs = v.tabs
         tabItems = v.tab_items.map { Tab(tab: $0.tab, title: String($0.title)) }
         tab = v.tab
@@ -88,8 +87,9 @@ struct CardLook {
         pager = String(v.pager)
         prev = v.prev
         next = v.next
-        footer = v.footer
         star = String(v.star)
+        canSave = v.can_save
+        saved = v.saved
         starHelp = String(v.star_help)
         width = Int(v.width)
         text = Int(v.text)
@@ -102,12 +102,13 @@ struct CardLook {
 final class CardModel: ObservableObject {
     @Published var input = ""
     @Published var showInput = false
-    @Published var card: lexipeek.Card?
-    @Published var state = lexipeek.CardState()
+    @Published var card: lexipeek.Card? { didSet { relook() } }
+    @Published var state = lexipeek.CardState() { didSet { relook() } }
+    // What the card draws: worked out once per change of the card or its state (the views read it many times a render).
+    private(set) var look: CardLook?
     @Published var pinned = false
     // The hotkey found no selection in this app (bundle id, name): the card says so and offers Cmd+C there.
-    @Published var unread: (id: String, name: String)?
-    var retry: (() -> Void)?
+    @Published var unread: String?  // the app (its name) that did not show its selection
 
     let client: CoreClient
     private let lane: CardLane
@@ -120,7 +121,7 @@ final class CardModel: ObservableObject {
         lane = CardLane(client)
     }
 
-    var look: CardLook? { card.map { CardLook(lexipeek.card_view($0, state)) } }
+    private func relook() { look = card.map { CardLook(lexipeek.card_view($0, state)) } }
 
     func reset(input: Bool) {
         request = 0
@@ -157,7 +158,6 @@ final class CardModel: ObservableObject {
         request = lane.lookup(t, source: source, lang: lang, answer: answer) { [weak self] id, card in
             guard let self, id == self.request else { return }
             var s = lexipeek.first_state(card)
-            if Snapshot.dictionary { s.tab = .dictionary }
             if let m = Snapshot.method, s.has_method { s.method = m }
             if Snapshot.ai { s.by_ai = card.ai.translate }
             s.before = std.string(before)
@@ -173,8 +173,10 @@ final class CardModel: ObservableObject {
     func askAI() {
         guard let card, request != 0 else { return }
         let id = request
-        let key = Keychain.current
-        for a in lexipeek.card_asks(card, state) {
+        let asks = lexipeek.card_asks(card, state)
+        guard !asks.isEmpty else { return }
+        let key = Keychain.current  // read only when something is asked
+        for a in asks {
             var asking = lexipeek.AiState()
             asking.asking = true
             state = lexipeek.with_answer(state, a, asking)
@@ -220,7 +222,7 @@ final class CardModel: ObservableObject {
 
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
     func toggleSaved() {
-        guard let card, !lexipeek.card_view(card, state).star.empty() else { return }
+        guard let card, look?.canSave == true else { return }
         state.saved = client.toggleSaved(card, translation: String(lexipeek.shown_translation(state)))
         NotificationCenter.default.post(name: .notesChanged, object: nil)
     }

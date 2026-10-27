@@ -406,7 +406,6 @@ TEST_CASE("ai settings: Connection by provider, Modules with ✎, prompts edited
   CHECK(rows(0)[0].choices.at(0) == "Off");
   CHECK(app::choose(d.string(), "ai_provider", 1, st).empty());
   CHECK(app::ai_provider(d.string()) == "anthropic");
-  CHECK(app::ai_needs_key(d.string()));
   auto r = rows(0);
   REQUIRE(find(r, "ai_key"));
   CHECK(find(r, "ai_key")->kind == SettingRow::Kind::secret);
@@ -426,7 +425,6 @@ TEST_CASE("ai settings: Connection by provider, Modules with ✎, prompts edited
   app::choose(d.string(), "ai_preset", 2, st);
   CHECK(app::settings(d.string()).ai.url == "http://localhost:11434/v1");
   CHECK(find(rows(0), "ai_url")->value == "http://localhost:11434/v1");
-  CHECK(!app::ai_needs_key(d.string()));
   // A CLI: its program, no key, no list.
   app::choose(d.string(), "ai_provider", 5, st);
   r = rows(0);

@@ -65,6 +65,7 @@ struct Core::Impl {
   std::unique_ptr<dict::Library> lib;
   std::unique_ptr<Store> store;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
+  std::mutex opt_mu;  // the options too (written under both): translate() and ask() read them without waiting for a lookup
   std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
   std::string notes_answer;
   ai::Transport transport;
@@ -114,6 +115,7 @@ Core::~Core() = default;
 
 void Core::configure(const Settings &s, const std::optional<Device> &device) {
   std::lock_guard g(impl_->mu);
+  std::lock_guard o(impl_->opt_mu);
   impl_->o.answer = s.answer;
   std::lock_guard a(impl_->answer_mu);
   impl_->notes_answer = s.answer;
@@ -248,7 +250,7 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   bool pivot = *method == Method::fast && mt::steps(card.lang, card.answer).size() > 1;
   bool show = false;
   {
-    std::lock_guard g(impl_->mu);
+    std::lock_guard g(impl_->opt_mu);
     show = impl_->o.mt_english;
   }
   // The English in between is the text's translation into English, kept as such (InkPeek's OfflineTranslation).
@@ -281,7 +283,7 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
 ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
   AiSettings s;
   {
-    std::lock_guard g(impl_->mu);
+    std::lock_guard g(impl_->opt_mu);
     s = impl_->o.ai;
   }
   static const text::Regex words("\\S+");
@@ -292,6 +294,7 @@ ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
   // What worked is kept for the next requests (InkPeek's remember), in the settings and here.
   if (recall != s.recall) {
     std::lock_guard g(impl_->mu);
+    std::lock_guard o(impl_->opt_mu);
     impl_->o.ai.recall = recall;
     auto disk = load_settings(impl_->o.data);
     disk.ai.recall = recall;

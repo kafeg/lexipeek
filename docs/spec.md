@@ -37,7 +37,7 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `core/` | C++20, CMake, no UI and no OS headers. Libraries (vcpkg manifest, the same on every OS): sqlite3 (C API, own RAII wrapper), nlohmann/json, libcurl (own thin wrapper: Range, progress, cancel), hash-library (sha256), **libarchive** with zstd (packs' `.tar.zst` and `.zip`; StarDict's `.dict.dz` read by our own code on zlib), **utf8proc** (NFC, lowercase as InkPeek's `lowercase(Locale.ROOT)`, not case folding — strings are UTF-8 `std::string` everywhere), doctest. Sentences — our own UAX #29 segmenter, matching InkPeek's (ICU without abbreviation suppressions): InkPeek's `tests/sentences` and Unicode's `SentenceBreakTest.txt`. Regex — PCRE2 (never `std::regex`); formatting — `std::format`. Built and tested on its own (`lexipeek-cli`) |
 | `core/include/lexipeek/` | the facade the shells call: plain structs, enums, `std::string`, `std::vector`, `std::optional`, errors as values — importable by Swift's C++ interop and used as is by C++ shells. No C API |
 | engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp (Metal on macOS) |
-| `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX; Cmd+C with the clipboard restored only where allowed), Service, URL scheme, Accessibility, memory pressure |
+| `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX only; the clipboard is never touched), Service, URL scheme, Accessibility, memory pressure |
 | `qt/` | (M6) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
 | CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; `.app` signed with Developer ID, notarized, on GitHub Releases |
@@ -67,7 +67,7 @@ Laid out for every milestone now; a milestone fills a module, it does not reshap
 
 ```
 mac/ (Swift)       menu bar · card · settings · onboarding · server (M7, 127.0.0.1 + token) · platform parts
-qt/  (C++, M4)     the same screens for Windows and Linux · platform parts per OS
+qt/  (C++, M6)     the same screens for Windows and Linux · platform parts per OS
 core/ (C++, no UI)
   views    what each screen shows (card, packs list, settings state) — shells only draw it
   lookup   Request{text, source: hotkey | input | service | url | extension} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
@@ -175,7 +175,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Icon at the selection** (an option, off by default): after a drag or a double / triple click in another app, the
   selection is read by Accessibility (never by Cmd+C: the clipboard is not touched) and a small icon appears next to
   the cursor; a click on it opens the card; it goes after a few seconds, a click elsewhere or a key.
-- **Per-app rules:** apps where the hotkey and the icon do nothing, apps where Cmd+C may read the selection.
+- **Per-app rules:** apps where the hotkey and the icon do nothing. An app that does not show its selection to
+  Accessibility gets the card's input field with a line saying so (no ⌘C reading: it would touch the clipboard).
 - **☆ in the header** (★ when saved, a click or ⌘S toggles): a word is saved as its base form (InkPeek's `saveKey`:
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.

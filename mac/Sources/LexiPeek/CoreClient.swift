@@ -3,7 +3,7 @@ import Foundation
 import LexiPeekCore
 import LexiPeekKit
 
-// The core on two serial queues: look-ups (fast) and translations (one worker); each card asks through its own CardLane.
+// The core on serial queues for look-ups and translations and a concurrent one for AI; each card asks through its CardLane.
 final class CoreClient {
     fileprivate let engine: lexipeek.app.Engine
     fileprivate let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)

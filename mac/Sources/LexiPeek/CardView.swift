@@ -211,18 +211,8 @@ struct CardView: View {
     }
 
 
-    private func unread(_ u: (id: String, name: String)) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(L.t("card_unread", u.name)).font(.callout)
-            HStack {
-                Button(L.t("card_read_copy", u.name)) {
-                    Prefs.shared.copyApps.append(u.id)
-                    model.retry?()
-                }
-                .controlSize(.small)
-                Text(L.t("card_clipboard")).font(.caption).foregroundStyle(.secondary)
-            }
-        }
+    private func unread(_ name: String) -> some View {
+        Text(L.t("card_unread", name)).font(.callout).foregroundStyle(.secondary)
     }
 
     // Not selectable: a selectable Text drops its line limit on a click and spills over the card.
@@ -297,8 +287,8 @@ struct CardView: View {
             // The translation shown, else the first dictionary line.
             if let copy = look.rows.first(where: { !$0.copy.isEmpty })?.copy { copyButton(copy) }
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
-            if !look.star.isEmpty {
-                Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
+            if look.canSave {
+                Button { model.toggleSaved() } label: { Image(systemName: look.saved ? "star.fill" : "star") }
                     .buttonStyle(.borderless)
                     .help(look.starHelp + " (⌘S)")
             }
@@ -383,8 +373,20 @@ struct CardView: View {
     }
 
 
+    // AppKit's importer takes tens of ms an entry: each one is converted once per text size and font.
+    private static var converted: [String: AttributedString] = [:]
+
     // The entry's HTML in the card's font and the system's colours (AppKit's importer: main thread only).
     static func html(_ html: String, size: Int, font: String) -> AttributedString {
+        let key = "\(size)|\(font)|\(html)"
+        if let a = converted[key] { return a }
+        if converted.count > 200 { converted.removeAll() }
+        let a = importHTML(html, size: size, font: font)
+        converted[key] = a
+        return a
+    }
+
+    private static func importHTML(_ html: String, size: Int, font: String) -> AttributedString {
         let family = switch font {
         case "serif": "ui-serif, 'New York', serif"
         case "rounded": "ui-rounded, -apple-system"

@@ -4,8 +4,6 @@ import LexiPeekCore
 // Checks without Screen Recording: LEXIPEEK_SNAPSHOT=<dir> writes the app's own views as PNGs (scripts/snapshots.sh).
 enum Snapshot {
     static let dir = ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT"]
-    // LEXIPEEK_SNAPSHOT_TAB=dictionary: cards open on Dictionary (to see that tab).
-    static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
     // [&section=<key>][&method=fast|ai][&whole=1] (save: ☆ once it is final; open: that word clicked in the card; section: the first

@@ -48,25 +48,42 @@ final class SettingsModel: ObservableObject {
     var showSection: ((SettingsSection, Int) -> Void)?
     let client: CoreClient
 
-    init(client: CoreClient) { self.client = client }
+    init(client: CoreClient) {
+        self.client = client
+        refresh()
+    }
 
     private var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
 
     private var version: String { "\(short) (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))" }
 
+    // What is slow to ask (the packs' files, the login item, the Keychain): asked again only when it can change.
+    private var hasPair = false
+    private var answers = lexipeek.mac.Strings()
+    private var login = false
+    private var aiKey = false
+
+    func refresh() {
+        hasPair = lexipeek.app.has_pair(std.string())
+        answers = lexipeek.app.answers(std.string())
+        login = SMAppService.mainApp.status == .enabled
+        aiKey = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
+        revision += 1
+    }
+
     func state() -> lexipeek.SettingsState {
         var s = lexipeek.SettingsState()
         s.trusted = trusted
-        s.has_pair = lexipeek.app.has_pair(std.string())
-        s.login = SMAppService.mainApp.status == .enabled
+        s.has_pair = hasPair
+        s.login = login
         s.version = std.string(version)
-        s.answers = lexipeek.app.answers(std.string())
+        s.answers = answers
         s.input = std.string(Prefs.shared.inputKey.label)
         s.checking = checking
         s.update = update.text
         s.update_version = update.version
         s.update_url = update.url
-        s.ai_key = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
+        s.ai_key = aiKey
         s.ai_testing = aiTesting
         s.ai_test = std.string(aiTest)
         s.ram_mb = CoreClient.device.ram_mb
@@ -86,7 +103,7 @@ final class SettingsModel: ObservableObject {
 
     func about() -> [SettingLine] {
         _ = revision
-        return lexipeek.app.about(state(), Int32(aboutTab)).map { SettingLine($0) }
+        return lexipeek.about_rows(state(), Int32(aboutTab)).map { SettingLine($0) }
     }
 
     func select(_ section: SettingsSection, _ tab: Int) {
@@ -115,7 +132,7 @@ final class SettingsModel: ObservableObject {
     func saveKey(_ key: String) {
         Keychain.set(String(lexipeek.app.ai_provider(std.string())), key)
         aiTest = ""
-        revision += 1
+        refresh()
     }
 
     func editPrompt(_ id: String) {
@@ -149,10 +166,6 @@ final class SettingsModel: ObservableObject {
         }
     }
 
-    // A method's card: picked (as in InkPeek, its models download from the card's button).
-    func pickMethod(_ id: String) {
-        choose("method", ["fast": 1, "direct": 2, "llm": 3, "off": 4][id] ?? 0)
-    }
 
     func downloadMethod(_ id: String, _ ids: [String]) {
         guard downloading == nil, !ids.isEmpty else { return }
@@ -174,7 +187,7 @@ final class SettingsModel: ObservableObject {
                 self.downloading = nil
                 self.downloadError = e
                 self.client.reload()
-                self.revision += 1
+                self.refresh()
             }
         }
     }
@@ -211,7 +224,7 @@ final class SettingsModel: ObservableObject {
         Prefs.shared.reload(String(error))
         L.apply()
         relabel?()
-        revision += 1
+        refresh()
     }
 }
 
@@ -219,6 +232,7 @@ enum SettingsWindow {
     static func make(model: SettingsModel) -> NSWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
+        tabs.transitionOptions = []  // a section shows at once
         for section in SettingsSection.allCases {
             let vc = NSHostingController(rootView: SectionView(section: section, model: model))
             vc.sizingOptions = .preferredContentSize
@@ -402,7 +416,7 @@ struct RowsView: View {
         case .apps:
             VStack(alignment: .leading, spacing: 6) {
                 label(r)
-                AppList(ids: r.key == "copy_apps" ? $prefs.copyApps : $prefs.offApps)
+                AppList(ids: $prefs.offApps)
             }
         case .button:
             LabeledContent {
@@ -454,7 +468,7 @@ extension RowsView {
         .padding(.vertical, 2)
         .opacity(r.enabled ? 1 : 0.55)
         .contentShape(Rectangle())
-        .onTapGesture { if r.enabled { model.pickMethod(r.value) } }
+        .onTapGesture { if r.enabled { model.choose(r.key, r.selected) } }
     }
 }
 
@@ -705,16 +719,22 @@ private struct AppList: View {
             .sorted { name($0) < name($1) }
     }
 
+    // Names and icons looked up once per app (a lookup costs a few ms; the menu sorts by name on every render).
+    private static var names: [String: String] = [:]
+    private static var icons: [String: NSImage] = [:]
+
     private func url(_ id: String) -> URL? { NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) }
 
     private func name(_ id: String) -> String {
-        guard let url = url(id) else { return id }
-        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        if let n = Self.names[id] { return n }
+        let n = url(id).map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? id
+        Self.names[id] = n
+        return n
     }
 
     @ViewBuilder private func icon(_ id: String) -> some View {
-        if let url = url(id) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 18, height: 18)
+        if let i = Self.icons[id] ?? url(id).map({ NSWorkspace.shared.icon(forFile: $0.path) }) {
+            Image(nsImage: i).resizable().frame(width: 18, height: 18).onAppear { Self.icons[id] = i }
         }
     }
 }

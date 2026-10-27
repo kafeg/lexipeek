@@ -109,13 +109,14 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   auto picked = s.method.value_or(Method::fast);
   if (!st.methods.empty()) {
     SettingRow off{Kind::method, "method", tr("mt_off_t"), tr("mt_off_d")};
-    off.value = "off", off.on = s.mt_off;
+    off.value = "off", off.on = s.mt_off, off.selected = index_of(methods, std::string("off"));
     rows.push_back(off);
   }
   for (auto &m : st.methods) {
     auto id = std::string(method_name(m.method));
     SettingRow r{Kind::method, "method", method_title(m.method), tr("mt_" + id + "_d")};
     r.value = id, r.on = !s.mt_off && m.method == picked, r.enabled = m.cannot.empty();
+    r.selected = index_of(methods, id);  // the "method" choice's index: a click chooses it
     std::vector<std::string> lines;
     if (!m.cannot.empty()) lines.push_back(m.cannot);
     else if (m.method != Method::fast && m.models > 0)
@@ -269,7 +270,6 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int 
             valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
             valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
             heading(tr("apps_t")),
-            valued(Kind::apps, "copy_apps", tr("copy_apps_t"), tr("copy_apps_d"), ""),
             valued(Kind::apps, "ignore_apps", tr("ignore_apps_t"), tr("ignore_apps_d"), "")};
   std::vector<SettingRow> rows;
   auto access = tr("access_d", {st.input});

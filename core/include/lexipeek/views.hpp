@@ -124,7 +124,6 @@ struct CardView {
   std::string badge;     // "de → ru", "ru" (already in it), "fr → ru" (no pack from it), ""
   // The badge's menu (shown when either has a choice): the text's language among the packs', the answer language.
   std::vector<LangItem> books, answers;
-  bool wide = false;     // a passage: a wider card
   bool tabs = false;     // more than one tab: tab_items are shown
   std::vector<TabItem> tab_items;    // Dictionary · Translate · Analysis · AI · Context · AI, those the card has
   CardTab tab = CardTab::translate;  // the one shown
@@ -137,8 +136,8 @@ struct CardView {
   std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
   std::string pager;  // a section's page: "21–40 of 63", "" (one page)
   bool prev = false, next = false;  // the section has a page before, after
-  bool footer = false;              // anything in the footer (else it is not drawn)
   std::string star;       // "☆", "★" (saved), "" (nothing to save)
+  bool can_save = false, saved = false;
   std::string star_help;  // "Save to Notes", "Remove from Notes"
   int width = 400;        // the card's look (Settings → Card → Appearance): points
   int text = 13;          // the body's text size, points; the header a little larger
@@ -277,7 +276,7 @@ struct SettingRow {
     toggle,   // on: its state
     choice,   // choices, selected
     hotkey,   // a shortcut recorder: key "lookup" / "input"
-    apps,     // a list of apps by bundle id: key "copy_apps" / "ignore_apps"
+    apps,     // a list of apps by bundle id: key "ignore_apps"
     button,   // value: the button's label; the shell does what key names ("setup", "access", "order", "updates")
     status,   // value: the state ("Allowed"), on: good
     link,     // value: a URL
@@ -302,10 +301,10 @@ struct SettingRow {
 };
 
 struct SettingsPage {
-  std::vector<std::string> sections;  // "Languages", "Card", "Notes", "General"
+  std::vector<std::string> sections;  // "Languages", "Card", "AI", "General"
   std::vector<std::string> tabs;      // the section's sub-tabs ("Packs", "Translation", "Other dictionaries"), none for General
   int tab = 0;
-  std::string pane;  // a pane drawn by its own view: "packs", "other", "notes"; "" = rows
+  std::string pane;  // a pane drawn by its own view: "packs", "other"; "" = rows
   std::vector<SettingRow> rows;
 };
 

@@ -22,7 +22,13 @@ enum Keychain {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    static func has(_ provider: String) -> Bool { !key(provider).isEmpty }
+    // Whether one is kept: its attributes only (the key itself is not read).
+    static func has(_ provider: String) -> Bool {
+        guard !provider.isEmpty, Snapshot.dir == nil else { return false }
+        var q = query(provider)
+        q[kSecReturnAttributes as String] = true
+        return SecItemCopyMatching(q as CFDictionary, nil) == errSecSuccess
+    }
 
     // An empty key removes the item.
     static func set(_ provider: String, _ key: String) {

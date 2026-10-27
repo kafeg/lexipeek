@@ -10,13 +10,10 @@ final class Prefs: ObservableObject {
     @Published var translateKey: Shortcut { didSet { save() } }
     @Published var inputKey: Shortcut { didSet { save() } }
     @Published var offApps: [String] { didSet { save() } }
-    @Published var copyApps: [String] { didSet { save() } }
     @Published var method: String { didSet { save() } }
     @Published var answer: String { didSet { save() } }
-    @Published var openAtLogin: Bool { didSet { save() } }
     @Published var selectionIcon: Bool { didSet { save() } }
     @Published var pinMoved: Bool { didSet { save() } }
-    @Published var mtEnglish: Bool { didSet { save() } }
     @Published var firstRun: Bool { didSet { save() } }
     @Published var error = ""
     // Bumped whenever settings.json changed here: the core is configured again.
@@ -28,13 +25,10 @@ final class Prefs: ObservableObject {
         translateKey = Self.shortcut(s.lookup) ?? .translate
         inputKey = Self.shortcut(s.input) ?? .input
         offApps = s.ignore_apps.map { String($0) }
-        copyApps = s.copy_apps.map { String($0) }
         method = String(lexipeek.app.method_id(s))
         answer = String(s.answer)
-        openAtLogin = s.open_at_login
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
-        mtEnglish = s.mt_english
         firstRun = s.first_run
     }
 
@@ -45,13 +39,10 @@ final class Prefs: ObservableObject {
         if let k = Self.shortcut(s.lookup), k != translateKey { translateKey = k }
         if let k = Self.shortcut(s.input), k != inputKey { inputKey = k }
         offApps = s.ignore_apps.map { String($0) }
-        copyApps = s.copy_apps.map { String($0) }
         method = String(lexipeek.app.method_id(s))
         answer = String(s.answer)
-        openAtLogin = s.open_at_login
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
-        mtEnglish = s.mt_english
         firstRun = s.first_run
         loading = false
         self.error = error
@@ -91,13 +82,10 @@ final class Prefs: ObservableObject {
         s.lookup = Self.hotkey(translateKey)
         s.input = Self.hotkey(inputKey)
         s.ignore_apps = Self.strings(offApps)
-        s.copy_apps = Self.strings(copyApps)
         lexipeek.app.set_method(&s, std.string(method))
         s.answer = std.string(answer.isEmpty ? "ru" : answer)
-        s.open_at_login = openAtLogin
         s.selection_icon = selectionIcon
         s.pin_moved = pinMoved
-        s.mt_english = mtEnglish
         s.first_run = firstRun
         error = String(lexipeek.app.save(std.string(), s))
         changed += 1

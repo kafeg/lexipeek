@@ -70,7 +70,7 @@ final class SelectionIcon {
         reading?.cancel()
         reading = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 60_000_000)  // the app updates its selection after the mouse-up
-            guard !Task.isCancelled, let s = await Selection.read(app: app, allowCopy: false) else { return }
+            guard !Task.isCancelled, let s = await Selection.read(app: app) else { return }
             guard !Task.isCancelled else { return }
             self.show(s, at: at)
         }

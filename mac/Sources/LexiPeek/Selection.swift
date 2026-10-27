@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import os
 
-// The selected text of the frontmost app: Accessibility first, Cmd+C only where the settings allow it.
+// The selected text of the frontmost app, by Accessibility only (the clipboard is never touched).
 enum Selection {
     struct Result {
         var text: String
@@ -14,7 +14,7 @@ enum Selection {
     // Apps asked to build their accessibility tree (Chromium, Electron): once per process.
     private static var woken = Set<pid_t>()
 
-    static func read(app: NSRunningApplication?, allowCopy: Bool) async -> Result? {
+    static func read(app: NSRunningApplication?) async -> Result? {
         guard trusted, let app else {
             log.info("not trusted or no app")
             return nil
@@ -45,10 +45,8 @@ enum Selection {
             log.info("\(name, privacy: .public): AX system-wide")
             return r
         }
-        log.info("\(name, privacy: .public): no selection by AX; copy allowed: \(allowCopy)")
-        guard allowCopy, let t = await viaCopy() else { return nil }
-        log.info("\(name, privacy: .public): Cmd+C")
-        return Result(text: t, bounds: nil)
+        log.info("\(name, privacy: .public): no selection by AX")
+        return nil
     }
 
     private static func viaAX(pid: pid_t) -> Result? {
@@ -101,27 +99,4 @@ enum Selection {
     }
 
     // Cmd+C, then the clipboard as it was.
-    private static func viaCopy() async -> String? {
-        let pb = NSPasteboard.general
-        let saved = pb.pasteboardItems?.map { item in
-            item.types.reduce(into: [NSPasteboard.PasteboardType: Data]()) { $0[$1] = item.data(forType: $1) }
-        } ?? []
-        let before = pb.changeCount
-        let src = CGEventSource(stateID: .combinedSessionState)
-        for down in [true, false] {
-            let e = CGEvent(keyboardEventSource: src, virtualKey: 0x08, keyDown: down)  // C
-            e?.flags = .maskCommand
-            e?.post(tap: .cghidEventTap)
-        }
-        for _ in 0..<10 where pb.changeCount == before { try? await Task.sleep(nanoseconds: 30_000_000) }
-        guard pb.changeCount != before else { return nil }
-        let text = pb.string(forType: .string)
-        pb.clearContents()
-        pb.writeObjects(saved.map { types in
-            let item = NSPasteboardItem()
-            for (t, data) in types { item.setData(data, forType: t) }
-            return item
-        })
-        return text
-    }
 }

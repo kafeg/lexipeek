@@ -77,7 +77,6 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.subtitle == "form: Häusern · looked up 3 times");
   CHECK(v.tooltip == "Häusern");
   CHECK(v.badge == "de → ru");
-  CHECK(!v.wide);
   CHECK(v.tabs);
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::entry);
@@ -88,7 +87,6 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.entry_toggle == "Full entry ⏎");
   CHECK(!v.menu);
   CHECK(v.back.empty());
-  CHECK(v.footer);
   s.full_entry = true;
   v = card_view(c, s);
   CHECK(v.rows[0].html == "<b>Haus</b> дом");
@@ -256,7 +254,6 @@ TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
   REQUIRE(v.rows.size() == 5);
   CHECK(v.rows[4].style == Style::note);
   CHECK(v.rows[4].text == "… and 12 more words");
-  CHECK(!v.footer);  // nothing in it: not drawn
 }
 
 TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
@@ -268,7 +265,7 @@ TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
   s.tab = CardTab::dictionary;  // ignored without tabs
   auto v = card_view(c, s);
   CHECK(v.style == HeaderStyle::passage);
-  CHECK(v.wide);
+  CHECK(v.width == 460);
   CHECK(!v.tabs);
   CHECK(v.tab == CardTab::translate);
   CHECK(v.menu);
@@ -288,7 +285,6 @@ TEST_CASE("views: same language, no pack, unknown language, nothing to translate
   c.other_name = "French";
   v = card_view(c, first_state(c));
   CHECK(v.badge == "fr → ru");
-  CHECK(!v.footer);
   CHECK(v.rows[0].text == "No language pack from French into Russian yet.");
   c.other_name = "";
   CHECK(card_view(c, first_state(c)).rows[0].text == "Could not tell the language of this text.");

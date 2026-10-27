@@ -337,7 +337,6 @@ CardView card_view(const Card &c, const CardState &s) {
     for (auto &b : c.books) v.books.push_back({b, language_name(b), b == c.lang});
     for (auto &a : c.answers) v.answers.push_back({a, language_name(a), a == c.answer});
   }
-  v.wide = v.style == HeaderStyle::passage;
   if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty()) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
   v.tab_items.push_back({CardTab::translate, tr("tab_translate")});
   if (c.ai.analysis) v.tab_items.push_back({CardTab::analysis, tr("a_analysis") + " · " + tr("tab_ai")});
@@ -377,10 +376,10 @@ CardView card_view(const Card &c, const CardState &s) {
   }
   if (!c.save_text.empty()) {
     v.star = s.saved ? "★" : "☆";
+    v.can_save = true, v.saved = s.saved;
     v.star_help = tr(s.saved ? "card_unsave" : "card_save", {c.save_text});
   }
-  v.footer = !v.back.empty() || !v.entry_toggle.empty() || v.menu || !v.pager.empty();
-  v.width = c.prefs.width + (v.wide ? 60 : 0);
+  v.width = c.prefs.width + (v.style == HeaderStyle::passage ? 60 : 0);  // a passage: a wider card
   v.text = c.prefs.text, v.font = c.prefs.font, v.height = c.prefs.height;
   return v;
 }
