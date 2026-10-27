@@ -33,13 +33,15 @@ enum Snapshot {
         }
     }
 
-    // lexipeek://notes?tab=words|phrases|history&snap=<name>: Settings → Notes on that tab.
-    static func notes(_ url: URL) -> (lexipeek.NotesTab, String)? {
-        guard dir != nil, url.host == "notes" else { return nil }
+    // lexipeek://window?page=lookup|translate|words|phrases|history[&look=<text>][&text=<text>]&snap=<name>: the LexiPeek
+    // window on that page (look: that text looked up; text: that text translated).
+    static func window(_ url: URL) -> (page: MainPage, name: String, look: String?, text: String?)? {
+        guard dir != nil, url.host == "window" else { return nil }
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        let tab: lexipeek.NotesTab = v("tab") == "history" ? .history : v("tab") == "phrases" ? .phrases : .words
-        return (tab, v("snap") ?? "notes")
+        let pages: [String: MainPage] = ["lookup": .lookup, "translate": .translate, "words": .notes(.words), "phrases": .notes(.phrases),
+                                         "history": .notes(.history)]
+        return (pages[v("page") ?? ""] ?? .lookup, v("snap") ?? "window", v("look"), v("text"))
     }
 
     // Reads the snapshot options of a lexipeek:// URL; true for lexipeek://unread (the selection-failed card).

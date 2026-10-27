@@ -203,7 +203,7 @@ Card Core::lookup(const Request &r) {
       add(c.answers, d->answer());
       if (d->answer() == c.answer) add(c.books, d->book());
     }
-  if (r.source != Source::cli && c.error.empty()) {
+  if (r.source != Source::cli && r.source != Source::text && c.error.empty()) {
     auto kind = c.kind == Card::Kind::word ? "word" : "phrase";
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }

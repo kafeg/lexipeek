@@ -14,7 +14,8 @@
 
 namespace lexipeek {
 
-enum class Source { hotkey, input, service, url, extension, cli };
+// text: the window's Translate text (no history, answers kept); cli: neither.
+enum class Source { hotkey, input, service, url, extension, cli, text };
 
 struct Request {
   std::string text;

@@ -242,7 +242,7 @@ struct MethodInfo {
 std::vector<MethodInfo> method_infos(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &d);
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
-enum class SettingsSection { languages, card, ai, notes, general };
+enum class SettingsSection { languages, card, ai, general };
 
 // What the shell knows and the core does not: this Mac and the app.
 struct SettingsState {

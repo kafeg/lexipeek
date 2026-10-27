@@ -74,12 +74,10 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
   Settings s;
   auto st = state();
   auto p = settings_view(SettingsSection::languages, 0, s, st);
-  CHECK(p.sections == std::vector<std::string>{"Languages", "Card", "AI", "Notes", "General"});
+  CHECK(p.sections == std::vector<std::string>{"Languages", "Card", "AI", "General"});
   CHECK(p.tabs == std::vector<std::string>{"Packs", "Translation", "Other dictionaries"});
   CHECK(p.pane == "packs");
   CHECK(settings_view(SettingsSection::languages, 2, s, st).pane == "other");
-  CHECK(settings_view(SettingsSection::notes, 1, s, st).pane == "notes");
-  CHECK(settings_view(SettingsSection::notes, 1, s, st).tab == 1);
   CHECK(settings_view(SettingsSection::card, 9, s, st).tab == 2);  // clamped
   CHECK(settings_view(SettingsSection::general, 0, s, st).tabs.empty());
   // Every row has a title and a one-line description, but headings.

@@ -9,6 +9,8 @@ struct CardView: View {
     @ObservedObject var model: CardModel
     @FocusState private var focused: Bool
     var focusInput = false
+    // In the LexiPeek window: as wide as the page, no height limit (the page scrolls).
+    var embedded = false
     @State private var bodyHeight: CGFloat = 0
     @State private var recents: [(text: String, meaning: String)] = []
     @State private var picked: Int?
@@ -61,7 +63,8 @@ struct CardView: View {
                     .onChange(of: model.place) { proxy.scrollTo("top", anchor: .top) }
                 }
                 .scrollIndicators(.automatic)
-                .frame(height: min(max(bodyHeight, 20), limit))
+                .frame(height: embedded ? nil : min(max(bodyHeight, 20), limit))
+                .frame(minHeight: embedded ? 0 : nil, maxHeight: embedded ? .infinity : nil)
                 // The body's height is known only after layout: the panel fits itself to it again.
                 .onPreferenceChange(HeightKey.self) {
                     bodyHeight = $0
@@ -74,7 +77,8 @@ struct CardView: View {
         }
         .font(font())
         .padding(14)
-        .frame(width: CGFloat(look?.width ?? 400), alignment: .leading)
+        .frame(width: embedded ? nil : CGFloat(look?.width ?? 400), alignment: .leading)
+        .frame(maxWidth: embedded ? .infinity : nil, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             focused = focusInput
@@ -255,9 +259,11 @@ struct CardView: View {
                     .buttonStyle(.borderless)
                     .help(look.starHelp + " (⌘S)")
             }
-            Button { model.pinned.toggle() } label: { Image(systemName: model.pinned ? "pin.fill" : "pin") }
-                .buttonStyle(.borderless)
-                .help(L.t("card_pin"))
+            if !embedded {
+                Button { model.pinned.toggle() } label: { Image(systemName: model.pinned ? "pin.fill" : "pin") }
+                    .buttonStyle(.borderless)
+                    .help(L.t("card_pin"))
+            }
         }
     }
 

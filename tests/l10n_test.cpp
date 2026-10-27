@@ -136,7 +136,7 @@ TEST_CASE("l10n: every screen in every language asks only for keys that exist") 
   Manifest m;
   for (auto &lang : ui_languages()) {
     Lang l(lang);
-    for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::notes, SettingsSection::general})
+    for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general})
       for (int tab = 0; tab < 3; tab++) {
         settings_view(sec, tab, s, st);
         st.has_pair = !st.has_pair, st.trusted = !st.trusted;

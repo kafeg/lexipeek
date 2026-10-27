@@ -175,10 +175,15 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **☆ in the header** (★ when saved, a click or ⌘S toggles): a word is saved as its base form (InkPeek's `saveKey`:
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
-- **Notes** (menu bar → Notes…; a normal window): Words · Phrases · History with counts, newest first; a row is the
-  text and one line (the saved line, else the newest kept answer, else "—"), History also its looks; a click opens
-  the card, ✕ removes, "Clear history…" (asks) under History. Rows and texts come from the core (`notes_view`).
-- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Recents (5) · Notes… · what is in memory ("In memory: OPUS-MT
+- **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
+  open): a sidebar — **Look up** · **Translate text** · Notes: **Words** · **Phrases** · **History** with counts — and
+  the page. Look up: a field on top (focused on open), its card drawn in the window as in the pop-up (same tabs, rows,
+  ←, ☆; no height limit, the window scrolls). Translate text: a pasted text left, its translation right; the text's
+  language and the answer language as menus (the packs'), the method menu, Translate (⌘↩); looked up as `Source::text`
+  (no history, answers kept). Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
+  the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
+  (asks) under History.
+- **Menu bar:** Translate selection ⌥D · Type text… ⌥A · Open LexiPeek ⌘O · Recents (5) · Notes… (the window's Words) · what is in memory ("In memory: OPUS-MT
   de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
   standard settings window (**General** first, as macOS settings), each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
@@ -191,8 +196,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
-  every prompt back to the original) · **Notes** —
-  Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
+  every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
   the icon at the selection, per-app rules, a moved card stays, open at login, how long a model stays in memory after
   a use (1, 5, 15 min, 1 h, until quit; 5 min by default), Accessibility, the app's language,
   updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
@@ -236,7 +240,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   full entry with "←", its sections (related, synonyms, antonyms, expressions, IPA, origin, forms from `.rel`), "form
   of …", frequency and looks, Mozilla's English in between (a setting), first run: pick a pair and download it.
 - **M4 Dictionaries and settings parity.** Own StarDict dictionaries (a folder, InkPeek's catalog of public
-  sources, import), dictionary order and on / off; settings in InkPeek's sections (Languages · Card · AI · Notes) in
+  sources, import), dictionary order and on / off; settings in InkPeek's sections (Languages · Card · AI; Notes in the window) in
   desktop form; the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl); updates and About.
 - **M5 AI** (done, branch m5-ai). InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context**
   (Explanation, Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter, an OpenAI-compatible server) and CLI

@@ -44,7 +44,7 @@ und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
 # open=<word> clicks that word in the card; section=<key> opens the first entry's section;
-# notes?tab=…: Settings → Notes, after the cards that fill it)
+# window?page=…: the LexiPeek window, notes after the cards that fill them; look= / text= look up / translate there)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
@@ -74,9 +74,11 @@ word-baume-saved|lookup?text=Bäume&tab=dictionary&save=1
 article-saved|lookup?text=das Haus
 phrase-saved|lookup?text=Ich mache die Tür zu&save=1
 passage-saved|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&save=1
-notes-words|notes?tab=words
-notes-phrases|notes?tab=phrases
-notes-history|notes?tab=history
+notes-words|window?page=words
+notes-phrases|window?page=phrases
+notes-history|window?page=history
+window-lookup|window?page=lookup&look=Häusern
+window-translate|window?page=translate&text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.
 EOF
 }
 
@@ -151,7 +153,7 @@ settings_shots() {
   echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
-    settings-notes-words settings-notes-phrases settings-notes-history settings-general
+    settings-general
 }
 
 cases >"$TMP/cases"

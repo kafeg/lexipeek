@@ -13,15 +13,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let client = CoreClient()
     private lazy var model = CardModel(client: client)
     private lazy var card = CardController(model: model)
-    private lazy var settings: SettingsModel = SettingsModel(client: client, notes: notes)
+    private lazy var settings = SettingsModel(client: client)
+    private lazy var main = MainModel(client: client)
+    private var mainWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private lazy var firstRun = FirstRunModel(client: client)
     private var firstRunWindow: NSWindow?
-    private lazy var notes: NotesModel = {
-        let m = NotesModel(client: client)
-        m.open = { [weak self] t in self?.card.show(text: t, source: .input, bounds: nil, focus: false) }
-        return m
-    }()
     private var item: NSStatusItem?
     private let menu = NSMenu()
     private var bag: [AnyCancellable] = []
@@ -83,8 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 Snapshot.firstRun(firstRunWindow, firstRun, step)
                 continue
             }
-            if let n = Snapshot.notes(url) {
-                snapshotNotes(n.0, n.1)
+            if let w = Snapshot.window(url) {
+                snapshotMain(w.page, w.name, look: w.look, text: w.text)
                 continue
             }
             if Snapshot.take(url) {
@@ -154,18 +151,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func unload() { client.release() }
 
-    @objc private func showNotes() { openSettings(.notes) }
+    @objc private func showNotes() { openMain(.notes(.words)) }
 
-    // Settings → Notes on one tab, off screen: <name>.png, then <name>.done.
-    private func snapshotNotes(_ tab: lexipeek.NotesTab, _ name: String) {
-        if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
-        guard let w = settingsWindow else { return }
-        Snapshot.hide(w)
-        w.orderBack(nil)
-        SettingsWindow.select(w, .notes, tab: NotesModel.tabs.firstIndex(of: tab) ?? 0, model: settings)
-        notes.refresh()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            Snapshot.write(w.contentView?.superview, "\(name).png")
+    @objc private func showMain() { openMain(nil) }
+
+    // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
+    private func openMain(_ page: MainPage?) {
+        if mainWindow == nil {
+            let w = MainWindow.make(model: main)
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { _ in
+                if Snapshot.dir == nil { NSApp.setActivationPolicy(.accessory) }
+            }
+            mainWindow = w
+        }
+        if let page { main.show(page) }
+        main.notes.refresh()
+        if Snapshot.dir != nil, let w = mainWindow {
+            Snapshot.hide(w)
+            w.orderBack(nil)
+            return
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        mainWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    // The window on a page, off screen: <name>.png, then <name>.done (look: a text looked up; text: translated).
+    private func snapshotMain(_ page: MainPage, _ name: String, look: String?, text: String?) {
+        openMain(page)
+        if let look { main.look(look) }
+        if let text {
+            main.text.text = text
+            main.text.go()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            Snapshot.write(self.mainWindow?.contentView?.superview, "\(name).png")
             Snapshot.mark("\(name).done")
         }
     }
@@ -174,7 +194,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func openSettings(_ section: SettingsSection?) {
         if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
         if let section { SettingsWindow.select(settingsWindow, section, model: settings) }
-        if section == .notes { notes.refresh() }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
@@ -240,6 +259,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if sub.items.isEmpty { sub.addItem(NSMenuItem(title: L.t("nothing_yet"), action: nil, keyEquivalent: "")) }
         recents.submenu = sub
         menu.addItem(recents)
+        let o = NSMenuItem(title: L.t("menu_open"), action: #selector(showMain), keyEquivalent: "o")
+        o.target = self
+        menu.insertItem(o, at: 2)
         let n = NSMenuItem(title: L.t("notes_more"), action: #selector(showNotes), keyEquivalent: "")
         n.target = self
         menu.addItem(n)

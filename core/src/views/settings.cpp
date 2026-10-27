@@ -297,14 +297,13 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st) {
 
 }  // namespace
 
-std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_ai", "tab_words", "sec_general"}); }
+std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_ai", "sec_general"}); }
 
 std::vector<std::string> settings_tab_keys(SettingsSection section) {
   switch (section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};
     case SettingsSection::card: return {"opening", "article", "appearance"};
     case SettingsSection::ai: return {"connection", "modules"};
-    case SettingsSection::notes: return {"words", "phrases", "history"};
     case SettingsSection::general: return {};
   }
   return {};
@@ -315,7 +314,6 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::languages: return names({"lang_packs", "lang_translation", "lang_own"});
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
-    case SettingsSection::notes: return names({"list_words", "list_phrases", "list_history"});
     case SettingsSection::general: return {};
   }
   return {};
@@ -336,7 +334,6 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
       p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s);
       break;
     case SettingsSection::ai: p.rows = p.tab == 0 ? connection(s, st) : modules(s); break;
-    case SettingsSection::notes: p.pane = "notes"; break;
     case SettingsSection::general: p.rows = general(s, st); break;
   }
   return p;

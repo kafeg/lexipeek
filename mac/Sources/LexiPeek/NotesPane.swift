@@ -49,6 +49,9 @@ final class NotesModel: ObservableObject {
 
     func refresh() { look = NotesLook(client.notes(tab)) }
 
+    // "Words (3)", "Phrases (1)", "History (12)": the window's sidebar.
+    var counts: [String] { look.tabs }
+
     func remove(_ text: String) {
         client.removeNote(tab, text)
         refresh()

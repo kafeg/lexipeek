@@ -7,11 +7,11 @@ import SwiftUI
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
 enum SettingsSection: Int, CaseIterable {
-    case general, languages, card, ai, notes
+    case general, languages, card, ai
 
-    // General first, as macOS settings; the core keeps InkPeek's order.
-    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai, .notes][rawValue] }
-    var key: String { ["general", "languages", "card", "ai", "notes"][rawValue] }
+    // General first, as macOS settings; the core keeps InkPeek's order (Notes are in the LexiPeek window).
+    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai][rawValue] }
+    var key: String { ["general", "languages", "card", "ai"][rawValue] }
     var title: String { String(lexipeek.settings_sections()[Int(core.rawValue)]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
@@ -20,7 +20,6 @@ enum SettingsSection: Int, CaseIterable {
         case .languages: "character.book.closed"
         case .card: "rectangle.on.rectangle"
         case .ai: "sparkles"
-        case .notes: "star"
         case .general: "gearshape"
         }
     }
@@ -48,12 +47,8 @@ final class SettingsModel: ObservableObject {
     var relabel: (() -> Void)?
     var showSection: ((SettingsSection, Int) -> Void)?
     let client: CoreClient
-    let notes: NotesModel
 
-    init(client: CoreClient, notes: NotesModel) {
-        self.client = client
-        self.notes = notes
-    }
+    init(client: CoreClient) { self.client = client }
 
     private var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
 
@@ -89,7 +84,6 @@ final class SettingsModel: ObservableObject {
 
     func select(_ section: SettingsSection, _ tab: Int) {
         tabs[section] = tab
-        if section == .notes { notes.tab = NotesModel.tabs[min(tab, NotesModel.tabs.count - 1)] }
     }
 
     func toggle(_ key: String, _ on: Bool) {
@@ -219,7 +213,7 @@ enum SettingsWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
         for section in SettingsSection.allCases {
-            let vc = NSHostingController(rootView: SectionView(section: section, model: model, notes: model.notes))
+            let vc = NSHostingController(rootView: SectionView(section: section, model: model))
             vc.sizingOptions = .preferredContentSize
             let item = NSTabViewItem(viewController: vc)
             item.label = section.title
@@ -254,17 +248,16 @@ enum SettingsWindow {
     }
 }
 
-// A section: its sub-tabs, then its pane (the core's rows, or Packs, Other dictionaries, Notes drawn by their own views).
+// A section: its sub-tabs, then its pane (the core's rows, or Packs, Other dictionaries drawn by their own views).
 struct SectionView: View {
     let section: SettingsSection
     @ObservedObject var model: SettingsModel
-    @ObservedObject var notes: NotesModel
 
     var body: some View {
         let page = model.page(section)
         VStack(spacing: 0) {
             if !page.tabs.isEmpty {
-                let labels = section == .notes && notes.look.tabs.count == page.tabs.count ? notes.look.tabs : page.tabs.map { String($0) }
+                let labels = page.tabs.map { String($0) }
                 Picker("", selection: Binding(get: { Int(page.tab) }, set: { model.select(section, $0) })) {
                     ForEach(labels.indices, id: \.self) { Text(labels[$0]).tag($0) }
                 }
@@ -276,7 +269,6 @@ struct SectionView: View {
             switch String(page.pane) {
             case "packs": PacksPane(client: model.client)
             case "other": OtherDictionariesPane(client: model.client)
-            case "notes": NotesList(model: notes).onAppear { notes.refresh() }
             default: RowsView(rows: page.rows.map { SettingLine($0) }, model: model)
             }
         }
