@@ -106,15 +106,66 @@ firstrun-done-later|done-later|
 EOF
 }
 
-# The settings window's shots, written by the app at launch: every section × tab (settings-<section>[-<tab>]).
+# AI on (Claude; no key, no network: LEXIPEEK_AI_REPLIES answers from files), a third instance with its own data dir:
+# name | url | the answers (word, phrase) or "error" (the provider says 401). method=ai: AI translation picked in the card;
+# tab=analysis|context: that AI tab clicked.
+ai_cases() {
+  cat <<EOF
+ai-word-translate|lookup?text=Häusern&method=ai|word
+ai-word-analysis|lookup?text=Häusern&tab=analysis|word
+ai-word-context|lookup?text=Häusern&tab=context|word
+ai-phrase-translate|lookup?text=Ich mache die Tür zu&method=ai|phrase
+ai-phrase-analysis|lookup?text=Ich mache die Tür zu&tab=analysis|phrase
+ai-phrase-context|lookup?text=Ich mache die Tür zu&tab=context|phrase
+ai-error|lookup?text=Bäume&tab=analysis|error
+EOF
+}
+
+# The fake provider's answers (as a model would give them), per kind of text.
+ai_fixtures() {
+  mkdir -p "$1/word" "$1/phrase"
+  cat >"$1/word/quick.json" <<'EOF'
+{"base":"Haus","article":"das","plural":"die Häuser","pos":"сущ., ср. р.","forms":"","irregular":false,"form_of":"дательный падеж, мн. ч.","meanings":["дом","здание","семья, род"],"translation":""}
+EOF
+  cat >"$1/word/analysis.json" <<'EOF'
+{"grammar":"**Häusern** — дательный падеж множественного числа от **das Haus**.\nВо множественном числе: **die Häuser**, в дательном добавляется **-n**: *in den Häusern*.","words":["**das Haus** — дом","**das Gebäude** — здание","**das Heim** — домашний очаг"]}
+EOF
+  cat >"$1/word/context.json" <<'EOF'
+{"explanation":"Форма встречается после предлогов с дательным падежом: *in*, *aus*, *von*. Нейтральное слово, любой стиль.","examples":[{"text":"In den alten **Häusern** wohnen viele Familien.","translation":"В старых домах живёт много семей."},{"text":"Aus den **Häusern** kam Musik.","translation":"Из домов доносилась музыка."},{"text":"Zwischen den **Häusern** ist ein kleiner Park.","translation":"Между домами есть маленький парк."}]}
+EOF
+  cat >"$1/phrase/quick.json" <<'EOF'
+{"base":"","article":"","plural":"","pos":"","forms":"","irregular":false,"form_of":"","meanings":[],"translation":"Я закрываю дверь."}
+EOF
+  cat >"$1/phrase/analysis.json" <<'EOF'
+{"grammar":"**mache … zu** — отделяемый глагол **zumachen**: приставка **zu** уходит в конец предложения.\n**die Tür** — винительный падеж (прямое дополнение), артикль *die* не меняется.","words":["**zumachen** — закрывать","**die Tür** — дверь"]}
+EOF
+  cat >"$1/phrase/context.json" <<'EOF'
+{"explanation":"Обычная разговорная фраза; **zumachen** проще и разговорнее, чем *schließen*.","examples":[{"text":"Kannst du bitte das Fenster **zumachen**?","translation":"Можешь, пожалуйста, закрыть окно?"},{"text":"Ich **mache** den Laden um sechs **zu**.","translation":"Я закрываю магазин в шесть."},{"text":"**Mach** die Augen **zu**!","translation":"Закрой глаза!"}]}
+EOF
+}
+
+# The settings window's shots, written by the app at launch: every section × tab (settings-<section>[-<tab>]); AI's
+# and Card → Opening also with AI on (-on, from the AI instance).
 settings_shots() {
   echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
-    settings-languages-other-dictionaries settings-card-opening settings-card-article \
-    settings-card-appearance settings-notes-words settings-notes-phrases settings-notes-history settings-general
+    settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
+    settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
+    settings-notes-words settings-notes-phrases settings-notes-history settings-general
 }
 
 cases >"$TMP/cases"
 firstrun_cases >"$TMP/firstrun"
+ai_cases >"$TMP/ai_cases"
+ai_fixtures "$TMP/fixtures"
+# The AI instance's data dir: the same packs, AI on with Claude's default model.
+mkdir "$TMP/aidata"
+for f in "$TMP/data"/*; do
+  case "${f##*/}" in settings.json) ;; *) ln -s "$(readlink "$f")" "$TMP/aidata/" ;; esac
+done
+python3 -c 'import json, sys
+s = json.load(open(sys.argv[1]))
+s["ai"] = {"provider": "anthropic"}
+json.dump(s, open(sys.argv[2], "w"))' "$TMP/data/settings.json" "$TMP/aidata/settings.json"
 fail=0
 for look in light dark; do
   dir="$OUT/$look"
@@ -147,6 +198,31 @@ for look in light dark; do
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   rm -rf "$dir/empty"
+
+  # AI on: its settings shots (-on) and its cards; the answers in $TMP/ai, refilled before each case.
+  ai="$dir/ai" && rm -rf "$ai" "$TMP/ai" "$TMP/aidata/log" "$TMP/aidata/device" "$TMP/aidata"/lexipeek.db* && mkdir -p "$ai" "$TMP/ai"
+  LEXIPEEK_SNAPSHOT="$ai" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$TMP/aidata" LEXIPEEK_AI_REPLIES="$TMP/ai" \
+    "$APP/Contents/MacOS/LexiPeek" >"$ai/app.log" 2>&1 &
+  pid=$!
+  wait_for "$ai/settings.done" 60 || { echo "$look: AI settings timed out" >&2; fail=1; }
+  for s in settings-ai-connection settings-ai-modules settings-card-opening; do
+    mv "$ai/$s.png" "$dir/$s-on.png" 2>/dev/null || true
+    [ ! -e "$ai/$s-end.png" ] || mv "$ai/$s-end.png" "$dir/$s-on-end.png"
+  done
+  while IFS='|' read -r name url answers; do
+    rm -f "$TMP/ai"/*
+    if [ "$answers" = error ]; then echo 401 >"$TMP/ai/status"; else cp "$TMP/fixtures/$answers"/*.json "$TMP/ai/"; fi
+    echo "lexipeek://$(enc "$url&snap=$name")" >"$ai/request.tmp" && mv "$ai/request.tmp" "$ai/request"
+    if wait_for "$ai/$name.done" 60; then
+      mv "$ai/$name.png" "$dir/" && { [ ! -e "$ai/$name-end.png" ] || mv "$ai/$name-end.png" "$dir/"; } && echo "$look/$name"
+    else
+      echo "$look/$name: timed out" >&2
+      fail=1
+    fi
+  done <"$TMP/ai_cases"
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  rm -rf "$ai"
   rm -f "$dir"/*.done "$dir/card.png"
 done
 
@@ -155,7 +231,7 @@ done
   echo '<!doctype html><meta charset="utf-8"><title>LexiPeek snapshots</title>'
   echo '<style>body{font:13px -apple-system;background:#888;margin:16px}h2{margin:24px 0 6px}'
   echo '.row{display:flex;gap:16px;align-items:flex-start}img{zoom:.5}</style>'
-  for n in $(cut -d'|' -f1 "$TMP/cases" "$TMP/firstrun") $(settings_shots); do
+  for n in $(cut -d'|' -f1 "$TMP/cases" "$TMP/firstrun" "$TMP/ai_cases") $(settings_shots); do
     for s in "$n" "$n-end"; do
       [ -e "$OUT/light/$s.png" ] || continue
       echo "<h2>$s</h2><div class=row><img src=\"light/$s.png\"><img src=\"dark/$s.png\"></div>"

@@ -46,4 +46,16 @@
   English; the catalog's rarer languages (outside the 32 named in the table) keep their English names; the Service's
   menu title "Look up in LexiPeek" (Info.plist) and SwiftUI's own buttons (a dialog's Cancel) follow the bundle's
   English; an open card keeps its texts until it is drawn again.
+- M5 AI (branch m5-ai): `core/src/ai` (Claude, OpenAI, OpenRouter, an OpenAI-compatible server, `claude -p`,
+  `codex exec`; InkPeek's prompts and versions, least reasoning per host, errors, answers through `ai.put`), the card's
+  Analysis · AI and Context · AI tabs, AI translation as a Translate method and as Card → Opening choices, Settings → AI
+  (Connection · Modules, ✎ prompts, the model list, a check), keys in the Keychain, `lexipeek-cli ai`. Open: no request
+  was sent to a real provider from here (no key in this session; the request shapes are tested against a fake
+  transport) — try each provider once; the AI snapshot cases (`ai-*`, `settings-ai-*`) not yet run or looked at; the
+  CLI providers have no timeout (a hung `claude -p` keeps one AI worker busy; the card just waits) and their flags
+  (`--output-format json`, `-c model_reasoning_effort=minimal`) are from the tools' docs, not tried here; Windows: the
+  shell command line (`popen`, `{ …; } 2>file`, POSIX quoting) is POSIX only (M6); InkPeek's "online" check is not
+  ported (no network → curl's "could not resolve host" → the offline text); a phrase whose AI answer failed does not
+  show the offline gloss under the error (InkPeek does); the model list has a filter and "free only" but not InkPeek's
+  maker filter and sorting; AI's base form does not re-order the dictionaries (InkPeek's quick-answer re-sort).
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).

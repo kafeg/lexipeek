@@ -7,9 +7,12 @@ enum Snapshot {
     // LEXIPEEK_SNAPSHOT_TAB=dictionary: cards open on Dictionary (to see that tab).
     static let dictionary = dir != nil && ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT_TAB"] == "dictionary"
 
-    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary][&full=1][&save=1][&open=<word>][&section=<key>][&method=fast]
-    // (save: ☆ once it is final; open: that word clicked in the card; section: the first entry's section opened).
-    private struct Request { var name: String, dictionary: Bool, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method? }
+    // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
+    // [&section=<key>][&method=fast|ai] (save: ☆ once it is final; open: that word clicked in the card; section: the first
+    // entry's section opened; tab=analysis|context: that AI tab clicked; method=ai: AI translation picked).
+    private struct Request {
+        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool
+    }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
 
@@ -45,10 +48,12 @@ enum Snapshot {
         pending?.cancel()
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
+        let tabs: [String: lexipeek.CardTab] = ["dictionary": .dictionary, "analysis": .analysis, "context": .context]
         request = v("snap").map {
-            Request(name: $0, dictionary: v("tab") == "dictionary", full: v("full") == "1", save: v("save") == "1", open: v("open"),
+            Request(name: $0, tab: v("tab").flatMap { tabs[$0] }, full: v("full") == "1", save: v("save") == "1", open: v("open"),
                     section: v("section"),
-                    method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } })
+                    method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
+                    ai: v("method") == "ai")
         }
         return url.host == "unread"
     }
@@ -59,8 +64,9 @@ enum Snapshot {
         if dir != nil { w.setFrameOrigin(away) }
     }
 
-    // &method=fast: the card translates with it, whatever the settings say.
+    // &method=fast: the card translates with it, whatever the settings say; &method=ai: by AI.
     static var method: lexipeek.Method? { request?.method }
+    static var ai: Bool { request?.ai ?? false }
 
     // lexipeek://firstrun?snap=<name>&step=<step>: the first-run window in that step (its name); nil for other URLs.
     static func firstRun(_ url: URL) -> String? {
@@ -111,10 +117,11 @@ enum Snapshot {
         let work = DispatchWorkItem {
             write(view, "card.png")
             guard let r = request else { return }
-            let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating)
+            let asking = [lexipeek.ai.Ask.quick, .analysis, .context].contains { lexipeek.card_answer(model.state, $0).asking }
+            let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating && !asking)
             guard final else { return }
             if let card = model.card, lexipeek.card_view(card, model.state).tabs {
-                if r.dictionary && model.state.tab != .dictionary { model.state.tab = .dictionary; return }
+                if let t = r.tab, model.state.tab != t { model.select(t); return }
                 if let w = r.open { request?.open = nil; model.open(w); return }
                 if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
                 if let k = r.section { request?.section = nil; model.openSection(0, k); return }

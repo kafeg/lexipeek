@@ -44,7 +44,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
 - Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
   catalog [filter] | get <url>` (`<data>/dicts-own/`, settings.json's `dicts`).
-- CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`.
+- CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`,
+  `ai quick|analysis|context TEXT | models` (Settings → AI of the data dir; the key from `LEXIPEEK_AI_KEY`).
+- AI without a network or a key (tests, snapshots, the CLI): `LEXIPEEK_AI_REPLIES=<dir>` — `<dir>/<quick|analysis|context>.json`
+  is the model's answer for every provider, `<dir>/status` (e.g. `401`) fails every request, `<dir>/models.json` the list.
+  Snapshots: a third instance with AI on (Claude) and fixtures (`ai-*` cards: AI translation, Analysis, Context, an
+  error; `settings-ai-*-on`, `settings-card-opening-on`); `&tab=analysis|context`, `&method=ai` in a case's URL.
 
 ## Code layout and gotchas
 - `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`, `core.hpp`, `views.hpp`, `app.hpp`);
@@ -83,6 +88,19 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card` (one `Entry` per
   dictionary: line, articles parsed into senses and examples, `.rel` sections), `section()` (a section's page of words with
   meanings, 20 per page), language by the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv` (on the packs' entries only: `LEXIPEEK_MODELS` may hold own dictionaries).
+- `core/src/ai/` (InkPeek's `ai/`; facade `lexipeek/ai.hpp`): providers (`providers()`: Anthropic Messages API,
+  OpenAI-compatible `/chat/completions` + `/models`, CLI `claude -p` / `codex exec` as one shell command line),
+  `prompts.inc` (InkPeek's `Ask` word for word, generated once from its `Ai.kt`: the answers' `version` is Java's
+  `hashCode` of the original prompt — `ai_test` checks InkPeek's numbers), least reasoning per host and its `recall`
+  (settings.json `ai.recall`), errors as `Code` → `error_text` (InkPeek's AiErrors), `render` (a tab's light Markdown
+  under the app's headings), `answer` (the store first: `ai.put` under the answer language's English name, as InkPeek).
+  `Transport` (`ai/ai.hpp`): libcurl (`http::request`, any status) and the shell (`popen`), or `file_transport` for
+  tests and snapshots. `Core::ask(card, Ask, key)` — only on the person's action; `Card::ai` says what the card offers
+  (from `Settings::ai`, `AiSettings`: provider, models, url, commands, translate, prefetch, prompts, picked, recall);
+  views: `CardTab::analysis/context`, `CardState` `by_ai` + `quick/analysis/context` (`AiState`), `card_asks` (what to
+  ask now: the open one first, the others with prefetch), `with_answer`, row style `markdown`; Settings → AI rows
+  (`text`, `secret`, `model` kinds, `edit` = a prompt id for ✎), `prompt_editor` / `settings_prompts`, dynamic
+  Card → Opening choices. The key never reaches the core's settings: the shell passes it per call.
 - `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
   progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
@@ -115,6 +133,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   English; a new install's settings.json gets it as the answer language too), then the window's labels again.
   Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is own dictionaries' pane (with the dictionary order; Article's "Dictionary order" opens it). ⌘S is a local key (not a hotkey: a pinned
   card would steal the frontmost app's Save).
+  AI: `Keychain.swift` (one generic password per provider, service `dev.kafeg.lexipeek.ai`; never read in snapshot
+  mode — a Keychain prompt would show on the screen), `CardModel.askAI()` sends `card_asks` on the `CoreClient`'s
+  concurrent AI queue (after a look-up, a tab picked, AI translation picked, "←"); Settings → AI in `SettingsView.swift`
+  (`LineField`, `KeyField`, `PromptSheet`, `ModelSheet`). An ad-hoc signed build may make the Keychain ask once
+  for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker), a newer request turns older ones into no-ops.

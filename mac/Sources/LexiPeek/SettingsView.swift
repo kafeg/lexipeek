@@ -7,10 +7,10 @@ import SwiftUI
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
 enum SettingsSection: Int, CaseIterable {
-    case languages, card, notes, general
+    case languages, card, ai, notes, general
 
-    var core: lexipeek.SettingsSection { [.languages, .card, .notes, .general][rawValue] }
-    var key: String { ["languages", "card", "notes", "general"][rawValue] }
+    var core: lexipeek.SettingsSection { [.languages, .card, .ai, .notes, .general][rawValue] }
+    var key: String { ["languages", "card", "ai", "notes", "general"][rawValue] }
     var title: String { String(lexipeek.settings_sections()[rawValue]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
@@ -18,6 +18,7 @@ enum SettingsSection: Int, CaseIterable {
         switch self {
         case .languages: "character.book.closed"
         case .card: "rectangle.on.rectangle"
+        case .ai: "sparkles"
         case .notes: "star"
         case .general: "gearshape"
         }
@@ -32,6 +33,11 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var revision = 0
     @Published private var checking = false
     @Published private var update = lexipeek.UpdateCheck()
+    @Published private var aiTesting = false
+    @Published private var aiTest = ""
+    // AI → Modules' prompt editor and AI → Connection's model list, shown as sheets.
+    @Published var editing: PromptEdit?
+    @Published var choosingModel = false
     var openFirstRun: (() -> Void)?
     // The app's language changed: the window's own labels again.
     var relabel: (() -> Void)?
@@ -60,6 +66,9 @@ final class SettingsModel: ObservableObject {
         s.update = update.text
         s.update_version = update.version
         s.update_url = update.url
+        s.ai_key = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
+        s.ai_testing = aiTesting
+        s.ai_test = std.string(aiTest)
         return s
     }
 
@@ -86,10 +95,40 @@ final class SettingsModel: ObservableObject {
         changed(lexipeek.app.choose(std.string(), std.string(key), Int32(index), state()))
     }
 
-    func press(_ key: String) {
+    // A text row typed in (the server's address, the program, the model).
+    func setText(_ key: String, _ value: String) {
+        changed(lexipeek.app.set_text(std.string(), std.string(key), std.string(value)))
+    }
+
+    // The API key into the Keychain (an empty one removes it); never into the settings.
+    func saveKey(_ key: String) {
+        Keychain.set(String(lexipeek.app.ai_provider(std.string())), key)
+        aiTest = ""
+        revision += 1
+    }
+
+    func editPrompt(_ id: String) {
+        let e = lexipeek.app.prompt_editor(std.string(), std.string(id))
+        editing = PromptEdit(e)
+    }
+
+    func savePrompts(_ e: PromptEdit, reset: Bool) {
+        var ids = lexipeek.mac.Strings(), texts = lexipeek.mac.Strings()
+        for f in e.fields {
+            ids.push_back(std.string(f.id))
+            texts.push_back(std.string(reset ? "" : f.text))
+        }
+        changed(lexipeek.app.set_prompts(std.string(), ids, texts))
+    }
+
+    func press(_ key: String, edit: String = "") {
+        if !edit.isEmpty { editPrompt(edit); return }
         switch key {
         case "setup": openFirstRun?()
         case "order": showSection?(.languages, 2)
+        case "answer_lang": showSection?(.languages, 1)
+        case "ai_test": testAI()
+        case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
         case "access":
             let k = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -109,6 +148,20 @@ final class SettingsModel: ObservableObject {
             DispatchQueue.main.async {
                 self.update = r
                 self.checking = false
+            }
+        }
+    }
+
+    // Only on a click: one short request with these settings, off the main queue.
+    private func testAI() {
+        guard !aiTesting else { return }
+        aiTesting = true
+        let key = Keychain.current
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = String(lexipeek.app.ai_test(std.string(), std.string(key)))
+            DispatchQueue.main.async {
+                self.aiTest = r
+                self.aiTesting = false
             }
         }
     }
@@ -188,6 +241,8 @@ struct SectionView: View {
             }
         }
         .frame(width: 560, height: 540)
+        .sheet(item: section == .ai ? $model.editing : .constant(nil)) { e in PromptSheet(edit: e, model: model) }
+        .sheet(isPresented: section == .ai ? $model.choosingModel : .constant(false)) { ModelSheet(model: model) }
     }
 }
 
@@ -198,6 +253,7 @@ struct SettingLine: Identifiable {
     var on, enabled: Bool
     var choices: [String]
     var selected: Int
+    var placeholder, edit: String
     var id: String { "\(kind.rawValue)|\(key)|\(title)" }
 
     init(_ r: lexipeek.SettingRow) {
@@ -210,6 +266,8 @@ struct SettingLine: Identifiable {
         enabled = r.enabled
         choices = r.choices.map { String($0) }
         selected = Int(r.selected)
+        placeholder = String(r.placeholder)
+        edit = String(r.edit)
     }
 }
 
@@ -257,8 +315,31 @@ struct RowsView: View {
     @ViewBuilder
     private func row(_ r: SettingLine) -> some View {
         switch r.kind {
+        case .toggle where !r.edit.isEmpty:
+            HStack {
+                Toggle(isOn: Binding(get: { r.on }, set: { model.toggle(r.key, $0) })) { label(r) }.disabled(!r.enabled)
+                Button { model.editPrompt(r.edit) } label: { Image(systemName: "square.and.pencil") }
+                    .buttonStyle(.borderless)
+                    .help(L.t("edit_btn"))
+            }
         case .toggle:
             Toggle(isOn: Binding(get: { r.on }, set: { model.toggle(r.key, $0) })) { label(r) }.disabled(!r.enabled)
+        case .text:
+            LabeledContent {
+                LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
+            } label: { label(r) }
+        case .secret:
+            VStack(alignment: .leading, spacing: 6) {
+                label(r)
+                KeyField(saved: r.on) { model.saveKey($0) }
+            }
+        case .model:
+            LabeledContent {
+                HStack {
+                    LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
+                    if r.on { Button(L.t("model_choose")) { model.choosingModel = true } }
+                }
+            } label: { label(r) }
         case .choice:
             Picker(selection: Binding(get: { r.selected }, set: { model.choose(r.key, $0) })) {
                 ForEach(r.choices.indices, id: \.self) { Text(r.choices[$0]).tag($0) }
@@ -279,7 +360,7 @@ struct RowsView: View {
             }
         case .button:
             LabeledContent {
-                Button(r.value) { model.press(r.key) }.disabled(!r.enabled)
+                Button(r.value) { model.press(r.key, edit: r.edit) }.disabled(!r.enabled)
             } label: { label(r) }
         case .status:
             LabeledContent {
@@ -298,6 +379,173 @@ struct RowsView: View {
         default:
             label(r)
         }
+    }
+}
+
+// A line typed in, written when Return is pressed or the field is left.
+private struct LineField: View {
+    var value: String
+    var placeholder: String
+    var commit: (String) -> Void
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .textFieldStyle(.roundedBorder)
+            .frame(minWidth: 200)
+            .focused($focused)
+            .onAppear { text = value }
+            .onChange(of: value) { text = value }
+            .onSubmit { if text != value { commit(text) } }
+            .onChange(of: focused) { if !focused && text != value { commit(text) } }
+    }
+}
+
+// The API key: typed (hidden), then Save puts it into the Keychain; Remove takes it out. It is never shown again.
+private struct KeyField: View {
+    var saved: Bool
+    var save: (String) -> Void
+    @State private var key = ""
+
+    var body: some View {
+        HStack {
+            SecureField(L.t("key_t"), text: $key)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit { store() }
+            Button(L.t("save_key")) { store() }.disabled(key.isEmpty)
+            if saved { Button(L.t("remove")) { save("") } }
+        }
+    }
+
+    private func store() {
+        guard !key.isEmpty else { return }
+        save(key)
+        key = ""
+    }
+}
+
+// The prompt editor's state: the core's fields, edited here.
+struct PromptEdit: Identifiable {
+    struct Field {
+        var id, label, text, original: String
+    }
+
+    let id = UUID()
+    var title, note, cancel, reset, save: String
+    var fields: [Field]
+
+    init(_ e: lexipeek.PromptEditor) {
+        title = String(e.title)
+        note = String(e.note)
+        cancel = String(e.cancel)
+        reset = String(e.reset)
+        save = String(e.save)
+        fields = e.fields.map { Field(id: String($0.id), label: String($0.label), text: String($0.text), original: String($0.original)) }
+    }
+}
+
+// AI → Modules' ✎: what each part of the answer asks for; Original puts the shipped text back.
+private struct PromptSheet: View {
+    @State var edit: PromptEdit
+    @ObservedObject var model: SettingsModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(edit.title).font(.headline)
+            Text(edit.note).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(edit.fields.indices, id: \.self) { i in
+                        if !edit.fields[i].label.isEmpty { Text(edit.fields[i].label).bold() }
+                        TextEditor(text: $edit.fields[i].text)
+                            .font(.body)
+                            .frame(minHeight: edit.fields.count > 1 ? 54 : 220)
+                            .overlay(RoundedRectangle(cornerRadius: 4).stroke(.separator))
+                    }
+                }
+            }
+            HStack {
+                Button(edit.reset) {
+                    model.savePrompts(edit, reset: true)
+                    dismiss()
+                }
+                Spacer()
+                Button(edit.cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(edit.save) {
+                    model.savePrompts(edit, reset: false)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 520, height: edit.fields.count > 1 ? 560 : 400)
+    }
+}
+
+// "Choose…": the provider's models (fetched once the sheet opens), a filter, free ones only; a click picks one.
+private struct ModelSheet: View {
+    @ObservedObject var model: SettingsModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var all = lexipeek.mac.Models()
+    @State private var error = ""
+    @State private var loading = true
+    @State private var filter = ""
+    @State private var freeOnly = false
+
+    private var shown: lexipeek.mac.Models { lexipeek.app.filter_models(all, std.string(filter), freeOnly) }
+
+    var body: some View {
+        let list = shown
+        let titles = lexipeek.app.model_titles(list).map { String($0) }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(loading ? L.t("loading_models") : L.t("models_title", String(lexipeek.app.ai_provider_title(std.string())), String(all.size())))
+                .font(.headline)
+            HStack {
+                TextField(L.t("filter"), text: $filter).textFieldStyle(.roundedBorder)
+                if all.contains(where: { $0.free }) { Toggle(L.t("free_only"), isOn: $freeOnly) }
+            }
+            if loading {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if !error.isEmpty {
+                Text(error).foregroundStyle(.red).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else if titles.isEmpty {
+                Text(L.t("models_none")).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(titles.indices, id: \.self) { i in
+                    Button { pick(String(list[i].id)) } label: {
+                        Text(titles[i]).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            HStack {
+                Spacer()
+                Button(L.t("cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 520, height: 480)
+        .onAppear(perform: load)
+    }
+
+    private func load() {
+        let key = Keychain.current
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = lexipeek.app.ai_models(std.string(), std.string(key))
+            DispatchQueue.main.async {
+                all = r.list
+                error = String(r.error)
+                loading = false
+            }
+        }
+    }
+
+    private func pick(_ id: String) {
+        model.setText("ai_model", id)
+        dismiss()
     }
 }
 

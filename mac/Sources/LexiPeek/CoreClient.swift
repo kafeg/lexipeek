@@ -8,6 +8,8 @@ final class CoreClient {
     private let engine: lexipeek.app.Engine
     private let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)
     private let worker = DispatchQueue(label: "lexipeek.translate", qos: .userInitiated)
+    // AI requests go out together (the open tab's first), each waits on the network.
+    private let ai = DispatchQueue(label: "lexipeek.ai", qos: .userInitiated, attributes: .concurrent)
     private let lock = NSLock()
     private var latest = 0
     private var cards: [Int: lexipeek.Card] = [:]
@@ -84,6 +86,15 @@ final class CoreClient {
             guard self.current(id), let card = self.lock.withLock({ self.cards[id] }) else { return }
             let t = engine.translate(card, method)
             DispatchQueue.main.async { if self.current(id) { done(t) } }
+        }
+    }
+
+    // One AI answer of the card (the saved one offline); done on the main queue, only if no newer request came.
+    func ask(_ id: Int, _ card: lexipeek.Card, _ a: lexipeek.ai.Ask, key: String, done: @escaping (lexipeek.AiState) -> Void) {
+        ai.async { [engine] in
+            guard self.current(id) else { return }
+            let st = engine.ask(card, a, std.string(key))
+            DispatchQueue.main.async { if self.current(id) { done(st) } }
         }
     }
 

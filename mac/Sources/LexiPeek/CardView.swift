@@ -37,9 +37,8 @@ struct CardView: View {
             if let look {
                 header(look)
                 if look.tabs {
-                    Picker("", selection: $model.state.tab) {
-                        Text(L.t("tab_dictionary")).tag(lexipeek.CardTab.dictionary)
-                        Text(L.t("tab_translate")).tag(lexipeek.CardTab.translate)
+                    Picker("", selection: Binding(get: { look.tab }, set: { model.select($0) })) {
+                        ForEach(look.tabItems.indices, id: \.self) { Text(look.tabItems[$0].title).tag(look.tabItems[$0].tab) }
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -157,6 +156,8 @@ struct CardView: View {
             .overlay(alignment: .top) { Divider() }
         case .text:
             Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .markdown:
+            Text(Self.markdown(r.text)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .english:
             Text(r.text).font(font(-1)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .error:
@@ -217,11 +218,16 @@ struct CardView: View {
         return (try? AttributedString(ns, including: \.appKit)) ?? AttributedString(ns.string)
     }
 
+    // An AI answer's light Markdown (**bold**, *italic*), its lines kept.
+    static func markdown(_ s: String) -> AttributedString {
+        (try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s)
+    }
+
     // The current method by name; the others in its menu, unavailable ones dimmed with the reason.
     private func methods(_ look: CardLook) -> some View {
         Menu {
             ForEach(look.methods) { m in
-                Button { model.choose(m.id) } label: { Text(m.title) }.disabled(!m.enabled)
+                Button { m.ai ? model.chooseAI() : model.choose(m.method) } label: { Text(m.title) }.disabled(!m.enabled)
             }
         } label: {
             Text(look.menuTitle)

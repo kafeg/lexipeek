@@ -16,6 +16,10 @@ using FolderRows = std::vector<FolderRow>;
 using CatalogRows = std::vector<CatalogRow>;
 using SourceRows = std::vector<SourceRow>;
 using SettingRows = std::vector<SettingRow>;
+using Asks = std::vector<ai::Ask>;
+using Models = std::vector<ai::Model>;
+using TabItems = std::vector<TabItem>;
+using PromptFields = std::vector<PromptField>;
 
 inline bool has_part(const std::optional<PackPart> &p) { return p.has_value(); }
 inline PackPart part(const std::optional<PackPart> &p) { return p.value_or(PackPart{}); }

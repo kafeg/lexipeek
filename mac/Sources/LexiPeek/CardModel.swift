@@ -15,9 +15,16 @@ struct CardLook {
     }
 
     struct Item: Identifiable {
-        var id: lexipeek.Method
+        var id: Int
+        var method: lexipeek.Method
         var title: String
         var enabled: Bool
+        var ai: Bool
+    }
+
+    struct Tab {
+        var tab: lexipeek.CardTab
+        var title: String
     }
 
     var style = lexipeek.HeaderStyle.word
@@ -27,6 +34,7 @@ struct CardLook {
     var badge = ""
     var wide = false
     var tabs = false
+    var tabItems: [Tab] = []
     var tab = lexipeek.CardTab.translate
     var rows: [Row] = []
     var entryToggle = ""
@@ -53,6 +61,7 @@ struct CardLook {
         badge = String(v.badge)
         wide = v.wide
         tabs = v.tabs
+        tabItems = v.tab_items.map { Tab(tab: $0.tab, title: String($0.title)) }
         tab = v.tab
         rows = v.rows.map {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
@@ -61,7 +70,7 @@ struct CardLook {
         entryToggle = String(v.entry_toggle)
         menu = v.menu
         menuTitle = String(v.menu_title)
-        methods = v.methods.map { Item(id: $0.method, title: String($0.title), enabled: $0.enabled) }
+        methods = v.methods.enumerated().map { Item(id: $0.offset, method: $0.element.method, title: String($0.element.title), enabled: $0.element.enabled, ai: $0.element.ai) }
         back = String(v.back)
         pager = String(v.pager)
         prev = v.prev
@@ -117,12 +126,42 @@ final class CardModel: ObservableObject {
             var s = lexipeek.first_state(card)
             if Snapshot.dictionary { s.tab = .dictionary }
             if let m = Snapshot.method, s.has_method { s.method = m }
+            if Snapshot.ai { s.by_ai = card.ai.translate }
             s.before = std.string(before)
             self.card = card
             self.state = s
             NotificationCenter.default.post(name: .notesChanged, object: nil)
             if s.has_method { self.translate(s.method) }
+            self.askAI()
         }
+    }
+
+    // The AI answers the card shows now (the core says which: only on the person's action), the open one first.
+    func askAI() {
+        guard let card, request != 0 else { return }
+        let id = request
+        let key = Keychain.current
+        for a in lexipeek.card_asks(card, state) {
+            var asking = lexipeek.AiState()
+            asking.asking = true
+            state = lexipeek.with_answer(state, a, asking)
+            client.ask(id, card, a, key: key) { [weak self] st in
+                guard let self, id == self.request else { return }
+                self.state = lexipeek.with_answer(self.state, a, st)
+            }
+        }
+    }
+
+    // A tab picked (a click, ←/→): an AI one asks when it opens.
+    func select(_ tab: lexipeek.CardTab) {
+        state.tab = tab
+        askAI()
+    }
+
+    // AI translation picked in the card's menu: this card only (Card → Opening makes it the default).
+    func chooseAI() {
+        state.by_ai = true
+        askAI()
     }
 
     func translate(_ m: lexipeek.Method) {
@@ -141,6 +180,7 @@ final class CardModel: ObservableObject {
 
     // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
     func choose(_ m: lexipeek.Method) {
+        state.by_ai = false
         Prefs.shared.method = String(lexipeek.app.method_id(m))
         translate(m)
     }
@@ -148,7 +188,7 @@ final class CardModel: ObservableObject {
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
     func toggleSaved() {
         guard let card, !lexipeek.card_view(card, state).star.empty() else { return }
-        state.saved = client.toggleSaved(card, translation: state.translated && state.translation.ok() ? String(state.translation.text) : "")
+        state.saved = client.toggleSaved(card, translation: String(lexipeek.shown_translation(state)))
         NotificationCenter.default.post(name: .notesChanged, object: nil)
     }
 
@@ -170,6 +210,11 @@ final class CardModel: ObservableObject {
         card = last.card
         state = last.state
         if state.translating { translate(state.method) }
+        // Answers still on their way belonged to the old request: asked again.
+        for a in [lexipeek.ai.Ask.quick, .analysis, .context] where lexipeek.card_answer(state, a).asking {
+            state = lexipeek.with_answer(state, a, lexipeek.AiState())
+        }
+        askAI()
     }
 
     func openSection(_ entry: Int, _ key: String, page: Int = 0) {
@@ -189,9 +234,13 @@ final class CardModel: ObservableObject {
     // Where the body is: a new place (another card, tab, section or page) scrolls to the top.
     var place: String {
         guard let card else { return "" }
-        return "\(String(card.text))|\(state.tab.rawValue)|\(state.full_entry)|\(String(state.section.key))|\(state.section.page)"
+        return "\(String(card.text))|\(state.tab.rawValue)|\(state.full_entry)|\(String(state.section.key))|\(state.section.page)|\(state.by_ai)"
     }
 
-    func switchTab() { state.tab = state.tab == .dictionary ? .translate : .dictionary }
+    // ←/→: the next tab the card shows.
+    func switchTab(_ by: Int = 1) {
+        guard let tabs = look?.tabItems.map(\.tab), tabs.count > 1, let i = tabs.firstIndex(of: state.tab) else { return }
+        select(tabs[(i + by + tabs.count) % tabs.count])
+    }
     func toggleEntry() { state.full_entry.toggle() }
 }
