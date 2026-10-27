@@ -28,6 +28,7 @@ bool set_secret(const std::string &, const std::string &) { return false; }
 bool hand_over(const QStringList &) { return false; }
 void receive(std::function<void(const QStringList &)>) {}
 void register_scheme() {}
+std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return nullptr; }
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

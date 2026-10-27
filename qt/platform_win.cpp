@@ -3,6 +3,7 @@
 #include <QAbstractNativeEventFilter>
 #include <QCoreApplication>
 #include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QSettings>
@@ -304,6 +305,116 @@ void register_scheme() {
   auto exe = "\"" + QDir::toNativeSeparators(QCoreApplication::applicationFilePath()) + "\" \"%1\"";
   s.setValue("shell/open/command/Default", exe);
 }
+
+namespace {
+
+// A program by name as the shell finds it: PATH (and the usual install places) with .exe, .cmd, .bat; "" when none.
+std::wstring find_program(const std::string &name) {
+  auto w = wide(name);
+  if (name.find_first_of("\\/") != std::string::npos) return GetFileAttributesW(w.c_str()) != INVALID_FILE_ATTRIBUTES ? w : L"";
+  auto path = QString::fromLocal8Bit(qgetenv("PATH")).split(';', Qt::SkipEmptyParts);
+  auto home = QDir::homePath();
+  path << home + "/.local/bin" << QString::fromLocal8Bit(qgetenv("APPDATA")) + "/npm";
+  for (auto &dir : path)
+    for (auto ext : {"", ".exe", ".cmd", ".bat"}) {
+      auto f = QDir(dir).filePath(QString::fromStdString(name) + ext);
+      if (QFileInfo(f).isFile()) return QDir::toNativeSeparators(f).toStdWString();
+    }
+  return L"";
+}
+
+// One argument on a command line as the C runtime splits it.
+std::wstring quote(const std::wstring &a) {
+  if (!a.empty() && a.find_first_of(L" \t\"") == std::wstring::npos) return a;
+  std::wstring out = L"\"";
+  size_t slashes = 0;
+  for (auto ch : a) {
+    if (ch == L'\\') ++slashes;
+    else if (ch == L'"') out.append(slashes * 2 + 1, L'\\'), slashes = 0;
+    else slashes = 0;
+    out += ch;
+  }
+  out.append(slashes, L'\\');
+  return out + L"\"";
+}
+
+std::string read_all(HANDLE h) {
+  std::string out;
+  char buf[4096];
+  DWORD n = 0;
+  while (ReadFile(h, buf, sizeof buf, &n, nullptr) && n > 0) out.append(buf, n);
+  return out;
+}
+
+// The program with the prompt on stdin, stdout and stderr read, the whole tree stopped after cli_timeout.
+ai::CliRan run_cli(const ai::CliCall &c) {
+  ai::CliRan r;
+  auto program = find_program(c.program);
+  if (program.empty()) return r.code = 127, r.err = c.program + ": not found", r;
+  std::wstring line = quote(program);
+  for (auto &a : c.args) line += L" " + quote(wide(a));
+  if (!c.stdin_arg.empty()) line += L" " + quote(wide(c.stdin_arg));
+  auto lower = QString::fromStdWString(program).toLower();
+  if (lower.endsWith(".cmd") || lower.endsWith(".bat")) line = L"cmd.exe /d /s /c \"" + line + L"\"";
+  // The environment with the call's own.
+  std::wstring env;
+  auto *strings = GetEnvironmentStringsW();
+  for (auto *p = strings; *p; p += wcslen(p) + 1) env += std::wstring(p) + L'\0';
+  FreeEnvironmentStringsW(strings);
+  for (auto &[k, v] : c.env) env += wide(k + "=" + v) + L'\0';
+  env += L'\0';
+  SECURITY_ATTRIBUTES sa{sizeof sa, nullptr, TRUE};
+  HANDLE in_r, in_w, out_r, out_w, err_r, err_w;
+  CreatePipe(&in_r, &in_w, &sa, 0);
+  CreatePipe(&out_r, &out_w, &sa, 0);
+  CreatePipe(&err_r, &err_w, &sa, 0);
+  SetHandleInformation(in_w, HANDLE_FLAG_INHERIT, 0);
+  SetHandleInformation(out_r, HANDLE_FLAG_INHERIT, 0);
+  SetHandleInformation(err_r, HANDLE_FLAG_INHERIT, 0);
+  STARTUPINFOW si{};
+  si.cb = sizeof si;
+  si.dwFlags = STARTF_USESTDHANDLES;
+  si.hStdInput = in_r, si.hStdOutput = out_w, si.hStdError = err_w;
+  PROCESS_INFORMATION pi{};
+  auto tmp = QDir::toNativeSeparators(QDir::tempPath()).toStdWString();
+  HANDLE job = CreateJobObjectW(nullptr, nullptr);
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION limit{};
+  limit.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limit, sizeof limit);
+  bool ok = CreateProcessW(nullptr, line.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT | CREATE_SUSPENDED,
+                           env.data(), tmp.c_str(), &si, &pi);
+  CloseHandle(in_r), CloseHandle(out_w), CloseHandle(err_w);
+  if (!ok) {
+    CloseHandle(in_w), CloseHandle(out_r), CloseHandle(err_r), CloseHandle(job);
+    return r.code = 127, r.err = c.program + ": cannot start", r;
+  }
+  AssignProcessToJobObject(job, pi.hProcess);
+  ResumeThread(pi.hThread);
+  auto out = std::async(std::launch::async, read_all, out_r);
+  auto err = std::async(std::launch::async, read_all, err_r);
+  DWORD n = 0;
+  WriteFile(in_w, c.prompt.data(), static_cast<DWORD>(c.prompt.size()), &n, nullptr);
+  CloseHandle(in_w);
+  if (WaitForSingleObject(pi.hProcess, ai::cli_timeout * 1000) == WAIT_TIMEOUT) {
+    TerminateJobObject(job, 143);
+    WaitForSingleObject(pi.hProcess, 5000);
+    r.code = 143;
+  } else {
+    DWORD code = 0;
+    GetExitCodeProcess(pi.hProcess, &code);
+    r.code = static_cast<int>(code);
+  }
+  CloseHandle(job);  // kills what the program left running
+  r.out = out.get(), r.err = err.get();
+  CloseHandle(out_r), CloseHandle(err_r), CloseHandle(pi.hProcess), CloseHandle(pi.hThread);
+  // cmd.exe says "not recognized" with 9009.
+  if (r.code == 9009) r.code = 127;
+  return r;
+}
+
+}  // namespace
+
+std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return run_cli; }
 
 void round(QWidget *w) {
   auto pref = DWMWCP_ROUND;

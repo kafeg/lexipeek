@@ -236,7 +236,7 @@ std::string command(const AiSettings &s) {
   return s.provider == "codex-cli" ? "codex" : "claude";
 }
 
-// claude -p / codex exec as a child process; the prompt as one argument.
+// claude -p / codex exec as a child process.
 Answer cli(const AiSettings &s, const std::string &prompt, const std::string &sys, const Transport &t) {
   auto r = t.run(cli_command(s, sys, prompt));
   if (r.code == 127) return fail(Code::no_cli, command(s));
@@ -362,17 +362,36 @@ std::string json_object(const std::string &s) {
 
 std::string shell_quote(const std::string &s) { return "'" + replace_all(s, "'", "'\\''") + "'"; }
 
-std::string cli_command(const AiSettings &s, const std::string &system, const std::string &prompt) {
+CliCall cli_command(const AiSettings &s, const std::string &system, const std::string &prompt) {
   auto m = model(s);
-  auto text = system + "\n\n" + prompt;
+  CliCall c;
+  c.program = command(s);
+  c.prompt = system + "\n\n" + prompt;
+  if (s.provider == "codex-cli") {
+    c.args = {"exec", "--skip-git-repo-check", "--sandbox", "read-only", "-c", "model_reasoning_effort=minimal"};
+    if (!m.empty()) c.args.insert(c.args.end(), {"-m", m});
+    c.stdin_arg = "-";
+    return c;
+  }
+  c.env = {{"MAX_THINKING_TOKENS", "0"}};
+  c.args = {"-p", "--output-format", "json"};
+  if (!m.empty()) c.args.insert(c.args.end(), {"--model", m});
+  return c;
+}
+
+std::string shell_line(const CliCall &c) {
+  // A word with nothing the shell reads stays as it is.
+  auto word = [](const std::string &w) {
+    bool plain = !w.empty() && w.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_=.,:/-") == std::string::npos;
+    return plain ? w : shell_quote(w);
+  };
   // An app started from the Finder has a short PATH: the usual install places first. Run in the temp folder, no project.
-  std::string cmd = "PATH=\"$HOME/.local/bin:$HOME/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd " +
-                    shell_quote(fs::temp_directory_path().string()) + " && ";
-  if (s.provider == "codex-cli")
-    return cmd + shell_quote(command(s)) + " exec --skip-git-repo-check --sandbox read-only -c model_reasoning_effort=minimal" +
-           (m.empty() ? "" : " -m " + shell_quote(m)) + " " + shell_quote(text);
-  return cmd + "MAX_THINKING_TOKENS=0 " + shell_quote(command(s)) + " -p --output-format json" + (m.empty() ? "" : " --model " + shell_quote(m)) +
-         " " + shell_quote(text);
+  std::string line = "PATH=\"$HOME/.local/bin:$HOME/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:$PATH\"; cd " +
+                     shell_quote(fs::temp_directory_path().string()) + " && ";
+  for (auto &[k, v] : c.env) line += k + "=" + word(v) + " ";
+  line += shell_quote(c.program);
+  for (auto &a : c.args) line += " " + word(a);
+  return line + " " + shell_quote(c.prompt);
 }
 
 Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t) {

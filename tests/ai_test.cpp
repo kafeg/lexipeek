@@ -19,6 +19,7 @@ namespace {
 struct Fake {
   std::vector<ai::Call> calls;
   std::vector<std::string> commands;
+  std::vector<ai::CliCall> calls_cli;
   std::vector<http::Reply> replies;
   ai::Ran ran{0, "", ""};
   ai::Transport t() {
@@ -27,8 +28,9 @@ struct Fake {
               auto r = replies.at(std::min(calls.size(), replies.size()) - 1);
               return r;
             },
-            [this](const std::string &c) {
-              commands.push_back(c);
+            [this](const ai::CliCall &c) {
+              commands.push_back(ai::shell_line(c));
+              calls_cli.push_back(c);
               return ran;
             }};
   }
@@ -207,7 +209,7 @@ TEST_CASE("ai: errors as InkPeek's AiErrors; nothing is sent without a key, a mo
   CHECK(ai::error_text({ai::Code::no_key, "", "", false}, {}) == "No API key: add one in Settings → AI.");
 }
 
-TEST_CASE("ai: CLI providers — claude -p and codex exec as one shell command, the prompt quoted") {
+TEST_CASE("ai: CLI providers — claude -p and codex exec as one shell line (the prompt quoted) or a call (the prompt on stdin)") {
   std::map<std::string, int> recall;
   Fake f;
   f.ran = {0, json{{"type", "result"}, {"is_error", false}, {"result", quick_json}}.dump(), ""};
@@ -222,14 +224,20 @@ TEST_CASE("ai: CLI providers — claude -p and codex exec as one shell command, 
   CHECK(c.find("«it'\\''s»") != std::string::npos);  // a quote inside the prompt
   CHECK(c.find("--model") == std::string::npos);
   CHECK(c.find("sk-test") == std::string::npos);
+  auto &call = f.calls_cli[0];
+  CHECK(call.program == "claude");
+  CHECK(call.args == std::vector<std::string>{"-p", "--output-format", "json"});
+  CHECK(call.stdin_arg.empty());
+  CHECK(call.prompt.find("«it's»") != std::string::npos);
 
   auto codex = with("codex-cli", "gpt-5");
   codex.commands["codex-cli"] = "/opt/bin/codex";
   Fake g;
   g.ran = {0, quick_json + "\n", "progress on stderr"};
   REQUIRE(ai::ask(query(), codex, recall, g.t()).ok());
-  CHECK(g.commands.at(0).find("'/opt/bin/codex' exec --skip-git-repo-check --sandbox read-only -c model_reasoning_effort=minimal -m 'gpt-5' '") !=
+  CHECK(g.commands.at(0).find("'/opt/bin/codex' exec --skip-git-repo-check --sandbox read-only -c model_reasoning_effort=minimal -m gpt-5 '") !=
         std::string::npos);
+  CHECK(g.calls_cli.at(0).stdin_arg == "-");
 
   Fake missing;
   missing.ran = {127, "", "claude: command not found"};

@@ -2,6 +2,7 @@
 // Nothing in the core waits for it; a request goes out only on the person's action.
 #pragma once
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 #include "lexipeek/settings.hpp"
@@ -82,5 +83,22 @@ struct Models {
 // The list's rows by a filter and "free only": "id · free · 128k".
 std::vector<std::string> model_titles(const std::vector<Model> &list);
 std::vector<Model> filter_models(const std::vector<Model> &list, const std::string &filter, bool free_only);
+
+// A CLI provider's program call. The POSIX run puts the prompt last on its shell line; a runner may give it on stdin
+// instead, with stdin_arg ("-" for codex, "" for claude: no prompt argument means stdin).
+struct CliCall {
+  std::string program;
+  std::vector<std::string> args;
+  std::vector<std::pair<std::string, std::string>> env;
+  std::string prompt, stdin_arg;
+};
+struct CliRan {
+  int code = -1;  // the program's exit code (127: not found, 143: stopped after cli_timeout)
+  std::string out, err;
+};
+// How long a CLI provider may take (seconds): then it is stopped and the card says so.
+inline constexpr int cli_timeout = 120;
+// A shell's own way to run CLI providers (Windows: a process and a job object); none: a POSIX shell line.
+void set_cli_runner(std::function<CliRan(const CliCall &)> run);
 
 }  // namespace lexipeek::ai

@@ -19,14 +19,11 @@ struct Call {
   long timeout = 45;  // s: the answer comes in one piece, so this covers the whole generation
 };
 
-struct Ran {
-  int code = -1;  // the program's exit code (127: not found)
-  std::string out, err;
-};
+using Ran = CliRan;
 
 struct Transport {
   std::function<http::Reply(const Call &)> http;
-  std::function<Ran(const std::string &command)> run;  // a shell command line
+  std::function<Ran(const CliCall &)> run;
 };
 
 // libcurl and the shell.
@@ -55,11 +52,11 @@ Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::s
 // Removes <think>…</think> blocks; the JSON object of a reply (also inside a code fence or a sentence), "" when none.
 std::string strip_thinking(const std::string &s);
 std::string json_object(const std::string &s);
-// How long a CLI provider may take (seconds): then it is stopped and the card says so.
-inline constexpr int cli_timeout = 120;
 // A word for the shell, single-quoted.
 std::string shell_quote(const std::string &s);
-// The CLI's command line for a prompt (the system prompt first).
-std::string cli_command(const AiSettings &s, const std::string &system, const std::string &prompt);
+// The CLI's call for a prompt (the system prompt first).
+CliCall cli_command(const AiSettings &s, const std::string &system, const std::string &prompt);
+// The POSIX shell line for it: the usual install places on PATH, the temp folder, the prompt last.
+std::string shell_line(const CliCall &c);
 
 }  // namespace lexipeek::ai

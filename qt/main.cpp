@@ -186,6 +186,13 @@ int self_test(const QString &path) {
   platform::unregister_hotkey(90);
   check(platform::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
   check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
+  if (auto run = platform::cli_runner()) {
+    ai::CliCall echo{"findstr", {"ein"}, {{"LEXIPEEK_X", "1"}}, "das ist ein Haus\nnichts\n", ""};
+    auto r = run(echo);
+    check(r.code == 0 && r.out.find("das ist ein Haus") != std::string::npos && r.out.find("nichts") == std::string::npos,
+          "cli: a program with the prompt on stdin (" + QString::number(r.code) + ")");
+    check(run({"no-such-program-lexipeek", {}, {}, "", ""}).code == 127, "cli: a missing program is 127");
+  }
   platform::register_scheme();
   QSettings scheme("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek\\shell\\open\\command", QSettings::NativeFormat);
   check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
@@ -206,7 +213,8 @@ int main(int argc, char **argv) {
   std::string data;
   if (auto i = args.indexOf("--data"); i > 0 && i + 1 < args.size()) data = args[i + 1].toStdString();
   else if (auto *env = std::getenv("LEXIPEEK_DATA")) data = env;
-  set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
+  set_ui_platform("windows");
+  if (auto run = platform::cli_runner()) ai::set_cli_runner(run);  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
   app::set_language(data, QLocale::system().name().left(2).toStdString());
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);

@@ -5,6 +5,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include "lexipeek/ai.hpp"
 #include "lexipeek/settings.hpp"
 
 class QWidget;
@@ -50,6 +51,9 @@ void receive(std::function<void(const QStringList &)> got);
 
 // lexipeek:// links open this program (Windows: HKCU\Software\Classes, per user).
 void register_scheme();
+
+// How CLI AI providers run here (Windows: a process in a job object, the prompt on stdin); none: the core's POSIX shell.
+std::function<ai::CliRan(const ai::CliCall &)> cli_runner();
 
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);

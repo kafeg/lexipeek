@@ -28,12 +28,19 @@ FILE *open_pipe(const std::string &c) { return popen(c.c_str(), "r"); }
 int close_pipe(FILE *f) { return (pclose(f) >> 8) & 0xff; }
 #endif
 
+std::function<CliRan(const CliCall &)> &runner() {
+  static std::function<CliRan(const CliCall &)> r;
+  return r;
+}
+
 // The command's stdout; its stderr into a temp file read after it ends. A program that hangs is stopped after
-// cli_timeout seconds (exit 143: SIGTERM).
-Ran run(const std::string &command) {
+// cli_timeout seconds (exit 143: SIGTERM). A shell's own runner instead when it set one (Windows).
+Ran run(const CliCall &call) {
+  if (runner()) return runner()(call);
   Ran r;
   std::random_device rd;
   auto err = fs::temp_directory_path() / ("lexipeek-ai-" + std::to_string(rd()) + ".err");
+  auto command = shell_line(call);
 #ifdef _WIN32
   auto line = "{ " + command + "; } 2>" + shell_quote(err.string());
 #else
@@ -54,6 +61,8 @@ Ran run(const std::string &command) {
 }
 
 }  // namespace
+
+void set_cli_runner(std::function<CliRan(const CliCall &)> run) { runner() = std::move(run); }
 
 Transport default_transport() {
   return {[](const Call &c) { return http::request(c.method, c.url, c.headers, c.body, c.timeout); }, run};
@@ -85,11 +94,11 @@ Transport file_transport(const fs::path &dir) {
             }
             return r;
           },
-          [=](const std::string &command) {
+          [=](const CliCall &call) {
             Ran r;
             if (auto s = status()) return r.code = 1, r.err = "exit " + std::to_string(s), r;
             r.code = 0;
-            r.out = read(dir / (which(command) + ".json"));
+            r.out = read(dir / (which(call.prompt) + ".json"));
             return r;
           }};
 }
