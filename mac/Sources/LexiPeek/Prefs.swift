@@ -1,5 +1,5 @@
 import CxxStdlib
-import Foundation
+import AppKit
 import LexiPeekCore
 import LexiPeekKit
 
@@ -30,6 +30,7 @@ final class Prefs: ObservableObject {
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
         firstRun = s.first_run
+        Self.theme(String(s.theme))
     }
 
     // The core wrote settings.json (a settings row): read it again, without writing it back.
@@ -44,9 +45,15 @@ final class Prefs: ObservableObject {
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
         firstRun = s.first_run
+        Self.theme(String(s.theme))
         loading = false
         self.error = error
         changed += 1
+    }
+
+    // The theme of the card and every window: "" the system's appearance.
+    private static func theme(_ t: String) {
+        NSApp?.appearance = t == "light" ? NSAppearance(named: .aqua) : t == "dark" ? NSAppearance(named: .darkAqua) : nil
     }
 
     private static func shortcut(_ h: lexipeek.Hotkey) -> Shortcut? {

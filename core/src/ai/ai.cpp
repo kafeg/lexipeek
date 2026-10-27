@@ -395,11 +395,11 @@ Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &reca
   return {Code::ok, obj, "", false};
 }
 
-Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t) {
+Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep) {
   auto ver = version(q.ask, s);
   if (auto saved = store.answer(q.text, q.lang, section(q.ask), ver)) return {Code::ok, *saved, "", true};
   auto a = ask(q, s, recall, t);
-  if (a.ok()) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
+  if (a.ok() && keep) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
   return a;
 }
 

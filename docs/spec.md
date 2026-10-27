@@ -203,9 +203,11 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   the AI translation when AI is on, else says so), then what each does, what it needs for the
   installed pairs and whether it is downloaded, pairs no model covers, why this machine cannot run it; a click picks
   one, its Download button fetches its models with progress) · Other dictionaries (a folder, InkPeek's catalog of public
-  sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·
-  Article (the dictionary view: short line or full entry, the header's grammar, the sections shown, dictionary order)
-  · Appearance (desktop: width, text size, font, height limit) · **AI** — Connection (provider, the server's address
+  sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`; History — off: nothing
+  of what is opened is written, no look, no kept translation or AI answer, as InkPeek's; the icon at the selection; a
+  moved card stays) · Article (the dictionary view: short line or full entry, the header's grammar, the sections shown,
+  dictionary order) · Appearance (the theme of the card and every window: as the system, light, dark; desktop: width,
+  text size, font, height limit) · **AI** — Connection (provider, the server's address
   or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",

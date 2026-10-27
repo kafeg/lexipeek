@@ -33,6 +33,7 @@ struct CardPrefs {
   int text = 13;        // points
   std::string font;     // "" the system's, "serif", "rounded", "mono"
   int height = 45;      // % of the screen at most
+  bool history = true;  // what is opened goes to History (InkPeek's Card → Opening → History); off: nothing is written
 };
 
 // The optional AI layer (InkPeek's AI → Connection · Modules). The API key is never here: the shell keeps it (Keychain).
@@ -63,6 +64,7 @@ struct Settings {
   DictSettings dicts;
   CardPrefs card;
   std::string ui_lang;                  // the app's language, "" = the system's
+  std::string theme;                    // "" as the system, "light", "dark": the card and every window
   AiSettings ai;
 };
 

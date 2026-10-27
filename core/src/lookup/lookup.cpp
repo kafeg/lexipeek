@@ -208,7 +208,7 @@ Card Core::lookup(const Request &r) {
       if (d->answer() == c.answer) add(c.books, d->book());
     }
   // A text again in another language (the badge's menu) is not another look.
-  if (r.source != Source::cli && r.lang.empty() && r.answer.empty() && c.error.empty()) {
+  if (r.source != Source::cli && c.prefs.history && r.lang.empty() && r.answer.empty() && c.error.empty()) {
     auto kind = c.kind == Card::Kind::word ? "word" : "phrase";
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);
   }
@@ -246,7 +246,7 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
   auto manifest = packs.cached();
   auto installed = packs.installed();
   auto ver = answer_version(manifest, installed, card.lang, card.answer, *method);
-  bool keep = card.source != Source::cli;
+  bool keep = card.source != Source::cli && card.prefs.history;  // History off: nothing is written
   bool pivot = *method == Method::fast && mt::steps(card.lang, card.answer).size() > 1;
   bool show = false;
   {
@@ -290,7 +290,7 @@ ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
   ai::Query q{a, key, card.text, static_cast<int>(words.all(card.text).size()), card.kind == Card::Kind::passage,
               catalog_language(card.answer), card.lang.empty() ? "" : catalog_language(card.lang)};
   auto recall = s.recall;
-  auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport);
+  auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport, card.prefs.history);
   // What worked is kept for the next requests (InkPeek's remember), in the settings and here.
   if (recall != s.recall) {
     std::lock_guard g(impl_->mu);

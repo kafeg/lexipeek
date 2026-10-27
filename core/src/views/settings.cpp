@@ -22,6 +22,7 @@ const std::vector<std::string> width_names{"width_narrow", "width_medium", "widt
 const std::vector<int> sizes{12, 13, 14, 15, 16, 18};
 const std::vector<std::pair<std::string, std::string>> fonts{{"", "ui_lang_system"}, {"serif", "font_serif"}, {"rounded", "font_rounded"}, {"mono", "font_mono"}};
 const std::vector<int> heights{30, 45, 60, 75};
+const std::vector<std::pair<std::string, std::string>> theme_names{{"", "theme_system"}, {"light", "theme_light"}, {"dark", "theme_dark"}};
 const std::vector<int> keeps_min{1, 5, 15, 60, 0};
 // Each UI language by its own name.
 const std::vector<std::pair<std::string, std::string>> ui_langs{{"", ""},         {"en", "English"},  {"ru", "Русский"},   {"de", "Deutsch"},
@@ -155,6 +156,7 @@ std::vector<SettingRow> opening(const Settings &s) {
   std::vector<std::string> titles;
   for (auto &x : o) titles.push_back(tr(x.second) + (x.first == "analysis" || x.first == "context" ? " · " + tr("tab_ai") : ""));
   return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open)),
+          toggle("history", tr("look_history"), tr("look_history_d"), s.card.history),
           toggle("selection_icon", tr("icon_t"), tr("icon_d"), s.selection_icon),
           toggle("pin_moved", tr("pin_moved_t"), tr("pin_moved_d"), s.pin_moved)};
 }
@@ -259,7 +261,10 @@ std::vector<SettingRow> appearance(const Settings &s) {
   std::vector<std::string> size_names, height_names;
   for (auto n : sizes) size_names.push_back(tr("unit_pt", {std::to_string(n)}));
   for (auto n : heights) height_names.push_back(std::to_string(n) + " %");
-  return {choice("width", tr("look_width"), tr("width_d"), names(width_names), index_of(widths, s.card.width)),
+  std::vector<std::string> themes;
+  for (auto &t : theme_names) themes.push_back(tr(t.second));
+  return {choice("theme", tr("look_theme"), tr("look_theme_d"), themes, index_of(theme_names, s.theme)),
+          choice("width", tr("look_width"), tr("width_d"), names(width_names), index_of(widths, s.card.width)),
           choice("text", tr("look_text"), tr("look_text_d"), size_names, index_of(sizes, s.card.text)),
           choice("font", tr("look_font"), tr("font_d"), names(fonts), index_of(fonts, s.card.font)),
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
@@ -362,6 +367,7 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
   else if (key == "grammar") s.card.grammar = on;
   else if (key == "selection_icon") s.selection_icon = on;
   else if (key == "pin_moved") s.pin_moved = on;
+  else if (key == "history") s.card.history = on;
   else if (key == "open_at_login") s.open_at_login = on;
   else if (key == "ai_translate") s.ai.translate = on;
   else if (key == "ai_prefetch") s.ai.prefetch = on;
@@ -408,6 +414,7 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "font") s.card.font = at(fonts).first;
   else if (key == "height") s.card.height = at(heights);
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
+  else if (key == "theme") s.theme = at(theme_names).first;
   else if (key == "keep_model") s.keep_model = at(keeps_min);
 }
 

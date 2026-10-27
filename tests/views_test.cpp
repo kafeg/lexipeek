@@ -469,3 +469,21 @@ TEST_CASE("nav: a stale translation is dropped; the badge's re-lookup keeps the 
   n.next_tab(-1);
   CHECK(n.state.tab == CardTab::dictionary);
 }
+
+TEST_CASE("core: History off writes nothing of what is opened") {
+  auto d = fs::temp_directory_path() / "lexipeek-history-off";
+  fs::remove_all(d);
+  CoreOptions o;
+  o.data = d;
+  Core core(o);
+  Settings s;
+  s.card.history = false;
+  core.configure(s);
+  core.lookup(Request{.text = "Haus", .source = Source::input});
+  CHECK(core.store().history().empty());
+  s.card.history = true;
+  core.configure(s);
+  core.lookup(Request{.text = "Haus", .source = Source::input});
+  CHECK(core.store().history().size() == 1);
+  fs::remove_all(d);
+}

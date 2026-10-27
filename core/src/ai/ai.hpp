@@ -50,7 +50,8 @@ struct Query {
 Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t);
 Models models(const AiSettings &s, const std::string &key, const Transport &t);
 // The saved answer, else asked and saved (InkPeek's Answers.get): lang is the answer language's English name.
-Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t);
+// keep: the answer goes to the store (History off: it lives only in the card).
+Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep = true);
 // Removes <think>…</think> blocks; the JSON object of a reply (also inside a code fence or a sentence), "" when none.
 std::string strip_thinking(const std::string &s);
 std::string json_object(const std::string &s);
