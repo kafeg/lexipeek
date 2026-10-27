@@ -2,6 +2,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <sha256.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -61,7 +62,7 @@ struct Release {
 
   explicit Release(const std::string &name) {
     auto root = fs::temp_directory_path() / ("lexipeek-packs-" + name);
-    fs::remove_all(root);
+    wipe(root);
     dir = root / "release";
     data = root / "data";
     fs::create_directories(dir);

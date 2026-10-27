@@ -1,5 +1,6 @@
 // The AI layer through a fake transport: InkPeek's prompts and versions, requests per provider, errors, the cache, views.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -246,7 +247,7 @@ TEST_CASE("ai: CLI providers — claude -p and codex exec as one shell command, 
 
 TEST_CASE("ai: answers kept through the store (ai.put), so they come back offline") {
   auto d = fs::temp_directory_path() / "lexipeek-ai-store";
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   Store st({d, {}, {}});
   REQUIRE(st.error().empty());
@@ -272,7 +273,7 @@ TEST_CASE("ai: answers kept through the store (ai.put), so they come back offlin
   // Not saved: offline says so.
   CHECK(ai::answer(st, query(ai::Ask::context), s, recall, offline.t()).code == ai::Code::offline);
   CHECK(ai::brief(*kept) == "das Haus — дом, здание");
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("ai: the tabs' Markdown under the app's headings; the reply's JSON inside thinking or a sentence") {
@@ -393,7 +394,7 @@ TEST_CASE("ai views: the card's AI tabs, asked only when opened; AI translation 
 TEST_CASE("ai settings: Connection by provider, Modules with ✎, prompts edited and reset, no key in settings.json") {
   set_ui_language("en");
   auto d = fs::temp_directory_path() / "lexipeek-ai-settings";
-  fs::remove_all(d);
+  wipe(d);
   SettingsState st;
   st.answers = {"en", "ru"};
   auto rows = [&](int tab) { return app::settings_page(d.string(), SettingsSection::ai, tab, st).rows; };
@@ -461,12 +462,12 @@ TEST_CASE("ai settings: Connection by provider, Modules with ✎, prompts edited
   std::ifstream f(d / "settings.json");
   auto ai = json::parse(f)["ai"];
   for (auto &[k, v] : ai.items()) CHECK_MESSAGE(k.find("key") == std::string::npos, k);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("ai core: the card offers what is on; Core::ask answers from the provider once, then from the store") {
   auto d = fs::temp_directory_path() / "lexipeek-ai-core";
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d / "replies");
   std::ofstream(d / "replies" / "quick.json") << quick_json;
   CoreOptions o;
@@ -493,5 +494,5 @@ TEST_CASE("ai core: the card offers what is on; Core::ask answers from the provi
   auto off = core.lookup({"Häusern", Source::input, ""});
   CHECK(!off.ai.translate);
   CHECK(!off.ai.analysis);
-  fs::remove_all(d);
+  wipe(d);
 }

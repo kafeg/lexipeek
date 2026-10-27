@@ -1,5 +1,6 @@
 // Core tests that need no models.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <fstream>
 #include <thread>
 #include "lexipeek/core.hpp"
@@ -24,7 +25,7 @@ TEST_CASE("steps go through English when neither side is English") {
 
 TEST_CASE("bergamot config picks the files and the gemm precision") {
   auto d = fs::temp_directory_path() / "lexipeek-config-test";
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   CHECK(mt::bergamot_config(d).empty());
   for (auto n : {"model.deen.intgemm.alphas.bin", "lex.50.50.deen.s2t.bin", "vocab.deen.spm", "set"}) std::ofstream(d / n) << "x";
@@ -32,14 +33,14 @@ TEST_CASE("bergamot config picks the files and the gemm precision") {
   CHECK(c.find("gemm-precision: int8shiftAlphaAll") != std::string::npos);
   CHECK(c.find("shortlist: [") != std::string::npos);
   CHECK(c.find("vocab.deen.spm, " + (d / "vocab.deen.spm").string()) != std::string::npos);
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   for (auto n : {"model.bin", "srcvocab.spm", "trgvocab.spm"}) std::ofstream(d / n) << "x";
   c = mt::bergamot_config(d);
   CHECK(c.find("gemm-precision: int8shiftAll\n") != std::string::npos);
   CHECK(c.find("shortlist") == std::string::npos);
   CHECK(c.find("trgvocab.spm]") != std::string::npos);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("sentences and chunks") {
@@ -158,7 +159,7 @@ TEST_CASE("core: an empty data dir gives a card without methods") {
 
 TEST_CASE("settings: defaults, round trip, unknown fields kept") {
   auto d = fs::temp_directory_path() / "lexipeek-settings-test";
-  fs::remove_all(d);
+  wipe(d);
   auto s = load_settings(d);
   CHECK(s.answer == "ru");
   CHECK(s.lookup.key == "D");
@@ -179,12 +180,12 @@ TEST_CASE("settings: defaults, round trip, unknown fields kept") {
   CHECK(all.find("future") != std::string::npos);
   std::ofstream(d / "settings.json") << "{broken";
   CHECK(load_settings(d).answer == "ru");
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("core: a card is a look in the history, not the CLI's") {
   auto d = fs::temp_directory_path() / "lexipeek-core-store";
-  fs::remove_all(d);
+  wipe(d);
   {
     CoreOptions o;
     o.data = d;
@@ -198,7 +199,7 @@ TEST_CASE("core: a card is a look in the history, not the CLI's") {
     CHECK(r[0].count == 2);
     CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).looks == 2);
   }
-  fs::remove_all(d);
+  wipe(d);
 }
 
 

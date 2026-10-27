@@ -1,5 +1,6 @@
 // The store: InkPeek's sync cases, the clock, the log's last line, the store's API.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <algorithm>
 #include <fstream>
 #include <random>
@@ -16,7 +17,7 @@ namespace {
 
 fs::path fresh(const std::string &name) {
   auto d = fs::temp_directory_path() / name;
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   return d;
 }

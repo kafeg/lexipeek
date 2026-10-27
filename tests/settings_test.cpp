@@ -1,5 +1,6 @@
 // Settings' panes from the core, their changes, and the card's settings honoured by the card.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -46,7 +47,7 @@ Card word() {
 
 TEST_CASE("settings: the card's settings and the app language round trip") {
   auto d = fs::temp_directory_path() / "lexipeek-settings-card";
-  fs::remove_all(d);
+  wipe(d);
   auto s = load_settings(d);
   CHECK(s.card.phrase_open == "offline");
   CHECK(!s.card.full);
@@ -67,7 +68,7 @@ TEST_CASE("settings: the card's settings and the app language round trip") {
   CHECK(t.card.font == "serif");
   CHECK(t.card.height == 60);
   CHECK(t.ui_lang == "en");
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
@@ -310,7 +311,7 @@ TEST_CASE("settings: the card honours them — opening, full entry, grammar, sec
 
 TEST_CASE("settings: the facade writes a row's change to settings.json at once") {
   auto d = fs::temp_directory_path() / "lexipeek-settings-app";
-  fs::remove_all(d);
+  wipe(d);
   auto st = state();
   CHECK(app::toggle(d.string(), "grammar", false).empty());
   CHECK(app::choose(d.string(), "height", 0, st).empty());
@@ -319,7 +320,7 @@ TEST_CASE("settings: the facade writes a row's change to settings.json at once")
   CHECK(s.card.height == 30);
   auto p = app::settings_page(d.string(), SettingsSection::card, 1, st);
   CHECK(!row(p, "grammar")->on);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("settings: the packs' summary and a pair's second line") {
@@ -334,11 +335,11 @@ TEST_CASE("settings: the packs' summary and a pair's second line") {
 
 TEST_CASE("settings: offline translation off is kept as \"off\"") {
   auto d = fs::temp_directory_path() / "lexipeek-mt-off";
-  fs::remove_all(d);
+  wipe(d);
   Settings s;
   s.mt_off = true;
   CHECK(save_settings(d, s).empty());
   CHECK(load_settings(d).mt_off);
   CHECK(!load_settings(d).method);
-  fs::remove_all(d);
+  wipe(d);
 }

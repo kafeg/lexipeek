@@ -1,5 +1,6 @@
 // The card's view model, the facade's pack helpers, answers' versions, configure.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <fstream>
 #include <thread>
 #include "lexipeek/app.hpp"
@@ -355,7 +356,7 @@ TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {
 
 TEST_CASE("core: configure changes the answer language and the method without a new core") {
   auto d = fs::temp_directory_path() / "lexipeek-configure";
-  fs::remove_all(d);
+  wipe(d);
   CoreOptions o;
   o.data = d;
   Core core(o);
@@ -366,12 +367,12 @@ TEST_CASE("core: configure changes the answer language and the method without a 
   core.configure(s);
   CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).answer == "en");
   CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli, .answer = "de"}).answer == "de");
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("app: settings by data dir, method ids") {
   auto d = (fs::temp_directory_path() / "lexipeek-app").string();
-  fs::remove_all(d);
+  wipe(d);
   auto s = app::settings(d);
   CHECK(app::method_id(s).empty());
   app::set_method(s, "llm");
@@ -384,7 +385,7 @@ TEST_CASE("app: settings by data dir, method ids") {
   CHECK(app::language("de") == "German");
   CHECK(app::rows(d, app::device(8192, {"asimddp"}, "arm64")).empty());
   CHECK(app::answers(d).empty());
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("views: the menu's line about the held model") {
@@ -473,7 +474,7 @@ TEST_CASE("nav: a stale translation is dropped; the badge's re-lookup keeps the 
 
 TEST_CASE("core: History off writes nothing of what is opened") {
   auto d = fs::temp_directory_path() / "lexipeek-history-off";
-  fs::remove_all(d);
+  wipe(d);
   CoreOptions o;
   o.data = d;
   Core core(o);
@@ -486,7 +487,7 @@ TEST_CASE("core: History off writes nothing of what is opened") {
   core.configure(s);
   core.lookup(Request{.text = "Haus", .source = Source::input});
   CHECK(core.store().history().size() == 1);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back to all") {
@@ -511,7 +512,7 @@ TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back 
 
 TEST_CASE("core: prepare() goes one dictionary at a time and stops when the library is made again") {
   auto d = fs::temp_directory_path() / "lexipeek-prepare";
-  fs::remove_all(d);
+  wipe(d);
   CoreOptions o;
   o.data = d;
   Core core(o);
@@ -520,7 +521,7 @@ TEST_CASE("core: prepare() goes one dictionary at a time and stops when the libr
   t.join();
   core.prepare();
   CHECK(core.lookup(Request{.text = "Haus", .source = Source::cli}).kind == Card::Kind::word);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("help: topics in the app's language, each with its items; a pane to open where there is one") {

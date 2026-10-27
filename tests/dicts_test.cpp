@@ -2,6 +2,7 @@
 #include <archive.h>
 #include <archive_entry.h>
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <fstream>
 #include "dict/library.hpp"
 #include "lexipeek/app.hpp"
@@ -43,7 +44,7 @@ std::string slurp(const fs::path &p) {
 
 fs::path fresh(const std::string &name) {
   auto d = fs::temp_directory_path() / ("lexipeek-dicts-" + name);
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   return d;
 }

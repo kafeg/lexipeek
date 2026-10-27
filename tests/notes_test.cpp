@@ -1,5 +1,6 @@
 // ☆ (what a card saves, as InkPeek's saveKey) and Notes (Words · Phrases · History) on a small pack dictionary.
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <fstream>
 #include <thread>
 #include "lexipeek/app.hpp"
@@ -18,7 +19,7 @@ void be32(std::string &s, uint32_t v) {
 // <data>/dicts/dict-de-ru: Haus (form Häusern), Baum; articles with the packs' head line.
 fs::path pack_data(const std::string &name) {
   auto d = fs::temp_directory_path() / name;
-  fs::remove_all(d);
+  wipe(d);
   auto dir = d / "dicts" / "dict-de-ru";
   fs::create_directories(dir);
   std::vector<std::pair<std::string, std::string>> words{
@@ -98,12 +99,12 @@ TEST_CASE("☆: a word as its base form, also after its article; a phrase as it 
     CHECK(!core.toggle_saved(form, ""));
     CHECK(!core.store().is_saved("Häusern"));
   }
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("notes: three lists, newest first, a line for each; remove and clear") {
   auto d = fs::temp_directory_path() / "lexipeek-notes-view";
-  fs::remove_all(d);
+  wipe(d);
   {
     Store st({d, {}, {}});
     auto v = notes_view(st, NotesTab::words, "ru");
@@ -158,7 +159,7 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
     CHECK(!v.clear);
     CHECK(notes_view(st, NotesTab::words, "ru").tabs[0] == "Words (1)");
   }
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("app: notes through the engine") {
@@ -177,12 +178,12 @@ TEST_CASE("app: notes through the engine") {
     e.clear_history();
     CHECK(e.notes(NotesTab::history, 0).rows.empty());
   }
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date; cells on one line") {
   auto d = fs::temp_directory_path() / "lexipeek-tsv";
-  fs::remove_all(d);
+  wipe(d);
   Store s(StoreOptions{d, {}, "mac-t"});
   s.save("Haus", "word", "ru", "дом,\tздание");
   s.put_answer("Haus", "Russian", "quick", 1, "m", "{\"translation\":\"дом\\nи двор\"}");
@@ -200,7 +201,7 @@ TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date
 
 TEST_CASE("notes: 50 a page, the pager; TSV takes them all") {
   auto d = fs::temp_directory_path() / "lexipeek-notes-pages";
-  fs::remove_all(d);
+  wipe(d);
   Store s(StoreOptions{d, {}, "mac-p"});
   for (int i = 0; i < 120; i++) s.seen("w" + std::to_string(i), "word", "ru", "m");
   auto v = notes_view(s, NotesTab::history, "ru");

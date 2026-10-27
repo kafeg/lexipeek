@@ -29,11 +29,13 @@ std::string tilde(const std::string &path) {
   return path == h ? "~" : path.starts_with(h + "/") ? "~" + path.substr(h.size()) : path;
 }
 
+// By path parts, not by text: "/" on macOS and Linux, "\\" on Windows.
 bool under(const fs::path &file, const fs::path &root) {
   std::error_code ec;
-  auto r = fs::weakly_canonical(root, ec).string();
-  auto f = file.string();
-  return !r.empty() && f.starts_with(r + "/");
+  auto r = fs::weakly_canonical(root, ec);
+  if (r.empty()) return false;
+  auto rel = fs::weakly_canonical(file, ec).lexically_relative(r);
+  return !rel.empty() && *rel.begin() != ".." && rel != ".";
 }
 
 std::string mb(std::int64_t b) {

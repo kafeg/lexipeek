@@ -1,5 +1,6 @@
 // The first-run window's view model and Mozilla's English in between (setting, card row, store).
 #include <doctest/doctest.h>
+#include "temp.hpp"
 #include <cstdlib>
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
@@ -148,7 +149,7 @@ TEST_CASE("first run: no packs list yet") {
 
 TEST_CASE("app: the first run on an empty data dir") {
   auto d = (fs::temp_directory_path() / "lexipeek-firstrun").string();
-  fs::remove_all(d);
+  wipe(d);
   CHECK(!app::has_pair(d));
   CHECK(app::first_run_at_launch(d, true));
   FirstRunState s;
@@ -161,7 +162,7 @@ TEST_CASE("app: the first run on an empty data dir") {
   CHECK(app::save(d, st).empty());
   CHECK(app::settings(d).first_run);
   CHECK(app::settings(d).mt_english);
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("views: the English in between, under the translation") {
@@ -181,7 +182,7 @@ TEST_CASE("views: the English in between, under the translation") {
 
 TEST_CASE("core: the English in between is kept as the text's English, shown when asked") {
   auto d = fs::temp_directory_path() / "lexipeek-english";
-  fs::remove_all(d);
+  wipe(d);
   {
     CoreOptions o;
     o.data = d;
@@ -208,7 +209,7 @@ TEST_CASE("core: the English in between is kept as the text's English, shown whe
     c.answer = "ru";
     CHECK(core.translate(c, Method::direct).english.empty());
   }
-  fs::remove_all(d);
+  wipe(d);
 }
 
 TEST_CASE("core with models: a fast translation keeps its English; the step alone when kept before") {
@@ -218,7 +219,7 @@ TEST_CASE("core with models: a fast translation keeps its English; the step alon
     return;
   }
   auto d = fs::temp_directory_path() / "lexipeek-english-models";
-  fs::remove_all(d);
+  wipe(d);
   fs::create_directories(d);
   for (auto f : {"models", "packs.json", "installed.json"})
     if (fs::exists(src / f)) fs::create_symlink(src / f, d / f);
@@ -250,5 +251,5 @@ TEST_CASE("core with models: a fast translation keeps its English; the step alon
     CHECK(t.english.find("tree") != std::string::npos);
     CHECK(core.store().answer(c2.text, "en", "offline-de", en) == t.english);
   }
-  fs::remove_all(d);
+  wipe(d);
 }

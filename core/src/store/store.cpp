@@ -113,7 +113,7 @@ struct Store::Impl {
     char hex[5];
     std::snprintf(hex, sizeof hex, "%04x", unsigned(rd() & 0xffff));
     id = std::string(PLATFORM) + "-" + hex;
-    std::ofstream(f) << id << "\n";
+    std::ofstream(f, std::ios::binary) << id << "\n";
     return fs::exists(f) ? id : "";
   }
 
