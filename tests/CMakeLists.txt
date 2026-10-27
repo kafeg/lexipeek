@@ -1,6 +1,6 @@
 file(GLOB LEXIPEEK_TEST_SOURCES CONFIGURE_DEPENDS *_test.cpp)
 add_executable(lexipeek_tests main.cpp ${LEXIPEEK_TEST_SOURCES})
-target_compile_definitions(lexipeek_tests PRIVATE LEXIPEEK_INKPEEK="${PROJECT_SOURCE_DIR}/tests/inkpeek" LEXIPEEK_TESTDATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
+target_compile_definitions(lexipeek_tests PRIVATE LEXIPEEK_ROOT="${PROJECT_SOURCE_DIR}" LEXIPEEK_INKPEEK="${PROJECT_SOURCE_DIR}/tests/inkpeek" LEXIPEEK_TESTDATA="${CMAKE_CURRENT_SOURCE_DIR}/data")
 target_include_directories(lexipeek_tests PRIVATE ${PROJECT_SOURCE_DIR}/core/src)
 target_link_libraries(lexipeek_tests PRIVATE lexipeek_core doctest::doctest nlohmann_json::nlohmann_json LibArchive::LibArchive unofficial::hash-library)
 lexipeek_flags(lexipeek_tests)

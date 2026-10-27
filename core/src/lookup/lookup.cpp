@@ -5,6 +5,7 @@
 #include <set>
 #include "dict/library.hpp"
 #include "lexipeek/core.hpp"
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
 #include "mt/text.hpp"
 #include "text/text.hpp"
@@ -12,15 +13,6 @@
 namespace lexipeek {
 
 namespace {
-
-std::string method_title(Method m) {
-  switch (m) {
-    case Method::fast: return "Fast · Mozilla";
-    case Method::direct: return "Direct · OPUS-MT";
-    case Method::llm: return "AI model · Hy-MT2";
-  }
-  return "";
-}
 
 size_t word_count(const std::string &s) {
   static const text::Regex words("\\S+");
@@ -236,7 +228,7 @@ Card Core::lookup(const Request &r) {
 Translation Core::translate(const Card &card, std::optional<Method> m) {
   auto method = m ? m : card.method;
   if (card.lang == card.answer && !card.lang.empty()) return {card.text, "", "", ""};
-  if (!method || card.lang.empty()) return {"", "", "", "No method can translate this text here"};
+  if (!method || card.lang.empty()) return {"", "", "", tr("mt_none")};
   // Kept as InkPeek's offline answers (section offline-<from>, ver by the models' sha256): an updated model translates again.
   auto section = "offline-" + card.lang;
   Packs packs(impl_->o.data, "");

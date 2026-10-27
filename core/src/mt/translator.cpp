@@ -4,6 +4,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
 #include "mt/engines.hpp"
@@ -74,7 +75,7 @@ struct Translator::Impl {
       for (auto &[a, b] : steps(from, to)) {
         auto d = layout.model(a, b);
         if (!std::filesystem::exists(d / "set")) {
-          p.error = "No Mozilla model " + a + "-" + b + " (model-" + a + "-" + b + ")";
+          p.error = tr("mt_no_mozilla", {a + "-" + b, "model-" + a + "-" + b});
           return p;
         }
         p.dirs.push_back(d);
@@ -89,7 +90,7 @@ struct Translator::Impl {
     auto kind = m == Method::direct ? "opus" : "llm";
     auto c = covering(manifest, kind, from, to);
     if (!c) {
-      p.error = std::string("No ") + kind + " model covers " + from + "-" + to;
+      p.error = tr("mt_no_cover", {kind, from + "-" + to});
       return p;
     }
     p.c = *c;
@@ -98,13 +99,13 @@ struct Translator::Impl {
       p.by = "OPUS-MT";
       p.dirs = {layout.opus(c->id)};
       if (auto t = c->tags.find(to); t != c->tags.end()) p.tag = t->second;
-      if (!std::filesystem::exists(p.dirs[0])) p.error = "Not installed: " + c->id;
+      if (!std::filesystem::exists(p.dirs[0])) p.error = tr("not_installed", {c->id});
     } else {
       p.key = "llm:" + c->id;
       p.by = c->name;
       p.llm = true;
       p.gguf = layout.llm(c->id);
-      if (!std::filesystem::exists(p.gguf)) p.error = "Not installed: " + c->id;
+      if (!std::filesystem::exists(p.gguf)) p.error = tr("not_installed", {c->id});
     }
     return p;
   }

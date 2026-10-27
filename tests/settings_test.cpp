@@ -1,5 +1,6 @@
 // Settings' panes from the core, their changes, and the card's settings honoured by the card.
 #include <doctest/doctest.h>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include "lexipeek/app.hpp"
@@ -162,7 +163,13 @@ TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, 
   CHECK(row(p, "ignore_apps")->kind == Kind::apps);
   CHECK(row(p, "access")->kind == Kind::status);
   CHECK(row(p, "access")->value == "Allowed");
-  CHECK(!row(p, "updates")->enabled);
+  CHECK(row(p, "updates")->enabled);
+  CHECK(row(p, "updates")->about == "Not checked yet.");
+  CHECK(!row(p, "release"));
+  CHECK(row(p, "ui_lang")->choices.size() == 9);
+  CHECK(row(p, "ui_lang")->choices[0] == "As the system");
+  CHECK(row(p, "ui_lang")->choices[2] == "Русский");
+  CHECK(std::count_if(p.rows.begin(), p.rows.end(), [](auto &r) { return r.key == "license"; }) == 4);
   CHECK(row(p, "version")->title == "LexiPeek 0.1 (5)");
   CHECK(row(p, "source")->value == "https://github.com/kafeg/lexipeek");
   st.trusted = false;
@@ -173,6 +180,37 @@ TEST_CASE("settings: General — hotkeys, the icon, apps, login, Accessibility, 
   CHECK(s.selection_icon);
   CHECK(s.pin_moved);
   CHECK(s.ui_lang == "en");
+  settings_choose(s, "ui_lang", 8, st);
+  CHECK(s.ui_lang == "pl");
+  settings_choose(s, "ui_lang", 0, st);
+  CHECK(s.ui_lang.empty());
+  // The update check's answer and a newer release's page.
+  st.checking = true;
+  CHECK(!row(settings_view(SettingsSection::general, 0, s, st), "updates")->enabled);
+  st.checking = false;
+  st.update = "LexiPeek 0.2 is out", st.update_version = "0.2", st.update_url = "https://github.com/kafeg/lexipeek/releases/tag/v0.2";
+  p = settings_view(SettingsSection::general, 0, s, st);
+  CHECK(row(p, "updates")->about == "LexiPeek 0.2 is out");
+  CHECK(row(p, "release")->title == "Download LexiPeek 0.2");
+  CHECK(row(p, "release")->value == st.update_url);
+}
+
+TEST_CASE("updates: GitHub's latest release against this version") {
+  CHECK(newer_version("v0.10", "0.9"));
+  CHECK(newer_version("v1.0.1", "1.0"));
+  CHECK(!newer_version("v0.1", "0.1"));
+  CHECK(!newer_version("0.1.0", "0.1"));
+  CHECK(!newer_version("v0.1", "0.2"));
+  CHECK(update_check("0.1", 404, "{\"message\":\"Not Found\"}", "The requested URL returned error: 404").text == "No releases yet.");
+  CHECK(update_check("0.1", 0, "", "Could not resolve host").text == "Failed: Could not resolve host");
+  auto r = update_check("0.1", 200, R"({"tag_name":"v0.2","html_url":"https://github.com/kafeg/lexipeek/releases/tag/v0.2"})", "");
+  CHECK(r.text == "LexiPeek 0.2 is out");
+  CHECK(r.version == "0.2");
+  CHECK(r.url == "https://github.com/kafeg/lexipeek/releases/tag/v0.2");
+  r = update_check("0.2", 200, R"({"tag_name":"v0.2"})", "");
+  CHECK(r.text == "This is the latest version (0.2).");
+  CHECK(r.url.empty());
+  CHECK(update_check("0.1", 200, "<html>", "").text == "Failed: GitHub");
 }
 
 TEST_CASE("settings: the card honours them — opening, full entry, grammar, sections, look") {

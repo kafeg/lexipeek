@@ -1,26 +1,24 @@
 #include "lexipeek/views.hpp"
 #include <algorithm>
 #include <cstdio>
+#include "lexipeek/dicts.hpp"
+#include "lexipeek/l10n.hpp"
 #include "text/text.hpp"
 
 namespace lexipeek {
 
 std::string language_name(const std::string &code) {
-  static const std::map<std::string, std::string> names{
-      {"bg", "Bulgarian"}, {"cs", "Czech"},   {"da", "Danish"},     {"de", "German"},     {"en", "English"},   {"es", "Spanish"},
-      {"fi", "Finnish"},   {"fr", "French"},  {"hu", "Hungarian"},  {"it", "Italian"},    {"nl", "Dutch"},     {"pl", "Polish"},
-      {"pt", "Portuguese"}, {"ro", "Romanian"}, {"ru", "Russian"},   {"sv", "Swedish"},    {"uk", "Ukrainian"}};
-  auto i = names.find(code);
-  return i == names.end() ? code : i->second;
+  auto key = "lang_" + code;
+  return has_text(key) ? tr(key) : catalog_language(code);
 }
 
 std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, std::string> &installed, const std::optional<Device> &device) {
   auto part = [&](const Component &c) {
     PackPart p{c.id, c.kind, "", c.size, installed.contains(c.id), false, device ? cannot(c, *device) : ""};
     p.update = p.installed && installed.at(c.id) != c.sha256;
-    if (c.kind == "dict") p.title = "Dictionary";
+    if (c.kind == "dict") p.title = tr("part_dict");
     else if (c.kind == "model") p.title = "Mozilla " + c.from + " → " + c.to;
-    else if (c.kind == "langid") p.title = "Language id";
+    else if (c.kind == "langid") p.title = tr("part_langid");
     else if (c.kind == "opus") p.title = "OPUS-MT";
     else p.title = c.name.empty() ? c.id : c.name;
     return p;
@@ -71,6 +69,8 @@ std::vector<std::string> answer_languages(const Manifest &m) {
   return out;
 }
 
+std::string method_title(Method m) { return tr(m == Method::fast ? "mt_fast_t" : m == Method::direct ? "mt_direct_t" : "mt_llm_t"); }
+
 CardTab first_tab(const Card &c) {
   if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
   bool words = !c.gloss.empty() || !c.separable.empty();
@@ -92,13 +92,7 @@ namespace {
 using Style = CardRow::Style;
 
 std::string section_title(const std::string &key) {
-  return key == "rel" ? "Related words" : key == "syn" ? "Synonyms" : key == "expr" ? "Expressions and proverbs" : key == "forms" ? "Forms and pronunciation" : "Origin";
-}
-
-std::string number(int n) {
-  auto s = std::to_string(n);
-  for (int i = static_cast<int>(s.size()) - 3; i > 0; i -= 3) s.insert(static_cast<size_t>(i), ",");
-  return s;
+  return tr(key == "rel" || key == "syn" || key == "expr" || key == "forms" ? "sec_" + key : std::string("sec_ety"));
 }
 
 // The first n characters (code points), " …" after more.
@@ -121,16 +115,16 @@ void section_rows(std::vector<CardRow> &rows, const Related &r, int entry, const
   auto row = [&](const std::string &key, const std::string &preview, const std::string &caption) {
     if (!preview.empty() && std::find(shown.begin(), shown.end(), key) != shown.end()) rows.push_back({Style::section, preview, caption + " ›", "", "", key, entry});
   };
-  auto n = [](const std::vector<std::string> &xs) { return std::to_string(xs.size()); };
+  auto n = [](const std::vector<std::string> &xs) { return digits(static_cast<long long>(xs.size())); };
   std::vector<std::string> forms;
   for (auto &f : r.forms) forms.push_back(f.first);
   std::string ipa;
   for (auto &i : r.ipa) ipa += (ipa.empty() ? "" : ", ") + i;
-  row("rel", few(r.rel), "Related words · " + n(r.rel));
-  row("syn", few(r.syn) + (r.ant.empty() ? "" : " ≠ " + few(r.ant)), "Synonyms · " + n(r.syn) + (r.ant.empty() ? "" : " · antonyms " + n(r.ant)));
-  row("expr", few(r.expr, "; "), "Expressions and proverbs · " + n(r.expr));
-  row("forms", few(forms), "Forms and pronunciation" + (ipa.empty() ? "" : " · " + ipa));
-  row("ety", cut(r.origin, 120), "Origin");
+  row("rel", few(r.rel), tr("sec_rel") + " · " + n(r.rel));
+  row("syn", few(r.syn) + (r.ant.empty() ? "" : " ≠ " + few(r.ant)), tr("sec_syn") + " · " + n(r.syn) + (r.ant.empty() ? "" : " · " + tr("sec_ant") + " " + n(r.ant)));
+  row("expr", few(r.expr, "; "), tr("sec_expr") + " · " + n(r.expr));
+  row("forms", few(forms), tr("sec_forms") + (ipa.empty() ? "" : " · " + ipa));
+  row("ety", cut(r.origin, 120), tr("sec_ety"));
 }
 
 std::vector<CardRow> section_page(const SectionPage &p) {
@@ -148,7 +142,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
-    if (c.entries.empty()) rows.push_back({Style::note, "", "No entry in the dictionaries", ""});
+    if (c.entries.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
     for (size_t i = 0; i < c.entries.size(); i++) {
       auto &e = c.entries[i];
       // The selected form names itself first (InkPeek's line): "Häusern: das Haus (…) — дом".
@@ -188,17 +182,19 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
     r.link = g.base.empty() ? g.word : g.base;
     rows.push_back(r);
   }
-  if (c.more > 0) rows.push_back({Style::note, "", "… and " + std::to_string(c.more) + (c.more == 1 ? " more word" : " more words"), ""});
+  if (c.more > 0) rows.push_back({Style::note, "", trn("card_more", c.more), ""});
   return rows;
 }
 
+// A card's language by its code in the app's language now, else the name the card was given.
+std::string name(const std::string &code, const std::string &named) { return code.empty() ? named : language_name(code); }
+
 std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
-  if (!c.lang.empty() && c.lang == c.answer) return note("Already in " + c.answer_name + ".");
+  if (!c.lang.empty() && c.lang == c.answer) return note(tr("card_already", {name(c.answer, c.answer_name)}));
   if (c.lang.empty())
-    return note(c.other_name.empty() ? "Could not tell the language of this text."
-                                     : "No language pack from " + c.other_name + " into " + c.answer_name + " yet.");
-  if (c.methods.empty()) return note(c.error.empty() ? "Nothing can translate this text here." : c.error);
+    return note(c.other_name.empty() ? tr("card_no_lang") : tr("card_no_pack", {name(c.other, c.other_name), name(c.answer, c.answer_name)}));
+  if (c.methods.empty()) return note(c.error.empty() ? tr("card_no_method") : c.error);
   if (s.translated)
   {
     if (!s.translation.ok()) return {{Style::error, "", s.translation.error, ""}};
@@ -206,7 +202,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
     if (!s.translation.english.empty()) rows.push_back({Style::english, "", s.translation.english, ""});
     return rows;
   }
-  if (s.translating) return {{Style::progress, "", "Translating…", ""}};
+  if (s.translating) return {{Style::progress, "", tr("mt_working"), ""}};
   if (!s.has_method) return note(c.methods.front().reason);
   return {};
 }
@@ -222,42 +218,43 @@ CardView card_view(const Card &c, const CardState &s) {
     // InkPeek's head(): the selected form, then how common the word is and how often it was looked up here.
     std::vector<std::string> facts;
     if (auto f = frequency(c.rank); !f.empty()) facts.push_back(f);
-    if (c.looks > 1) facts.push_back("looked up " + std::to_string(c.looks) + " times");
+    if (c.looks > 1) facts.push_back(trn("looks", c.looks));
     std::string fl;
     for (auto &f : facts) fl += (fl.empty() ? "" : " · ") + f;
-    if (!c.base.empty()) v.subtitle = "form: " + c.text;
+    if (!c.base.empty()) v.subtitle = tr("form_of_sel", {c.text});
     if (!fl.empty()) v.subtitle += (v.subtitle.empty() ? "" : "\n") + fl;
   } else {
     v.style = c.kind == Card::Kind::phrase ? HeaderStyle::phrase : HeaderStyle::passage;
     v.title = c.text;
   }
-  if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang_name : c.lang + " → " + c.answer;
-  else if (!c.other_name.empty()) v.badge = c.other_name;  // a language without a pack, named
+  if (!c.lang.empty()) v.badge = c.lang == c.answer ? name(c.lang, c.lang_name) : c.lang + " → " + c.answer;
+  else if (!c.other_name.empty()) v.badge = name(c.other, c.other_name);  // a language without a pack, named
   v.wide = v.style == HeaderStyle::passage;
   v.tabs = c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty();
   v.tab = v.tabs ? s.tab : CardTab::translate;
   bool dict = v.tab == CardTab::dictionary;
   v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
-  if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section) v.entry_toggle = s.full_entry ? "Short ⏎" : "Full entry ⏎";
+  if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
   if (in_section && s.section.pages > 1) {
     auto &p = s.section;
-    v.pager = std::to_string(p.first + 1) + "–" + std::to_string(p.first + static_cast<int>(p.items.size())) + " of " + std::to_string(p.total);
+    v.pager = tr("page_of", {digits(p.first + 1), digits(p.first + static_cast<int>(p.items.size())), digits(p.total)});
     v.prev = p.page > 0, v.next = p.page + 1 < p.pages;
   }
-  if (in_section) v.back = "← Entry";
+  if (in_section) v.back = tr("card_back_entry");
   else if (!s.before.empty()) v.back = "← " + s.before;
   v.menu = !dict && !c.methods.empty();
   if (v.menu) {
-    v.menu_title = "No method available";
+    v.menu_title = tr("card_no_methods");
     for (auto &m : c.methods) {
-      v.methods.push_back({m.method, m.available ? m.name : m.name + " — " + m.reason, m.available});
-      if (s.has_method && m.method == s.method) v.menu_title = m.name;
+      auto name = method_title(m.method);
+      v.methods.push_back({m.method, m.available ? name : name + " — " + m.reason, m.available});
+      if (s.has_method && m.method == s.method) v.menu_title = name;
     }
   }
   if (!c.save_text.empty()) {
     v.star = s.saved ? "★" : "☆";
-    v.star_help = s.saved ? "Remove " + c.save_text + " from Notes" : "Save " + c.save_text + " to Notes";
+    v.star_help = tr(s.saved ? "card_unsave" : "card_save", {c.save_text});
   }
   v.footer = !v.back.empty() || !v.entry_toggle.empty() || v.menu || !v.pager.empty();
   v.width = c.prefs.width + (v.wide ? 60 : 0);
@@ -266,10 +263,8 @@ CardView card_view(const Card &c, const CardState &s) {
 }
 
 std::string size_text(std::int64_t bytes) {
-  char buf[32];
-  if (bytes >= 1'000'000'000) std::snprintf(buf, sizeof buf, "%.1f GB", static_cast<double>(bytes) / 1e9);
-  else std::snprintf(buf, sizeof buf, "%lld MB", static_cast<long long>(std::max<std::int64_t>(1, (bytes + 500'000) / 1'000'000)));
-  return buf;
+  if (bytes >= 1'000'000'000) return tr("size_gb", {decimal(static_cast<double>(bytes) / 1e9)});
+  return tr("size_mb", {digits(std::max<std::int64_t>(1, (bytes + 500'000) / 1'000'000))});
 }
 
 bool has_pair(const Manifest &m, const std::map<std::string, std::string> &installed) {
@@ -286,15 +281,15 @@ std::string first_answer(const Manifest &m, const std::string &system) {
 
 FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s) {
   FirstRunView v;
-  auto key = s.hotkey.empty() ? std::string("the hotkey") : s.hotkey;
+  auto key = s.hotkey.empty() ? tr("fr_hotkey") : s.hotkey;
+  v.answer_label = tr("answer_t"), v.book_label = tr("fr_book");
   if (!s.trusted && !s.access_later) {
     v.step = FirstStep::access;
-    v.title = "Let LexiPeek read the selection";
-    v.text = "When you press " + key + ", LexiPeek reads the text selected in the app in front, by Accessibility. "
-             "It never touches the clipboard, reads nothing else, and nothing leaves this Mac.";
-    v.note = "Turn LexiPeek on in System Settings → Privacy & Security → Accessibility. This window goes on by itself.";
-    v.button = "Open System Settings";
-    v.secondary = "Later";
+    v.title = tr("fr_access_t");
+    v.text = tr("fr_access", {key});
+    v.note = tr("fr_access_note");
+    v.button = tr("fr_open_settings");
+    v.secondary = tr("later");
     return v;
   }
   auto rows = pack_rows(m, installed);
@@ -304,8 +299,8 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
   const PairRow *picked = nullptr;
   for (auto &r : rows) {
     if (r.to != v.answer || r.from == v.answer) continue;
-    auto level = r.level.empty() ? std::string() : std::string(1, static_cast<char>(r.level[0] - 'a' + 'A')) + r.level.substr(1);
-    auto state = r.installed ? std::string("installed") : size_text(r.missing);
+    auto level = r.level.empty() ? std::string() : tr("level_" + r.level);
+    auto state = r.installed ? tr("pack_installed") : size_text(r.missing);
     v.books.push_back({r.from, language_name(r.from), level.empty() ? state : level + " · " + state});
     if (r.from == s.book || (!picked && s.book.empty())) picked = &r;
   }
@@ -320,50 +315,48 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
   auto pair = picked ? picked->title : std::string();
   if (s.downloading || !s.error.empty()) {
     v.step = FirstStep::download;
-    v.title = "Downloading " + pair;
+    v.title = tr("fr_downloading", {pair});
     v.progress = s.downloading;
     if (s.total > 0) {
       v.fraction = static_cast<double>(s.done) / static_cast<double>(s.total);
-      v.progress_text = size_text(s.done) + " of " + size_text(s.total);
+      v.progress_text = tr("n_of_m", {size_text(s.done), size_text(s.total)});
     }
-    v.text = "The dictionary and the translation models, to work offline.";
+    v.text = tr("fr_download_d");
     v.error = s.error;
-    v.button = s.downloading ? "Cancel" : "Try Again";
-    v.secondary = s.downloading ? "" : "Back";
+    v.button = tr(s.downloading ? "cancel" : "try_again");
+    v.secondary = s.downloading ? "" : tr("back");
     return v;
   }
   if (has_pair(m, installed)) {
     v.step = FirstStep::done;
     v.number = 3;
-    v.title = "Ready";
-    v.text = "Select a word or a sentence in any app and press " + key + ".";
-    v.note = s.trusted ? "More language pairs in Settings → Packs."
-                       : "Until LexiPeek is allowed in Accessibility, the hotkey does nothing: " + s.input + " opens a card to type in, "
-                         "and “Look up in LexiPeek” is in the Services menu of any app.";
-    v.button = "Done";
+    v.title = tr("fr_ready");
+    v.text = tr("fr_done", {key});
+    v.note = s.trusted ? tr("fr_done_note") : tr("fr_done_untrusted", {s.input});
+    v.button = tr("done");
     return v;
   }
-  v.title = "Pick your first language pair";
+  v.title = tr("fr_pick");
   if (m.components.empty() || rows.empty()) {
     v.step = FirstStep::list;
     v.progress = s.fetching;
-    v.text = s.fetching ? "Getting the list of language packs…" : "";
-    v.error = s.fetching ? "" : s.list_error.empty() ? "No list of language packs yet." : s.list_error;
-    v.button = "Try Again";
+    v.text = s.fetching ? tr("fr_fetching") : "";
+    v.error = s.fetching ? "" : s.list_error.empty() ? tr("fr_no_list") : s.list_error;
+    v.button = tr("try_again");
     v.button_enabled = !s.fetching;
     return v;
   }
   v.step = FirstStep::pair;
-  v.text = "The language you read in and the one to translate into. Dictionaries and translation work offline, on this Mac.";
-  v.note = "More pairs later in Settings → Packs.";
-  v.button = picked ? "Download " + size_text(picked->missing) : "Download";
+  v.text = tr("fr_pair");
+  v.note = tr("fr_pair_note");
+  v.button = picked ? tr("download_size", {size_text(picked->missing)}) : tr("download");
   v.button_enabled = picked != nullptr;
   return v;
 }
 
 std::string frequency(int rank) {
   for (int top : {1000, 5000, 20000})
-    if (rank >= 1 && rank <= top) return "among the " + number(top) + " most frequent words";
+    if (rank >= 1 && rank <= top) return tr("freq_top", {digits(top)});
   return "";
 }
 
@@ -384,10 +377,9 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
   auto history = st.history();
   if (tab == NotesTab::history)
     for (auto &e : history) v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), std::to_string(e.count) + "×"});
-  v.tabs = {"Words (" + std::to_string(words) + ")", "Phrases (" + std::to_string(phrases) + ")",
-            "History (" + std::to_string(history.size()) + ")"};
-  if (v.rows.empty())
-    v.empty = tab == NotesTab::history ? "Nothing looked up yet." : "Nothing saved yet: ☆ in a card saves its text here.";
+  auto count = [](const char *key, std::size_t n) { return tr(key) + " (" + digits(static_cast<long long>(n)) + ")"; };
+  v.tabs = {count("list_words", words), count("list_phrases", phrases), count("list_history", history.size())};
+  if (v.rows.empty()) v.empty = tr(tab == NotesTab::history ? "notes_empty_history" : "notes_empty_saved");
   v.clear = tab == NotesTab::history && !v.rows.empty();
   return v;
 }

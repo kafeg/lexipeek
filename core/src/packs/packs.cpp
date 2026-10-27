@@ -9,6 +9,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <sstream>
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/packs.hpp"
 #include "mt/text.hpp"
 #include "packs/http.hpp"
@@ -267,15 +268,15 @@ std::vector<Component> updates(const Manifest &m, const std::map<std::string, st
 }
 
 std::string cannot(const Component &c, const Device &d) {
-  if (d.ram_mb < c.ram_mb) return std::format("Needs {:.0f} GB of memory; this machine has {:.1f} GB.", c.ram_mb / 1000.0, d.ram_mb / 1024.0);
+  if (d.ram_mb < c.ram_mb) return tr("mt_cannot_mem", {std::format("{:.0f}", c.ram_mb / 1000.0), decimal(d.ram_mb / 1024.0)});
   std::vector<std::string> missing;
   for (auto &f : c.cpu)
     if (std::find(d.features.begin(), d.features.end(), f) == d.features.end()) missing.push_back(f);
   if (missing.empty()) return "";
-  if (missing == std::vector<std::string>{"asimddp"}) return "Needs a processor with int8 acceleration (dot product).";
+  if (missing == std::vector<std::string>{"asimddp"}) return tr("mt_cannot_cpu");
   std::string list;
   for (auto &f : missing) list += (list.empty() ? "" : ", ") + f;
-  return "Needs processor features: " + list + ".";
+  return tr("mt_cannot_features", {list});
 }
 
 Packs::Packs(std::filesystem::path data, std::string base) : data_(std::move(data)), base_(std::move(base)) {
@@ -294,11 +295,11 @@ Fetched Packs::fetch() const {
     }
     err = m.error;
   }
-  return {cached(), "Cannot get the packs list: " + err};
+  return {cached(), tr("packs_list_failed", {err})};
 }
 
 Manifest Packs::cached() const {
-  if (!fs::exists(layout().manifest())) return {{}, "No packs list yet"};
+  if (!fs::exists(layout().manifest())) return {{}, tr("packs_no_list_yet")};
   return parse_manifest(read(layout().manifest()));
 }
 
@@ -339,7 +340,7 @@ Status Packs::install(const Component &c, const Progress &progress, const Cancel
   auto need = (c.kind == "llm" || c.kind == "langid" ? c.size + c.size / 10 : c.size * 3) - have;
   auto space = fs::space(data_, ec);
   if (!ec && static_cast<std::int64_t>(space.available) < need)
-    return {std::format("Not enough free space: {} MB needed, {} MB free", need / 1'000'000, space.available / 1'000'000)};
+    return {tr("no_space", {digits(need / 1'000'000), digits(static_cast<long long>(space.available / 1'000'000))})};
 
   std::vector<std::string> urls;
   if (c.kind == "llm" && !c.mirror.empty()) urls.push_back(c.mirror);
@@ -359,7 +360,7 @@ Status Packs::install(const Component &c, const Progress &progress, const Cancel
       good = true;
       break;
     }
-    err = "Checksum mismatch: " + c.file;
+    err = tr("checksum", {c.file});
     fs::remove(part, ec);
   }
   if (!good) return {err};

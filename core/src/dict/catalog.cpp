@@ -3,6 +3,7 @@
 #include <map>
 #include <nlohmann/json.hpp>
 #include "lexipeek/dicts.hpp"
+#include "lexipeek/l10n.hpp"
 #include "packs/http.hpp"
 #include "text/text.hpp"
 
@@ -170,7 +171,7 @@ Imported download_dict(const fs::path &data, const CatalogItem &item, const Prog
   fs::remove(file, ec);
   Imported r;
   auto s = http::download(item.url, file, item.size, progress, cancel);
-  if (s.cancelled) r.error = "Cancelled";
+  if (s.cancelled) r.error = tr("cancelled_t");
   else if (!s.error.empty()) r.error = s.error;
   else r = import_dicts({file}, own_dir(data));
   fs::remove(file, ec);

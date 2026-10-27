@@ -103,8 +103,8 @@ struct CatalogView {
   std::vector<CatalogRow> rows;  // into the answer language first, recommended (WikDict) first among them
   std::vector<SourceRow> sources;
   std::string info;    // "12 of 340"
-  std::string legend = "★ — recommended: compact translations into the app's language.";
-  std::string filter_hint = "Filter: de-ru, en, ru…";
+  std::string legend;       // "★ — recommended: compact translations into the app's language."
+  std::string filter_hint;  // "Filter: de-ru, en, ru…"
   std::string empty;   // "All sources are off", "Loading lists…" is the shell's
 };
 

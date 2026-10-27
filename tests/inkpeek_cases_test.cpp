@@ -121,11 +121,16 @@ TEST_CASE("the card on the packs: the text's language first, one entry per dicti
   Core core(o);
   auto c = core.lookup({"Haus", Source::cli, "ru"});
   CHECK(c.lang == "de");
-  REQUIRE(!c.entries.empty());
+  // Only the packs' entries: the data dir may hold own dictionaries too.
+  std::vector<int> packs;
+  for (size_t i = 0; i < c.entries.size(); i++)
+    if (c.entries[i].dictionary.starts_with("InkPeek · ")) packs.push_back(static_cast<int>(i));
+  REQUIRE(!packs.empty());
   // English "hausen" (en → ru) is not a German word's entry.
-  for (auto &e : c.entries) CHECK(e.dictionary == "InkPeek · de → ru");
-  CHECK(c.entries.size() == 1);
-  auto &e = c.entries[0];
+  for (int i : packs) CHECK(c.entries[static_cast<size_t>(i)].dictionary == "InkPeek · de → ru");
+  CHECK(packs.size() == 1);
+  int at = packs[0];
+  auto &e = c.entries[static_cast<size_t>(at)];
   CHECK(e.word == "Haus");
   REQUIRE(!e.articles.empty());
   REQUIRE(e.articles[0].senses.size() > 2);
@@ -134,7 +139,7 @@ TEST_CASE("the card on the packs: the text's language first, one entry per dicti
   CHECK(e.articles[0].senses[0].examples[0].starts_with("◆ "));
   CHECK(e.related.rel.size() > 20);
   CHECK(c.rank > 0);
-  auto p = core.section(c, 0, "rel", 1);
+  auto p = core.section(c, at, "rel", 1);
   CHECK(p.key == "rel");
   CHECK(p.word == "Haus");
   CHECK(p.page == 1);
@@ -142,8 +147,8 @@ TEST_CASE("the card on the packs: the text's language first, one entry per dicti
   CHECK(p.items.size() == 20);
   CHECK(p.total == static_cast<int>(e.related.rel.size()));
   CHECK(std::any_of(p.items.begin(), p.items.end(), [](auto &i) { return !i.meaning.empty(); }));
-  CHECK(core.section(c, 0, "forms", 0).items.size() == e.related.forms.size());
-  CHECK(core.section(c, 5, "rel", 0).key.empty());
+  CHECK(core.section(c, at, "forms", 0).items.size() == e.related.forms.size());
+  CHECK(core.section(c, static_cast<int>(c.entries.size()), "rel", 0).key.empty());
   // An inflected form: its base form's header.
   auto f = core.lookup({"Häusern", Source::cli, "ru"});
   CHECK(f.base == "Haus");

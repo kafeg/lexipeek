@@ -82,7 +82,7 @@ int on_progress(void *user, curl_off_t, curl_off_t now, curl_off_t, curl_off_t) 
 
 }  // namespace
 
-std::string get(const std::string &url, std::string &body) {
+std::string get(const std::string &url, std::string &body, long *status) {
   Curl c;
   if (!c.h) return "curl_easy_init failed";
   char err[CURL_ERROR_SIZE] = "";
@@ -91,6 +91,7 @@ std::string get(const std::string &url, std::string &body) {
   curl_easy_setopt(c.h, CURLOPT_WRITEFUNCTION, to_string);
   curl_easy_setopt(c.h, CURLOPT_WRITEDATA, &body);
   auto r = curl_easy_perform(c.h);
+  if (status) curl_easy_getinfo(c.h, CURLINFO_RESPONSE_CODE, status);
   return r == CURLE_OK ? "" : message(r, err);
 }
 

@@ -10,7 +10,7 @@
 
 namespace lexipeek {
 
-// The language's English name ("de" → "German"); the code when unknown.
+// The language's name in the app's language ("de" → "German", "Немецкий"); the catalog's English one, else the code.
 std::string language_name(const std::string &code);
 
 // One downloadable part of a pair: its dictionary, a Mozilla model, langid, the OPUS-MT or the AI model.
@@ -41,6 +41,9 @@ std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::stri
 std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair);
 // The answer languages the packs offer (codes), by their English names.
 std::vector<std::string> answer_languages(const Manifest &m);
+
+// "Fast · Mozilla", "Direct · OPUS-MT", "AI model · Hy-MT2".
+std::string method_title(Method m);
 
 // The card: what the shell draws from a Card and its state.
 enum class CardTab { dictionary, translate };
@@ -200,6 +203,10 @@ struct SettingsState {
   bool login = false;     // opens at login (the system's say)
   std::string version;    // "0.1 (5)"
   std::vector<std::string> answers;   // the packs' answer languages (codes)
+  std::string input = "⌥A";           // the input hotkey's label
+  bool checking = false;              // the update check is running
+  std::string update;                 // its last answer ("" = not checked), update_check's text
+  std::string update_version, update_url;  // a newer release and its page
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -232,10 +239,21 @@ struct SettingsPage {
 
 std::vector<std::string> settings_sections();
 std::vector<std::string> settings_tabs(SettingsSection section);
+// The tabs' names that do not change with the language ("packs", "other-dictionaries"): snapshot names.
+std::vector<std::string> settings_tab_keys(SettingsSection section);
 SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, const SettingsState &state);
 // A row's change → the settings ("" when the key is not the row's). Toggles and choices by the row's key and index.
 void settings_toggle(Settings &s, const std::string &key, bool on);
 void settings_choose(Settings &s, const std::string &key, int index, const SettingsState &state);
+// The update check's answer from GitHub's latest release (status 404: none yet): its text; the release when it is newer.
+struct UpdateCheck {
+  std::string text;          // "LexiPeek 0.2 is out", "This is the latest version (0.1).", "No releases yet.", "Failed: …"
+  std::string version, url;  // the newer release's version and page ("" = none)
+};
+UpdateCheck update_check(const std::string &version, long status, const std::string &body, const std::string &error);
+// "0.10" > "0.9"; a leading "v" ignored.
+bool newer_version(const std::string &release, const std::string &current);
+
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);
 std::string pair_detail(const PairRow &r);

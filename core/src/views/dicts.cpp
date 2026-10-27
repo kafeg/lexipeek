@@ -5,6 +5,7 @@
 #include <tuple>
 #include "dict/library.hpp"
 #include "lexipeek/dicts.hpp"
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
 #include "text/text.hpp"
 
@@ -28,12 +29,6 @@ std::string tilde(const std::string &path) {
   return path == h ? "~" : path.starts_with(h + "/") ? "~" + path.substr(h.size()) : path;
 }
 
-std::string thousands(long n) {
-  auto s = std::to_string(n);
-  for (int i = static_cast<int>(s.size()) - 3; i > 0; i -= 3) s.insert(static_cast<size_t>(i), ",");
-  return s;
-}
-
 bool under(const fs::path &file, const fs::path &root) {
   std::error_code ec;
   auto r = fs::weakly_canonical(root, ec).string();
@@ -43,9 +38,7 @@ bool under(const fs::path &file, const fs::path &root) {
 
 std::string mb(std::int64_t b) {
   if (b <= 0) return "";
-  char buf[32];
-  std::snprintf(buf, sizeof buf, "%.1f MB", static_cast<double>(b) / 1e6);
-  return buf;
+  return tr("size_mb", {decimal(static_cast<double>(b) / 1e6)});
 }
 
 bool has(const std::vector<std::string> &v, const std::string &x) { return std::find(v.begin(), v.end(), x) != v.end(); }
@@ -56,21 +49,21 @@ DictsView dicts_view(const fs::path &data) {
   auto s = load_settings(data);
   auto lib = library(data, s.dicts);
   DictsView v;
-  v.note = "The card shows them top to bottom: drag or use ↑ ↓.";
-  v.empty = "None yet: download some or import files (StarDict, as in KOReader).";
-  v.import_note = "Import takes StarDict files (.ifo with its .idx and .dict or .dict.dz) or an archive with them.";
+  v.note = tr("dicts_note");
+  v.empty = tr("own_none");
+  v.import_note = tr("dicts_import_d");
   std::map<std::string, int> count;
   for (auto *d : lib.found()) {
     DictRow r{d->id(), d->name(), "", d->pack(), true, false};
     if (d->pack()) {
       r.title = "InkPeek · " + language_name(d->book()) + " → " + language_name(d->answer());
-      r.detail = "Language pack";
+      r.detail = tr("language_pack");
     } else {
       r.on = !has(s.dicts.off, d->id());
       r.removable = under(d->ifo(), own_dir(data));
       std::vector<std::string> parts;
-      if (d->words() > 0) parts.push_back(thousands(d->words()) + " words");
-      if (r.removable) parts.push_back("Imported");
+      if (d->words() > 0) parts.push_back(tr("own_words", {digits(d->words())}));
+      if (r.removable) parts.push_back(tr("imported_t"));
       for (auto &f : s.dicts.folders)
         if (under(d->ifo(), f)) {
           parts.push_back(tilde(f));
@@ -84,10 +77,7 @@ DictsView dicts_view(const fs::path &data) {
   for (auto &f : s.dicts.folders) {
     auto n = count[f];
     std::error_code ec;
-    v.folders.push_back({f, tilde(f), !fs::is_directory(f, ec) ? "Not found"
-                                      : n == 0                 ? "No StarDict dictionaries yet"
-                                      : n == 1                 ? "1 dictionary"
-                                                               : std::to_string(n) + " dictionaries"});
+    v.folders.push_back({f, tilde(f), !fs::is_directory(f, ec) ? tr("folder_missing") : n == 0 ? tr("folder_none") : trn("folder_dicts", n)});
   }
   return v;
 }
@@ -118,10 +108,10 @@ void move_dict(DictSettings &s, const std::vector<std::string> &shown, const std
 
 std::string add_folder(DictSettings &s, const std::string &path, std::string &note) {
   std::error_code ec;
-  if (path.empty() || !fs::is_directory(path, ec)) return "Not a folder: " + path;
+  if (path.empty() || !fs::is_directory(path, ec)) return tr("not_folder", {path});
   auto p = fs::weakly_canonical(path, ec).string();
   if (!has(s.folders, p)) s.folders.push_back(p);
-  note = dict::scan(p).empty() ? "No StarDict dictionaries in " + tilde(p) + " yet" : "";
+  note = dict::scan(p).empty() ? tr("folder_empty", {tilde(p)}) : "";
   return "";
 }
 
@@ -131,7 +121,7 @@ std::string remove_dict(const fs::path &data, DictSettings &s, const std::string
   auto lib = library(data, s);
   for (auto *d : lib.found()) {
     if (d->id() != id) continue;
-    if (d->pack() || !under(d->ifo(), own_dir(data))) return "Only imported dictionaries can be deleted here";
+    if (d->pack() || !under(d->ifo(), own_dir(data))) return tr("only_imported");
     auto dir = d->ifo().parent_path();
     auto stem = d->ifo().filename().string();
     stem.resize(stem.size() - 4);
@@ -143,7 +133,7 @@ std::string remove_dict(const fs::path &data, DictSettings &s, const std::string
     std::erase(s.order, id);
     return "";
   }
-  return "No such dictionary";
+  return tr("no_dict");
 }
 
 std::set<std::string> present_names(const fs::path &data) {
@@ -162,9 +152,10 @@ void set_source_on(DictSettings &s, const std::string &id, bool on) {
 CatalogView catalog_view(const CatalogList &list, const DictSettings &s, const std::string &answer, const std::string &filter,
                          const std::set<std::string> &present) {
   CatalogView v;
+  v.legend = tr("cat_recommended"), v.filter_hint = tr("catalog_filter");
   auto &sources = catalog_sources();
-  for (auto &src : sources) v.sources.push_back({src.id, src.title, src.about, !has(s.sources_off, src.id)});
-  if (std::none_of(v.sources.begin(), v.sources.end(), [](auto &x) { return x.on; })) v.empty = "All sources are off";
+  for (auto &src : sources) v.sources.push_back({src.id, src.title, tr("cat_" + src.id), !has(s.sources_off, src.id)});
+  if (std::none_of(v.sources.begin(), v.sources.end(), [](auto &x) { return x.on; })) v.empty = tr("no_sources");
   auto rank = [&](const CatalogItem &i) {
     for (size_t k = 0; k < sources.size(); k++)
       if (sources[k].id == i.source) return k;
@@ -185,8 +176,8 @@ CatalogView catalog_view(const CatalogList &list, const DictSettings &s, const s
   for (size_t i = 0; i < order.size(); i++) order[i] = static_cast<int>(i);
   std::stable_sort(order.begin(), order.end(), [&](int a, int b) {
     auto &x = list.items[static_cast<size_t>(a)], &y = list.items[static_cast<size_t>(b)];
-    auto kx = std::make_tuple(x.to != answer, !recommended(x), catalog_language(x.from), rank(x));
-    auto ky = std::make_tuple(y.to != answer, !recommended(y), catalog_language(y.from), rank(y));
+    auto kx = std::make_tuple(x.to != answer, !recommended(x), language_name(x.from), rank(x));
+    auto ky = std::make_tuple(y.to != answer, !recommended(y), language_name(y.from), rank(y));
     return kx < ky;
   });
   auto f = text::lower(filter);
@@ -195,15 +186,15 @@ CatalogView catalog_view(const CatalogList &list, const DictSettings &s, const s
   for (int i : order) {
     auto &it = list.items[static_cast<size_t>(i)];
     auto &src = sources[std::min(rank(it), sources.size() - 1)];
-    auto pair = catalog_language(it.from) + " → " + catalog_language(it.to);
+    auto pair = language_name(it.from) + " → " + language_name(it.to);
     if (!f.empty() && text::lower(it.from + "-" + it.to + " " + src.title + " " + pair).find(f) == std::string::npos) continue;
     CatalogRow r{i, (recommended(it) ? "★ " : "") + pair, "", ""};
-    for (auto &p : {src.title, mb(it.size), got.contains(it.url) ? std::string("✓ downloaded") : std::string()})
+    for (auto &p : {src.title, mb(it.size), got.contains(it.url) ? "✓ " + tr("got_mark") : std::string()})
       if (!p.empty()) r.detail += (r.detail.empty() ? "" : " · ") + p;
-    r.about = src.about + "\n\n" + (it.size > 0 ? mb(it.size) + " · " : "") + it.license;
+    r.about = tr("cat_" + src.id) + "\n\n" + (it.size > 0 ? mb(it.size) + " · " : "") + it.license;
     v.rows.push_back(r);
   }
-  v.info = std::to_string(v.rows.size()) + " of " + std::to_string(list.items.size());
+  v.info = tr("n_of_m", {digits(static_cast<long long>(v.rows.size())), digits(static_cast<long long>(list.items.size()))});
   return v;
 }
 

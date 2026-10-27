@@ -8,6 +8,7 @@
 #include <set>
 #include "dict/stardict.hpp"
 #include "lexipeek/dicts.hpp"
+#include "lexipeek/l10n.hpp"
 #include "text/text.hpp"
 
 namespace lexipeek {
@@ -165,11 +166,11 @@ Imported import_dicts(const std::vector<fs::path> &files, const fs::path &target
         for (auto &ext : EXT)
           if (auto s = f.parent_path() / (base + ext); fs::exists(s) && !fs::exists(dir / s.filename())) fs::copy_file(s, dir / s.filename());
       } else {
-        throw std::runtime_error("Not a StarDict file or archive: " + name);
+        throw std::runtime_error(tr("not_stardict", {name}));
       }
     }
     r = collect(tmp, target);
-    if (r.added.empty() && r.already.empty()) r.error = "No StarDict dictionary (.ifo) in " + names;
+    if (r.added.empty() && r.already.empty()) r.error = tr("no_ifo", {names});
   } catch (const std::exception &e) {
     r.error = e.what();
   }

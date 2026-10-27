@@ -7,8 +7,8 @@
 
 namespace lexipeek::http {
 
-// The body of [url] into [body]; "" or the error.
-std::string get(const std::string &url, std::string &body);
+// The body of [url] into [body]; "" or the error; [status] the HTTP status when asked.
+std::string get(const std::string &url, std::string &body, long *status = nullptr);
 
 // [url] appended to [file] from its current size (Range); a server that ignores the range starts it over.
 // progress gets the bytes in the file and [total].

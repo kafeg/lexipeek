@@ -7,6 +7,7 @@
 #include <vector>
 #include "lexipeek/core.hpp"
 #include "lexipeek/dicts.hpp"
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/settings.hpp"
 #include "lexipeek/views.hpp"
@@ -24,6 +25,15 @@ std::string method_id(const Settings &s);
 std::string method_id(Method m);
 void set_method(Settings &s, const std::string &id);
 std::string language(const std::string &code);
+// The app's language (the setting, else the system's when it is a UI language, else English) for every text from now on;
+// a new install (no settings.json yet) also answers in it.
+std::string set_language(const std::string &data, const std::string &system);
+// The shell's texts (l10n.hpp's tr): by key, {1} and {2} filled in.
+std::string text(const std::string &key);
+std::string text(const std::string &key, const std::string &a);
+std::string text(const std::string &key, const std::string &a, const std::string &b);
+// "Check for updates": GitHub's latest release of LexiPeek (network, blocking).
+UpdateCheck check_updates(const std::string &version, const std::string &url = "https://api.github.com/repos/kafeg/lexipeek/releases/latest");
 
 // One Core shared by the shell's queues: a copyable handle.
 struct Engine {

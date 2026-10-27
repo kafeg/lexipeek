@@ -1,4 +1,7 @@
 #include "lexipeek/app.hpp"
+#include <filesystem>
+#include "lexipeek/l10n.hpp"
+#include "packs/http.hpp"
 
 namespace lexipeek::app {
 
@@ -15,6 +18,29 @@ std::string method_id(const Settings &s) { return s.method ? method_id(*s.method
 std::string method_id(Method m) { return std::string(method_name(m)); }
 void set_method(Settings &s, const std::string &id) { s.method = method_from(id); }
 std::string language(const std::string &code) { return language_name(code); }
+
+std::string set_language(const std::string &data, const std::string &system) {
+  auto s = load_settings(dir(data));
+  auto lang = ui_language(s.ui_lang, system);
+  set_ui_language(lang);
+  // A new install answers in the app's language; an existing settings.json keeps its answer.
+  if (!std::filesystem::exists(dir(data) / "settings.json")) {
+    s.answer = lang;
+    save_settings(dir(data), s);
+  }
+  return lang;
+}
+
+std::string text(const std::string &key) { return tr(key); }
+std::string text(const std::string &key, const std::string &a) { return tr(key, {a}); }
+std::string text(const std::string &key, const std::string &a, const std::string &b) { return tr(key, {a, b}); }
+
+UpdateCheck check_updates(const std::string &version, const std::string &url) {
+  std::string body;
+  long status = 0;
+  auto err = http::get(url, body, &status);
+  return update_check(version, status, body, err);
+}
 
 Engine Engine::make(const std::string &data, const Device &d) {
   auto s = load_settings(dir(data));
@@ -178,8 +204,8 @@ std::string imported_text(const Imported &r) {
     return s;
   };
   std::string out;
-  if (!r.added.empty()) out += "Added: " + list(r.added) + ".";
-  if (!r.already.empty()) out += std::string(out.empty() ? "" : " ") + "Already there: " + list(r.already) + ".";
+  if (!r.added.empty()) out += tr("added_x", {list(r.added)});
+  if (!r.already.empty()) out += std::string(out.empty() ? "" : " ") + tr("already_x", {list(r.already)});
   return out;
 }
 
@@ -195,7 +221,7 @@ void set_source_on(const std::string &data, const std::string &id, bool on) {
 }
 
 Imported download_dict(const std::string &data, const CatalogList &list, int item, const Download &dl) {
-  if (item < 0 || item >= static_cast<int>(list.items.size())) return {{}, {}, "No such dictionary"};
+  if (item < 0 || item >= static_cast<int>(list.items.size())) return {{}, {}, tr("no_dict")};
   auto &it = list.items[static_cast<size_t>(item)];
   *dl.total = it.size;
   return lexipeek::download_dict(
