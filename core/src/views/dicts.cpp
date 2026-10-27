@@ -108,8 +108,8 @@ void move_dict(DictSettings &s, const std::vector<std::string> &shown, const std
 
 std::string add_folder(DictSettings &s, const std::string &path, std::string &note) {
   std::error_code ec;
-  if (path.empty() || !fs::is_directory(path, ec)) return tr("not_folder", {path});
-  auto p = fs::weakly_canonical(path, ec).string();
+  if (path.empty() || !fs::is_directory(text::path_of(path), ec)) return tr("not_folder", {path});
+  auto p = text::utf8_of(fs::weakly_canonical(text::path_of(path), ec));
   if (!has(s.folders, p)) s.folders.push_back(p);
   note = dict::scan(p).empty() ? tr("folder_empty", {tilde(p)}) : "";
   return "";
@@ -180,9 +180,7 @@ CatalogView catalog_view(const CatalogList &list, const DictSettings &s, const s
     auto ky = std::make_tuple(y.to != answer, !recommended(y), language_name(y.from), rank(y));
     return kx < ky;
   });
-  auto f = text::lower(filter);
-  while (!f.empty() && f.back() == ' ') f.pop_back();
-  while (!f.empty() && f.front() == ' ') f.erase(0, 1);
+  auto f = text::trim(text::lower(filter));
   for (int i : order) {
     auto &it = list.items[static_cast<size_t>(i)];
     auto &src = sources[std::min(rank(it), sources.size() - 1)];

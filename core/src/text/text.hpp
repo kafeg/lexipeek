@@ -1,6 +1,8 @@
 // Text helpers shared by the modules: PCRE2 regex, InkPeek's lookup key, lower case, HTML of the packs' articles.
 #pragma once
 #include <cstdint>
+#include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <string>
@@ -48,5 +50,15 @@ std::string escape(std::string_view s);
 bool is_lower(std::string_view s);  // equal to its lower case
 // Java's String.hashCode over UTF-16 units (InkPeek's versions of kept answers).
 std::int32_t java_hash(std::string_view s);
+
+// Paths and UTF-8 strings (settings, the facade, the shells): never the system's code page (Windows).
+std::filesystem::path path_of(std::string_view utf8);
+std::string utf8_of(const std::filesystem::path &p);
+std::FILE *open_file(const std::filesystem::path &p, const char *mode);
+
+// Text bits used all over: edges' spaces out, items joined, a byte count as "84 MB", a local day as "2026-10-27".
+std::string trim(std::string_view s);
+std::string join(const std::vector<std::string> &items, std::string_view sep = ", ");
+std::string local_day(std::int64_t ms);
 
 }  // namespace lexipeek::text

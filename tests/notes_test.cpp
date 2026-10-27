@@ -164,7 +164,7 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
 TEST_CASE("app: notes through the engine") {
   auto d = pack_data("lexipeek-notes-engine");
   {
-    auto e = app::Engine::make(d.string(), app::device(8192, true));
+    auto e = app::Engine::make(d.string(), app::device(8192, {"asimddp"}));
     auto c = e.lookup("Baum", Source::hotkey);
     CHECK(e.toggle_saved(c, ""));
     auto v = e.notes(NotesTab::words);

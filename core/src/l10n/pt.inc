@@ -267,6 +267,7 @@
 {"update_btn", "Atualizar"},
 {"remove_x", "Remover {1}"},
 {"download_x", "Transferir {1} ({2})"},
+{"part_cannot", "{1}: {2}"},
 {"no_space", "Espaço livre insuficiente: são necessários {1} MB, livres {2} MB"},
 {"packs_list_failed", "Não foi possível obter a lista de pacotes: {1}"},
 {"packs_no_list_yet", "Ainda não há lista de pacotes"},

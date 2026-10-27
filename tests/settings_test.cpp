@@ -99,7 +99,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   CHECK(row(p, "answer")->selected == 1);
   CHECK(row(p, "mt_english")->kind == Kind::toggle);
   // The methods as cards (InkPeek's MethodPane): needs, downloaded, why not here.
-  st.ram_mb = 16384, st.dotprod = true;
+  st.device = {16384, {"asimddp"}};
   MethodInfo fast, direct, llm;
   direct.method = Method::direct, direct.models = 2, direct.size = 610'000'000, direct.missing = {"opus-a"}, direct.left = 300'000'000;
   direct.bare = {"de→pl"};
@@ -323,8 +323,8 @@ TEST_CASE("settings: the facade writes a row's change to settings.json at once")
 }
 
 TEST_CASE("settings: the packs' summary and a pair's second line") {
-  PairRow a{"de", "ru", "German → Russian", "full", true, 0, {}, PackPart{"opus-x", "opus", "OPUS-MT", 1, true, false, ""}, {}};
-  PairRow b{"fr", "ru", "French → Russian", "basic", false, 84 * 1000 * 1000, {}, {}, {}};
+  PairRow a{"de", "ru", "German → Russian", "full", true, 0, {}, {PackPart{"opus-x", "opus", "OPUS-MT", 1, true, false, ""}}};
+  PairRow b{"fr", "ru", "French → Russian", "basic", false, 84 * 1000 * 1000, {}, {}};
   CHECK(packs_summary({}) == "No language pairs installed");
   CHECK(packs_summary({a, b}) == "1 language pair installed");
   CHECK(packs_summary({a, a}) == "2 language pairs installed");

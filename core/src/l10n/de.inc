@@ -267,6 +267,7 @@
 {"update_btn", "Aktualisieren"},
 {"remove_x", "{1} entfernen"},
 {"download_x", "{1} laden ({2})"},
+{"part_cannot", "{1}: {2}"},
 {"no_space", "Nicht genug freier Speicher: {1} MB nötig, {2} MB frei"},
 {"packs_list_failed", "Die Paketliste ist nicht abrufbar: {1}"},
 {"packs_no_list_yet", "Noch keine Paketliste"},

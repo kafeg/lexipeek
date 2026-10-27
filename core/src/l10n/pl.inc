@@ -270,6 +270,7 @@
 {"update_btn", "Aktualizuj"},
 {"remove_x", "Usuń: {1}"},
 {"download_x", "Pobierz: {1} ({2})"},
+{"part_cannot", "{1}: {2}"},
 {"no_space", "Za mało wolnego miejsca: potrzeba {1} MB, wolne {2} MB"},
 {"packs_list_failed", "Nie można pobrać listy pakietów: {1}"},
 {"packs_no_list_yet", "Brak jeszcze listy pakietów"},

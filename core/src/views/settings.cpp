@@ -4,6 +4,7 @@
 #include "lexipeek/ai.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek {
 
@@ -105,7 +106,7 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
     std::snprintf(b, sizeof b, "%.1f", mb / 1024.0);
     return std::string(b);
   };
-  rows.push_back(heading(tr("mt_t"), st.ram_mb > 0 ? tr("mt_this", {gb(st.ram_mb), tr(st.dotprod ? "mt_yes" : "mt_no")}) : ""));
+  rows.push_back(heading(tr("mt_t"), st.device.ram_mb > 0 ? tr("mt_this", {gb(st.device.ram_mb), tr(st.device.features.empty() ? "mt_no" : "mt_yes")}) : ""));
   auto picked = s.method.value_or(Method::fast);
   if (!st.methods.empty()) {
     SettingRow off{Kind::method, "method", tr("mt_off_t"), tr("mt_off_d")};
@@ -122,9 +123,7 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
     else if (m.method != Method::fast && m.models > 0)
       lines.push_back(tr("mt_need", {digits(m.models), size_text(m.size)}) + (m.missing.empty() ? " · " + tr("mt_have") : ""));
     if (m.cannot.empty() && !m.bare.empty()) {
-      std::string b;
-      for (auto &x : m.bare) b += (b.empty() ? "" : ", ") + x;
-      lines.push_back(tr("mt_none_for", {b}));
+      lines.push_back(tr("mt_none_for", {text::join(m.bare)}));
     }
     for (auto &l : lines) r.detail += (r.detail.empty() ? "" : "\n") + l;
     if (m.cannot.empty() && !m.missing.empty()) {
@@ -200,7 +199,9 @@ std::vector<SettingRow> connection(const Settings &s, const SettingsState &st) {
   m.on = p->list;
   rows.push_back(m);
   rows.push_back(heading(tr("ai_answers_t")));
-  rows.push_back(valued(Kind::button, "answer_lang", tr("ans_row", {language_name(s.answer)}), tr("ans_lang_d"), tr("open_btn")));
+  auto go = valued(Kind::button, "answer_lang", tr("ans_row", {language_name(s.answer)}), tr("ans_lang_d"), tr("open_btn"));
+  go.go_section = SettingsSection::languages, go.go_tab = 1;  // Translation
+  rows.push_back(go);
   auto style = valued(Kind::button, "edit", tr("prompt_system_t"), mark(edited(s, "system"), tr("prompt_system_d")), tr("edit_btn"));
   style.edit = "system";
   rows.push_back(style);
@@ -248,7 +249,9 @@ std::vector<SettingRow> article(const Settings &s) {
     rows.push_back(toggle("section." + key, tr("sec_" + key), tr("sec_" + key + "_d"), on));
   }
   rows.push_back(heading(tr("lang_own_tab")));
-  rows.push_back(valued(Kind::button, "order", tr("order_t"), tr("order_about"), tr("open_btn")));
+  auto order = valued(Kind::button, "order", tr("order_t"), tr("order_about"), tr("open_btn"));
+  order.go_section = SettingsSection::languages, order.go_tab = 2;  // Other dictionaries: the order
+  rows.push_back(order);
   return rows;
 }
 
@@ -409,9 +412,7 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
 }
 
 void settings_text(Settings &s, const std::string &key, const std::string &value) {
-  auto v = value;
-  while (!v.empty() && (v.back() == ' ' || v.back() == '\n')) v.pop_back();
-  while (!v.empty() && v.front() == ' ') v.erase(0, 1);
+  auto v = text::trim(value);
   auto set = [&](std::map<std::string, std::string> &m) {
     if (v.empty()) m.erase(s.ai.provider);
     else m[s.ai.provider] = v;
@@ -454,9 +455,7 @@ void settings_prompts(Settings &s, const std::vector<std::string> &ids, const st
     for (auto a : {ai::Ask::quick, ai::Ask::analysis, ai::Ask::context})
       for (auto &k : ai::keys(a))
         if (ai::section(a) + "." + k.name == ids[i]) original = k.about;
-    auto t = texts[i];
-    while (!t.empty() && (t.back() == ' ' || t.back() == '\n')) t.pop_back();
-    while (!t.empty() && (t.front() == ' ' || t.front() == '\n')) t.erase(0, 1);
+    auto t = text::trim(texts[i]);
     if (t.empty() || t == original) s.ai.prompts.erase(ids[i]);
     else s.ai.prompts[ids[i]] = t;
   }
@@ -467,13 +466,42 @@ std::string packs_summary(const std::vector<PairRow> &rows) {
   return n == 0 ? tr("packs_none") : trn("packs_installed", n);
 }
 
+PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device) {
+  PacksView v;
+  auto rows = pack_rows(m, installed, device);
+  v.summary = packs_summary(rows);
+  v.installed_title = tr("installed_t"), v.available_title = tr("available_t");
+  if (rows.empty()) v.empty = tr("packs_no_list");
+  for (auto &r : rows) {
+    PackLine l{r.from + "-" + r.to, r.title, pair_detail(r), {}, {}};
+    auto need = missing_ids(m, installed, {r.from, r.to});
+    if (!r.installed) {
+      l.button = {tr("download"), need, r.title};
+      v.available.push_back(l);
+      continue;
+    }
+    auto update = need;
+    for (auto &p : r.extras)
+      if (p.update) update.push_back(p.id);
+    if (!update.empty()) l.button = {tr("update_btn"), update, r.title};
+    for (auto &p : r.extras) {
+      if (p.installed) l.menu.push_back({tr("remove_x", {p.title}), {p.id}, p.title, true});
+      else if (p.cannot.empty()) l.menu.push_back({tr("download_x", {p.title, size_text(p.size)}), {p.id}, p.title});
+      else l.menu.push_back({tr("part_cannot", {p.title, p.cannot}), {}, p.title, false, false});
+    }
+    l.menu.push_back({tr("remove_x", {r.title}), freed_ids(m, installed, {r.from, r.to}), r.title, true, true, !r.extras.empty()});
+    v.installed.push_back(l);
+  }
+  return v;
+}
+
 std::string pair_detail(const PairRow &r) {
   std::vector<std::string> parts;
   if (!r.level.empty()) parts.push_back(tr("level_" + r.level));
   if (r.installed) {
     parts.push_back("Mozilla");
-    for (auto *p : {&r.direct, &r.llm})
-      if (*p && (*p)->installed) parts.push_back((*p)->title);
+    for (auto &p : r.extras)
+      if (p.installed) parts.push_back(p.title);
   } else {
     parts.push_back(size_text(r.missing));
   }

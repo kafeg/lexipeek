@@ -267,6 +267,7 @@
 {"update_btn", "Aggiorna"},
 {"remove_x", "Rimuovi {1}"},
 {"download_x", "Scarica {1} ({2})"},
+{"part_cannot", "{1}: {2}"},
 {"no_space", "Spazio libero insufficiente: servono {1} MB, liberi {2} MB"},
 {"packs_list_failed", "Impossibile ottenere l'elenco dei pacchetti: {1}"},
 {"packs_no_list_yet", "Ancora nessun elenco dei pacchetti"},

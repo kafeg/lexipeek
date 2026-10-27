@@ -6,15 +6,16 @@
 #include "lexipeek/l10n.hpp"
 #include "ai/ai.hpp"
 #include "packs/http.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek::app {
 
 namespace {
-std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : std::filesystem::path(data); }
+std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : text::path_of(data); }
 }  // namespace
 
 std::string data_dir() { return default_data_dir().string(); }
-Device device(int ram_mb, bool dotprod) { return {ram_mb, dotprod ? std::vector<std::string>{"asimddp"} : std::vector<std::string>{}}; }
+Device device(int ram_mb, const std::vector<std::string> &features) { return {ram_mb, features}; }
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }
 std::string save(const std::string &data, const Settings &s) { return save_settings(dir(data), s); }
@@ -89,19 +90,19 @@ void Engine::remove_note(NotesTab tab, const std::string &text) const { lexipeek
 void Engine::clear_history() const { core->store().clear_history(); }
 
 std::string Engine::backup(const std::string &file) const {
-  auto e = core->store().backup(file);
+  auto e = core->store().backup(text::path_of(file));
   return e.empty() ? tr("backup_done", {file}) : tr("failed", {e});
 }
 
 std::string Engine::restore(const std::string &file) const {
-  auto r = core->store().restore(file);
+  auto r = core->store().restore(text::path_of(file));
   if (r.error == "not a backup") return tr("restore_bad");
   return r.error.empty() ? tr("restore_done", {digits(r.added)}) : tr("failed", {r.error});
 }
 
 std::string Engine::export_tsv(NotesTab tab, const std::string &file) const {
   auto tsv = notes_tsv(core->store(), tab, core->answer());
-  std::ofstream f(file, std::ios::binary);
+  std::ofstream f(text::path_of(file), std::ios::binary);
   f << tsv;
   if (!f) return tr("failed", {file});
   return tr("exported", {file, digits(static_cast<long long>(std::count(tsv.begin(), tsv.end(), '\n')))});
@@ -120,7 +121,7 @@ SettingsPage settings_page(const std::string &data, SettingsSection section, int
   auto st = state;
   if (section == SettingsSection::languages && tab == 1 && st.methods.empty()) {
     Packs p(dir(data), "");
-    st.methods = method_infos(p.cached(), p.installed(), device(st.ram_mb, st.dotprod));
+    st.methods = method_infos(p.cached(), p.installed(), st.device);
   }
   return settings_view(section, tab, load_settings(dir(data)), st);
 }
@@ -201,6 +202,11 @@ std::vector<PairRow> rows(const std::string &data, const Device &d) {
 }
 
 std::vector<std::string> answers(const std::string &data) { return answer_languages(Packs(dir(data)).cached()); }
+
+PacksView packs(const std::string &data, const Device &d) {
+  Packs p(dir(data), "");
+  return packs_view(p.cached(), p.installed(), d);
+}
 
 std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to) {
   Packs p(dir(data));
@@ -302,17 +308,14 @@ std::string remove_dict(const std::string &data, const std::string &id) {
 }
 
 Imported import_dicts(const std::string &data, const std::vector<std::string> &files) {
-  std::vector<std::filesystem::path> paths(files.begin(), files.end());
+  std::vector<std::filesystem::path> paths;
+  for (auto &f : files) paths.push_back(text::path_of(f));
   return lexipeek::import_dicts(paths, own_dir(dir(data)));
 }
 
 std::string imported_text(const Imported &r) {
   if (!r.error.empty()) return r.error;
-  auto list = [](const std::vector<std::string> &v) {
-    std::string s;
-    for (auto &x : v) s += (s.empty() ? "" : ", ") + x;
-    return s;
-  };
+  auto list = [](const std::vector<std::string> &v) { return text::join(v); };
   std::string out;
   if (!r.added.empty()) out += tr("added_x", {list(r.added)});
   if (!r.already.empty()) out += std::string(out.empty() ? "" : " ") + tr("already_x", {list(r.already)});

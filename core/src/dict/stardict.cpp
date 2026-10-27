@@ -25,7 +25,11 @@ std::string slurp(const fs::path &p) {
 // A whole gzip file inflated (an .idx.gz, a .dict.dz without dictzip chunks).
 std::string gunzip(const fs::path &p) {
   std::string out;
-  gzFile g = gzopen(p.string().c_str(), "rb");
+#ifdef _WIN32
+  gzFile g = gzopen_w(p.c_str(), "rb");
+#else
+  gzFile g = gzopen(p.c_str(), "rb");
+#endif
   if (!g) return out;
   char buf[1 << 16];
   for (int n; (n = gzread(g, buf, sizeof buf)) > 0;) out.append(buf, static_cast<size_t>(n));

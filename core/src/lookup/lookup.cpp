@@ -35,7 +35,7 @@ const char *answer_model(Method m) { return m == Method::fast ? "bergamot" : m =
 
 dict::Own own(const std::filesystem::path &data, const DictSettings &s) {
   dict::Own o{{data / "dicts-own"}, s.off, s.order};
-  for (auto &f : s.folders) o.roots.emplace_back(f);
+  for (auto &f : s.folders) o.roots.push_back(text::path_of(f));
   return o;
 }
 

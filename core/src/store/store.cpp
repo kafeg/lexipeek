@@ -11,6 +11,7 @@
 #include <mutex>
 #include <random>
 #include "store/log.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek {
 
@@ -92,7 +93,7 @@ struct Store::Impl {
     store::compact_file(own);  // on open only: a failure leaves the file as it was
     auto file = o.data / "lexipeek.db";
     for (int attempt = 0; attempt < 2; attempt++) {
-      if (sqlite3_open((file).string().c_str(), &db) == SQLITE_OK) {
+      if (sqlite3_open(text::utf8_of(file).c_str(), &db) == SQLITE_OK) {
         if (auto e = reread(); e.empty()) return "";
       }
       sqlite3_close(db);
@@ -365,7 +366,7 @@ Store::Restored Store::restore(const std::filesystem::path &file) {
   Restored r;
   if (!impl_->db) return r.error = impl_->error, r;
   sqlite3 *src = nullptr;
-  if (sqlite3_open_v2(file.string().c_str(), &src, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+  if (sqlite3_open_v2(text::utf8_of(file).c_str(), &src, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
     sqlite3_close(src);
     return r.error = "not a backup", r;
   }
@@ -438,18 +439,10 @@ std::string Store::daily_backup(const std::filesystem::path &dir, int keep) cons
     Stmt q(impl_->db, "SELECT (SELECT COUNT(*) FROM saved) + (SELECT COUNT(*) FROM history)");
     if (!q.row() || q.num(0) == 0) return "";
   }
-  auto t = std::time(nullptr);
-  std::tm tm{};
-#ifdef _WIN32
-  localtime_s(&tm, &t);
-#else
-  localtime_r(&t, &tm);
-#endif
-  char day[16];
-  std::strftime(day, sizeof day, "%Y-%m-%d", &tm);
+  auto day = text::local_day(now_ms());
   std::error_code ec;
   fs::create_directories(dir, ec);
-  auto file = dir / ("lexipeek-" + std::string(day) + ".db");
+  auto file = dir / ("lexipeek-" + day + ".db");
   if (fs::exists(file)) return "";
   if (auto e = backup(file); !e.empty()) return e;
   std::vector<fs::path> all;

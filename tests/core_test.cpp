@@ -3,6 +3,7 @@
 #include <fstream>
 #include <thread>
 #include "lexipeek/core.hpp"
+#include "text/text.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/settings.hpp"
@@ -216,8 +217,48 @@ TEST_CASE("views: the packs list") {
   CHECK(!rows[0].installed);
   CHECK(rows[0].missing == 31);  // en-ru and langid
   CHECK(rows[0].base[0].update);
-  REQUIRE(rows[0].llm);
-  CHECK(rows[0].llm->cannot.find("memory") != std::string::npos);
-  CHECK(!rows[0].direct);
+  REQUIRE(rows[0].extras.size() == 1);  // the AI model, no OPUS-MT
+  CHECK(rows[0].extras[0].kind == "llm");
+  CHECK(rows[0].extras[0].cannot.find("memory") != std::string::npos);
   CHECK(rows[1].level == "experimental");
+}
+
+TEST_CASE("packs view: an installed pair's update and menu, an available one's download") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "dict-de-ru", "kind": "dict", "from": "de", "to": "ru", "file": {"name": "a", "size": 1, "sha256": "d1"}},
+    {"id": "dict-fr-ru", "kind": "dict", "from": "fr", "to": "ru", "file": {"name": "b", "size": 1, "sha256": "d2"}},
+    {"id": "model-de-en", "kind": "model", "from": "de", "to": "en", "file": {"name": "c", "size": 10, "sha256": "m1"}},
+    {"id": "model-fr-en", "kind": "model", "from": "fr", "to": "en", "file": {"name": "d", "size": 10, "sha256": "m2"}},
+    {"id": "model-en-ru", "kind": "model", "from": "en", "to": "ru", "file": {"name": "e", "size": 10, "sha256": "m3"}},
+    {"id": "langid", "kind": "langid", "file": {"name": "f", "size": 1, "sha256": "l"}},
+    {"id": "opus-a", "kind": "opus", "covers": ["de-ru"], "file": {"name": "g", "size": 100, "sha256": "o2"}},
+    {"id": "llm-b", "kind": "llm", "name": "Hy-MT2 1.8B", "covers": ["de-ru"], "ram_mb": 9000, "file": {"name": "h", "size": 1000, "sha256": "x"}}]})");
+  std::map<std::string, std::string> have{{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"}, {"opus-a", "o1"}};
+  auto v = packs_view(m, have, Device{8192, {"asimddp"}});
+  CHECK(v.summary == "1 language pair installed");
+  REQUIRE(v.installed.size() == 1);
+  REQUIRE(v.available.size() == 1);
+  auto &de = v.installed[0];
+  CHECK(de.button.label == "Update");
+  CHECK(de.button.ids == std::vector<std::string>{"opus-a"});  // its file changed
+  REQUIRE(de.menu.size() == 3);
+  CHECK(de.menu[0].remove);  // OPUS-MT is there
+  CHECK(!de.menu[1].enabled);  // the AI model needs more memory
+  CHECK(de.menu[1].label.starts_with("Hy-MT2 1.8B: "));
+  CHECK(de.menu[2].remove);
+  CHECK(de.menu[2].divider);
+  CHECK(v.available[0].button.label == "Download");
+  CHECK(v.available[0].button.ids == std::vector<std::string>{"dict-fr-ru", "model-fr-en"});
+  CHECK(v.available[0].button.what == "French → Russian");
+}
+
+TEST_CASE("text: UTF-8 paths, trim, join, the local day") {
+  auto p = text::path_of("/tmp/Wörterbücher/日本");
+  CHECK(text::utf8_of(p) == "/tmp/Wörterbücher/日本");
+  CHECK(text::utf8_of(p.filename()) == "日本");
+  CHECK(text::trim("  a b\t\r\n") == "a b");
+  CHECK(text::trim(" ").empty());
+  CHECK(text::join({"a", "", "b"}) == "a, , b");
+  CHECK(text::join({"x"}, " · ") == "x");
+  CHECK(text::local_day(0).size() == 10);
 }

@@ -91,8 +91,7 @@ final class OtherDictionariesModel: ObservableObject {
     }
 
     func importPaths(_ paths: [String]) {
-        var files = lexipeek.mac.Strings()
-        for f in paths { files.push_back(std.string(f)) }
+        let files = paths.cxx
         busy = true
         message = L.t("importing")
         DispatchQueue.global(qos: .userInitiated).async {
@@ -251,8 +250,7 @@ final class CatalogModel: ObservableObject {
     @Published var progress = 0.0
     @Published var message = ""
     private var list = lexipeek.CatalogList()
-    private var download: lexipeek.app.Download?
-    private var timer: Timer?
+    private let downloader = Downloader()
 
     func fetch() {
         loading = true
@@ -285,30 +283,20 @@ final class CatalogModel: ObservableObject {
 
     func get(_ r: Row) {
         guard downloading == nil else { return }
-        let dl = lexipeek.app.Download()
-        download = dl
         downloading = r.title
         progress = 0
         message = ""
-        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            let total = dl.get_total()
-            self?.progress = total > 0 ? Double(dl.get_done()) / Double(total) : 0
-        }
-        let l = list
-        DispatchQueue.global(qos: .userInitiated).async {
-            let res = lexipeek.app.download_dict(std.string(), l, Int32(r.id), dl)
-            let text = String(lexipeek.app.imported_text(res))
-            DispatchQueue.main.async {
-                self.timer?.invalidate()
-                self.download = nil
-                self.downloading = nil
-                self.message = text
-                self.show()
-            }
-        }
+        let l = list, id = Int32(r.id)
+        downloader.start({ String(lexipeek.app.imported_text(lexipeek.app.download_dict(std.string(), l, id, $0))) },
+                         progress: { [weak self] d, t in self?.progress = t > 0 ? Double(d) / Double(t) : 0 },
+                         done: { [weak self] text in
+                             self?.downloading = nil
+                             self?.message = text
+                             self?.show()
+                         })
     }
 
-    func cancel() { download?.cancel() }
+    func cancel() { downloader.cancel() }
 }
 
 struct CatalogSheet: View {

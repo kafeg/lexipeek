@@ -59,7 +59,7 @@ final class FirstRunModel: ObservableObject {
     @Published private(set) var look = FirstRunLook()
     var close: (() -> Void)?
     private let client: CoreClient
-    private var download: lexipeek.app.Download?
+    private let downloader = Downloader()
     private var timers: [Timer] = []
 
     init(client: CoreClient) {
@@ -99,7 +99,7 @@ final class FirstRunModel: ObservableObject {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         case .list: fetch()
         case .pair: install()
-        case .download: if state.downloading { download?.cancel() } else { install() }
+        case .download: if state.downloading { downloader.cancel() } else { install() }
         default: finish()
         }
     }
@@ -140,33 +140,27 @@ final class FirstRunModel: ObservableObject {
 
     // The picked pair: its answer language for the next cards, then what it still needs, with progress.
     private func install() {
-        guard download == nil else { return }
+        guard !downloader.busy else { return }
         let answer = look.answer, book = look.book
         guard !book.isEmpty else { return }
         Prefs.shared.answer = answer
         state.answer = std.string(answer)
         state.book = std.string(book)
         let ids = lexipeek.app.missing_ids(std.string(), std.string(book), std.string(answer))
-        let dl = lexipeek.app.Download()
-        download = dl
         state.error = std.string()
         state.done = 0
         state.total = 0
         state.downloading = true
-        let poll = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            self?.state.done = dl.get_done()
-            self?.state.total = dl.get_total()
-        }
-        DispatchQueue.global(qos: .userInitiated).async {
-            let s = lexipeek.app.install(std.string(), ids, dl)
-            DispatchQueue.main.async {
-                poll.invalidate()
-                self.download = nil
-                self.state.error = s.cancelled ? std.string() : s.error
-                self.state.downloading = false
-                self.client.reload()
-            }
-        }
+        downloader.start({ lexipeek.app.install(std.string(), ids, $0) },
+                         progress: { [weak self] d, t in
+                             self?.state.done = d
+                             self?.state.total = t
+                         },
+                         done: { [weak self] s in
+                             self?.state.error = s.cancelled ? std.string() : s.error
+                             self?.state.downloading = false
+                             self?.client.reload()
+                         })
     }
 }
 

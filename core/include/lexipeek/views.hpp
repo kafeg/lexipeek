@@ -29,12 +29,35 @@ struct PairRow {
   std::string level;  // "full", "basic", "experimental", ""
   bool installed = false;      // the dictionary and the Mozilla models are there
   std::int64_t missing = 0;    // bytes still to download for that
-  std::vector<PackPart> base;  // dictionary, Mozilla models, langid
-  std::optional<PackPart> direct, llm;
+  std::vector<PackPart> base;    // dictionary, Mozilla models, langid
+  std::vector<PackPart> extras;  // OPUS-MT, the AI model: those a model covers the pair with
 };
 
 // Installed pairs first, then by level and title.
 std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, std::string> &installed, const std::optional<Device> &device = {});
+// Settings → Packs as the shell draws it: a pair's button and its menu are actions (a label, the ids to download or
+// remove, what the progress says meanwhile).
+struct PackAction {
+  std::string label;
+  std::vector<std::string> ids;
+  std::string what;          // the progress's label: the pair's or the part's title
+  bool remove = false;       // remove the ids (else download them)
+  bool enabled = true;       // false: a line saying why not
+  bool divider = false;      // a line before it in the menu
+};
+struct PackLine {
+  std::string id, title, detail;  // "de-ru", "German → Russian", "Full · Mozilla · OPUS-MT"
+  PackAction button;              // Update / Download; label "" = none
+  std::vector<PackAction> menu;   // an installed pair's parts and its removal
+};
+struct PacksView {
+  std::string summary;  // "1 language pair installed"
+  std::string installed_title, available_title;
+  std::vector<PackLine> installed, available;
+  std::string empty;  // no list yet
+};
+PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device);
+
 // What a pair needs that is not installed yet (ids).
 std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair);
 // What removing a pair frees: its parts no other installed pair needs (ids).
@@ -312,8 +335,7 @@ struct SettingsState {
   bool ai_key = false;                // the provider's API key is in the Keychain
   bool ai_testing = false;            // AI → Connection's test is running
   std::string ai_test;                // its last answer ("" = not tried)
-  int ram_mb = 0;                     // this machine's memory
-  bool dotprod = false;               // int8 acceleration
+  Device device;                      // this machine (its memory, its CPU's features)
   std::vector<MethodInfo> methods;    // Languages → Translation's cards (app::settings_page fills them)
   std::string downloading;            // the method whose models are being downloaded ("fast", "direct", "llm")
   double progress = 0;                // 0…1
@@ -349,6 +371,9 @@ struct SettingRow {
   std::vector<std::string> ids = {};
   std::string button = "";
   double progress = -1;  // a method's download: 0…1; -1 none
+  // A button that opens another pane: its section and tab (go_tab -1: none).
+  SettingsSection go_section = SettingsSection::general;
+  int go_tab = -1;
 };
 
 struct SettingsPage {

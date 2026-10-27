@@ -65,7 +65,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `first_state`, Notes (`notes_view`, `remove_note`: Words · Phrases · History rows), the first run
   (`first_run_view(Manifest, installed, FirstRunState)` → step, texts, choices, progress; `first_run_at_launch`,
   `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`, `packs_summary`,
-  `pair_detail`); `settings` — Settings' panes: `settings_view(section, tab, Settings, SettingsState)` → sections, sub-tabs,
+  `pair_detail`) and Settings → Packs as drawn (`packs_view`: lines with their button and menu as `PackAction`s); `settings` — Settings' panes: `settings_view(section, tab, Settings, SettingsState)` → sections, sub-tabs,
   a pane drawn by its own view (packs, other) or rows (InkPeek's Rows: kind, key, title, one-line about, control),
   `settings_toggle` / `settings_choose` by a row's key; `about` — the update check (`update_check`: GitHub's latest
   release against this version; `app::check_updates` fetches it, only on "Check now"); `app` — the facade for
@@ -85,7 +85,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `importer` (libarchive: zip, tar + gzip/bzip2/xz/zstd; names leaving the folder skipped; `.ifo` copied last),
   `catalog` (WikDict / Wiktionary / FreeDict listings, ISO 639 codes and names, `download_dict` records `got`).
   `views/dicts`: Settings → Other dictionaries rows, edits of `DictSettings`, catalog rows; facade `lexipeek/dicts.hpp`. `core/src/text/`: PCRE2 wrapper, InkPeek's
-  lookup key (NFC, no soft hyphen, lowercase), query cleaning. `core/src/lookup/`: `Core` — request → `Card` (one `Entry` per
+  lookup key (NFC, no soft hyphen, lowercase), query cleaning, `trim` / `join` / `local_day`, and paths: a UTF-8
+  string becomes a path only by `path_of` (back by `utf8_of`), files open by `open_file` / `open_archive` (wide on
+  Windows) — never `fs::path(std::string)` or `.string().c_str()`. `core/src/lookup/`: `Core` — request → `Card` (one `Entry` per
   dictionary: line, articles parsed into senses and examples, `.rel` sections), `section()` (a section's page of words with
   meanings, 20 per page), language by the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv` (on the packs' entries only: `LEXIPEEK_MODELS` may hold own dictionaries).
 - `core/src/ai/` (InkPeek's `ai/`; facade `lexipeek/ai.hpp`): providers (`providers()`: Anthropic Messages API,
@@ -144,6 +146,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (`LineField`, `KeyField`, `PromptSheet`, `ModelSheet`). An ad-hoc signed build may make the Keychain ask once
   for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
+  `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker) and a concurrent AI queue; each `CardModel` asks through its `CardLane` (a newer request turns its older ones into no-ops).
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`

@@ -1,6 +1,7 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include "text/text.hpp"
 #include <pcre2.h>
+#include <ctime>
 #include <stdexcept>
 #include <utf8proc.h>
 
@@ -198,6 +199,50 @@ std::string escape(std::string_view s) {
     else out += c;
   }
   return out;
+}
+
+std::filesystem::path path_of(std::string_view utf8) {
+  return std::filesystem::path(std::u8string(reinterpret_cast<const char8_t *>(utf8.data()), utf8.size()));
+}
+
+std::string utf8_of(const std::filesystem::path &p) {
+  auto u = p.u8string();
+  return std::string(reinterpret_cast<const char *>(u.data()), u.size());
+}
+
+std::FILE *open_file(const std::filesystem::path &p, const char *mode) {
+#ifdef _WIN32
+  std::wstring m(mode, mode + std::char_traits<char>::length(mode));
+  return _wfopen(p.c_str(), m.c_str());
+#else
+  return std::fopen(p.c_str(), mode);
+#endif
+}
+
+std::string trim(std::string_view s) {
+  auto space = [](char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r'; };
+  while (!s.empty() && space(s.front())) s.remove_prefix(1);
+  while (!s.empty() && space(s.back())) s.remove_suffix(1);
+  return std::string(s);
+}
+
+std::string join(const std::vector<std::string> &items, std::string_view sep) {
+  std::string out;
+  for (size_t i = 0; i < items.size(); i++) out += (i ? std::string(sep) : "") + items[i];
+  return out;
+}
+
+std::string local_day(std::int64_t ms) {
+  auto t = static_cast<std::time_t>(ms / 1000);
+  std::tm tm{};
+#ifdef _WIN32
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  char b[16];
+  std::strftime(b, sizeof b, "%Y-%m-%d", &tm);
+  return b;
 }
 
 }  // namespace lexipeek::text

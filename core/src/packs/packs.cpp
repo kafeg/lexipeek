@@ -13,6 +13,8 @@
 #include "lexipeek/packs.hpp"
 #include "mt/text.hpp"
 #include "packs/http.hpp"
+#include "text/archive.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek {
 
@@ -89,7 +91,7 @@ std::string unpack(const fs::path &file, const fs::path &dir) {
   archive_read_support_filter_zstd(a.get());
   archive_read_support_format_tar(a.get());
   archive_read_support_format_zip(a.get());
-  if (archive_read_open_filename(a.get(), file.string().c_str(), 1 << 16) != ARCHIVE_OK) return std::string("Cannot open the archive: ") + archive_error_string(a.get());
+  if (text::open_archive(a.get(), file) != ARCHIVE_OK) return std::string("Cannot open the archive: ") + archive_error_string(a.get());
   archive_entry *e = nullptr;
   int r = 0;
   while ((r = archive_read_next_header(a.get(), &e)) == ARCHIVE_OK) {

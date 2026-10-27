@@ -267,6 +267,7 @@
 {"update_btn", "Update"},
 {"remove_x", "Remove {1}"},
 {"download_x", "Download {1} ({2})"},
+{"part_cannot", "{1}: {2}"},
 {"no_space", "Not enough free space: {1} MB needed, {2} MB free"},
 {"packs_list_failed", "Cannot get the packs list: {1}"},
 {"packs_no_list_yet", "No packs list yet"},

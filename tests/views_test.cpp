@@ -381,7 +381,7 @@ TEST_CASE("app: settings by data dir, method ids") {
   CHECK(!s.method);
   CHECK(app::method_id(Method::direct) == "direct");
   CHECK(app::language("de") == "German");
-  CHECK(app::rows(d, app::device(8192, true)).empty());
+  CHECK(app::rows(d, app::device(8192, {"asimddp"})).empty());
   CHECK(app::answers(d).empty());
   fs::remove_all(d);
 }

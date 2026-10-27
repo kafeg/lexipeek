@@ -86,8 +86,7 @@ final class SettingsModel: ObservableObject {
         s.ai_key = aiKey
         s.ai_testing = aiTesting
         s.ai_test = std.string(aiTest)
-        s.ram_mb = CoreClient.device.ram_mb
-        s.dotprod = CoreClient.device.features.contains { String($0) == "asimddp" }
+        s.device = CoreClient.device
         s.downloading = std.string(downloading ?? "")
         s.progress = downloadProgress
         s.download_error = std.string(downloadError)
@@ -141,20 +140,13 @@ final class SettingsModel: ObservableObject {
     }
 
     func savePrompts(_ e: PromptEdit, reset: Bool) {
-        var ids = lexipeek.mac.Strings(), texts = lexipeek.mac.Strings()
-        for f in e.fields {
-            ids.push_back(std.string(f.id))
-            texts.push_back(std.string(reset ? "" : f.text))
-        }
-        changed(lexipeek.app.set_prompts(std.string(), ids, texts))
+        changed(lexipeek.app.set_prompts(std.string(), e.fields.map(\.id).cxx, e.fields.map { reset ? "" : $0.text }.cxx))
     }
 
     func press(_ key: String, edit: String = "") {
         if !edit.isEmpty { editPrompt(edit); return }
         switch key {
         case "setup": openFirstRun?()
-        case "order": showSection?(.languages, 2)
-        case "answer_lang": showSection?(.languages, 1)
         case "ai_test": testAI()
         case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
@@ -167,29 +159,22 @@ final class SettingsModel: ObservableObject {
     }
 
 
+    private let downloader = Downloader()
+
     func downloadMethod(_ id: String, _ ids: [String]) {
-        guard downloading == nil, !ids.isEmpty else { return }
-        let dl = lexipeek.app.Download()
+        guard !downloader.busy, !ids.isEmpty else { return }
         downloading = id
         downloadProgress = 0
         downloadError = ""
-        let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            let total = dl.get_total()
-            self?.downloadProgress = total > 0 ? Double(dl.get_done()) / Double(total) : 0
-        }
-        var v = lexipeek.mac.Strings()
-        for i in ids { v.push_back(std.string(i)) }
-        DispatchQueue.global(qos: .userInitiated).async {
-            let s = lexipeek.app.install(std.string(), v, dl)
-            let e = s.cancelled ? "" : String(s.error)
-            DispatchQueue.main.async {
-                timer.invalidate()
-                self.downloading = nil
-                self.downloadError = e
-                self.client.reload()
-                self.refresh()
-            }
-        }
+        let v = ids.cxx
+        downloader.start({ lexipeek.app.install(std.string(), v, $0) },
+                         progress: { [weak self] d, t in self?.downloadProgress = t > 0 ? Double(d) / Double(t) : 0 },
+                         done: { [weak self] s in
+                             self?.downloading = nil
+                             self?.downloadError = s.cancelled ? "" : String(s.error)
+                             self?.client.reload()
+                             self?.refresh()
+                         })
     }
 
     // Only on a click: GitHub's latest release, off the main queue.
@@ -307,6 +292,8 @@ struct SettingLine: Identifiable {
     var choices: [String]
     var selected: Int
     var placeholder, edit: String
+    var goSection: lexipeek.SettingsSection
+    var goTab: Int
     var detail, button: String
     var ids: [String]
     var progress: Double
@@ -324,6 +311,8 @@ struct SettingLine: Identifiable {
         selected = Int(r.selected)
         placeholder = String(r.placeholder)
         edit = String(r.edit)
+        goSection = r.go_section
+        goTab = Int(r.go_tab)
         detail = String(r.detail)
         button = String(r.button)
         ids = r.ids.map { String($0) }
@@ -420,7 +409,14 @@ struct RowsView: View {
             }
         case .button:
             LabeledContent {
-                Button(r.value) { model.press(r.key, edit: r.edit) }.disabled(!r.enabled)
+                Button(r.value) {
+                    if r.goTab >= 0, let s = SettingsSection.allCases.first(where: { $0.core == r.goSection }) {
+                        model.showSection?(s, r.goTab)
+                    } else {
+                        model.press(r.key, edit: r.edit)
+                    }
+                }
+                .disabled(!r.enabled)
             } label: { label(r) }
         case .status:
             LabeledContent {

@@ -10,6 +10,7 @@
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
 #include "text/text.hpp"
+#include "text/archive.hpp"
 
 namespace lexipeek {
 
@@ -37,9 +38,7 @@ std::string bookname(const fs::path &ifo) {
   std::ifstream f(ifo);
   for (std::string l; std::getline(f, l);)
     if (l.starts_with("bookname=")) {
-      auto v = l.substr(9);
-      while (!v.empty() && (v.back() == '\r' || v.back() == ' ')) v.pop_back();
-      while (!v.empty() && v.front() == ' ') v.erase(0, 1);
+      auto v = text::trim(l.substr(9));
       if (!v.empty()) return v;
     }
   return base_of(ifo);
@@ -98,13 +97,13 @@ std::string unpack(const fs::path &file, const fs::path &dir) {
   archive_read_support_filter_all(a.get());
   archive_read_support_format_tar(a.get());
   archive_read_support_format_zip(a.get());
-  if (archive_read_open_filename(a.get(), file.string().c_str(), 1 << 16) != ARCHIVE_OK)
+  if (text::open_archive(a.get(), file) != ARCHIVE_OK)
     return std::string("Cannot open the archive: ") + archive_error_string(a.get());
   archive_entry *e = nullptr;
   int r = 0;
   while ((r = archive_read_next_header(a.get(), &e)) == ARCHIVE_OK) {
     if (archive_entry_filetype(e) != AE_IFREG || !archive_entry_pathname(e)) continue;
-    auto rel = fs::path(archive_entry_pathname(e)).lexically_normal();
+    auto rel = text::path_of(archive_entry_pathname(e)).lexically_normal();
     if (rel.empty() || rel.is_absolute() || rel.has_root_name() || *rel.begin() == "..") continue;
     auto out_path = dir / rel;
     fs::create_directories(out_path.parent_path());

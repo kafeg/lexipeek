@@ -1,7 +1,5 @@
-// Swift's door to the core's facade (lexipeek/app.hpp, views.hpp). Only what Swift's C++ interop cannot express is
-// here: names for template instances, and reading a std::optional.
+// Swift's door to the core's facade (lexipeek/app.hpp, views.hpp): only names for template instances Swift has to write.
 #pragma once
-#include <optional>
 #include <string>
 #include <vector>
 #include "lexipeek/app.hpp"
@@ -10,8 +8,5 @@ namespace lexipeek::mac {
 
 using Strings = std::vector<std::string>;
 using Models = std::vector<ai::Model>;
-
-inline bool has_part(const std::optional<PackPart> &p) { return p.has_value(); }
-inline PackPart part(const std::optional<PackPart> &p) { return p.value_or(PackPart{}); }
 
 }  // namespace lexipeek::mac

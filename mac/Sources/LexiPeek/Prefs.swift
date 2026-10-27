@@ -69,19 +69,13 @@ final class Prefs: ObservableObject {
         return h
     }
 
-    private static func strings(_ a: [String]) -> lexipeek.mac.Strings {
-        var v = lexipeek.mac.Strings()
-        for s in a { v.push_back(std.string(s)) }
-        return v
-    }
-
     // Read again first: fields this shell does not show stay as they are.
     private func save() {
         guard !loading else { return }
         var s = lexipeek.app.settings(std.string())
         s.lookup = Self.hotkey(translateKey)
         s.input = Self.hotkey(inputKey)
-        s.ignore_apps = Self.strings(offApps)
+        s.ignore_apps = offApps.cxx
         lexipeek.app.set_method(&s, std.string(method))
         s.answer = std.string(answer.isEmpty ? "ru" : answer)
         s.selection_icon = selectionIcon

@@ -267,6 +267,7 @@
 {"update_btn", "Mettre à jour"},
 {"remove_x", "Supprimer : {1}"},
 {"download_x", "Télécharger : {1} ({2})"},
+{"part_cannot", "{1} : {2}"},
 {"no_space", "Pas assez d'espace libre : {1} Mo nécessaires, {2} Mo libres"},
 {"packs_list_failed", "Impossible d'obtenir la liste des packs : {1}"},
 {"packs_no_list_yet", "Pas encore de liste des packs"},

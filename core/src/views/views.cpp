@@ -27,15 +27,15 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
   };
   std::vector<PairRow> rows;
   for (auto &pr : pairs(m)) {
-    PairRow r{pr.from, pr.to, language_name(pr.from) + " → " + language_name(pr.to), "", true, 0, {}, {}, {}};
+    PairRow r{pr.from, pr.to, language_name(pr.from) + " → " + language_name(pr.to), "", true, 0, {}, {}};
     if (auto l = level(m, pr.from, pr.to); l != Level::none) r.level = std::string(level_name(l));
     for (auto &c : needed(m, {pr}, Method::fast)) {
       auto p = part(c);
       if (!p.installed) r.installed = false, r.missing += c.size;
       r.base.push_back(p);
     }
-    if (auto c = covering(m, "opus", pr.from, pr.to)) r.direct = part(*c);
-    if (auto c = covering(m, "llm", pr.from, pr.to)) r.llm = part(*c);
+    for (auto kind : {"opus", "llm"})
+      if (auto c = covering(m, kind, pr.from, pr.to)) r.extras.push_back(part(*c));
     rows.push_back(r);
   }
   auto rank = [](const std::string &l) { return l == "full" ? 0 : l == "basic" ? 1 : l == "experimental" ? 2 : 3; };
@@ -544,24 +544,8 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
 
 std::string notes_tsv(const Store &st, NotesTab tab, const std::string &answer) {
   static const text::Regex breaks("[\\t\\r\\n]+");
-  auto cell = [](const std::string &s) {
-    auto c = breaks.replace(s, " ");
-    while (!c.empty() && c.back() == ' ') c.pop_back();
-    while (!c.empty() && c.front() == ' ') c.erase(0, 1);
-    return c;
-  };
-  auto day = [](std::int64_t ms) {
-    auto t = static_cast<std::time_t>(ms / 1000);
-    std::tm tm{};
-#ifdef _WIN32
-    localtime_s(&tm, &t);
-#else
-    localtime_r(&t, &tm);
-#endif
-    char b[16];
-    std::strftime(b, sizeof b, "%Y-%m-%d", &tm);
-    return std::string(b);
-  };
+  auto cell = [](const std::string &s) { return text::trim(breaks.replace(s, " ")); };
+  auto day = [](std::int64_t ms) { return text::local_day(ms); };
   auto ai_line = [&](const std::string &text) { return ai::brief(st.newest_answer(text, catalog_language(answer), "quick")); };
   auto rows = notes_view(st, tab, answer).rows;
   std::map<std::string, std::int64_t> times;

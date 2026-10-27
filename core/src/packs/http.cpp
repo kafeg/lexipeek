@@ -1,4 +1,5 @@
 #include "packs/http.hpp"
+#include "text/text.hpp"
 #include <curl/curl.h>
 #include <cstdio>
 #include <memory>
@@ -61,7 +62,7 @@ size_t to_file(char *p, size_t size, size_t n, void *user) {
     // Asked from an offset, answered with the whole file: start the file over.
     if (s.offset > 0 && code == 200) {
       std::fclose(s.f);
-      s.f = std::fopen(s.path.string().c_str(), "wb");
+      s.f = text::open_file(s.path, "wb");
       s.offset = 0;
       if (!s.f) return 0;
     }
@@ -129,7 +130,7 @@ Status download(const std::string &url, const std::filesystem::path &file, std::
   std::error_code ec;
   auto have = std::filesystem::exists(file, ec) ? static_cast<std::int64_t>(std::filesystem::file_size(file, ec)) : 0;
   if (ec) have = 0;
-  Sink s{c.h, std::fopen(file.string().c_str(), have ? "ab" : "wb"), file, have, total, &progress, &cancel};
+  Sink s{c.h, text::open_file(file, have ? "ab" : "wb"), file, have, total, &progress, &cancel};
   if (!s.f) return {"Cannot write " + file.filename().string()};
   char err[CURL_ERROR_SIZE] = "";
   common(c.h, url);

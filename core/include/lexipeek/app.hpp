@@ -16,7 +16,7 @@ namespace lexipeek::app {
 
 std::string data_dir();
 // This machine for the packs' requirements: memory and the int8 dot product (Apple Silicon: "asimddp").
-Device device(int ram_mb, bool dotprod);
+Device device(int ram_mb, const std::vector<std::string> &features);
 
 Settings settings(const std::string &data);
 std::string save(const std::string &data, const Settings &s);
@@ -96,6 +96,7 @@ std::string ai_test(const std::string &data, const std::string &key);
 
 // Settings → Packs.
 std::vector<PairRow> rows(const std::string &data, const Device &d);
+PacksView packs(const std::string &data, const Device &d);
 std::vector<std::string> answers(const std::string &data);
 std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to);
 std::vector<std::string> freed_ids(const std::string &data, const std::string &from, const std::string &to);
