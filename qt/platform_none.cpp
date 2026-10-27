@@ -18,6 +18,8 @@ std::string hotkey_label(const Hotkey &h) {
 std::optional<Selected> selection() { return std::nullopt; }
 std::string front_app() { return ""; }
 bool mouse_down() { return false; }
+void watch_input(std::function<void(Input)>) {}
+bool front_is_mine() { return false; }
 int ram_mb() { return static_cast<int>(sysconf(_SC_PHYS_PAGES) / 1024 * sysconf(_SC_PAGESIZE) / 1024); }
 bool login() { return false; }
 void set_login(bool) {}

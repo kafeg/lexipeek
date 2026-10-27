@@ -26,6 +26,11 @@ std::optional<Selected> selection();
 std::string front_app();
 // The mouse's left or right button is down now (anywhere on the screen).
 bool mouse_down();
+// Input anywhere (the icon at a selection): the left button down or up, or another key or the wheel; nullptr stops it.
+enum class Input { down, up, other };
+void watch_input(std::function<void(Input)> on);
+// This process owns the foreground window.
+bool front_is_mine();
 
 // This machine's memory, MB.
 int ram_mb();

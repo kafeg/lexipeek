@@ -35,6 +35,7 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
     if (r == QSystemTrayIcon::Trigger || r == QSystemTrayIcon::DoubleClick) open_main();
   });
   connect(popup_.card, &CardWidget::openPane, this, &Shell::open_settings);
+  connect(&icon_, &SelectionIcon::open, this, [this](const platform::Selected &s) { popup_.show_card(s.text, Source::hotkey, s.bounds, false); });
   tray_.show();
   apply();
 }
@@ -42,6 +43,7 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
 void Shell::apply() {
   s_ = app::settings(c_.data());
   popup_.pin_moved = s_.pin_moved;
+  icon_.set_enabled(s_.selection_icon, s_.ignore_apps);
   QGuiApplication::styleHints()->setColorScheme(s_.theme == "light"  ? Qt::ColorScheme::Light
                                                 : s_.theme == "dark" ? Qt::ColorScheme::Dark
                                                                      : Qt::ColorScheme::Unknown);

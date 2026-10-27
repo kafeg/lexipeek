@@ -175,6 +175,50 @@ std::string front_app() {
 
 bool mouse_down() { return (GetAsyncKeyState(VK_LBUTTON) & 0x8000) || (GetAsyncKeyState(VK_RBUTTON) & 0x8000); }
 
+namespace {
+std::function<void(Input)> watching;
+HHOOK mouse_hook = nullptr, key_hook = nullptr;
+
+// The hooks only note what happened: the shell acts on it after the system's call returns.
+void note(Input i) {
+  QMetaObject::invokeMethod(QCoreApplication::instance(), [i] {
+    if (watching) watching(i);
+  }, Qt::QueuedConnection);
+}
+
+LRESULT CALLBACK on_mouse(int code, WPARAM w, LPARAM l) {
+  if (code == HC_ACTION) {
+    if (w == WM_LBUTTONDOWN) note(Input::down);
+    else if (w == WM_LBUTTONUP) note(Input::up);
+    else if (w == WM_MOUSEWHEEL || w == WM_RBUTTONDOWN) note(Input::other);
+  }
+  return CallNextHookEx(nullptr, code, w, l);
+}
+
+LRESULT CALLBACK on_key(int code, WPARAM w, LPARAM l) {
+  if (code == HC_ACTION && (w == WM_KEYDOWN || w == WM_SYSKEYDOWN)) note(Input::other);
+  return CallNextHookEx(nullptr, code, w, l);
+}
+}  // namespace
+
+void watch_input(std::function<void(Input)> on) {
+  watching = std::move(on);
+  if (watching && !mouse_hook) {
+    mouse_hook = SetWindowsHookExW(WH_MOUSE_LL, on_mouse, GetModuleHandleW(nullptr), 0);
+    key_hook = SetWindowsHookExW(WH_KEYBOARD_LL, on_key, GetModuleHandleW(nullptr), 0);
+  } else if (!watching && mouse_hook) {
+    UnhookWindowsHookEx(mouse_hook);
+    UnhookWindowsHookEx(key_hook);
+    mouse_hook = key_hook = nullptr;
+  }
+}
+
+bool front_is_mine() {
+  DWORD pid = 0;
+  GetWindowThreadProcessId(GetForegroundWindow(), &pid);
+  return pid == GetCurrentProcessId();
+}
+
 int ram_mb() {
   MEMORYSTATUSEX m{};
   m.dwLength = sizeof m;

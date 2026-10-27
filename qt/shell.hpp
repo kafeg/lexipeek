@@ -6,6 +6,7 @@
 #include "first_run.hpp"
 #include "main_window.hpp"
 #include "popup.hpp"
+#include "selection_icon.hpp"
 #include "settings_window.hpp"
 
 namespace lexipeek::qt {
@@ -27,6 +28,7 @@ class Shell : public QObject {
   void register_hotkeys();
   CoreClient &c_;
   CardPopup popup_;
+  SelectionIcon icon_;
   MainWindow *main_ = nullptr;
   SettingsWindow *settings_ = nullptr;
   AboutWindow *about_ = nullptr;
