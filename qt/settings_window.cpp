@@ -15,6 +15,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTabBar>
 #include <QTimer>
 #include <QToolButton>
@@ -172,6 +173,10 @@ void SettingsWindow::after(const std::string &error) {
 }
 
 void SettingsWindow::draw() {
+  // The same pane drawn again keeps its place (a toggle, a download's progress).
+  auto *old = findChild<QScrollArea *>("rows");
+  int scrolled = old && section_ == drawn_section_ && tabs_[section_] == drawn_tab_ ? old->verticalScrollBar()->value() : 0;
+  drawn_section_ = section_, drawn_tab_ = tabs_[section_];
   for (auto *pane : {packs_, dicts_})
     if (pane) body_->removeWidget(pane), pane->hide();
   ui::clear(body_);
@@ -223,10 +228,12 @@ void SettingsWindow::draw() {
   }
   rl->addStretch();
   auto *scroll = new QScrollArea;
+  scroll->setObjectName("rows");
   scroll->setWidget(rows);
   scroll->setWidgetResizable(true);
   scroll->setFrameShape(QFrame::NoFrame);
   body_->addWidget(scroll, 1);
+  ui::keep_scroll(scroll, scrolled);
 }
 
 QWidget *SettingsWindow::row(const SettingRow &r) {

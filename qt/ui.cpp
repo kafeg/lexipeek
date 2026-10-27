@@ -1,4 +1,8 @@
 #include "ui.hpp"
+#include <QPointer>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QTimer>
 
 namespace lexipeek::qt::ui {
 
@@ -35,6 +39,13 @@ void clear(QLayout *l) {
     delete item->widget();
     delete item;
   }
+}
+
+void keep_scroll(QScrollArea *area, int value) {
+  QPointer<QScrollArea> a(area);
+  QTimer::singleShot(0, area, [a, value] {
+    if (a) a->verticalScrollBar()->setValue(value);
+  });
 }
 
 }  // namespace lexipeek::qt::ui

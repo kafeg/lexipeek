@@ -2,6 +2,7 @@
 #pragma once
 #include <QLabel>
 #include <QLayout>
+#include <QScrollArea>
 #include <QToolButton>
 #include <functional>
 #include <string>
@@ -18,5 +19,7 @@ void grey(QWidget *w);
 QToolButton *link(const QString &s, std::function<void()> click);
 // Everything in a layout, nested layouts and their widgets too.
 void clear(QLayout *l);
+// A scroll area's position back after its content was drawn again (once the layout has run).
+void keep_scroll(QScrollArea *area, int value);
 
 }  // namespace lexipeek::qt::ui

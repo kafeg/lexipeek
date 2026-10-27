@@ -9,6 +9,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -51,6 +52,8 @@ DictsPane::DictsPane(CoreClient &client) : c_(client) {
 }
 
 void DictsPane::draw() {
+  auto *area = findChild<QScrollArea *>();
+  int scrolled = area->verticalScrollBar()->value();
   ui::clear(body_);
   auto data = c_.data();
   auto v = app::dictionaries(data);
@@ -160,6 +163,7 @@ void DictsPane::draw() {
     }
   }
   body_->addStretch();
+  ui::keep_scroll(area, scrolled);
 }
 
 void DictsPane::import(const std::vector<std::string> &files) {

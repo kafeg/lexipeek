@@ -6,6 +6,7 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
@@ -37,6 +38,8 @@ PacksPane::PacksPane(CoreClient &client) : c_(client) {
 }
 
 void PacksPane::draw() {
+  auto *area = findChild<QScrollArea *>();
+  int scrolled = area->verticalScrollBar()->value();
   ui::clear(body_);
   if (busy_) {
     auto *row = new QHBoxLayout;
@@ -76,6 +79,7 @@ void PacksPane::draw() {
   group(view_.available_title, view_.available);
   if (!view_.empty.empty()) body_->addWidget(ui::text(view_.empty, 0, true));
   body_->addStretch();
+  ui::keep_scroll(area, scrolled);
 }
 
 QWidget *PacksPane::line(const PackLine &l) {
