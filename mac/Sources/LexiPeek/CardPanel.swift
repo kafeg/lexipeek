@@ -150,7 +150,7 @@ final class CardController {
     private func fit() {
         guard panel.isVisible, let h = hosting else { return }
         let fitting = h.fittingSize
-        let height = min(max(fitting.height, panel.frame.height), screen.height)
+        let height = min(model.loading ? max(fitting.height, panel.frame.height) : fitting.height, screen.height)
         if height != panel.frame.height || fitting.width != panel.frame.width {
             var f = Placement.resized(panel.frame, height: height, screen: screen)
             f.size.width = fitting.width

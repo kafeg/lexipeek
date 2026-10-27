@@ -12,6 +12,13 @@ struct CardLook {
         var link: String
         var open: String
         var entry: Int
+        var copy: String
+    }
+
+    struct Lang: Identifiable {
+        var id: String
+        var title: String
+        var on: Bool
     }
 
     struct Item: Identifiable {
@@ -32,6 +39,8 @@ struct CardLook {
     var subtitle = ""
     var tooltip = ""
     var badge = ""
+    var books: [Lang] = []
+    var answers: [Lang] = []
     var wide = false
     var tabs = false
     var tabItems: [Tab] = []
@@ -59,13 +68,15 @@ struct CardLook {
         subtitle = String(v.subtitle)
         tooltip = String(v.tooltip)
         badge = String(v.badge)
+        books = v.books.map { Lang(id: String($0.code), title: String($0.title), on: $0.on) }
+        answers = v.answers.map { Lang(id: String($0.code), title: String($0.title), on: $0.on) }
         wide = v.wide
         tabs = v.tabs
         tabItems = v.tab_items.map { Tab(tab: $0.tab, title: String($0.title)) }
         tab = v.tab
         rows = v.rows.map {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
-                open: String($0.open), entry: Int($0.entry))
+                open: String($0.open), entry: Int($0.entry), copy: String($0.copy))
         }
         entryToggle = String(v.entry_toggle)
         menu = v.menu
@@ -115,13 +126,26 @@ final class CardModel: ObservableObject {
         trail = []
     }
 
-    func lookup(_ text: String, source: lexipeek.Source, keep: Bool = false) {
+    // The badge's menu: this text again in another language or into another one ("" = as before).
+    func relookup(lang: String = "", answer: String = "") {
+        guard let card else { return }
+        lookup(String(card.text), source: card.source, keep: true, lang: lang.isEmpty ? String(card.lang) : lang,
+               answer: answer.isEmpty ? String(card.answer) : answer)
+    }
+
+    // Something is on its way: the card keeps its height meanwhile (no jumps), then fits what it shows.
+    var loading: Bool {
+        if card == nil { return !showInput }
+        return state.translating || [state.quick, state.analysis, state.context].contains { $0.asking }
+    }
+
+    func lookup(_ text: String, source: lexipeek.Source, keep: Bool = false, lang: String = "", answer: String = "") {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
         if !keep { trail = [] }
         let before = trail.last.map { String($0.card.text) } ?? ""
         state = lexipeek.CardState()
-        request = client.lookup(t, source: source) { [weak self] id, card in
+        request = client.lookup(t, source: source, lang: lang, answer: answer) { [weak self] id, card in
             guard let self, id == self.request else { return }
             var s = lexipeek.first_state(card)
             if Snapshot.dictionary { s.tab = .dictionary }

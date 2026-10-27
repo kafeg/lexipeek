@@ -129,10 +129,16 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Card:** under the selection, on the screen with the cursor, kept inside its edges; it can be dragged anywhere
   (an option keeps a dragged card open, as pinned). By the text: a word — header, dictionary first; a phrase (up to 8
   words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
-  translation only. At most 45% of the screen high, the rest scrolls inside.
-  Tabs Dictionary · Translate (· Analysis · AI, Context · AI when AI is on — see AI below). Translate shows one method with its name; the others are a switch (a switch
+  translation only (its text in one line above it). At most 45% of the screen high, the rest scrolls inside; the card
+  keeps its height while something loads, then fits what it shows (smaller too).
+  A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
+  words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the
+  dictionary's name only when there are more. The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
+  offer a choice it is a menu: the text's language (the packs' into the answer) and the answer language — a pick looks
+  the text up again. A copy button next to the translation and the dictionary's line.
+  Text tabs (a line under the open one) Dictionary · Translate (· Analysis · AI, Context · AI when AI is on — see AI below). Translate shows one method with its name; the others are a switch (a switch
   translates again and is kept for the next cards), unavailable ones dimmed with the reason. A slow method keeps the card's height, no jumps.
-  No selection → an input field in the card (it takes focus only on a click).
+  No selection → an input field in the card (it takes focus only on a click), under it the last 5 lookups (↑↓, Return).
 - **AI** (optional, InkPeek's AI layer; off by default): a provider in Settings → AI — Claude (Anthropic Messages API),
   OpenAI, OpenRouter, an OpenAI-compatible server (presets: LM Studio, Ollama, llama.cpp, vLLM on this Mac, Groq,
   DeepSeek, Qwen, Mistral, Gemini), or a program on this Mac: Claude Code (`claude -p`) or Codex (`codex exec`), run as

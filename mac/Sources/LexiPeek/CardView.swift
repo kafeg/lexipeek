@@ -1,5 +1,6 @@
 import AppKit
 import LexiPeekCore
+import LexiPeekKit
 import SwiftUI
 
 // The card: draws what the core's card_view says (header, tabs, rows, footer); the HTML of a full entry by AppKit.
@@ -9,6 +10,8 @@ struct CardView: View {
     @FocusState private var focused: Bool
     var focusInput = false
     @State private var bodyHeight: CGFloat = 0
+    @State private var recents: [(text: String, meaning: String)] = []
+    @State private var picked: Int?
 
     private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * CGFloat(model.look?.height ?? 45) / 100 }
 
@@ -32,17 +35,17 @@ struct CardView: View {
                 TextField(L.t("card_input_hint"), text: $model.input)
                     .textFieldStyle(.roundedBorder)
                     .focused($focused)
-                    .onSubmit { model.lookup(model.input, source: .input) }
+                    .onSubmit {
+                        if let i = picked, model.input.isEmpty, i < recents.count { model.lookup(recents[i].text, source: .input) }
+                        else { model.lookup(model.input, source: .input) }
+                    }
+                    .onKeyPress(.downArrow) { pick(1) }
+                    .onKeyPress(.upArrow) { pick(-1) }
+                if look == nil && model.input.isEmpty && !recents.isEmpty { recentList() }
             }
             if let look {
                 header(look)
-                if look.tabs {
-                    Picker("", selection: Binding(get: { look.tab }, set: { model.select($0) })) {
-                        ForEach(look.tabItems.indices, id: \.self) { Text(look.tabItems[$0].title).tag(look.tabItems[$0].tab) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
+                if look.tabs { tabs(look) }
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
@@ -70,7 +73,103 @@ struct CardView: View {
         .padding(14)
         .frame(width: CGFloat(look?.width ?? 400), alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
-        .onAppear { focused = focusInput }
+        .onAppear {
+            focused = focusInput
+            if model.showInput { recents = model.client.recents().map { (text: $0.0, meaning: $0.1) } }
+        }
+    }
+
+    // ↑↓ in the empty input field: a recent lookup, Return opens it.
+    private func pick(_ by: Int) -> KeyPress.Result {
+        guard model.input.isEmpty, !recents.isEmpty else { return .ignored }
+        picked = max(0, min(recents.count - 1, (picked ?? (by > 0 ? -1 : recents.count)) + by))
+        return .handled
+    }
+
+    // The last lookups (the menu's Recents): a click opens one.
+    private func recentList() -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(recents.indices, id: \.self) { i in
+                Button { model.lookup(recents[i].text, source: .input) } label: {
+                    (Text(Recents.title(recents[i].text)) + Text(recents[i].meaning.isEmpty ? "" : " — \(recents[i].meaning)").foregroundColor(.secondary))
+                        .lineLimit(1).truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 3).padding(.horizontal, 6)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(picked == i ? Color.accentColor.opacity(0.18) : .clear))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Text(L.t("card_recent_keys")).font(font(-3)).foregroundStyle(.tertiary).padding(.top, 2)
+        }
+    }
+
+    // Text tabs with a line under the open one: lighter than a segmented control.
+    private func tabs(_ look: CardLook) -> some View {
+        HStack(spacing: 14) {
+            ForEach(look.tabItems.indices, id: \.self) { i in
+                let t = look.tabItems[i]
+                let on = t.tab == look.tab
+                Button { model.select(t.tab) } label: {
+                    Text(t.title).font(font(-1, on ? .medium : .regular))
+                        .foregroundStyle(on ? .primary : .secondary)
+                        .padding(.bottom, 4)
+                        .overlay(alignment: .bottom) { if on { Rectangle().fill(Color.accentColor).frame(height: 2) } }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+        }
+        .overlay(alignment: .bottom) { Divider() }
+    }
+
+    // The badge, a menu when the packs offer another language of the text or another answer language.
+    @ViewBuilder
+    private func badge(_ look: CardLook) -> some View {
+        if look.books.isEmpty && look.answers.isEmpty {
+            Text(look.badge).font(font(-2)).foregroundStyle(.secondary).lineLimit(1)
+        } else {
+            Menu {
+                Section(L.t("card_text_in")) {
+                    ForEach(look.books) { l in Button { model.relookup(lang: l.id) } label: { check(l) } }
+                }
+                Section(L.t("card_into")) {
+                    ForEach(look.answers) { l in Button { model.relookup(answer: l.id) } label: { check(l) } }
+                }
+            } label: {
+                Text(look.badge.isEmpty ? "…" : look.badge).font(font(-2))
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+        }
+    }
+
+    private func check(_ l: CardLook.Lang) -> some View {
+        l.on ? AnyView(Label(l.title, systemImage: "checkmark")) : AnyView(Text(l.title))
+    }
+
+    private func copyButton(_ s: String) -> some View {
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(s, forType: .string)
+        } label: { Image(systemName: "doc.on.doc").font(font(-2)) }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
+            .help(L.t("card_copy"))
+    }
+
+    // A row with its copy button on the right, when it has something to copy.
+    @ViewBuilder
+    private func copyable(_ r: CardLook.Row, @ViewBuilder _ content: () -> some View) -> some View {
+        if r.copy.isEmpty {
+            content()
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                content().frame(maxWidth: .infinity, alignment: .leading)
+                copyButton(r.copy)
+            }
+        }
     }
 
     private func unread(_ u: (id: String, name: String)) -> some View {
@@ -93,19 +192,19 @@ struct CardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 switch look.style {
                 case .word:
-                    Text(look.title).font(font(4, .semibold)).lineLimit(1)
+                    Text(look.title).font(font(4, .semibold)).lineLimit(2).truncationMode(.tail)
                     if !look.subtitle.isEmpty {
                         Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 case .phrase:
                     Text(look.title).font(font(0, .semibold)).lineLimit(2).truncationMode(.tail)
                 default:
-                    Text(look.title).font(font(-1)).foregroundStyle(.secondary).lineLimit(2).truncationMode(.tail)
+                    Text(look.title).font(font(-1)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
                 }
             }
             .help(look.tooltip)
             Spacer(minLength: 8)
-            if !look.badge.isEmpty { Text(look.badge).font(font(-2)).foregroundStyle(.secondary).lineLimit(1) }
+            if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if !look.star.isEmpty {
                 Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
                     .buttonStyle(.borderless)
@@ -122,9 +221,11 @@ struct CardView: View {
         switch r.style {
         case .entry:
             VStack(alignment: .leading, spacing: 2) {
-                Text(r.label).font(font(-2)).foregroundStyle(.secondary)
-                (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html, size: model.look?.text ?? 13, font: model.look?.font ?? "")))
-                    .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                if !r.label.isEmpty { Text(r.label).font(font(-2)).foregroundStyle(.secondary) }
+                copyable(r) {
+                    (r.html.isEmpty ? Text(r.text) : Text(Self.html(r.html, size: model.look?.text ?? 13, font: model.look?.font ?? "")))
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
             }
         case .gloss:
             // Whole, as InkPeek's rows: a long meaning wraps; a click opens the word here.
@@ -155,7 +256,7 @@ struct CardView: View {
             .padding(.top, 4)
             .overlay(alignment: .top) { Divider() }
         case .text:
-            Text(r.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            copyable(r) { Text(r.text).font(font(1)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
         case .markdown:
             Text(Self.markdown(r.text)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .english:

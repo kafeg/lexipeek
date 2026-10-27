@@ -59,12 +59,13 @@ final class CoreClient {
     private func current(_ id: Int) -> Bool { lock.withLock { latest == id } }
 
     // Returns the request's id; done runs on the main queue, only if no newer request came.
-    func lookup(_ text: String, source: lexipeek.Source, done: @escaping (Int, lexipeek.Card) -> Void) -> Int {
+    func lookup(_ text: String, source: lexipeek.Source, lang: String = "", answer: String = "",
+                done: @escaping (Int, lexipeek.Card) -> Void) -> Int {
         let id = lock.withLock { latest += 1; cards.removeAll(); return latest }
         engine.cancel()
         lookups.async {
             guard self.current(id) else { return }
-            let card = self.engine.lookup(std.string(text), source)
+            let card = self.engine.lookup_as(std.string(text), source, std.string(lang), std.string(answer))
             self.lock.withLock { self.cards[id] = card }
             DispatchQueue.main.async { if self.current(id) { done(id, card) } }
         }

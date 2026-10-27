@@ -61,6 +61,9 @@ Engine Engine::make(const std::string &data, const Device &d) {
 
 void Engine::configure(const std::string &data) const { core->configure(load_settings(dir(data))); }
 Card Engine::lookup(const std::string &text, Source source) const { return core->lookup({text, source, ""}); }
+Card Engine::lookup_as(const std::string &text, Source source, const std::string &lang, const std::string &answer) const {
+  return core->lookup({text, source, answer, lang});
+}
 Translation Engine::translate(const Card &card, Method m) const { return core->translate(card, m); }
 SectionPage Engine::section(const Card &card, int entry, const std::string &key, int page) const { return core->section(card, entry, key, page); }
 std::vector<Seen> Engine::recents(int n) const { return core->recents(n); }

@@ -145,6 +145,7 @@ Card Core::lookup(const Request &r) {
     std::tie(c.lang, c.other) = impl_->source(c.text, c.answer);
     // A text in the answer language itself: no pack translates it, the card says so.
     if (c.lang.empty() && c.other == c.answer) c.lang = c.answer, c.other.clear();
+    if (!r.lang.empty()) c.lang = r.lang, c.other.clear();
     if (c.kind == Card::Kind::word) {
       auto heads = lib.heads(c.text, c.answer, c.lang);
       if (!heads.empty()) {
@@ -193,6 +194,14 @@ Card Core::lookup(const Request &r) {
     c.error = e.what();
   }
   // Every card counts as a look (history.seen), not the CLI's.
+  auto add = [](std::vector<std::string> &xs, const std::string &x) {
+    if (!x.empty() && std::find(xs.begin(), xs.end(), x) == xs.end()) xs.push_back(x);
+  };
+  for (auto *d : lib.all())
+    if (d->pack()) {
+      add(c.answers, d->answer());
+      if (d->answer() == c.answer) add(c.books, d->book());
+    }
   if (r.source != Source::cli && c.error.empty()) {
     auto kind = c.kind == Card::Kind::word ? "word" : "phrase";
     impl_->store->seen(c.text, kind, c.answer, c.entries.empty() ? "" : c.entries.front().line, c.base);

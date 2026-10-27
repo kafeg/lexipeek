@@ -44,6 +44,8 @@ struct Engine {
   // The settings changed on disk: the next cards use them (no reload of the library or the store).
   void configure(const std::string &data) const;
   Card lookup(const std::string &text, Source source) const;
+  // Again with the text's language or the answer language picked in the card ("" = as usual).
+  Card lookup_as(const std::string &text, Source source, const std::string &lang, const std::string &answer) const;
   Translation translate(const Card &card, Method m) const;
   SectionPage section(const Card &card, int entry, const std::string &key, int page) const;
   std::vector<Seen> recents(int n) const;

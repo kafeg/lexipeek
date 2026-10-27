@@ -20,6 +20,7 @@ struct Request {
   std::string text;
   Source source = Source::input;
   std::string answer;  // the answer language ("ru"); "" = the settings' one
+  std::string lang = "";  // the text's language picked in the card ("" = guessed)
 };
 
 // A sense of a pack's article: its meaning and its examples ("◆ Ich gehe nach Hause — Я иду домой.").
@@ -111,6 +112,8 @@ struct Card {
   std::string error;
   CardPrefs prefs = {};  // the card's settings when it was looked up (what it opens on, shows, its look)
   CardAi ai = {};
+  // The packs' languages for the badge's menu: the texts' into answer, the answers' (codes).
+  std::vector<std::string> books = {}, answers = {};
 };
 
 

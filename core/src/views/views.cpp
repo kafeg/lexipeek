@@ -153,8 +153,17 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
       auto &e = c.entries[i];
       // The selected form names itself first (InkPeek's line): "Häusern: das Haus (…) — дом".
       auto form = text::lower(e.word) == text::lower(c.text) ? "" : c.text + ": ";
+      // The header and the form are above: the card's own headword shows only its meaning, and the dictionary's name
+      // only when there are more.
+      auto label = c.entries.size() > 1 ? e.dictionary : "";
+      auto short_line = [&](const std::string &l) {
+        auto dash = l.find(" — ");
+        return dash != std::string::npos && text::lower(e.word) == text::lower(c.save_text) ? l.substr(dash + 5) : form + l;
+      };
       if (!s.full_entry) {
-        rows.push_back({Style::entry, e.dictionary, form + e.line, ""});
+        CardRow r{Style::entry, label, short_line(e.line), ""};
+        r.copy = r.text;
+        rows.push_back(r);
         continue;
       }
       if (e.articles.empty()) {
@@ -163,7 +172,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
       }
       for (size_t j = 0; j < e.articles.size(); j++) {
         auto &a = e.articles[j];
-        if (j == 0) rows.push_back({Style::entry, e.dictionary, form + a.line, ""});
+        if (j == 0) rows.push_back({Style::entry, label, short_line(a.line), ""});
         else rows.push_back({Style::heading, "", a.line, ""});
         for (size_t k = 0; k < a.senses.size(); k++) {
           rows.push_back({Style::sense, std::to_string(k + 1) + ".", a.senses[k].text, ""});
@@ -240,6 +249,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   {
     if (!s.translation.ok()) return {{Style::error, "", s.translation.error, ""}};
     std::vector<CardRow> rows{{Style::text, "", s.translation.text, ""}};
+    rows.front().copy = s.translation.text;
     if (!s.translation.english.empty()) rows.push_back({Style::english, "", s.translation.english, ""});
     return rows;
   }
@@ -263,7 +273,7 @@ CardView card_view(const Card &c, const CardState &s) {
     std::string fl;
     for (auto &f : facts) fl += (fl.empty() ? "" : " · ") + f;
     if (!c.base.empty()) v.subtitle = tr("form_of_sel", {c.text});
-    if (!fl.empty()) v.subtitle += (v.subtitle.empty() ? "" : "\n") + fl;
+    if (!fl.empty()) v.subtitle += (v.subtitle.empty() ? "" : " · ") + fl;
   } else {
     v.style = c.kind == Card::Kind::phrase ? HeaderStyle::phrase : HeaderStyle::passage;
     v.title = c.text;
@@ -271,6 +281,10 @@ CardView card_view(const Card &c, const CardState &s) {
   // Codes only: "de → ru"; "ru" when the text is in the answer language; "fr → ru" for a language without a pack.
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang : c.lang + " → " + c.answer;
   else if (!c.other.empty()) v.badge = c.other + " → " + c.answer;
+  if (c.books.size() > 1 || c.answers.size() > 1) {
+    for (auto &b : c.books) v.books.push_back({b, language_name(b), b == c.lang});
+    for (auto &a : c.answers) v.answers.push_back({a, language_name(a), a == c.answer});
+  }
   v.wide = v.style == HeaderStyle::passage;
   if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty()) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
   v.tab_items.push_back({CardTab::translate, tr("tab_translate")});

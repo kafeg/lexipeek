@@ -18,7 +18,8 @@ Card word() {
   c.lang = "de", c.answer = "ru", c.lang_name = "German", c.answer_name = "Russian";
   c.header = "das Haus (Hauses, pl. Häuser)";
   c.base = "Haus";
-  c.entries = {{"InkPeek · de → ru", "дом", "<b>Haus</b> дом", "de-ru", "Haus"}};
+  c.entries = {{"InkPeek · de → ru", "das Haus (Hauses, pl. Häuser) — дом", "<b>Haus</b> дом", "de-ru", "Haus"}};
+  c.save_text = "Haus";
   c.looks = 3;
   c.methods = {{Method::fast, "Fast · Mozilla", true, ""},
                {Method::direct, "Direct · OPUS-MT", false, "Not installed: opus-x"},
@@ -40,6 +41,30 @@ Card phrase() {
 
 }  // namespace
 
+TEST_CASE("views: more dictionaries name themselves; another headword keeps its line and the form") {
+  auto c = word();
+  c.entries.push_back({"Mueller", "Hausen — жить", "", "mueller", "hausen"});
+  auto v = card_view(c, first_state(c));
+  REQUIRE(v.rows.size() == 2);
+  CHECK(v.rows[0].label == "InkPeek · de → ru");
+  CHECK(v.rows[0].text == "дом");
+  CHECK(v.rows[1].label == "Mueller");
+  CHECK(v.rows[1].text == "Häusern: Hausen — жить");
+}
+
+TEST_CASE("views: the badge's menu lists the packs' languages when there is a choice") {
+  auto c = word();
+  CHECK(card_view(c, first_state(c)).books.empty());
+  c.books = {"de", "en"}, c.answers = {"ru"};
+  auto v = card_view(c, first_state(c));
+  REQUIRE(v.books.size() == 2);
+  CHECK(v.books[0].code == "de");
+  CHECK(v.books[0].on);
+  CHECK(!v.books[1].on);
+  REQUIRE(v.answers.size() == 1);
+  CHECK(v.answers[0].on);
+}
+
 TEST_CASE("views: a word opens on Dictionary with its header, the form, frequency and looks") {
   auto c = word();
   auto s = first_state(c);
@@ -49,15 +74,16 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   auto v = card_view(c, s);
   CHECK(v.style == HeaderStyle::word);
   CHECK(v.title == "das Haus (Hauses, pl. Häuser)");
-  CHECK(v.subtitle == "form: Häusern\nlooked up 3 times");
+  CHECK(v.subtitle == "form: Häusern · looked up 3 times");
   CHECK(v.tooltip == "Häusern");
   CHECK(v.badge == "de → ru");
   CHECK(!v.wide);
   CHECK(v.tabs);
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::entry);
-  CHECK(v.rows[0].label == "InkPeek · de → ru");
-  CHECK(v.rows[0].text == "Häusern: дом");  // the selected form names itself first
+  CHECK(v.rows[0].label.empty());  // one dictionary: no name
+  CHECK(v.rows[0].text == "дом");  // the header and the form are above it
+  CHECK(v.rows[0].copy == "дом");
   CHECK(v.rows[0].html.empty());
   CHECK(v.entry_toggle == "Full entry ⏎");
   CHECK(!v.menu);
@@ -69,9 +95,9 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.rows[0].text.empty());
   CHECK(v.entry_toggle == "Short ⏎");
   c.rank = 255;
-  CHECK(card_view(c, s).subtitle == "form: Häusern\namong the 1,000 most frequent words · looked up 3 times");
+  CHECK(card_view(c, s).subtitle == "form: Häusern · among the 1,000 most frequent words · looked up 3 times");
   c.looks = 1, c.rank = 4800;
-  CHECK(card_view(c, s).subtitle == "form: Häusern\namong the 5,000 most frequent words");
+  CHECK(card_view(c, s).subtitle == "form: Häusern · among the 5,000 most frequent words");
   c.header = "";
   c.base = "";
   c.rank = 20001;
@@ -101,7 +127,7 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   auto v = card_view(c, s);
   REQUIRE(v.rows.size() == 10);
   CHECK(v.rows[0].style == Style::entry);
-  CHECK(v.rows[0].text == "das Haus (Hauses) — дом");
+  CHECK(v.rows[0].text == "дом");  // its header is the card's
   CHECK(v.rows[1].style == Style::sense);
   CHECK(v.rows[1].label == "1.");
   CHECK(v.rows[1].text == "дом, здание");
@@ -176,6 +202,7 @@ TEST_CASE("views: Translate — progress, the translation, an error, the methods
   v = card_view(c, s);
   CHECK(v.rows[0].style == Style::text);
   CHECK(v.rows[0].text == "домам");
+  CHECK(v.rows[0].copy == "домам");
   s.translation.error = "Cancelled";
   CHECK(card_view(c, s).rows[0].style == Style::error);
   CHECK(card_view(c, s).rows[0].text == "Cancelled");

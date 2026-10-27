@@ -95,6 +95,7 @@ struct CardRow {
   std::string link = "";  // a word: a click opens it in this card ("←" comes back)
   std::string open = "";  // a section's key: a click opens it (section rows)
   int entry = 0;     // the entry the section belongs to
+  std::string copy = "";  // what its copy button copies ("" = none): a translation, a dictionary's line
 };
 
 struct MethodItem {
@@ -109,12 +110,20 @@ struct TabItem {
   std::string title;  // "Dictionary", "Translate", "Analysis · AI"
 };
 
+// A language in the badge's menu.
+struct LangItem {
+  std::string code, title;  // "de", "German"
+  bool on = false;          // the card's
+};
+
 struct CardView {
   HeaderStyle style = HeaderStyle::passage;
   std::string title;     // the header ("das Haus (Hauses, pl. Häuser)") or the text
-  std::string subtitle;  // a word's small line, InkPeek's: "form: Häusern\namong the 1,000 most frequent words · looked up 3 times"
+  std::string subtitle;  // a word's small line, InkPeek's: "form: Häusern · among the 1,000 most frequent words · looked up 3 times"
   std::string tooltip;   // the text as asked
-  std::string badge;     // "de → ru", "Russian" (already in it), "French" (no pack from it), ""
+  std::string badge;     // "de → ru", "ru" (already in it), "fr → ru" (no pack from it), ""
+  // The badge's menu (shown when either has a choice): the text's language among the packs', the answer language.
+  std::vector<LangItem> books, answers;
   bool wide = false;     // a passage: a wider card
   bool tabs = false;     // more than one tab: tab_items are shown
   std::vector<TabItem> tab_items;    // Dictionary · Translate · Analysis · AI · Context · AI, those the card has
