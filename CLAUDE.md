@@ -151,7 +151,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
   serial queues (look-ups, one translation worker) and a concurrent AI queue; each `CardModel` asks through its `CardLane` (a newer request turns its older ones into no-ops).
 - `qt/` (M6, Windows; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, on
-  by default off macOS; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
+  by default on Windows; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   runs CardNav's steps, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
   done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets). OS parts only in `platform.hpp`

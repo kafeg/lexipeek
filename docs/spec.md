@@ -267,7 +267,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   providers (`claude -p`, `codex exec`); editable prompts; answers cached through `ai.put`.
 - **M6 Windows app.** The Mac app's UI and UX as they are (frozen before the port), drawn by a Qt Widgets shell (`qt/`,
   qtbase only: gui, widgets, png, concurrent; static on Windows through vcpkg's manifest feature `qt`, option
-  `LEXIPEEK_QT`, on by default on Windows and Linux). The shell draws the core's views and carries out its steps, as
+  `LEXIPEEK_QT`, on by default on Windows). The shell draws the core's views and carries out its steps, as
   `mac/` does: the card (`card_view`, `CardNav`; a frameless tool window that takes no focus, at the selection, the
   bottom row, the whole title over the card), the tray icon and its menu (the menu bar's), the LexiPeek window, Settings
   (the sections as tabs, their sub-tabs, the core's rows), About, the first run. Platform parts per OS behind small
