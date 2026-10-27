@@ -169,6 +169,7 @@ Manifest parse_manifest(const std::string &text) {
       x.names = get(c, "names", std::map<std::string, std::string>{});
       x.ram_mb = get(c, "ram_mb", 0);
       x.cpu = get(c, "cpu", std::vector<std::string>{});
+      x.cpu_by_arch = get(c, "cpu_by_arch", std::map<std::string, std::vector<std::string>>{});
       x.name = str(c, "name");
       x.prompt = str(c, "template");
       x.mirror = str(c, "mirror");
@@ -271,8 +272,17 @@ std::vector<Component> updates(const Manifest &m, const std::map<std::string, st
 
 std::string cannot(const Component &c, const Device &d) {
   if (d.ram_mb < c.ram_mb) return tr("mt_cannot_mem", {std::format("{:.0f}", c.ram_mb / 1000.0), decimal(d.ram_mb / 1024.0)});
+  // The features this architecture needs; a model not built for it cannot run.
+  auto need = c.cpu;
+  if (!c.cpu_by_arch.empty()) {
+    auto a = c.cpu_by_arch.find(d.arch);
+    if (a == c.cpu_by_arch.end()) return tr("mt_cannot_arch");
+    need = a->second;
+  } else if (d.arch != "arm64" && !c.cpu.empty()) {
+    return tr("mt_cannot_arch");
+  }
   std::vector<std::string> missing;
-  for (auto &f : c.cpu)
+  for (auto &f : need)
     if (std::find(d.features.begin(), d.features.end(), f) == d.features.end()) missing.push_back(f);
   if (missing.empty()) return "";
   if (missing == std::vector<std::string>{"asimddp"}) return tr("mt_cannot_cpu");

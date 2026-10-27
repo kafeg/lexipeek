@@ -16,7 +16,7 @@ namespace lexipeek::app {
 
 std::string data_dir();
 // This machine for the packs' requirements: memory and the int8 dot product (Apple Silicon: "asimddp").
-Device device(int ram_mb, const std::vector<std::string> &features);
+Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch);
 
 Settings settings(const std::string &data);
 std::string save(const std::string &data, const Settings &s);

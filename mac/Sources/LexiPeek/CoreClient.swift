@@ -19,7 +19,7 @@ final class CoreClient {
         var n = MemoryLayout<Int32>.size
         let dot = sysctlbyname("hw.optional.arm.FEAT_DotProd", &v, &n, nil, 0) == 0 && v == 1
         // Apple Silicon's int8 dot product, by the name the packs' list uses (Linux's /proc/cpuinfo flag).
-        return lexipeek.app.device(Int32(ProcessInfo.processInfo.physicalMemory / 1_048_576), (dot ? ["asimddp"] : []).cxx)
+        return lexipeek.app.device(Int32(ProcessInfo.processInfo.physicalMemory / 1_048_576), (dot ? ["asimddp"] : []).cxx, std.string("arm64"))
     }()
 
     init() {

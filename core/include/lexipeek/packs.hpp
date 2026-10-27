@@ -18,7 +18,8 @@ struct Component {
   std::vector<std::string> covers;
   std::map<std::string, std::string> tags, names;
   int ram_mb = 0;
-  std::vector<std::string> cpu;
+  std::vector<std::string> cpu;  // arm64's
+  std::map<std::string, std::vector<std::string>> cpu_by_arch;  // "arm64", "x86_64" → features; missing: cpu on arm64
   std::string name, prompt, mirror, license, attribution;
   double coverage = 0;
 };
@@ -73,7 +74,8 @@ std::vector<Component> updates(const Manifest &m, const std::map<std::string, st
 // What this machine can run; the shell fills it (Apple Silicon has int8 dot product: "asimddp").
 struct Device {
   int ram_mb = 0;
-  std::vector<std::string> features;
+  std::vector<std::string> features;  // Linux's /proc/cpuinfo names ("asimddp", "avx2", "fma")
+  std::string arch = "arm64";         // "arm64", "x86_64"
 };
 // Why [c] cannot run on [d]; "" when it can.
 std::string cannot(const Component &c, const Device &d);

@@ -262,3 +262,18 @@ TEST_CASE("text: UTF-8 paths, trim, join, the local day") {
   CHECK(text::join({"x"}, " · ") == "x");
   CHECK(text::local_day(0).size() == 10);
 }
+
+TEST_CASE("packs: an AI model's CPU needs per architecture (cpu_by_arch), cpu alone is arm64's") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "llm-a", "kind": "llm", "covers": ["de-ru"], "cpu": ["asimddp"],
+     "cpu_by_arch": {"arm64": ["asimddp"], "x86_64": ["avx2", "fma"]}, "file": {"name": "a", "size": 1, "sha256": "x"}},
+    {"id": "llm-b", "kind": "llm", "covers": ["de-ru"], "cpu": ["asimddp"], "file": {"name": "b", "size": 1, "sha256": "y"}}]})");
+  auto &a = m.components[0], &b = m.components[1];
+  CHECK(a.cpu_by_arch.at("x86_64") == std::vector<std::string>{"avx2", "fma"});
+  CHECK(cannot(a, {8192, {"asimddp"}, "arm64"}).empty());
+  CHECK(cannot(a, {8192, {"avx2", "fma"}, "x86_64"}).empty());
+  CHECK(cannot(a, {8192, {"avx2"}, "x86_64"}) == "Needs processor features: fma.");
+  CHECK(cannot(a, {8192, {}, "riscv64"}) == "Not built for this processor.");
+  CHECK(cannot(b, {8192, {"avx2", "fma"}, "x86_64"}) == "Not built for this processor.");  // an older list: arm64 only
+  CHECK(cannot(b, {8192, {"asimddp"}, "arm64"}).empty());
+}

@@ -104,6 +104,7 @@
 {"not_installed", "Nicht installiert: {1}"},
 {"mt_cannot_mem", "Braucht {1} GB Arbeitsspeicher; dieser Rechner hat {2} GB."},
 {"mt_cannot_cpu", "Braucht einen Prozessor mit int8-Beschleunigung (Dot Product)."},
+{"mt_cannot_arch", "Nicht für diesen Prozessor gebaut."},
 {"mt_cannot_features", "Braucht Prozessorfunktionen: {1}."},
 {"size_mb", "{1} MB"},
 {"size_gb", "{1} GB"},

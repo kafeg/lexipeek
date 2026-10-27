@@ -4,8 +4,8 @@ Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and se
 with TSV / Export / Import. Next: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
 
 ## Before the Windows shell
-- The packs' list names CPU features as Linux's flags ("asimddp", ARM): an x64 machine's features (AVX-VNNI…) need
-  names there too, or the AI model is "cannot" on Windows.
+- The packs' `cpu_by_arch` (InkPeek's format, read here) reaches the release's packs.json only when the packs are
+  published again (InkPeek's Packs workflow): until then the AI model is "not built for this processor" on x86-64.
 
 ## Open
 - CI on Linux / Windows not run since M0 (macOS first); CLI providers (`claude -p`, `codex exec`) have no timeout and

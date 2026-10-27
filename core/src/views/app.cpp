@@ -15,7 +15,7 @@ std::filesystem::path dir(const std::string &data) { return data.empty() ? defau
 }  // namespace
 
 std::string data_dir() { return default_data_dir().string(); }
-Device device(int ram_mb, const std::vector<std::string> &features) { return {ram_mb, features}; }
+Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) { return {ram_mb, features, arch}; }
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }
 std::string save(const std::string &data, const Settings &s) { return save_settings(dir(data), s); }

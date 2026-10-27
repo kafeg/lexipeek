@@ -104,6 +104,7 @@
 {"not_installed", "Não instalado: {1}"},
 {"mt_cannot_mem", "Precisa de {1} GB de memória; este computador tem {2} GB."},
 {"mt_cannot_cpu", "Precisa de um processador com aceleração int8 (dot product)."},
+{"mt_cannot_arch", "Não compilado para este processador."},
 {"mt_cannot_features", "Precisa de funcionalidades do processador: {1}."},
 {"size_mb", "{1} MB"},
 {"size_gb", "{1} GB"},
