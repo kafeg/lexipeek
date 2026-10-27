@@ -183,7 +183,12 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   right under the text; no height limit, the page scrolls): a pasted
   paragraph is a passage card with its translation. Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
   the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
-  (asks) under History.
+  (asks) under History. Under each list (InkPeek's Notes): **TSV…** — the open list for Anki or a spreadsheet (text,
+  meaning, AI translation, language, date; `notes_tsv`); **Export…** — the whole store (saved, history, AI answers) as
+  one SQLite file with InkPeek's tables and columns (`lexipeek-backup-<date>.db`, `VACUUM INTO`); **Import…** — a
+  backup of ours or InkPeek's (an older one too: the columns both have) adds what this computer does not have, as this
+  device's log lines (a text the logs do not know keeps its dates, another one gets now). A copy a day in
+  `<data>/backup/` (`lexipeek-<date>.db`, the last five), at launch.
 - **Menu bar:** Open LexiPeek ⌘O · Recents (5) · what is in memory ("In memory: OPUS-MT
   de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
@@ -249,7 +254,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   (Explanation, Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter, an OpenAI-compatible server) and CLI
   providers (`claude -p`, `codex exec`); editable prompts; answers cached through `ai.put`.
 - **M6 Windows app.** Qt Widgets shell, Windows platform parts, installer.
-- Then: release (signing, notarization, GitHub Releases, update check) · TSV for Anki, export / import · browser
+- Then: release (signing, notarization, GitHub Releases, update check) · browser
   extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).
 
 ## License

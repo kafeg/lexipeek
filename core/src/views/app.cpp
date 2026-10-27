@@ -1,4 +1,6 @@
 #include "lexipeek/app.hpp"
+#include <algorithm>
+#include <fstream>
 #include <cstdlib>
 #include <filesystem>
 #include "lexipeek/l10n.hpp"
@@ -85,7 +87,30 @@ AiState Engine::ask(const Card &card, ai::Ask a, const std::string &key) const {
 NotesView Engine::notes(NotesTab tab) const { return notes_view(core->store(), tab, core->answer()); }
 void Engine::remove_note(NotesTab tab, const std::string &text) const { lexipeek::remove_note(core->store(), tab, text); }
 void Engine::clear_history() const { core->store().clear_history(); }
-void Engine::prepare() const { core->prepare(); }
+
+std::string Engine::backup(const std::string &file) const {
+  auto e = core->store().backup(file);
+  return e.empty() ? tr("backup_done", {file}) : tr("failed", {e});
+}
+
+std::string Engine::restore(const std::string &file) const {
+  auto r = core->store().restore(file);
+  if (r.error == "not a backup") return tr("restore_bad");
+  return r.error.empty() ? tr("restore_done", {digits(r.added)}) : tr("failed", {r.error});
+}
+
+std::string Engine::export_tsv(NotesTab tab, const std::string &file) const {
+  auto tsv = notes_tsv(core->store(), tab, core->answer());
+  std::ofstream f(file, std::ios::binary);
+  f << tsv;
+  if (!f) return tr("failed", {file});
+  return tr("exported", {file, digits(static_cast<long long>(std::count(tsv.begin(), tsv.end(), '\n')))});
+}
+// At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five).
+void Engine::prepare() const {
+  core->prepare();
+  core->store().daily_backup(core->data() / "backup");
+}
 void Engine::reload() const { core->reload(); }
 void Engine::release() const { core->release(); }
 MemoryView Engine::memory() const { return memory_view(core->memory()); }

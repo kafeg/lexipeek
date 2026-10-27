@@ -178,3 +178,21 @@ TEST_CASE("app: notes through the engine") {
   }
   fs::remove_all(d);
 }
+
+TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date; cells on one line") {
+  auto d = fs::temp_directory_path() / "lexipeek-tsv";
+  fs::remove_all(d);
+  Store s(StoreOptions{d, {}, "mac-t"});
+  s.save("Haus", "word", "ru", "дом,\tздание");
+  s.put_answer("Haus", "Russian", "quick", 1, "m", "{\"translation\":\"дом\\nи двор\"}");
+  s.save("Ich mache die Tür zu", "phrase", "ru", "");
+  auto tsv = notes_tsv(s, NotesTab::words, "ru");
+  auto tab = tsv.find('\t');
+  REQUIRE(tab != std::string::npos);
+  CHECK(tsv.starts_with("Haus\tдом, здание\tдом и двор\tru\t20"));
+  CHECK(tsv.ends_with("\n"));
+  CHECK(std::count(tsv.begin(), tsv.end(), '\n') == 1);
+  CHECK(std::count(tsv.begin(), tsv.end(), '\t') == 4);
+  CHECK(notes_tsv(s, NotesTab::phrases, "ru").starts_with("Ich mache die Tür zu\t\t\tru\t"));
+  CHECK(notes_tsv(s, NotesTab::history, "ru").empty());
+}

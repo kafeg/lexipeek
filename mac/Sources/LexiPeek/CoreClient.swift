@@ -53,6 +53,20 @@ final class CoreClient {
     func removeNote(_ tab: lexipeek.NotesTab, _ text: String) { engine.remove_note(tab, std.string(text)) }
     func clearHistory() { engine.clear_history() }
 
+    // Notes → Export… / Import… / TSV… off the main queue; done gets what to say.
+    func backup(_ file: String, done: @escaping (String) -> Void) { run(done) { $0.backup(std.string(file)) } }
+    func restore(_ file: String, done: @escaping (String) -> Void) { run(done) { $0.restore(std.string(file)) } }
+    func exportTSV(_ tab: lexipeek.NotesTab, _ file: String, done: @escaping (String) -> Void) {
+        run(done) { $0.export_tsv(tab, std.string(file)) }
+    }
+
+    private func run(_ done: @escaping (String) -> Void, _ work: @escaping (lexipeek.app.Engine) -> std.string) {
+        lookups.async { [engine] in
+            let s = String(work(engine))
+            DispatchQueue.main.async { done(s) }
+        }
+    }
+
     // A section of the card's entry (its words' meanings: off the main queue); done on the main queue.
     func section(_ card: lexipeek.Card, entry: Int, key: String, page: Int, done: @escaping (lexipeek.SectionPage) -> Void) {
         lookups.async { [engine] in

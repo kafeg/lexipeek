@@ -110,7 +110,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `core/src/store/`: `log` (lines, HLC, read, append, merge — pure, InkPeek's `tests/sync` cases), `store` (`Store`:
   own lines to `<data>/log/<device>.jsonl`, `<data>/lexipeek.db` is a view: rebuilt from the logs on open and
   `merge()`, a text's rows re-merged from its lines on each write; the 1,000-entry limit only in the view).
-  Compaction (`log` `compact_file`): only the own file, on open, when it has ≥ 1,000 lines and ≥ 2× what it compacts
+  Backup (`Store::backup` / `restore` / `daily_backup`): the view as InkPeek's backup file; an import writes own log
+  lines (`Line::t` kept for texts the logs do not know). Compaction (`log` `compact_file`): only the own file, on open, when it has ≥ 1,000 lines and ≥ 2× what it compacts
   to, so a rewrite always at least halves it and small logs are never rewritten; `<device>.jsonl.tmp`, then renamed.
 - Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.

@@ -61,6 +61,47 @@ final class NotesModel: ObservableObject {
         client.clearHistory()
         refresh()
     }
+
+    // What the last Export / Import / TSV said.
+    @Published var said = ""
+
+    private static var today: String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date())
+    }
+
+    // A save panel in Downloads with the file's name; nil when cancelled.
+    private func saveTo(_ name: String) -> String? {
+        let p = NSSavePanel()
+        p.nameFieldStringValue = name
+        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        return p.runModal() == .OK ? p.url?.path : nil
+    }
+
+    func exportTSV() {
+        let kind = ["words", "phrases", "history"][NotesModel.tabs.firstIndex(of: tab) ?? 0]
+        guard let f = saveTo("lexipeek-\(kind)-\(Self.today).tsv") else { return }
+        client.exportTSV(tab, f) { [weak self] in self?.said = $0 }
+    }
+
+    func backup() {
+        guard let f = saveTo("lexipeek-backup-\(Self.today).db") else { return }
+        client.backup(f) { [weak self] in self?.said = $0 }
+    }
+
+    func restore() {
+        let p = NSOpenPanel()
+        p.canChooseDirectories = false
+        p.allowsMultipleSelection = false
+        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        guard p.runModal() == .OK, let f = p.url?.path else { return }
+        client.restore(f) { [weak self] in
+            self?.said = $0
+            self?.refresh()
+            NotificationCenter.default.post(name: .notesChanged, object: nil)
+        }
+    }
 }
 
 // Settings → Notes: the open tab's rows (Words · Phrases · History are the section's tabs), newest first; a click opens
@@ -77,12 +118,20 @@ struct NotesList: View {
                 List(model.look.rows) { row($0) }
                     .listStyle(.inset)
             }
-            if model.look.clear {
-                HStack {
-                    Spacer()
-                    Button(L.t("clear_history_more")) { confirmClear = true }
-                }
+            HStack {
+                if !model.look.rows.isEmpty { Button(L.t("tsv_btn")) { model.exportTSV() }.help(L.t("tsv_d")) }
+                Spacer()
+                if model.look.clear { Button(L.t("clear_history_more")) { confirmClear = true } }
             }
+            Divider()
+            // The whole store to one file and back (InkPeek's backups too).
+            HStack(alignment: .top) {
+                Text(L.t("backup_d")).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button(L.t("export_btn")) { model.backup() }
+                Button(L.t("import_btn")) { model.restore() }
+            }
+            if !model.said.isEmpty { Text(model.said).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
         }
         .padding(14)
         .confirmationDialog(L.t("clear_history_q"), isPresented: $confirmClear) {

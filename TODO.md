@@ -22,8 +22,8 @@
 - Kept as InkPeek, by decision: unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
   when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — detecting "not a language" would
   misfire on real text; a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
-- M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; Notes window). Open: Notes has no TSV export / import
-  (spec's "Then"); an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
+- M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; the window's Notes, TSV, Export / Import, a copy a day).
+  Open: an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
 - M3 first run and Mozilla's English: done in the core (tested) and the window. Open: the first-run snapshot cases
   and `passage-english` not yet looked at (run invisibly by the owner's session); the models test of the English
   (`firstrun_test.cpp`) not run here; the Accessibility step's "goes on by itself" not tried on a real grant.

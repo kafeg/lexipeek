@@ -179,6 +179,9 @@ struct NotesView {
 };
 
 NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer);
+// The tab as TSV for Anki or a spreadsheet (InkPeek's): text, meaning (the line shown), the AI translation, the answer
+// language, the date (local, yyyy-mm-dd); one row per line, tabs and line breaks inside a cell made spaces.
+std::string notes_tsv(const Store &s, NotesTab tab, const std::string &answer);
 // ✕ of a row: unsave, or forget the look.
 std::string remove_note(Store &s, NotesTab tab, const std::string &text);
 

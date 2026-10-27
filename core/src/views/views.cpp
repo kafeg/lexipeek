@@ -1,6 +1,8 @@
 #include "lexipeek/views.hpp"
 #include <algorithm>
 #include <cstdio>
+#include <ctime>
+#include <map>
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
 #include "text/text.hpp"
@@ -537,6 +539,43 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
   if (v.rows.empty()) v.empty = tr(tab == NotesTab::history ? "notes_empty_history" : "notes_empty_saved");
   v.clear = tab == NotesTab::history && !v.rows.empty();
   return v;
+}
+
+std::string notes_tsv(const Store &st, NotesTab tab, const std::string &answer) {
+  static const text::Regex breaks("[\\t\\r\\n]+");
+  auto cell = [](const std::string &s) {
+    auto c = breaks.replace(s, " ");
+    while (!c.empty() && c.back() == ' ') c.pop_back();
+    while (!c.empty() && c.front() == ' ') c.erase(0, 1);
+    return c;
+  };
+  auto day = [](std::int64_t ms) {
+    auto t = static_cast<std::time_t>(ms / 1000);
+    std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm, &t);
+#else
+    localtime_r(&t, &tm);
+#endif
+    char b[16];
+    std::strftime(b, sizeof b, "%Y-%m-%d", &tm);
+    return std::string(b);
+  };
+  auto ai_line = [&](const std::string &text) { return ai::brief(st.newest_answer(text, catalog_language(answer), "quick")); };
+  auto rows = notes_view(st, tab, answer).rows;
+  std::map<std::string, std::int64_t> times;
+  if (tab == NotesTab::history)
+    for (auto &e : st.history()) times[e.text] = e.seen;
+  else
+    for (auto &e : st.saved()) times[e.text] = e.created;
+  std::string out;
+  for (auto &r : rows) {
+    auto meaning = r.line == "—" ? std::string() : r.line;
+    for (auto &c : {cell(r.text), cell(meaning), cell(ai_line(r.text)), answer, day(times[r.text])})
+      out += c + "\t";
+    out.back() = '\n';
+  }
+  return out;
 }
 
 std::string remove_note(Store &st, NotesTab tab, const std::string &text) {

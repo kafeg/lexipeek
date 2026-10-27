@@ -58,6 +58,10 @@ struct Engine {
   NotesView notes(NotesTab tab) const;
   void remove_note(NotesTab tab, const std::string &text) const;
   void clear_history() const;
+  // Notes → Export… / Import… / TSV…: what to say after it ("Saved: …", "Added: 3", the error).
+  std::string backup(const std::string &file) const;
+  std::string restore(const std::string &file) const;
+  std::string export_tsv(NotesTab tab, const std::string &file) const;
   void prepare() const;
   void reload() const;
   void release() const;

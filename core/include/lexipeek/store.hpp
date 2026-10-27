@@ -86,6 +86,18 @@ class Store {
   std::int64_t looks(const std::string &word) const;
   Records records() const;
 
+  // The view as one SQLite file (InkPeek's backup: the same tables and columns), written whole, then renamed.
+  std::string backup(const std::filesystem::path &file) const;
+  // What a backup (ours or InkPeek's, an older one too: the columns both have) has and this store does not, as lines of
+  // this device: a text the logs do not know keeps its dates, another one gets now. added: the rows; error: "" or why.
+  struct Restored {
+    int added = 0;
+    std::string error;
+  };
+  Restored restore(const std::filesystem::path &file);
+  // A copy a day in [dir] (lexipeek-<date>.db, local date), the last [keep] kept; nothing while the store is empty.
+  std::string daily_backup(const std::filesystem::path &dir, int keep = 5) const;
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;

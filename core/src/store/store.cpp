@@ -2,7 +2,10 @@
 #include "lexipeek/store.hpp"
 #include <sqlite3.h>
 #include <chrono>
+#include <algorithm>
 #include <cstdio>
+#include <ctime>
+#include <set>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -162,7 +165,9 @@ struct Store::Impl {
   std::string write(std::vector<Line> ls) {
     if (!db) return error;
     for (auto &l : ls) {
-      l.t = clock.tick(now_ms());
+      // A restored line keeps its time (clock.see: own lines after it still grow).
+      if (l.t.ms) clock.see(l.t);
+      else l.t = clock.tick(now_ms());
       l.d = device;
       if (auto e = store::append(own, store::format(l)); !e.empty()) return e;
       lines[l.text].push_back(l);
@@ -341,6 +346,120 @@ Records Store::records() const {
   Stmt a(impl_->db, "SELECT text, lang, section, ver, model, answer, created FROM ai ORDER BY text, lang, section, ver");
   while (a.row()) r.ai.push_back({a.text(0), a.text(1), a.text(2), a.num(3), a.text(4), a.text(5), a.num(6)});
   return r;
+}
+
+std::string Store::backup(const std::filesystem::path &file) const {
+  std::lock_guard g(impl_->m);
+  if (!impl_->db) return impl_->error;
+  auto tmp = file;
+  tmp += ".tmp";
+  std::error_code ec;
+  fs::remove(tmp, ec);
+  if (!Stmt(impl_->db, "VACUUM INTO ?").bind(tmp.string()).run()) return fs::remove(tmp, ec), impl_->db_error();
+  fs::rename(tmp, file, ec);
+  return ec ? (fs::remove(tmp, ec), "cannot write " + file.string()) : "";
+}
+
+Store::Restored Store::restore(const std::filesystem::path &file) {
+  std::lock_guard g(impl_->m);
+  Restored r;
+  if (!impl_->db) return r.error = impl_->error, r;
+  sqlite3 *src = nullptr;
+  if (sqlite3_open_v2(file.string().c_str(), &src, SQLITE_OPEN_READONLY, nullptr) != SQLITE_OK) {
+    sqlite3_close(src);
+    return r.error = "not a backup", r;
+  }
+  // A table's columns; a missing one reads as "" / 0 (an older backup).
+  auto columns = [&](const char *table) {
+    std::set<std::string> out;
+    Stmt q(src, (std::string("PRAGMA table_info(") + table + ")").c_str());
+    while (q.row()) out.insert(q.text(1));
+    return out;
+  };
+  auto select = [&](const char *table, std::vector<std::string> want) {
+    auto have = columns(table);
+    std::string sql;
+    for (auto &c : want) sql += (sql.empty() ? "" : ", ") + (have.contains(c) ? c : std::string("NULL"));
+    return "SELECT " + sql + " FROM " + table;
+  };
+  if (columns("saved").empty() || columns("history").empty() || columns("ai").empty()) {
+    sqlite3_close(src);
+    return r.error = "not a backup", r;
+  }
+  auto &im = *impl_;
+  // A text the logs know gets now (its later lines would win over an old time); an unknown one keeps its date.
+  auto when = [&](const std::string &text, std::int64_t ms) { return im.lines[text].empty() ? store::Time{ms, 0} : store::Time{}; };
+  std::vector<Line> ls;
+  {
+    Stmt q(src, select("saved", {"text", "kind", "meaning", "created", "lang"}).c_str());
+    while (q.row()) {
+      if (Stmt(im.db, "SELECT 1 FROM saved WHERE text=?").bind(q.text(0)).row() || q.text(0).empty()) continue;
+      Line l;
+      l.op = Op::saved_put, l.text = q.text(0), l.kind = q.text(1), l.meaning = q.text(2), l.lang = q.text(4);
+      l.t = when(l.text, q.num(3));
+      ls.push_back(l);
+    }
+  }
+  {
+    Stmt q(src, select("history", {"text", "kind", "seen", "count", "meaning", "lang", "base"}).c_str());
+    while (q.row()) {
+      if (Stmt(im.db, "SELECT 1 FROM history WHERE text=?").bind(q.text(0)).row() || q.text(0).empty()) continue;
+      Line l;
+      l.op = Op::history_seen, l.text = q.text(0), l.kind = q.text(1), l.c = std::max<std::int64_t>(1, q.num(3));
+      l.meaning = q.text(4), l.lang = q.text(5), l.base = q.text(6) == l.text ? "" : q.text(6);
+      l.t = when(l.text, q.num(2));
+      ls.push_back(l);
+    }
+  }
+  {
+    Stmt q(src, select("ai", {"text", "lang", "section", "ver", "model", "answer", "created"}).c_str());
+    while (q.row()) {
+      if (Stmt(im.db, "SELECT 1 FROM ai WHERE text=? AND lang=? AND section=? AND ver=?")
+              .bind(q.text(0)).bind(q.text(1)).bind(q.text(2)).bind(q.num(3)).row() || q.text(0).empty())
+        continue;
+      Answer a{q.text(0), q.text(1), q.text(2), q.num(3), q.text(4), q.text(5), 0};
+      auto l = Impl::answer_line(a);
+      l.t = when(l.text, q.num(6));
+      ls.push_back(l);
+    }
+  }
+  sqlite3_close(src);
+  // Old times first: the log stays in order.
+  std::stable_sort(ls.begin(), ls.end(), [](const Line &a, const Line &b) { return a.t.ms < b.t.ms; });
+  r.added = static_cast<int>(ls.size());
+  if (!ls.empty()) r.error = im.write(ls);
+  return r;
+}
+
+std::string Store::daily_backup(const std::filesystem::path &dir, int keep) const {
+  {
+    std::lock_guard g(impl_->m);
+    if (!impl_->db) return impl_->error;
+    Stmt q(impl_->db, "SELECT (SELECT COUNT(*) FROM saved) + (SELECT COUNT(*) FROM history)");
+    if (!q.row() || q.num(0) == 0) return "";
+  }
+  auto t = std::time(nullptr);
+  std::tm tm{};
+#ifdef _WIN32
+  localtime_s(&tm, &t);
+#else
+  localtime_r(&t, &tm);
+#endif
+  char day[16];
+  std::strftime(day, sizeof day, "%Y-%m-%d", &tm);
+  std::error_code ec;
+  fs::create_directories(dir, ec);
+  auto file = dir / ("lexipeek-" + std::string(day) + ".db");
+  if (fs::exists(file)) return "";
+  if (auto e = backup(file); !e.empty()) return e;
+  std::vector<fs::path> all;
+  for (auto &f : fs::directory_iterator(dir, ec)) {
+    auto n = f.path().filename().string();
+    if (n.size() == 22 && n.starts_with("lexipeek-") && n.ends_with(".db")) all.push_back(f.path());
+  }
+  std::sort(all.rbegin(), all.rend());
+  for (size_t i = static_cast<size_t>(std::max(keep, 0)); i < all.size(); i++) fs::remove(all[i], ec);
+  return "";
 }
 
 }  // namespace lexipeek

@@ -5,6 +5,7 @@
 #include <random>
 #include <nlohmann/json.hpp>
 #include "lexipeek/store.hpp"
+#include <sqlite3.h>
 #include "store/log.hpp"
 
 using namespace lexipeek;
@@ -303,4 +304,75 @@ TEST_CASE("compaction: a small log stays as it is") {
   CHECK(store::compact_file(own, 0) == "");
   CHECK(store::lines_of(own).size() == 1);
   CHECK(Store({data, {}, "mac-0001"}).looks("Haus") == 500);
+}
+
+TEST_CASE("backup: export, then import into another store adds what it lacks, with the dates") {
+  auto a = fresh("lexipeek-backup-a"), b = fresh("lexipeek-backup-b");
+  {
+    Store s(StoreOptions{a, {}, "mac-a"});
+    s.save("Haus", "word", "ru", "дом");
+    s.seen("Haus", "word", "ru", "дом");
+    s.seen("Haus", "word", "ru", "дом");
+    s.put_answer("Haus", "Russian", "quick", 7, "claude", "{\"translation\":\"дом\"}");
+    CHECK(s.backup(a / "copy.db").empty());
+  }
+  REQUIRE(fs::exists(a / "copy.db"));
+  CHECK(!fs::exists(a / "copy.db.tmp"));
+  Store t(StoreOptions{b, {}, "mac-b"});
+  t.save("Baum", "word", "ru", "дерево");
+  auto r = t.restore(a / "copy.db");
+  CHECK(r.error.empty());
+  CHECK(r.added == 3);  // saved, history, ai
+  CHECK(t.is_saved("Haus"));
+  CHECK(t.is_saved("Baum"));
+  CHECK(t.looks("Haus") == 2);
+  CHECK(t.answer("Haus", "Russian", "quick", 7) == "{\"translation\":\"дом\"}");
+  // Again: nothing new.
+  CHECK(t.restore(a / "copy.db").added == 0);
+  // The dates came along: Haus was saved before Baum.
+  auto saved = t.saved();
+  REQUIRE(saved.size() == 2);
+  CHECK(saved[0].text == "Baum");
+  // Not a backup.
+  std::ofstream(b / "list.tsv") << "Haus\tдом\n";
+  CHECK(t.restore(b / "list.tsv").error == "not a backup");
+}
+
+TEST_CASE("backup: an older backup without some columns, a removed word comes back now") {
+  auto a = fresh("lexipeek-backup-old");
+  sqlite3 *db = nullptr;
+  sqlite3_open((a / "old.db").string().c_str(), &db);
+  sqlite3_exec(db,
+               "CREATE TABLE saved(text TEXT PRIMARY KEY, kind TEXT, meaning TEXT, created INTEGER);"
+               "CREATE TABLE history(text TEXT PRIMARY KEY, kind TEXT, seen INTEGER, count INTEGER);"
+               "CREATE TABLE ai(text TEXT, lang TEXT, section TEXT, ver INTEGER, model TEXT, answer TEXT, created INTEGER);"
+               "INSERT INTO saved VALUES('Tür', 'word', 'дверь', 1000);"
+               "INSERT INTO history VALUES('Tür', 'word', 1000, 4);",
+               nullptr, nullptr, nullptr);
+  sqlite3_close(db);
+  Store s(StoreOptions{a / "store", {}, "mac-c"});
+  s.save("Tür", "word", "ru", "дверь");
+  s.unsave("Tür");
+  auto r = s.restore(a / "old.db");
+  CHECK(r.error.empty());
+  CHECK(r.added == 2);
+  CHECK(s.is_saved("Tür"));  // its later unsave does not hide it: it got now
+  CHECK(s.looks("Tür") == 4);
+}
+
+TEST_CASE("backup: a copy a day, the last five kept, none while empty") {
+  auto a = fresh("lexipeek-daily");
+  Store s(StoreOptions{a, {}, "mac-d"});
+  CHECK(s.daily_backup(a / "backup").empty());
+  CHECK((!fs::exists(a / "backup") || fs::is_empty(a / "backup")));
+  s.seen("Haus", "word", "ru", "дом");
+  fs::create_directories(a / "backup");
+  for (auto d : {"2020-01-01", "2020-01-02", "2020-01-03", "2020-01-04", "2020-01-05", "2020-01-06"})
+    std::ofstream(a / "backup" / (std::string("lexipeek-") + d + ".db")) << "x";
+  CHECK(s.daily_backup(a / "backup").empty());
+  std::vector<std::string> names;
+  for (auto &f : fs::directory_iterator(a / "backup")) names.push_back(f.path().filename().string());
+  std::sort(names.begin(), names.end());
+  CHECK(names.size() == 5);
+  CHECK(names.front() == "lexipeek-2020-01-03.db");  // today's and the four newest before it
 }
