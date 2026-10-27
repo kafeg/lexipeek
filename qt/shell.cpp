@@ -95,10 +95,24 @@ void Shell::open_settings(int section, int tab) {
   if (!settings_) {
     settings_ = new SettingsWindow(c_);
     connect(settings_, &SettingsWindow::changed, this, &Shell::apply);
+    connect(settings_, &SettingsWindow::openFirstRun, this, &Shell::open_first_run);
   }
   if (section >= 0) settings_->select(static_cast<SettingsSection>(section), tab);
   settings_->refresh();
   present(settings_);
+}
+
+// The first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
+void Shell::open_first_run() {
+  if (!first_) {
+    first_ = new FirstRunWindow(c_);
+    connect(first_, &FirstRunWindow::finished, this, &Shell::apply);
+  }
+  first_->state.hotkey = platform::hotkey_label(s_.lookup);
+  first_->state.input = platform::hotkey_label(s_.input);
+  first_->refresh();
+  present(first_);
+  first_->start();
 }
 
 void Shell::open_about() {

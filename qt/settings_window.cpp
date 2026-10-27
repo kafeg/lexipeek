@@ -23,6 +23,7 @@
 #include <thread>
 #include "packs_pane.hpp"
 #include "platform.hpp"
+#include "ui.hpp"
 
 namespace lexipeek::qt {
 
@@ -51,20 +52,6 @@ SettingsState SettingsShell::state() const {
 
 namespace {
 
-QLabel *text_label(const std::string &s, int delta = 0, bool grey = false, bool bold = false) {
-  auto *l = new QLabel(q(s));
-  l->setWordWrap(true);
-  auto f = l->font();
-  f.setPointSizeF(f.pointSizeF() + delta);
-  f.setBold(bold);
-  l->setFont(f);
-  if (grey) {
-    auto p = l->palette();
-    p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
-    l->setPalette(p);
-  }
-  return l;
-}
 
 // A row's title and its one-line description.
 QWidget *titled(const SettingRow &r) {
@@ -72,8 +59,8 @@ QWidget *titled(const SettingRow &r) {
   auto *l = new QVBoxLayout(w);
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(1);
-  l->addWidget(text_label(r.title));
-  if (!r.about.empty()) l->addWidget(text_label(r.about, -2, true));
+  l->addWidget(ui::text(r.title));
+  if (!r.about.empty()) l->addWidget(ui::text(r.about, -2, true));
   w->setToolTip(q(r.about));
   return w;
 }
@@ -129,13 +116,6 @@ class MethodCard : public QFrame {
   }
 };
 
-void clear(QLayout *l) {
-  while (auto *item = l->takeAt(0)) {
-    if (item->layout()) clear(item->layout());
-    delete item->widget();
-    delete item;
-  }
-}
 
 }  // namespace
 
@@ -192,7 +172,7 @@ void SettingsWindow::after(const std::string &error) {
 
 void SettingsWindow::draw() {
   if (packs_) body_->removeWidget(packs_), packs_->hide();
-  clear(body_);
+  ui::clear(body_);
   auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], sh_.state());
   if (!page.tabs.empty()) {
     auto *tabs = new QTabBar;
@@ -220,7 +200,7 @@ void SettingsWindow::draw() {
     return;
   }
   if (page.pane == "other") {
-    body_->addWidget(text_label("…", 0, true), 1, Qt::AlignCenter);
+    body_->addWidget(ui::text(QString("…"), 0, true), 1, Qt::AlignCenter);
     return;
   }
   auto *rows = new QWidget;
@@ -232,7 +212,7 @@ void SettingsWindow::draw() {
     rl->addWidget(row(r));
   }
   if (!error_.empty()) {
-    auto *e = text_label(error_, -1);
+    auto *e = ui::text(error_, -1);
     e->setStyleSheet("color: #d0342c");
     rl->addWidget(e);
   }
@@ -254,8 +234,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *l = new QVBoxLayout(w);
       l->setContentsMargins(0, 0, 0, 0);
       l->setSpacing(1);
-      l->addWidget(text_label(r.title, 0, false, true));
-      if (!r.about.empty()) l->addWidget(text_label(r.about, -2, true));
+      l->addWidget(ui::text(r.title, 0, false, true));
+      if (!r.about.empty()) l->addWidget(ui::text(r.about, -2, true));
       return w;
     }
     case K::toggle: {
@@ -306,7 +286,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->addWidget(e);
       auto err = input ? sh_.input_error : sh_.lookup_error;
       if (!err.empty()) {
-        auto *x = text_label(err, -2);
+        auto *x = ui::text(err, -2);
         x->setStyleSheet("color: #d0342c");
         l->addWidget(x);
       }
@@ -320,7 +300,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto s = app::settings(data);
       for (auto &id : s.ignore_apps) {
         auto *row = new QHBoxLayout;
-        row->addWidget(text_label(id), 1);
+        row->addWidget(ui::text(id), 1);
         auto *x = new QToolButton;
         x->setText("✕");
         x->setAutoRaise(true);
@@ -354,7 +334,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       return beside(r, b);
     }
     case K::status: {
-      auto *s = text_label(r.on ? "✓ " + r.value : r.value, 0, !r.on);
+      auto *s = ui::text(r.on ? "✓ " + r.value : r.value, 0, !r.on);
       if (r.on) s->setStyleSheet("color: #2e9d48");
       return beside(r, s);
     }
@@ -431,13 +411,13 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto selected = r.selected;
       if (r.enabled) card->pick = [this, key, data, selected] { after(app::choose(data, key, selected, sh_.state())); };
       auto *l = new QHBoxLayout(card);
-      auto *dot = text_label(r.on ? "◉" : "○", 2);
+      auto *dot = ui::text(QString(r.on ? "◉" : "○"), 2);
       l->addWidget(dot, 0, Qt::AlignTop);
       auto *col = new QVBoxLayout;
       col->setSpacing(3);
-      col->addWidget(text_label(r.title, 0, false, r.on));
-      col->addWidget(text_label(r.about, -2, true));
-      if (!r.detail.empty()) col->addWidget(text_label((r.enabled ? "" : "⚠ ") + r.detail, -2, true));
+      col->addWidget(ui::text(r.title, 0, false, r.on));
+      col->addWidget(ui::text(r.about, -2, true));
+      if (!r.detail.empty()) col->addWidget(ui::text((r.enabled ? "" : "⚠ ") + r.detail, -2, true));
       if (r.progress >= 0) {
         auto *p = new QProgressBar;
         p->setRange(0, 1000);
@@ -468,10 +448,10 @@ void SettingsWindow::press(const SettingRow &r) {
     QDialog d(this);
     d.setWindowTitle(q(e.title));
     auto *l = new QVBoxLayout(&d);
-    if (!e.note.empty()) l->addWidget(text_label(e.note, -1, true));
+    if (!e.note.empty()) l->addWidget(ui::text(e.note, -1, true));
     std::vector<QPlainTextEdit *> fields;
     for (auto &f : e.fields) {
-      l->addWidget(text_label(f.label, -1, false, true));
+      l->addWidget(ui::text(f.label, -1, false, true));
       auto *x = new QPlainTextEdit(q(f.text));
       x->setMinimumHeight(90);
       l->addWidget(x);
@@ -556,15 +536,15 @@ AboutWindow::AboutWindow(CoreClient &client) : sh_(client) {
 }
 
 void AboutWindow::refresh() {
-  clear(body_);
+  ui::clear(body_);
   auto *rows = new QWidget;
   auto *rl = new QVBoxLayout(rows);
   rl->setSpacing(10);
   for (auto &r : about_rows(sh_.state(), tabs_->currentIndex())) {
     using K = SettingRow::Kind;
     if (r.kind == K::heading) {
-      rl->addWidget(text_label(r.title, 0, false, true));
-      if (!r.about.empty()) rl->addWidget(text_label(r.about, -2, true));
+      rl->addWidget(ui::text(r.title, 0, false, true));
+      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -2, true));
     } else if (r.kind == K::link) {
       auto *b = new QToolButton;
       b->setText(q(r.title) + " ↗");
@@ -591,10 +571,10 @@ void AboutWindow::refresh() {
       rl->addLayout(w);
     } else {
       auto *w = new QHBoxLayout;
-      w->addWidget(text_label(r.title), 1);
-      w->addWidget(text_label(r.value, 0, true));
+      w->addWidget(ui::text(r.title), 1);
+      w->addWidget(ui::text(r.value, 0, true));
       rl->addLayout(w);
-      if (!r.about.empty()) rl->addWidget(text_label(r.about, -2, true));
+      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -2, true));
     }
   }
   rl->addStretch();

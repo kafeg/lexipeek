@@ -13,30 +13,13 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "ui.hpp"
 
 namespace lexipeek::qt {
 
 namespace {
 
-QLabel *grey_label(const QString &s, int delta = 0) {
-  auto *l = new QLabel(s);
-  l->setWordWrap(true);
-  auto f = l->font();
-  f.setPointSizeF(f.pointSizeF() + delta);
-  l->setFont(f);
-  auto p = l->palette();
-  p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
-  l->setPalette(p);
-  return l;
-}
 
-void clear(QLayout *l) {
-  while (auto *item = l->takeAt(0)) {
-    if (item->layout()) clear(item->layout());
-    delete item->widget();
-    delete item;
-  }
-}
 
 QString downloads(const QString &name) {
   return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/" + name;
@@ -61,7 +44,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   side_->setStyleSheet("QListWidget { background: transparent; } QListWidget::item { padding: 6px; }");
   for (int i = 0; i < 5; ++i) side_->addItem("");
   sl->addWidget(side_, 1);
-  memory_ = grey_label("", -2);
+  memory_ = ui::text(QString(), -2, true);
   sl->addWidget(memory_);
   auto *buttons = new QHBoxLayout;
   auto *settings = new QToolButton;
@@ -127,7 +110,7 @@ QWidget *MainWindow::lookup_page() {
   auto *body = new QWidget;
   auto *bl = new QVBoxLayout(body);
   bl->setContentsMargins(0, 0, 0, 0);
-  hint_ = grey_label("");
+  hint_ = ui::text(QString(), 0, true);
   hint_->setAlignment(Qt::AlignCenter);
   hint_->setMaximumWidth(420);
   bl->addWidget(cw, 1);
@@ -176,11 +159,13 @@ void MainWindow::refresh() {
 void MainWindow::draw_notes() {
   auto said = said_ ? said_->text() : QString();
   auto *l = static_cast<QVBoxLayout *>(notes_->layout());
-  clear(l);
+  ui::clear(l);
   l->setContentsMargins(14, 14, 14, 14);
   auto v = c_.engine.notes(tab_, page_);
   if (v.rows.empty()) {
-    l->addWidget(grey_label(q(v.empty)), 1, Qt::AlignCenter);
+    auto *empty = ui::text(q(v.empty), 0, true);
+    empty->setAlignment(Qt::AlignCenter);
+    l->addWidget(empty, 1);
   } else {
     auto *list = new QWidget;
     auto *ll = new QVBoxLayout(list);
@@ -201,7 +186,7 @@ void MainWindow::draw_notes() {
       auto open = q(r.text);
       connect(text, &QToolButton::clicked, this, [this, open] { look(open); });
       rl->addWidget(text, 1);
-      if (!r.looks.empty()) rl->addWidget(grey_label(q(r.looks), -2));
+      if (!r.looks.empty()) rl->addWidget(ui::text(q(r.looks), -2, true));
       auto *x = new QToolButton;
       x->setText("✕");
       x->setAutoRaise(true);
@@ -242,7 +227,7 @@ void MainWindow::draw_notes() {
     next->setEnabled(v.page + 1 < v.pages);
     connect(next, &QToolButton::clicked, this, [this] { ++page_, draw_notes(); });
     bar->addWidget(prev);
-    bar->addWidget(grey_label(q(v.pager)));
+    bar->addWidget(ui::text(q(v.pager), 0, true));
     bar->addWidget(next);
     bar->addStretch();
   }
@@ -261,7 +246,7 @@ void MainWindow::draw_notes() {
   line->setStyleSheet("color: palette(mid);");
   l->addWidget(line);
   auto *backup = new QHBoxLayout;
-  backup->addWidget(grey_label(t("backup_d"), -2), 1);
+  backup->addWidget(ui::text(t("backup_d"), -2, true), 1);
   auto *out = new QPushButton(t("export_btn"));
   connect(out, &QPushButton::clicked, this, [this] {
     auto f = QFileDialog::getSaveFileName(this, {}, downloads("lexipeek-backup-" + today() + ".db"));
@@ -277,7 +262,7 @@ void MainWindow::draw_notes() {
   backup->addWidget(out);
   backup->addWidget(in);
   l->addLayout(backup);
-  said_ = grey_label(said, -2);
+  said_ = ui::text(said, -2, true);
   said_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   l->addWidget(said_);
 }
@@ -305,16 +290,12 @@ void MainWindow::draw_help() {
         it->setFont(bf);
         l->addWidget(it);
       }
-      l->addWidget(grey_label(q(i.text)));
+      l->addWidget(ui::text(q(i.text), 0, true));
     }
     if (!topic.go.empty()) {
-      auto *go = new QToolButton;
-      go->setText(q(topic.go));
-      go->setAutoRaise(true);
-      go->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
       auto s = static_cast<int>(topic.section);
       auto tab = topic.tab;
-      connect(go, &QToolButton::clicked, this, [this, s, tab] { emit openSettings(s, tab); });
+      auto *go = ui::link(q(topic.go), [this, s, tab] { emit openSettings(s, tab); });
       l->addWidget(go, 0, Qt::AlignLeft);
     }
   }

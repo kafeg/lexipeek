@@ -13,6 +13,7 @@
 #include <QScrollArea>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "ui.hpp"
 
 namespace lexipeek::qt {
 
@@ -171,20 +172,10 @@ QLabel *label(const QString &text, const QFont &f, bool rich = false, bool selec
   return l;
 }
 
-void grey(QWidget *w) {
-  auto p = w->palette();
-  p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
-  w->setPalette(p);
-}
 
 QToolButton *link(const QString &text, const QFont &f, std::function<void()> click) {
-  auto *b = new QToolButton;
-  b->setText(text);
+  auto *b = ui::link(text, std::move(click));
   b->setFont(f);
-  b->setAutoRaise(true);
-  b->setCursor(Qt::PointingHandCursor);
-  b->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
-  QObject::connect(b, &QToolButton::clicked, click);
   return b;
 }
 
@@ -209,10 +200,7 @@ QFont CardWidget::font(int delta, bool bold) const {
 
 void CardWidget::rebuild() {
   v_ = m_.look();
-  while (auto *item = box_->takeAt(0)) {
-    delete item->widget();
-    delete item;
-  }
+  ui::clear(box_);
   if (!embedded_) setFixedWidth(v_.width > 0 ? v_.width : 400);
   auto *top = new QWidget;
   auto *tl = new QVBoxLayout(top);
@@ -221,7 +209,7 @@ void CardWidget::rebuild() {
   box_->addWidget(top);
   if (!m_.unread.empty()) {
     auto *u = label(t("card_unread", m_.unread), font(-1), false, false);
-    grey(u);
+    ui::grey(u);
     tl->addWidget(u);
   }
   if (m_.input) tl->addWidget(field());
@@ -268,14 +256,14 @@ QWidget *CardWidget::header(const CardView &v) {
   title->setToolTip(q(v.tooltip));
   // A passage's header: one grey line, cut at the card's width (the whole text in the tooltip).
   if (v.style == HeaderStyle::passage) {
-    grey(title);
+    ui::grey(title);
     title->setWordWrap(false);
     title->setText(QFontMetrics(f).elidedText(q(v.title), Qt::ElideRight, (v.width > 0 ? v.width : 400) - 28));
   }
   l->addWidget(title);
   if (!v.subtitle.empty()) {
     auto *s = label(q(v.subtitle), font(-2), false, false);
-    grey(s);
+    ui::grey(s);
     l->addWidget(s);
   }
   return w;
@@ -314,7 +302,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
       l->setSpacing(2);
       if (!r.label.empty()) {
         auto *d = label(q(r.label), font(-2), false, false);
-        grey(d);
+        ui::grey(d);
         l->addWidget(d);
       }
       auto body = r.html.empty() ? q(r.text).toHtmlEscaped() : q(r.html);
@@ -346,7 +334,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
     case S::sense: return label("<span style='color: gray'>" + q(r.label) + "</span>&nbsp;&nbsp;" + q(r.text).toHtmlEscaped(), font(), true);
     case S::example: {
       auto *l = label(q(r.text), font(-1));
-      grey(l);
+      ui::grey(l);
       l->setContentsMargins(24, 0, 0, 0);
       return l;
     }
@@ -363,7 +351,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
     case S::markdown: return label(markdown(r.text), font(), true);
     case S::english: {
       auto *l = label(q(r.text), font(-1));
-      grey(l);
+      ui::grey(l);
       return l;
     }
     case S::error: {
@@ -373,7 +361,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
     }
     default: {
       auto *l = label(q(r.text), font(), false, false);
-      grey(l);
+      ui::grey(l);
       return l;
     }
   }

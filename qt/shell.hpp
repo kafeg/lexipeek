@@ -3,6 +3,7 @@
 #include <QMenu>
 #include <QObject>
 #include <QSystemTrayIcon>
+#include "first_run.hpp"
 #include "main_window.hpp"
 #include "popup.hpp"
 #include "settings_window.hpp"
@@ -18,6 +19,7 @@ class Shell : public QObject {
   void open_main(int page = -1);
   void open_settings(int section, int tab);
   void open_about();
+  void open_first_run();
   void apply();  // settings.json changed: hotkeys, theme, the core
 
  private:
@@ -28,6 +30,7 @@ class Shell : public QObject {
   MainWindow *main_ = nullptr;
   SettingsWindow *settings_ = nullptr;
   AboutWindow *about_ = nullptr;
+  FirstRunWindow *first_ = nullptr;
   QSystemTrayIcon tray_;
   QMenu menu_;
   Settings s_;

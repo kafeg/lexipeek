@@ -10,27 +10,9 @@
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
+#include "ui.hpp"
 
 namespace lexipeek::qt {
-
-namespace {
-
-QLabel *text(const std::string &s, int delta = 0, bool grey = false, bool bold = false) {
-  auto *l = new QLabel(q(s));
-  l->setWordWrap(true);
-  auto f = l->font();
-  f.setPointSizeF(f.pointSizeF() + delta);
-  f.setBold(bold);
-  l->setFont(f);
-  if (grey) {
-    auto p = l->palette();
-    p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
-    l->setPalette(p);
-  }
-  return l;
-}
-
-}  // namespace
 
 PacksPane::PacksPane(CoreClient &client) : c_(client) {
   auto *scroll = new QScrollArea;
@@ -55,16 +37,10 @@ PacksPane::PacksPane(CoreClient &client) : c_(client) {
 }
 
 void PacksPane::draw() {
-  while (auto *item = body_->takeAt(0)) {
-    if (auto *l = item->layout()) {
-      while (auto *i = l->takeAt(0)) delete i->widget(), delete i;
-    }
-    delete item->widget();
-    delete item;
-  }
+  ui::clear(body_);
   if (busy_) {
     auto *row = new QHBoxLayout;
-    row->addWidget(text(busy_->empty() ? t("packs_checking").toStdString() : *busy_));
+    row->addWidget(ui::text(busy_->empty() ? t("packs_checking").toStdString() : *busy_));
     auto *p = new QProgressBar;
     p->setRange(0, busy_->empty() ? 0 : 1000);
     p->setValue(static_cast<int>(progress_ * 1000));
@@ -78,15 +54,11 @@ void PacksPane::draw() {
     body_->addLayout(row);
   }
   for (auto *e : {&error_, &list_error_})
-    if (!e->empty()) body_->addWidget(text("⚠ " + *e, -1));
+    if (!e->empty()) body_->addWidget(ui::text("⚠ " + *e, -1));
   auto *top = new QHBoxLayout;
   auto *col = new QVBoxLayout;
-  col->addWidget(text(view_.summary));
-  auto *open = new QToolButton;
-  open->setText(t("show_finder"));
-  open->setAutoRaise(true);
-  open->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
-  connect(open, &QToolButton::clicked, this, [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(q(c_.data().empty() ? app::data_dir() : c_.data()))); });
+  col->addWidget(ui::text(view_.summary));
+  auto *open = ui::link(t("show_finder"), [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(q(c_.data().empty() ? app::data_dir() : c_.data()))); });
   col->addWidget(open, 0, Qt::AlignLeft);
   top->addLayout(col, 1);
   auto *check = new QPushButton(t("check_t"));
@@ -97,12 +69,12 @@ void PacksPane::draw() {
   auto group = [this](const std::string &title, const std::vector<PackLine> &lines) {
     if (lines.empty()) return;
     body_->addSpacing(6);
-    body_->addWidget(text(title, 0, false, true));
+    body_->addWidget(ui::text(title, 0, false, true));
     for (auto &l : lines) body_->addWidget(line(l));
   };
   group(view_.installed_title, view_.installed);
   group(view_.available_title, view_.available);
-  if (!view_.empty.empty()) body_->addWidget(text(view_.empty, 0, true));
+  if (!view_.empty.empty()) body_->addWidget(ui::text(view_.empty, 0, true));
   body_->addStretch();
 }
 
@@ -112,8 +84,8 @@ QWidget *PacksPane::line(const PackLine &l) {
   row->setContentsMargins(0, 2, 0, 2);
   auto *col = new QVBoxLayout;
   col->setSpacing(1);
-  col->addWidget(text(l.title));
-  col->addWidget(text(l.detail, -2, true));
+  col->addWidget(ui::text(l.title));
+  col->addWidget(ui::text(l.detail, -2, true));
   row->addLayout(col, 1);
   if (!l.button.label.empty()) {
     auto *b = new QPushButton(q(l.button.label));

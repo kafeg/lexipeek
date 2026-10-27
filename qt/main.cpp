@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <cstdlib>
 #include "card.hpp"
+#include "first_run.hpp"
 #include "main_window.hpp"
 #include "platform.hpp"
 #include "settings_window.hpp"
@@ -111,6 +112,12 @@ int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
                      about->refresh();
                      return about;
                    }});
+  auto *first = new FirstRunWindow(client);
+  first->state.hotkey = "Alt+D", first->state.input = "Alt+A";
+  shots.push_back({"firstrun", [first] {
+                     first->refresh();
+                     return first;
+                   }});
 
   int i = 0, failed = 0, settled = 0;
   QWidget *shown = nullptr;
@@ -118,7 +125,7 @@ int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   auto start = [&] {
     if (i == static_cast<int>(shots.size()) * 2) return app.quit();
     QApplication::setPalette(i >= static_cast<int>(shots.size()) ? dark() : light);
-    if (shown && shown != main && shown != settings && shown != about) delete shown;
+    if (shown && shown != main && shown != settings && shown != about && shown != first) delete shown;
     else if (shown) shown->hide();
     shown = shots[i % shots.size()].make();
     shown->setAttribute(Qt::WA_DontShowOnScreen);
@@ -134,7 +141,7 @@ int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
     if (!done) ++failed;
     // Final: two more ticks (a layout shows its new widgets by a queued call).
     if (++settled < 3) return;
-    if (shown != main && shown != settings) shown->adjustSize();  // a window keeps its size
+    if (shown != main && shown != settings && shown != first) shown->adjustSize();  // a window keeps its size
     shown->grab().save(dir + "/" + s.name + (i >= static_cast<int>(shots.size()) ? "-dark" : "") + ".png");
     ++i;
     start();
@@ -160,7 +167,6 @@ int main(int argc, char **argv) {
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);
   Shell shell(client);
-  // No pair yet: Settings → Languages → Packs (the first-run window later).
-  if (!app::has_pair(data)) shell.open_settings(static_cast<int>(SettingsSection::languages), 0);
+  if (app::first_run_at_launch(data, true)) shell.open_first_run();
   return app.exec();
 }
