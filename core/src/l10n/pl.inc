@@ -331,6 +331,8 @@
 {"settings_more", "Ustawienia…"},
 {"quit", "Zakończ LexiPeek"},
 {"menu_about", "O programie LexiPeek"},
+{"licenses_tab", "Licencje"},
+{"win_hint", "Wpisz słowo, wyrażenie albo wklej cały tekst i naciśnij Return.\nW dowolnej aplikacji: zaznacz tekst i naciśnij {1}; {2} otwiera kartę do wpisywania."},
 {"m_edit", "Edycja"},
 {"m_undo", "Cofnij"},
 {"m_redo", "Powtórz"},

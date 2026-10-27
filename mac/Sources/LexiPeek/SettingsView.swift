@@ -82,9 +82,11 @@ final class SettingsModel: ObservableObject {
         return lexipeek.app.settings_page(std.string(), section.core, Int32(tabs[section] ?? 0), state())
     }
 
+    @Published var aboutTab = 0
+
     func about() -> [SettingLine] {
         _ = revision
-        return lexipeek.app.about(state()).map { SettingLine($0) }
+        return lexipeek.app.about(state(), Int32(aboutTab)).map { SettingLine($0) }
     }
 
     func select(_ section: SettingsSection, _ tab: Int) {
@@ -724,6 +726,14 @@ struct AboutView: View {
     var body: some View {
         VStack(spacing: 0) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72).padding(.top, 18)
+            let tabs = lexipeek.about_tabs().map { String($0) }
+            Picker("", selection: $model.aboutTab) {
+                ForEach(tabs.indices, id: \.self) { Text(tabs[$0]).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .padding(.top, 10)
             RowsView(rows: model.about(), model: model)
         }
         .frame(width: 460, height: 560)

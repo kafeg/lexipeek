@@ -14,7 +14,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var model = CardModel(client: client)
     private lazy var card = CardController(model: model)
     private lazy var settings = SettingsModel(client: client)
-    private lazy var main = MainModel(client: client)
+    private lazy var main: MainModel = {
+        let m = MainModel(client: client)
+        m.openSettings = { [weak self] in self?.openSettings(nil) }
+        m.openAbout = { [weak self] in self?.showAbout() }
+        return m
+    }()
     private var mainWindow: NSWindow?
     private var settingsWindow: NSWindow?
     private var aboutWindow: NSWindow?
@@ -158,7 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if aboutWindow == nil { aboutWindow = AboutWindow.make(model: settings) }
         aboutWindow?.title = L.t("menu_about")
         NSApp.activate(ignoringOtherApps: true)
-        aboutWindow?.makeKeyAndOrderFront(nil)
+        aboutWindow?.present()
     }
 
     @objc private func showMain() { openMain(nil) }
@@ -181,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        mainWindow?.makeKeyAndOrderFront(nil)
+        mainWindow?.present()
     }
 
     // The window on a page, off screen: <name>.png, then <name>.done (look: a text looked up there).
@@ -199,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
         if let section { SettingsWindow.select(settingsWindow, section, model: settings) }
         NSApp.activate(ignoringOtherApps: true)
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        settingsWindow?.present()
     }
 
     // Accessibility, the first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
@@ -221,7 +226,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         firstRun.start()
         NSApp.activate(ignoringOtherApps: true)
-        firstRunWindow?.makeKeyAndOrderFront(nil)
+        firstRunWindow?.present()
     }
 
     // Each section × tab in the real window (with its toolbar), off screen: settings-<section>[-<tab>].png; settings.done
@@ -315,12 +320,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: L.t("menu_answer", String(lexipeek.app.language(std.string(prefs.answer)))), action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
-        let about = NSMenuItem(title: L.t("menu_about"), action: #selector(showAbout), keyEquivalent: "")
-        about.target = self
-        menu.addItem(about)
         let s = NSMenuItem(title: L.t("settings_more"), action: #selector(showSettings), keyEquivalent: ",")
         s.target = self
         menu.addItem(s)
+        let about = NSMenuItem(title: L.t("menu_about"), action: #selector(showAbout), keyEquivalent: "")
+        about.target = self
+        menu.addItem(about)
         menu.addItem(NSMenuItem(title: L.t("quit"), action: #selector(NSApplication.terminate), keyEquivalent: "q"))
+    }
+}
+
+extension NSWindow {
+    // Shown in the middle of the screen with the cursor (where it already is when it is open).
+    func present() {
+        if !isVisible, let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main {
+            let v = screen.visibleFrame
+            setFrameOrigin(NSPoint(x: v.midX - frame.width / 2, y: v.midY - frame.height / 2))
+        }
+        makeKeyAndOrderFront(nil)
     }
 }

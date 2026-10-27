@@ -177,7 +177,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
 - **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
-  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts — and the page. Look up: a
+  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts; under them what is in
+  memory, Settings… and About — and the page (empty Look up: a short hint, the hotkeys). Every window opens in the
+  middle of the screen with the cursor. Look up: a
   field on top (focused on open; it grows to a few lines for a pasted text, Return looks it up), its card drawn in the
   window as in the pop-up (same rows, ←, ☆, badge menu, methods; its tabs a segmented control as Settings', the footer
   right under the text; no height limit, the page scrolls): a pasted
@@ -206,8 +208,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form) — Hotkeys
   (the two hotkeys, per-app rules) · System (Accessibility, open at login, the app's language, how long a model stays
   in memory after a use: 1, 5, 15 min, 1 h, until quit; 5 min by default). The icon at the selection and "a moved card
-  stays" are on Card → Opening. **About LexiPeek** is a window of its own (menu bar and the app menu): version, "Check
-  now", links, the packs' licenses. Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
+  stays" are on Card → Opening. **About LexiPeek** is a window of its own (menu bar under Settings…, the app menu, the
+  window's sidebar), two tabs: About (version, "Check now", links) · Licenses (the packs'). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as
   InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
   answers in it (an existing settings.json keeps its answer). Every text of the core's `views` and of a shell comes from

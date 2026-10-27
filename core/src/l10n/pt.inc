@@ -327,6 +327,8 @@
 {"settings_more", "Definições…"},
 {"quit", "Sair do LexiPeek"},
 {"menu_about", "Acerca do LexiPeek"},
+{"licenses_tab", "Licenças"},
+{"win_hint", "Escreva uma palavra, uma frase ou cole um texto inteiro e prima Return.\nEm qualquer app: selecione texto e prima {1}; {2} abre um cartão para escrever."},
 {"m_edit", "Editar"},
 {"m_undo", "Desfazer"},
 {"m_redo", "Refazer"},

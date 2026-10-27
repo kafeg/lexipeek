@@ -327,6 +327,8 @@
 {"settings_more", "Einstellungen…"},
 {"quit", "LexiPeek beenden"},
 {"menu_about", "Über LexiPeek"},
+{"licenses_tab", "Lizenzen"},
+{"win_hint", "Ein Wort, eine Phrase oder einen ganzen Text eingeben und Return drücken.\nIn jeder App: Text markieren und {1} drücken; {2} öffnet eine Karte zum Tippen."},
 {"m_edit", "Bearbeiten"},
 {"m_undo", "Widerrufen"},
 {"m_redo", "Wiederholen"},

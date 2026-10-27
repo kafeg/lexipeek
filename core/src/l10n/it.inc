@@ -327,6 +327,8 @@
 {"settings_more", "Impostazioni…"},
 {"quit", "Esci da LexiPeek"},
 {"menu_about", "Informazioni su LexiPeek"},
+{"licenses_tab", "Licenze"},
+{"win_hint", "Scrivi una parola, una frase o incolla un testo intero, poi premi Invio.\nIn qualsiasi app: seleziona il testo e premi {1}; {2} apre una scheda per scrivere."},
 {"m_edit", "Composizione"},
 {"m_undo", "Annulla"},
 {"m_redo", "Ripristina"},

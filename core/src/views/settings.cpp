@@ -314,8 +314,16 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
   return {};
 }
 
-std::vector<SettingRow> about_rows(const SettingsState &st) {
-  std::vector<SettingRow> rows{valued(Kind::status, "version", "LexiPeek " + st.version, tr("about_d"), "")};
+std::vector<std::string> about_tabs() { return names({"ht_about", "licenses_tab"}); }
+
+std::vector<SettingRow> about_rows(const SettingsState &st, int tab) {
+  std::vector<SettingRow> rows;
+  if (tab == 1) {
+    rows.push_back(heading(tr("licenses_t")));
+    for (auto &[title, about, url] : licenses) rows.push_back(valued(Kind::link, "license", title, tr(about), url));
+    return rows;
+  }
+  rows.push_back(valued(Kind::status, "version", "LexiPeek " + st.version, tr("about_d"), ""));
   auto upd = valued(Kind::button, "updates", tr("check_t"), st.checking ? tr("checking") : st.update.empty() ? tr("update_never") : st.update,
                     tr("check_now"));
   upd.enabled = !st.checking;
@@ -323,8 +331,6 @@ std::vector<SettingRow> about_rows(const SettingsState &st) {
   if (!st.update_url.empty()) rows.push_back(valued(Kind::link, "release", tr("update_get", {st.update_version}), tr("update_get_d"), st.update_url));
   rows.push_back(valued(Kind::link, "source", tr("source_t"), "github.com/kafeg/lexipeek", "https://github.com/kafeg/lexipeek"));
   rows.push_back(valued(Kind::link, "inkpeek", "InkPeek", tr("inkpeek_d"), "https://github.com/kafeg/inkpeek"));
-  rows.push_back(heading(tr("licenses_t")));
-  for (auto &[title, about, url] : licenses) rows.push_back(valued(Kind::link, "license", title, tr(about), url));
   return rows;
 }
 

@@ -327,6 +327,8 @@
 {"settings_more", "Ajustes…"},
 {"quit", "Salir de LexiPeek"},
 {"menu_about", "Acerca de LexiPeek"},
+{"licenses_tab", "Licencias"},
+{"win_hint", "Escribe una palabra, una frase o pega un texto entero y pulsa Retorno.\nEn cualquier app: selecciona texto y pulsa {1}; {2} abre una tarjeta para escribir."},
 {"m_edit", "Edición"},
 {"m_undo", "Deshacer"},
 {"m_redo", "Rehacer"},

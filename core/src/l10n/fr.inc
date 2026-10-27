@@ -327,6 +327,8 @@
 {"settings_more", "Réglages…"},
 {"quit", "Quitter LexiPeek"},
 {"menu_about", "À propos de LexiPeek"},
+{"licenses_tab", "Licences"},
+{"win_hint", "Saisissez un mot, une expression ou collez un texte entier, puis appuyez sur Retour.\nDans toute app : sélectionnez du texte et appuyez sur {1} ; {2} ouvre une carte pour saisir."},
 {"m_edit", "Édition"},
 {"m_undo", "Annuler"},
 {"m_redo", "Rétablir"},

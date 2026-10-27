@@ -327,6 +327,8 @@
 {"settings_more", "Settings…"},
 {"quit", "Quit LexiPeek"},
 {"menu_about", "About LexiPeek"},
+{"licenses_tab", "Licenses"},
+{"win_hint", "Type a word, a phrase or paste a whole text, then press Return.\nIn any app: select text and press {1}; {2} opens a card to type in."},
 {"m_edit", "Edit"},
 {"m_undo", "Undo"},
 {"m_redo", "Redo"},
