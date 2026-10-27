@@ -28,7 +28,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
   (word, full entry with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
-  to the end, same language, no pack, unknown, input, selection failed, saved ★), Settings → Notes' three tabs and every
+  to the end, same language, no pack, unknown, input, selection failed, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
   settings section × tab in its toolbar window (`settings-<section>[-<tab>]`), light and dark, into `build/snapshots/index.html`;
   `UI_LANG=de scripts/snapshots.sh` runs it in that app language (`build/snapshots-de/`). **Look at every image before
   handing over UI work**. The run is invisible
@@ -66,7 +66,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (`first_run_view(Manifest, installed, FirstRunState)` → step, texts, choices, progress; `first_run_at_launch`,
   `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`, `packs_summary`,
   `pair_detail`); `settings` — Settings' panes: `settings_view(section, tab, Settings, SettingsState)` → sections, sub-tabs,
-  a pane drawn by its own view (packs, other, notes) or rows (InkPeek's Rows: kind, key, title, one-line about, control),
+  a pane drawn by its own view (packs, other) or rows (InkPeek's Rows: kind, key, title, one-line about, control),
   `settings_toggle` / `settings_choose` by a row's key; `about` — the update check (`update_check`: GitHub's latest
   release against this version; `app::check_updates` fetches it, only on "Check now"); `app` — the facade for
   Swift (`lexipeek::app`): data dir as a string, `Engine` (a copyable `shared_ptr<Core>`), `Download` (polled atomics),
@@ -125,8 +125,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
   The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. A clicked word
   (row `link`) opens in the same card; `CardModel` keeps the cards before it (`CardState.before` names the last), "←" restores them.
-  ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`; Settings →
-  Notes (`NotesPane.swift`) draws `notes_view` and reloads on `.notesChanged` (posted by the card); the menu's Notes… opens it.
+  ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`.
+  The LexiPeek window (`MainWindow.swift`, menu bar → Open LexiPeek): Look up (an embedded `CardView`, its own
+  `CardModel`) and Notes (`NotesPane.swift` draws `notes_view`, reloads on `.notesChanged` posted by the card). Each
+  `CardModel` asks through its own `CardLane` (`CoreClient.swift`): the window's and the pop-up's requests never
+  cancel each other. `NSApp.mainMenu` (App, Edit, Window) gives text fields ⌘C / ⌘V / ⌘A / ⌘Z.
   Settings (`SettingsView.swift`): toolbar sections, a segmented control of sub-tabs, `RowsView` draws the core's rows;
   a change goes `app::toggle` / `choose` → settings.json, then `Prefs.reload()` (its `changed` → `configure`) and
   `L.apply()` (`app::set_language`: the app's language — the setting, else the system's when it is one of the eight, else

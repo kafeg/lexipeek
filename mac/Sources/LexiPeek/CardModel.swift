@@ -108,11 +108,15 @@ final class CardModel: ObservableObject {
     var retry: (() -> Void)?
 
     let client: CoreClient
+    private let lane: CardLane
     private var request = 0
     // The cards this one was opened from (a gloss word, a section's word): "←" goes back to them as they were.
     private var trail: [(card: lexipeek.Card, state: lexipeek.CardState)] = []
 
-    init(client: CoreClient) { self.client = client }
+    init(client: CoreClient) {
+        self.client = client
+        lane = CardLane(client)
+    }
 
     var look: CardLook? { card.map { CardLook(lexipeek.card_view($0, state)) } }
 
@@ -148,7 +152,7 @@ final class CardModel: ObservableObject {
         if !keep { trail = [] }
         let before = trail.last.map { String($0.card.text) } ?? ""
         state = lexipeek.CardState()
-        request = client.lookup(t, source: source, lang: lang, answer: answer) { [weak self] id, card in
+        request = lane.lookup(t, source: source, lang: lang, answer: answer) { [weak self] id, card in
             guard let self, id == self.request else { return }
             var s = lexipeek.first_state(card)
             if Snapshot.dictionary { s.tab = .dictionary }
@@ -172,7 +176,7 @@ final class CardModel: ObservableObject {
             var asking = lexipeek.AiState()
             asking.asking = true
             state = lexipeek.with_answer(state, a, asking)
-            client.ask(id, card, a, key: key) { [weak self] st in
+            lane.ask(id, card, a, key: key) { [weak self] st in
                 guard let self, id == self.request else { return }
                 self.state = lexipeek.with_answer(self.state, a, st)
             }
@@ -197,7 +201,7 @@ final class CardModel: ObservableObject {
         state.method = m
         state.translating = true
         let id = request
-        client.translate(id, method: m) { [weak self] t in
+        lane.translate(id, method: m) { [weak self] t in
             guard let self, id == self.request, self.state.has_method, m == self.state.method else { return }
             self.state.translation = t
             self.state.translated = true
@@ -233,7 +237,7 @@ final class CardModel: ObservableObject {
             return
         }
         guard let last = trail.popLast() else { return }
-        request = client.restore(last.card)
+        request = lane.restore(last.card)
         card = last.card
         state = last.state
         if state.translating { translate(state.method) }

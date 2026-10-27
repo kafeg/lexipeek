@@ -129,6 +129,16 @@ TEST_CASE("model host: one model, idle unload") {
   CHECK(host.until() == mt::ModelHost::clock::time_point::max());
   std::this_thread::sleep_for(50ms);
   CHECK(host.held() == "e");
+  host.set_idle(30ms);  // the held model too, from its last use
+  for (int i = 0; i < 100 && !host.held().empty(); i++) std::this_thread::sleep_for(10ms);
+  CHECK(host.held().empty());
+  // held() does not wait for a use in progress.
+  std::thread t([&] { host.with("g", 1h, load, [](mt::Held &) { std::this_thread::sleep_for(300ms); }); });
+  std::this_thread::sleep_for(50ms);
+  auto at = mt::ModelHost::clock::now();
+  CHECK(host.held() == "g");
+  CHECK(mt::ModelHost::clock::now() - at < 100ms);
+  t.join();
   host.release();
 }
 

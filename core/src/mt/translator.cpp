@@ -116,7 +116,13 @@ struct Translator::Impl {
     return p;
   }
 
-  std::unique_ptr<Held> load(const Plan &p, const std::string &from, const std::string &to) {
+  // The menu's name of the model: the pair it serves now (one model may serve several).
+  void name(const Plan &p, const std::string &from, const std::string &to) {
+    std::lock_guard g(about_mu);
+    about[p.key].first = p.by + " " + from + " → " + to;
+  }
+
+  std::unique_ptr<Held> load(const Plan &p) {
     std::int64_t bytes = 0;
     std::error_code ec;
     auto add = [&](const std::filesystem::path &f) {
@@ -127,7 +133,7 @@ struct Translator::Impl {
     if (p.llm) add(p.gguf);
     {
       std::lock_guard g(about_mu);
-      about[p.key] = {p.by + " " + from + " → " + to, bytes};
+      about[p.key].second = bytes;
     }
     if (p.llm) {
       auto h = std::make_unique<Llm>();
@@ -164,8 +170,9 @@ std::string Translator::why_not(const std::string &from, const std::string &to, 
 std::string Translator::load(const std::string &from, const std::string &to, Method m) {
   auto p = impl_->plan(from, to, m);
   if (!p.error.empty()) return p.error;
+  impl_->name(p, from, to);
   try {
-    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p, from, to); }, [](Held &) {});
+    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p); }, [](Held &) {});
   } catch (const std::exception &e) {
     return e.what();
   }
@@ -185,8 +192,9 @@ Translation Translator::translate(const std::string &from, const std::string &to
     r.error = p.error;
     return r;
   }
+  impl_->name(p, from, to);
   try {
-    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p, from, to); }, [&](Held &h) {
+    impl_->host.with(p.key, impl_->idle(p), [&] { return impl_->load(p); }, [&](Held &h) {
       if (p.llm) {
         auto &model = *static_cast<Llm &>(h).model;
         auto name = [&](const std::string &code) {
@@ -248,7 +256,10 @@ void Translator::release() { impl_->host.release(); }
 
 std::string Translator::held() const { return impl_->host.held(); }
 
-void Translator::set_idle(std::chrono::milliseconds idle) { impl_->idle_ms = idle.count(); }
+void Translator::set_idle(std::chrono::milliseconds idle) {
+  impl_->idle_ms = idle.count();
+  impl_->host.set_idle(idle);
+}
 
 Translator::Memory Translator::memory() const {
   Memory m;

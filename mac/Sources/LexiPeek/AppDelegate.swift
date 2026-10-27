@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             snapshotSettings()
             return
         }
+        NSApp.mainMenu = mainMenu()
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         item?.button?.image = NSImage(named: "MenuBarIcon")
         item?.button?.image?.isTemplate = true
@@ -63,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
         settings.relabel = { [weak self] in
             SettingsWindow.relabel(self?.settingsWindow)
+            if Snapshot.dir == nil { NSApp.mainMenu = self?.mainMenu() }
             self?.firstRun.relabel()
             self?.firstRunWindow?.title = L.t("fr_window")
         }
@@ -234,6 +236,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         shot(0)
+    }
+
+    // The app's menus (shown while the window makes it a Dock app): their keys also give text fields ⌘C, ⌘V, ⌘A, ⌘Z
+    // in the window and in the card.
+    private func mainMenu() -> NSMenu {
+        func sub(_ title: String, _ items: [(String, Selector, String)]) -> NSMenuItem {
+            let m = NSMenu(title: title)
+            for (t, a, k) in items { m.addItem(NSMenuItem(title: t, action: a, keyEquivalent: k)) }
+            let i = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+            i.submenu = m
+            return i
+        }
+        let main = NSMenu()
+        let app = sub("LexiPeek", [(L.t("settings_more"), #selector(showSettings), ","), (L.t("quit"), #selector(NSApplication.terminate), "q")])
+        app.submenu?.items.first?.target = self
+        main.addItem(app)
+        let edit = sub(L.t("m_edit"), [(L.t("m_undo"), Selector(("undo:")), "z"), (L.t("m_redo"), Selector(("redo:")), "Z"),
+                                       (L.t("m_cut"), #selector(NSText.cut(_:)), "x"), (L.t("m_copy"), #selector(NSText.copy(_:)), "c"),
+                                       (L.t("m_paste"), #selector(NSText.paste(_:)), "v"),
+                                       (L.t("m_select_all"), #selector(NSText.selectAll(_:)), "a")])
+        main.addItem(edit)
+        main.addItem(sub(L.t("m_window"), [(L.t("m_minimize"), #selector(NSWindow.performMiniaturize(_:)), "m"),
+                                           (L.t("m_close"), #selector(NSWindow.performClose(_:)), "w")]))
+        return main
     }
 
     // Rebuilt on every open: hotkey labels and Recents stay current.

@@ -94,6 +94,8 @@ Settings load_settings(const fs::path &data) {
     s.mt_english = j.value("mt_english", s.mt_english);
     s.first_run = j.value("first_run", s.first_run);
     s.keep_model = j.value("keep_model", s.keep_model);
+    // One of Settings → General's choices (minutes; 0: until quit), else the default.
+    if (s.keep_model != 0 && s.keep_model != 1 && s.keep_model != 15 && s.keep_model != 60) s.keep_model = 5;
     s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
     s.copy_apps = j.value("copy_apps", s.copy_apps);
     if (auto d = j.value("dicts", json::object()); d.is_object()) {

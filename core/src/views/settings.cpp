@@ -14,8 +14,8 @@ using Kind = SettingRow::Kind;
 // Choices: the value and its text's key.
 const std::vector<std::pair<std::string, std::string>> phrase_opens{{"offline", "open_offline"}, {"ai", "open_ai"},       {"dict", "open_dict"},
                                                                     {"analysis", "a_analysis"},  {"context", "a_context"}};
-const std::vector<std::pair<std::string, std::string>> methods{
-    {"", "mt_first"}, {"fast", "mt_fast_t"}, {"direct", "mt_direct_t"}, {"llm", "mt_llm_t"}, {"off", "mt_off_t"}};
+// The "method" choice's indexes: none (the first available), the methods, off.
+const std::vector<std::string> methods{"", "fast", "direct", "llm", "off"};
 const std::vector<int> widths{360, 400, 460, 520};
 const std::vector<std::string> width_names{"width_narrow", "width_medium", "width_wide", "width_widest"};
 const std::vector<int> sizes{12, 13, 14, 15, 16, 18};
@@ -383,8 +383,8 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   auto at1 = [&](const auto &xs) { return xs.at(static_cast<size_t>(std::clamp(i - 1, 0, static_cast<int>(xs.size()) - 1))); };
   if (key == "answer") s.answer = at(answer_codes(s, st));
   else if (key == "method") {
-    s.mt_off = at(methods).first == "off";
-    s.method = method_from(at(methods).first);
+    s.mt_off = at(methods) == "off";
+    s.method = method_from(at(methods));
   }
   else if (key == "phrase_open") s.card.phrase_open = at(opens(s)).first;
   else if (key == "ai_provider") s.ai.provider = i <= 0 ? "" : at1(ai::providers()).id;

@@ -83,8 +83,9 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
 ```
 - **Offline core, optional AI** (as in InkPeek): `lookup` never depends on `ai`. A card is complete without it; AI
   is a marked tab that asks only when opened, answers go to the store (`ai.put`) and come back offline.
-- **Models in memory** (`ModelHost`): one heavy model at a time; idle unload — Hy-MT2 after 2 min, Bergamot after
-  5 min (InkPeek's values, tuned by M0 numbers) and at once on the platform's memory-pressure signal. A request
+- **Models in memory** (`ModelHost`): one heavy model at a time; idle unload after Settings → General's time (5 min
+  by default, for every method; InkPeek's 2 min for Hy-MT2 is not kept: one setting is simpler) and at once on the
+  platform's memory-pressure signal. A request
   that needs an unloaded model shows the card at once (dictionary), the translation comes when the model is back.
   `lexipeek-cli bench` measures cold load, first and next translations, unload, reload and peak memory per method;
   numbers go to the spec, a test fails when reload gets slower than its budget.

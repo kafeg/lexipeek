@@ -126,7 +126,7 @@ struct CardView: View {
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { if titleCut { titleOpen = true } }
-                .help(titleCut ? L.t("card_whole") : "")
+                .help(titleCut ? L.t("card_whole") : model.look?.tooltip ?? "")
         }
     }
 
