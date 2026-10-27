@@ -211,7 +211,7 @@ TEST_CASE("views: the packs list") {
     {"id": "model-en-ru", "kind": "model", "from": "en", "to": "ru", "file": {"name": "d", "size": 30, "sha256": "m2"}},
     {"id": "langid", "kind": "langid", "file": {"name": "e", "size": 1, "sha256": "l"}},
     {"id": "llm-x", "kind": "llm", "name": "Hy-MT2 1.8B", "covers": ["de-ru"], "ram_mb": 5000, "file": {"name": "f", "size": 100, "sha256": "x"}}]})");
-  auto rows = pack_rows(m, {{"dict-de-ru", "old"}, {"model-de-en", "m1"}}, Device{4096, {}});
+  auto rows = pack_rows(m, {{"dict-de-ru", "old"}, {"model-de-en", "m1"}}, Device{4096, {}, "arm64"});
   REQUIRE(rows.size() == 2);
   CHECK(rows[0].title == "German → Russian");
   CHECK(rows[0].level == "full");
@@ -235,7 +235,7 @@ TEST_CASE("packs view: an installed pair's update and menu, an available one's d
     {"id": "opus-a", "kind": "opus", "covers": ["de-ru"], "file": {"name": "g", "size": 100, "sha256": "o2"}},
     {"id": "llm-b", "kind": "llm", "name": "Hy-MT2 1.8B", "covers": ["de-ru"], "ram_mb": 9000, "file": {"name": "h", "size": 1000, "sha256": "x"}}]})");
   std::map<std::string, std::string> have{{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"}, {"opus-a", "o1"}};
-  auto v = packs_view(m, have, Device{8192, {"asimddp"}});
+  auto v = packs_view(m, have, Device{8192, {"asimddp"}, "arm64"});
   CHECK(v.summary == "1 language pair installed");
   REQUIRE(v.installed.size() == 1);
   REQUIRE(v.available.size() == 1);

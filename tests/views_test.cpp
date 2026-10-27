@@ -326,7 +326,7 @@ TEST_CASE("views: the methods for the installed pairs: models, downloaded, uncov
     {"id": "llm-b", "kind": "llm", "covers": ["de-ru", "fr-ru"], "ram_mb": 6000, "cpu": ["asimddp"], "file": {"name": "i", "size": 1000, "sha256": "x"}}]})");
   std::map<std::string, std::string> have{{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"},
                                           {"dict-fr-ru", "d2"}, {"model-fr-en", "m2"}, {"opus-a", "o"}};
-  auto infos = method_infos(m, have, {16384, {"asimddp"}});
+  auto infos = method_infos(m, have, {16384, {"asimddp"}, "arm64"});
   REQUIRE(infos.size() == 3);
   CHECK(infos[0].models == 3);
   CHECK(infos[0].missing.empty());
@@ -336,7 +336,7 @@ TEST_CASE("views: the methods for the installed pairs: models, downloaded, uncov
   CHECK(infos[2].cannot.empty());
   CHECK(infos[2].missing == std::vector<std::string>{"llm-b"});
   CHECK(infos[2].left == 1000);
-  CHECK(!method_infos(m, have, {4096, {}})[2].cannot.empty());
+  CHECK(!method_infos(m, have, {4096, {}, "arm64"})[2].cannot.empty());
 }
 
 TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {

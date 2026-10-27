@@ -263,11 +263,11 @@ TEST_CASE("packs: why a component cannot run on a machine") {
   auto m = parse_manifest(r.list.dump());
   auto opus = *covering(m, "opus", "de", "ru");
   auto llm = *covering(m, "llm", "de", "ru");
-  CHECK(cannot(opus, {16384, {}}).empty());
-  CHECK(cannot(opus, {2048, {}}) == "Needs 4 GB of memory; this machine has 2.0 GB.");
-  CHECK(cannot(llm, {16384, {"asimd", "asimddp"}}).empty());
-  CHECK(cannot(llm, {16384, {"asimd"}}) == "Needs a processor with int8 acceleration (dot product).");
-  CHECK(cannot(llm, {4096, {"asimddp"}}).find("memory") != std::string::npos);
+  CHECK(cannot(opus, {16384, {}, "arm64"}).empty());
+  CHECK(cannot(opus, {2048, {}, "arm64"}) == "Needs 4 GB of memory; this machine has 2.0 GB.");
+  CHECK(cannot(llm, {16384, {"asimd", "asimddp"}, "arm64"}).empty());
+  CHECK(cannot(llm, {16384, {"asimd"}, "arm64"}) == "Needs a processor with int8 acceleration (dot product).");
+  CHECK(cannot(llm, {4096, {"asimddp"}, "arm64"}).find("memory") != std::string::npos);
   llm.cpu = {"avx2", "asimddp"};
-  CHECK(cannot(llm, {16384, {}}) == "Needs processor features: avx2, asimddp.");
+  CHECK(cannot(llm, {16384, {}, "arm64"}) == "Needs processor features: avx2, asimddp.");
 }
