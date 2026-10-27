@@ -21,7 +21,7 @@ const SettingRow *row(const SettingsPage &p, const std::string &key) {
 SettingsState state() {
   SettingsState st;
   st.trusted = true;
-  st.version = "0.1 (5)";
+  st.version = "0.1.305";
   st.answers = {"en", "ru"};
   return st;
 }
@@ -231,7 +231,7 @@ TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → O
       if (r.key == key) return &r;
     return nullptr;
   };
-  CHECK(in("version")->title == "LexiPeek 0.1 (5)");
+  CHECK(in("version")->title == "LexiPeek 0.1.305");
   CHECK(in("source")->value == "https://github.com/kafeg/lexipeek");
   CHECK(in("updates")->enabled);
   CHECK(in("updates")->about == "Not checked yet.");

@@ -55,7 +55,7 @@ final class SettingsModel: ObservableObject {
 
     private var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
 
-    private var version: String { "\(short) (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))" }
+    private var version: String { short }  // 0.1.<commits>, as InkPeek's
 
     // What is slow to ask (the packs' files, the login item, the Keychain): asked again only when it can change.
     private var hasPair = false

@@ -10,8 +10,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "0.1"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.0"  # make app sets 0.1.<commits> (Makefile's VERSION)
+    CURRENT_PROJECT_VERSION: "0"
     ARCHS: arm64
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"

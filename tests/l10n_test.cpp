@@ -127,7 +127,7 @@ TEST_CASE("l10n: the app's language, texts, counts and numbers") {
 TEST_CASE("l10n: every screen in every language asks only for keys that exist") {
   Settings s;
   SettingsState st;
-  st.version = "0.1 (5)", st.answers = {"ru", "en", "de"}, st.update_url = "https://example.com", st.update_version = "0.2";
+  st.version = "0.1.305", st.answers = {"ru", "en", "de"}, st.update_url = "https://example.com", st.update_version = "0.2";
   Card c;
   c.kind = Card::Kind::word, c.text = "Haus", c.lang = "de", c.answer = "ru", c.save_text = "Haus";
   c.entries = {{"InkPeek · de → ru", "дом", "", "de-ru", "Haus"}};

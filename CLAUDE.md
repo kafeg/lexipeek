@@ -22,7 +22,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   release (sha256, resumable); layout as InkPeek's (`dicts/<id>/`, `models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`,
   `langid.ftz`, `installed.json`). CI still fetches models with `scripts/fetch-models.sh` (cache key, runs before the build).
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
-- App (macOS): `make app` (core + `mac/` by XcodeGen, Release, ad-hoc signed; `SIGN=<identity>` keeps the
+- App (macOS): `make app` (core + `mac/` by XcodeGen, Release, ad-hoc signed; version `0.1.<git commit count>` as
+  InkPeek's, the build number the count — Makefile's `VERSION`; `SIGN=<identity>` keeps the
   Accessibility grant across builds), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.

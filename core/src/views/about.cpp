@@ -1,4 +1,4 @@
-// Settings → General → Updates: GitHub's latest release of LexiPeek against this version.
+// The About window's update check: GitHub's latest release of LexiPeek against this version.
 #include <nlohmann/json.hpp>
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"

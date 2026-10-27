@@ -8,7 +8,11 @@ GEN := $(shell command -v ninja >/dev/null 2>&1 && echo "-G Ninja")
 SIGN ?= -
 APP := mac/build/Build/Products/Release/LexiPeek.app
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
-XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDataPath mac/build CODE_SIGN_IDENTITY="$(SIGN)"
+# The version as InkPeek's: <major.minor>.<commits>, the build number the commits.
+VERSION := 0.1
+COMMITS := $(shell git rev-list --count HEAD 2>/dev/null || echo 0)
+XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDataPath mac/build CODE_SIGN_IDENTITY="$(SIGN)" \
+	MARKETING_VERSION=$(VERSION).$(COMMITS) CURRENT_PROJECT_VERSION=$(COMMITS)
 
 deps:
 	git submodule update --init vcpkg tests/inkpeek engines/fasttext engines/llama engines/pcre2
