@@ -123,38 +123,38 @@ struct PacksPane: View {
             Section {
                 if let b = model.busy {
                     HStack {
-                        Text(b == "list" ? "Checking for packs…" : b).lineLimit(1)
+                        Text(b == "list" ? L.t("packs_checking") : b).lineLimit(1)
                         ProgressView(value: b == "list" ? nil : model.progress).progressViewStyle(.linear)
-                        if b != "list" { Button("Cancel") { model.cancel() }.controlSize(.small) }
+                        if b != "list" { Button(L.t("cancel")) { model.cancel() }.controlSize(.small) }
                     }
                 }
                 ForEach([model.error, model.listError].filter { !$0.isEmpty }, id: \.self) {
                     Label($0, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.callout)
                 }
                 LabeledContent {
-                    Button("Check for Updates") { model.refresh() }.disabled(model.busy != nil)
+                    Button(L.t("check_t")) { model.refresh() }.disabled(model.busy != nil)
                 } label: {
                     Text(model.summary)
-                    Button("Show in Finder") { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
+                    Button(L.t("show_finder")) { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }
                         .buttonStyle(.link).font(.caption)
                 }
             }
             let installed = model.rows.filter(\.installed), available = model.rows.filter { !$0.installed }
             if !installed.isEmpty {
-                Section("Installed") { ForEach(installed) { installedRow($0) } }
+                Section(L.t("installed_t")) { ForEach(installed) { installedRow($0) } }
             }
             if !available.isEmpty {
-                Section("Available") { ForEach(available) { availableRow($0) } }
+                Section(L.t("available_t")) { ForEach(available) { availableRow($0) } }
             }
             if model.rows.isEmpty {
-                Section { Text("No list of packs yet. Check for updates.").foregroundStyle(.secondary) }
+                Section { Text(L.t("packs_no_list")).foregroundStyle(.secondary) }
             }
         }
         .formStyle(.grouped)
         .onAppear { model.load() }
     }
 
-    private func size(_ n: Int64) -> String { ByteCountFormatter.string(fromByteCount: n, countStyle: .file) }
+    private func size(_ n: Int64) -> String { String(lexipeek.size_text(n)) }
 
     private func installedRow(_ r: PacksModel.Row) -> some View {
         HStack {
@@ -164,7 +164,7 @@ struct PacksPane: View {
             }
             Spacer()
             if r.missing > 0 || r.extras.contains(where: \.update) {
-                Button("Update") {
+                Button(L.t("update_btn")) {
                     model.install(model.pairIDs(r) + r.extras.filter(\.update).map(\.id), r.title)
                 }
                 .disabled(model.busy != nil)
@@ -172,15 +172,15 @@ struct PacksPane: View {
             Menu {
                 ForEach(r.extras) { p in
                     if p.installed {
-                        Button("Remove \(p.title)") { model.remove([p.id], p.title) }
+                        Button(L.t("remove_x", p.title)) { model.remove([p.id], p.title) }
                     } else if p.cannot.isEmpty {
-                        Button("Download \(p.title) (\(size(p.size)))") { model.install([p.id], p.title) }
+                        Button(L.t("download_x", p.title, size(p.size))) { model.install([p.id], p.title) }
                     } else {
-                        Button("\(p.title): \(p.cannot)") {}.disabled(true)
+                        Button(p.title + ": " + p.cannot) {}.disabled(true)
                     }
                 }
                 if !r.extras.isEmpty { Divider() }
-                Button("Remove \(r.title)", role: .destructive) { model.remove(model.freedIDs(r), r.title) }
+                Button(L.t("remove_x", r.title), role: .destructive) { model.remove(model.freedIDs(r), r.title) }
             } label: {
                 Image(systemName: "ellipsis.circle")
             }
@@ -198,7 +198,7 @@ struct PacksPane: View {
                 Text(r.detail).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            Button("Download") { model.install(model.pairIDs(r), r.title) }.disabled(model.busy != nil)
+            Button(L.t("download")) { model.install(model.pairIDs(r), r.title) }.disabled(model.busy != nil)
         }
     }
 }

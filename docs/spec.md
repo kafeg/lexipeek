@@ -78,6 +78,7 @@ core/ (C++, no UI)
   store    sync log (append, HLC), merge, SQLite view; history, saved, ai answers
   ai       (M5) Provider: HTTP (Anthropic, OpenAI-compatible) and CLI (claude -p, codex exec); modules, prompts
   settings one JSON for the app and the CLI
+  l10n     the UI's texts per language (the packs' answer languages): key → text, counts, numbers
 cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
 ```
 - **Offline core, optional AI** (as in InkPeek): `lookup` never depends on `ai`. A card is complete without it; AI
@@ -158,6 +159,13 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   Words · Phrases · History (the menu's "Notes…" opens it) · **General** (InkPeek's ⚙ page in desktop form: hotkeys,
   the icon at the selection, per-app rules, a moved card stays, open at login, Accessibility, the app's language,
   updates, About). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
+- **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as
+  InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
+  answers in it (an existing settings.json keeps its answer). Every text of the core's `views` and of a shell comes from
+  the core's table; dictionaries and the card's articles are data, not translated.
+- **About and updates** (General): version, MIT, links to the repo and InkPeek, the packs' licenses (Wiktionary
+  CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0). "Check now" asks GitHub's Releases API for LexiPeek's
+  latest release — only on that click; none yet → "No releases yet", a newer one → a link to its page.
 - **Other dictionaries** (Languages → Other dictionaries; InkPeek's own StarDict dictionaries): `<data>/dicts-own/`
   (imported, downloaded) and folders the person adds (KOReader's, GoldenDict's: read in place, never written). One list
   of every dictionary, packs and others, in the card's order (drag or ↑ ↓; not ordered ones after them, the packs

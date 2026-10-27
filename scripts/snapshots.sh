@@ -1,10 +1,12 @@
 #!/bin/sh
 # The app's own snapshots of a fixed set of cards, of Notes and of every settings section × tab, light and dark, + index.html.
-# Usage: scripts/snapshots.sh [out-dir]   (after `make app`; packs from the default data dir or LEXIPEEK_DATA)
+# Usage: [UI_LANG=de] scripts/snapshots.sh [out-dir]   (after `make app`; packs from the default data dir or LEXIPEEK_DATA;
+# UI_LANG: the app's language for the run, one of en ru de fr es it pt pl; out-dir then build/snapshots-<lang>)
 set -eu
 cd "$(dirname "$0")/.."
 APP=${APP:-$PWD/mac/build/Build/Products/Release/LexiPeek.app}
-OUT=${1:-build/snapshots}
+UI_LANG=${UI_LANG:-}
+OUT=${1:-build/snapshots${UI_LANG:+-$UI_LANG}}
 DATA=${LEXIPEEK_DATA:-$HOME/Library/Application Support/LexiPeek}
 [ -x "$APP/Contents/MacOS/LexiPeek" ] || { echo "no $APP: make app" >&2; exit 1; }
 [ -d "$DATA" ] || { echo "no data dir $DATA" >&2; exit 1; }
@@ -18,12 +20,14 @@ mkdir "$TMP/data"
 for f in "$DATA"/*; do
   case "${f##*/}" in log | device | lexipeek.db* | settings.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
 done
-# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English).
+# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English) and
+# the run's app language.
 python3 -c 'import json, sys
 try: s = json.load(open(sys.argv[1]))
 except OSError: s = {}
 s["mt_english"] = True
-json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json"
+if sys.argv[3]: s["ui_lang"] = sys.argv[3]
+json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG"
 
 LONG="Am nächsten Morgen stand Anna früh auf, weil sie den ersten Zug in die Stadt nicht verpassen wollte. \
 Draußen war es noch dunkel, und auf den Straßen lag eine dünne Schicht Schnee. Sie trank schnell einen Kaffee, \
@@ -129,6 +133,7 @@ for look in light dark; do
 
   # Another instance on an empty data dir (its settings shots: the Translation pane without a pair).
   empty="$TMP/empty" && rm -rf "$empty" "$dir/empty" && mkdir -p "$empty" "$dir/empty"
+  [ -z "$UI_LANG" ] || echo "{\"ui_lang\": \"$UI_LANG\"}" >"$empty/settings.json"
   LEXIPEEK_SNAPSHOT="$dir/empty" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$empty" \
     "$APP/Contents/MacOS/LexiPeek" >"$dir/empty/app.log" 2>&1 &
   pid=$!

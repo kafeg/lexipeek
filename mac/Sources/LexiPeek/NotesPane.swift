@@ -77,15 +77,15 @@ struct NotesList: View {
             if model.look.clear {
                 HStack {
                     Spacer()
-                    Button("Clear history…") { confirmClear = true }
+                    Button(L.t("clear_history_more")) { confirmClear = true }
                 }
             }
         }
         .padding(14)
-        .confirmationDialog("Clear the whole history?", isPresented: $confirmClear) {
-            Button("Clear history", role: .destructive) { model.clearHistory() }
+        .confirmationDialog(L.t("clear_history_q"), isPresented: $confirmClear) {
+            Button(L.t("clear_history"), role: .destructive) { model.clearHistory() }
         } message: {
-            Text("Saved words and phrases stay.")
+            Text(L.t("notes_clear_d"))
         }
     }
 
@@ -105,7 +105,7 @@ struct NotesList: View {
             Button { model.remove(r.text) } label: { Image(systemName: "xmark") }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)
-                .help(model.tab == .history ? "Remove from the history" : "Remove from Notes")
+                .help(model.tab == .history ? L.t("forget") : L.t("unsave_word"))
         }
         .padding(.vertical, 2)
     }

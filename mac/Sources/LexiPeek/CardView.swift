@@ -29,7 +29,7 @@ struct CardView: View {
         VStack(alignment: .leading, spacing: 10) {
             if let u = model.unread { unread(u) }
             if model.showInput {
-                TextField("Type a word or a sentence", text: $model.input)
+                TextField(L.t("card_input_hint"), text: $model.input)
                     .textFieldStyle(.roundedBorder)
                     .focused($focused)
                     .onSubmit { model.lookup(model.input, source: .input) }
@@ -38,8 +38,8 @@ struct CardView: View {
                 header(look)
                 if look.tabs {
                     Picker("", selection: $model.state.tab) {
-                        Text("Dictionary").tag(lexipeek.CardTab.dictionary)
-                        Text("Translate").tag(lexipeek.CardTab.translate)
+                        Text(L.t("tab_dictionary")).tag(lexipeek.CardTab.dictionary)
+                        Text(L.t("tab_translate")).tag(lexipeek.CardTab.translate)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -76,14 +76,14 @@ struct CardView: View {
 
     private func unread(_ u: (id: String, name: String)) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("\(u.name) does not show its selection to LexiPeek.").font(.callout)
+            Text(L.t("card_unread", u.name)).font(.callout)
             HStack {
-                Button("Read it with ⌘C in \(u.name)") {
+                Button(L.t("card_read_copy", u.name)) {
                     Prefs.shared.copyApps.append(u.id)
                     model.retry?()
                 }
                 .controlSize(.small)
-                Text("The clipboard is put back after.").font(.caption).foregroundStyle(.secondary)
+                Text(L.t("card_clipboard")).font(.caption).foregroundStyle(.secondary)
             }
         }
     }
@@ -110,11 +110,11 @@ struct CardView: View {
             if !look.star.isEmpty {
                 Button { model.toggleSaved() } label: { Image(systemName: look.star == "★" ? "star.fill" : "star") }
                     .buttonStyle(.borderless)
-                    .help("\(look.starHelp) (⌘S)")
+                    .help(look.starHelp + " (⌘S)")
             }
             Button { model.pinned.toggle() } label: { Image(systemName: model.pinned ? "pin.fill" : "pin") }
                 .buttonStyle(.borderless)
-                .help("Keep the card open (⌘P)")
+                .help(L.t("card_pin"))
         }
     }
 
@@ -179,14 +179,14 @@ struct CardView: View {
         } else {
             Button { model.open(word) } label: { content().frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle()) }
                 .buttonStyle(.plain)
-                .help("Open \(word)")
+                .help(L.t("card_open_word", word))
         }
     }
 
     private func footer(_ look: CardLook) -> some View {
         HStack {
             if !look.back.isEmpty {
-                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help("Back (⌘[)")
+                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help(L.t("card_back"))
             }
             if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link) }
             if look.menu { methods(look) }

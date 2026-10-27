@@ -31,7 +31,7 @@ final class SelectionIcon {
                               target: self, action: #selector(clicked))
         button.isBordered = false
         button.frame = effect.bounds
-        button.toolTip = "Look up in LexiPeek"
+        button.toolTip = L.t("lookup_service")
         effect.addSubview(button)
         panel.contentView = effect
     }

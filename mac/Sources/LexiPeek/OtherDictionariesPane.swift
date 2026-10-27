@@ -68,8 +68,8 @@ final class OtherDictionariesModel: ObservableObject {
         let p = NSOpenPanel()
         p.canChooseDirectories = true
         p.canChooseFiles = false
-        p.prompt = "Add Folder"
-        p.message = "A folder with StarDict dictionaries (KOReader's, GoldenDict's): read in place."
+        p.prompt = L.t("add_folder")
+        p.message = L.t("folder_panel")
         guard p.runModal() == .OK, let url = p.url else { return }
         message = String(lexipeek.app.add_folder(std.string(), std.string(url.path)))
         changed(reload: true)
@@ -84,7 +84,7 @@ final class OtherDictionariesModel: ObservableObject {
         let p = NSOpenPanel()
         p.canChooseFiles = true
         p.allowsMultipleSelection = true
-        p.prompt = "Import"
+        p.prompt = L.t("import_")
         p.message = importNote
         guard p.runModal() == .OK, !p.urls.isEmpty else { return }
         importPaths(p.urls.map(\.path))
@@ -94,7 +94,7 @@ final class OtherDictionariesModel: ObservableObject {
         var files = lexipeek.mac.Strings()
         for f in paths { files.push_back(std.string(f)) }
         busy = true
-        message = "Importing…"
+        message = L.t("importing")
         DispatchQueue.global(qos: .userInitiated).async {
             let r = lexipeek.app.import_dicts(std.string(), files)
             let text = String(lexipeek.app.imported_text(r))
@@ -124,9 +124,9 @@ struct OtherDictionariesPane: View {
         Form {
             Section {
                 HStack {
-                    Button("Add Folder…") { model.addFolder() }
-                    Button("Import…") { model.importFiles() }
-                    Button("Catalog…") { catalog = true }
+                    Button(L.t("add_folder_more")) { model.addFolder() }
+                    Button(L.t("import_more")) { model.importFiles() }
+                    Button(L.t("catalog_more")) { catalog = true }
                     if model.busy { ProgressView().controlSize(.small) }
                 }
                 .disabled(model.busy)
@@ -143,12 +143,12 @@ struct OtherDictionariesPane: View {
                     Text(model.empty).foregroundStyle(.secondary)
                 }
             } header: {
-                Text("Dictionaries")
+                Text(L.t("lang_own_tab"))
             } footer: {
                 Text(model.note).font(.caption).foregroundStyle(.secondary)
             }
             if !model.folders.isEmpty {
-                Section("Folders") {
+                Section(L.t("folders_t")) {
                     ForEach(model.folders) { f in
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -156,7 +156,7 @@ struct OtherDictionariesPane: View {
                                 Text(f.detail).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Remove") { model.removeFolder(f) }.controlSize(.small)
+                            Button(L.t("remove")) { model.removeFolder(f) }.controlSize(.small)
                         }
                     }
                 }
@@ -188,22 +188,22 @@ struct OtherDictionariesPane: View {
             .opacity(r.on ? 1 : 0.5)
             Spacer()
             Button { model.move(r, by: -1) } label: { Image(systemName: "chevron.up") }
-                .buttonStyle(.borderless).disabled(i == 0).help("Up")
+                .buttonStyle(.borderless).disabled(i == 0).help(L.t("up"))
             Button { model.move(r, by: 1) } label: { Image(systemName: "chevron.down") }
-                .buttonStyle(.borderless).disabled(i == model.rows.count - 1).help("Down")
+                .buttonStyle(.borderless).disabled(i == model.rows.count - 1).help(L.t("down"))
             if r.removable {
                 Button { confirmRemove(r) } label: { Image(systemName: "xmark.circle") }
-                    .buttonStyle(.borderless).help("Delete")
+                    .buttonStyle(.borderless).help(L.t("delete"))
             }
         }
     }
 
     private func confirmRemove(_ r: OtherDictionariesModel.Row) {
         let a = NSAlert()
-        a.messageText = "Delete “\(r.title)”?"
-        a.informativeText = "Its files are deleted."
-        a.addButton(withTitle: "Delete").hasDestructiveAction = true
-        a.addButton(withTitle: "Cancel")
+        a.messageText = L.t("delete_q", r.title)
+        a.informativeText = L.t("delete_d")
+        a.addButton(withTitle: L.t("delete")).hasDestructiveAction = true
+        a.addButton(withTitle: L.t("cancel"))
         if a.runModal() == .alertFirstButtonReturn { model.remove(r) }
     }
 
@@ -318,7 +318,7 @@ struct CatalogSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Other Dictionaries").font(.headline)
+            Text(L.t("lang_own")).font(.headline)
             HStack {
                 ForEach(model.sources) { s in
                     Toggle(s.title, isOn: Binding(get: { s.on }, set: { model.setSource(s, $0) })).help(s.about)
@@ -330,7 +330,7 @@ struct CatalogSheet: View {
                 HStack {
                     Text(d).lineLimit(1)
                     ProgressView(value: model.progress).progressViewStyle(.linear)
-                    Button("Cancel") { model.cancel() }.controlSize(.small)
+                    Button(L.t("cancel")) { model.cancel() }.controlSize(.small)
                 }
             }
             ForEach([model.message, model.failed, model.empty].filter { !$0.isEmpty }, id: \.self) {
@@ -343,22 +343,22 @@ struct CatalogSheet: View {
                         Text(r.detail).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Download") { confirm = r }.disabled(model.downloading != nil)
+                    Button(L.t("download")) { confirm = r }.disabled(model.downloading != nil)
                 }
             }
-            .overlay { if model.loading { ProgressView("Loading lists…") } }
+            .overlay { if model.loading { ProgressView(L.t("loading_lists")) } }
             HStack {
                 Text(model.info).font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button(L.t("done")) { dismiss() }.keyboardShortcut(.defaultAction)
             }
         }
         .padding()
         .frame(width: 520, height: 520)
         .onAppear { model.fetch() }
         .alert(confirm?.title ?? "", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), presenting: confirm) { r in
-            Button("Download") { model.get(r) }
-            Button("Cancel", role: .cancel) {}
+            Button(L.t("download")) { model.get(r) }
+            Button(L.t("cancel"), role: .cancel) {}
         } message: { r in
             Text(r.about)
         }

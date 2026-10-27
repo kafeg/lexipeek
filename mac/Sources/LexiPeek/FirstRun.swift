@@ -65,13 +65,16 @@ final class FirstRunModel: ObservableObject {
     init(client: CoreClient) {
         self.client = client
         state.trusted = Selection.trusted
-        state.system = std.string(Locale.current.language.languageCode?.identifier ?? "en")
+        state.system = lexipeek.ui_language()
         state.hotkey = std.string(Prefs.shared.translateKey.label)
         state.input = std.string(Prefs.shared.inputKey.label)
         refresh()
     }
 
     func refresh() { look = FirstRunLook(lexipeek.app.first_run(std.string(), state)) }
+
+    // The app's language changed: the pair's default answer and the texts again.
+    func relabel() { state.system = lexipeek.ui_language() }
 
     // While the window is open: Accessibility watched, the packs list fetched when there is none.
     func start() {
@@ -176,7 +179,7 @@ struct FirstRunView: View {
             HStack(spacing: 12) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Step \(look.number) of \(look.steps)").font(.caption).foregroundStyle(.secondary)
+                    Text(L.t("fr_step", "\(look.number)", "\(look.steps)")).font(.caption).foregroundStyle(.secondary)
                     Text(look.title).font(.title2.weight(.semibold))
                 }
             }
@@ -242,7 +245,7 @@ enum FirstRunWindow {
     static func make(model: FirstRunModel) -> NSWindow {
         let w = NSWindow(contentViewController: NSHostingController(rootView: FirstRunView(model: model)))
         w.styleMask = [.titled, .closable]
-        w.title = "Welcome to LexiPeek"
+        w.title = L.t("fr_window")
         w.isReleasedWhenClosed = false
         w.center()
         return w

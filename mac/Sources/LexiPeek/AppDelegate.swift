@@ -64,6 +64,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.settings.trusted = Selection.trusted
         }
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
+        settings.relabel = { [weak self] in
+            SettingsWindow.relabel(self?.settingsWindow)
+            self?.firstRun.relabel()
+            self?.firstRunWindow?.title = L.t("fr_window")
+        }
         settings.showSection = { [weak self] s, tab in
             guard let self else { return }
             SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
@@ -105,8 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let ok1 = Hotkeys.shared.register(Self.translateKey, t) { [weak self] in self?.translateSelection() }
         let ok2 = Hotkeys.shared.register(Self.inputKey, i) { [weak self] in self?.typeText() }
         settings.hotkeyErrors = [:]
-        if !ok1 { settings.hotkeyErrors["translate"] = "Taken by another app" }
-        if !ok2 { settings.hotkeyErrors["input"] = "Taken by another app" }
+        if !ok1 { settings.hotkeyErrors["translate"] = L.t("hk_taken") }
+        if !ok2 { settings.hotkeyErrors["input"] = L.t("hk_taken") }
     }
 
     // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -201,8 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Snapshot.hide(w)
         w.orderBack(nil)
         let shots = SettingsSection.allCases.flatMap { s in
-            s.tabs.isEmpty ? [(s, 0, "settings-\(s.key)")]
-                : s.tabs.enumerated().map { (s, $0.offset, "settings-\(s.key)-\($0.element.lowercased().replacingOccurrences(of: " ", with: "-"))") }
+            s.tabKeys.isEmpty ? [(s, 0, "settings-\(s.key)")] : s.tabKeys.enumerated().map { (s, $0.offset, "settings-\(s.key)-\($0.element)") }
         }
         func shot(_ i: Int) {
             guard i < shots.count else { w.orderOut(nil); Snapshot.mark("settings.done"); return }
@@ -220,9 +224,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Rebuilt on every open: hotkey labels and Recents stay current.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(item("Translate selection", #selector(translateSelection), prefs.translateKey))
-        menu.addItem(item("Type text…", #selector(typeText), prefs.inputKey))
-        let recents = NSMenuItem(title: "Recents", action: nil, keyEquivalent: "")
+        menu.addItem(item(L.t("hk_lookup_t"), #selector(translateSelection), prefs.translateKey))
+        menu.addItem(item(L.t("menu_type"), #selector(typeText), prefs.inputKey))
+        let recents = NSMenuItem(title: L.t("recents"), action: nil, keyEquivalent: "")
         let sub = NSMenu()
         for (t, meaning) in client.recents() {
             let title = meaning.isEmpty ? t : "\(t) — \(meaning)"
@@ -231,19 +235,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             i.representedObject = t
             sub.addItem(i)
         }
-        if sub.items.isEmpty { sub.addItem(NSMenuItem(title: "Nothing yet", action: nil, keyEquivalent: "")) }
+        if sub.items.isEmpty { sub.addItem(NSMenuItem(title: L.t("nothing_yet"), action: nil, keyEquivalent: "")) }
         recents.submenu = sub
         menu.addItem(recents)
-        let n = NSMenuItem(title: "Notes…", action: #selector(showNotes), keyEquivalent: "")
+        let n = NSMenuItem(title: L.t("notes_more"), action: #selector(showNotes), keyEquivalent: "")
         n.target = self
         menu.addItem(n)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Translate into: \(prefs.answer)", action: nil, keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: L.t("menu_answer", String(lexipeek.app.language(std.string(prefs.answer)))), action: nil, keyEquivalent: ""))
         menu.addItem(.separator())
-        let s = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        let s = NSMenuItem(title: L.t("settings_more"), action: #selector(showSettings), keyEquivalent: ",")
         s.target = self
         menu.addItem(s)
-        menu.addItem(NSMenuItem(title: "Quit LexiPeek", action: #selector(NSApplication.terminate), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: L.t("quit"), action: #selector(NSApplication.terminate), keyEquivalent: "q"))
     }
 
     private func item(_ title: String, _ action: Selector, _ s: Shortcut) -> NSMenuItem {

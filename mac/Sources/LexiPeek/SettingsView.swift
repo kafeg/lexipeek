@@ -13,6 +13,7 @@ enum SettingsSection: Int, CaseIterable {
     var key: String { ["languages", "card", "notes", "general"][rawValue] }
     var title: String { String(lexipeek.settings_sections()[rawValue]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
+    var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
     var symbol: String {
         switch self {
         case .languages: "character.book.closed"
@@ -29,7 +30,11 @@ final class SettingsModel: ObservableObject {
     @Published var hotkeyErrors: [String: String] = [:]
     @Published var tabs: [SettingsSection: Int] = [:]
     @Published private(set) var revision = 0
+    @Published private var checking = false
+    @Published private var update = lexipeek.UpdateCheck()
     var openFirstRun: (() -> Void)?
+    // The app's language changed: the window's own labels again.
+    var relabel: (() -> Void)?
     var showSection: ((SettingsSection, Int) -> Void)?
     let client: CoreClient
     let notes: NotesModel
@@ -39,10 +44,9 @@ final class SettingsModel: ObservableObject {
         self.notes = notes
     }
 
-    private var version: String {
-        let i = Bundle.main.infoDictionary
-        return "\(i?["CFBundleShortVersionString"] as? String ?? "") (\(i?["CFBundleVersion"] as? String ?? ""))"
-    }
+    private var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
+
+    private var version: String { "\(short) (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? ""))" }
 
     func state() -> lexipeek.SettingsState {
         var s = lexipeek.SettingsState()
@@ -51,6 +55,11 @@ final class SettingsModel: ObservableObject {
         s.login = SMAppService.mainApp.status == .enabled
         s.version = std.string(version)
         s.answers = lexipeek.app.answers(std.string())
+        s.input = std.string(Prefs.shared.inputKey.label)
+        s.checking = checking
+        s.update = update.text
+        s.update_version = update.version
+        s.update_url = update.url
         return s
     }
 
@@ -81,6 +90,7 @@ final class SettingsModel: ObservableObject {
         switch key {
         case "setup": openFirstRun?()
         case "order": showSection?(.languages, 2)
+        case "updates": checkUpdates()
         case "access":
             let k = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
             AXIsProcessTrustedWithOptions([k: true] as CFDictionary)
@@ -89,8 +99,24 @@ final class SettingsModel: ObservableObject {
         }
     }
 
+    // Only on a click: GitHub's latest release, off the main queue.
+    private func checkUpdates() {
+        guard !checking else { return }
+        checking = true
+        let v = short
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = lexipeek.app.check_updates(std.string(v), std.string("https://api.github.com/repos/kafeg/lexipeek/releases/latest"))
+            DispatchQueue.main.async {
+                self.update = r
+                self.checking = false
+            }
+        }
+    }
+
     private func changed(_ error: std.string) {
         Prefs.shared.reload(String(error))
+        L.apply()
+        relabel?()
         revision += 1
     }
 }
@@ -114,6 +140,17 @@ enum SettingsWindow {
         w.isReleasedWhenClosed = false
         w.center()
         return w
+    }
+
+    // The sections' names in the app's language now.
+    static func relabel(_ w: NSWindow?) {
+        guard let tabs = w?.contentViewController as? NSTabViewController else { return }
+        for (i, item) in tabs.tabViewItems.enumerated() {
+            let s = SettingsSection.allCases[i]
+            item.label = s.title
+            item.image?.accessibilityDescription = s.title
+        }
+        w?.title = SettingsSection.allCases[tabs.selectedTabViewItemIndex].title
     }
 
     static func select(_ w: NSWindow?, _ section: SettingsSection, tab: Int? = nil, model: SettingsModel) {
@@ -275,10 +312,10 @@ private struct ShortcutField: View {
 
     var body: some View {
         HStack {
-            if let e = error ?? (conflict ? "Used by the other hotkey" : nil) {
+            if let e = error ?? (conflict ? L.t("hk_conflict") : nil) {
                 Text(e).font(.caption).foregroundStyle(.red)
             }
-            Button(recording ? "Press keys…" : shortcut.label) { recording ? stop() : start() }
+            Button(recording ? L.t("hk_press") : shortcut.label) { recording ? stop() : start() }
                 .frame(minWidth: 90)
         }
     }
@@ -320,7 +357,7 @@ private struct AppList: View {
                 Spacer()
                 Button { ids.removeAll { $0 == id } } label: { Image(systemName: "minus.circle.fill").foregroundStyle(.secondary) }
                     .buttonStyle(.borderless)
-                    .help("Remove")
+                    .help(L.t("remove"))
             }
         }
         Menu {
@@ -328,7 +365,7 @@ private struct AppList: View {
                 Button { ids.append(id) } label: { Text(name(id)) }
             }
         } label: {
-            Label("Add App…", systemImage: "plus")
+            Label(L.t("add_app"), systemImage: "plus")
         }
         .menuStyle(.borderlessButton)
         .fixedSize()

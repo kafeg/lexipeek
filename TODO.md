@@ -37,7 +37,13 @@
 - M4 settings (branch m4-settings): InkPeek's sections (Languages · Card · Notes · General) with sub-tabs, rows from the
   core (`settings_view`), the card's settings honoured (phrase opening, full entry, grammar, sections, width, text
   size, font, height limit); the dictionary order is own dictionaries' (Article links to it); Notes moved into Settings. Open: the settings snapshots not yet looked at (run invisibly by
-  the owner's session); the app language is a placeholder (localization); "Check for updates" waits for releases;
-  Packs' busy / empty texts still in Swift; InkPeek's Opening also has
-  AI choices (M5).
+  the owner's session); InkPeek's Opening also has AI choices (M5).
+- M4 UI languages, About, updates (branch m4-l10n): `core/src/l10n` (en ru de fr es it pt pl, InkPeek's translations
+  where the meaning is the same), every `views` text and every Swift string through it; General → App language (as the
+  system by default; a new install answers in it); About with the packs' licenses; "Check now" asks GitHub's latest
+  release. Open: no snapshot run in another language looked at yet (`UI_LANG=ru scripts/snapshots.sh`); the translations
+  not reviewed by native speakers; low-level errors (libcurl, libarchive, "Cannot write …", exceptions of the engines) stay
+  English; the catalog's rarer languages (outside the 32 named in the table) keep their English names; the Service's
+  menu title "Look up in LexiPeek" (Info.plist) and SwiftUI's own buttons (a dialog's Cancel) follow the bundle's
+  English; an open card keeps its texts until it is drawn again.
 - Milestones: `docs/spec.md` → Milestones (M2.1 debts → M3 card parity → M4 dictionaries and settings → M5 AI → M6 Windows).
