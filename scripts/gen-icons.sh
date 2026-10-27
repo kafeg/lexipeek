@@ -20,3 +20,16 @@ cat > Sources/LexiPeek/Assets.xcassets/MenuBarIcon.imageset/Contents.json <<'J'
 J
 # The Qt shell's window and tray icons.
 for s in 16 32 64 256; do cp "$set_dir/icon_$s.png" ../qt/icons/; done
+# Windows: the same PNGs packed into one .ico (PNG entries, Vista and later).
+python3 -I - ../qt/icons/lexipeek.ico ../qt/icons/icon_16.png ../qt/icons/icon_32.png ../qt/icons/icon_64.png ../qt/icons/icon_256.png <<'PY'
+import struct, sys
+out, files = sys.argv[1], sys.argv[2:]
+pngs = [open(f, "rb").read() for f in files]
+head = struct.pack("<HHH", 0, 1, len(pngs))
+offset, entries = 6 + 16 * len(pngs), b""
+for f, data in zip(files, pngs):
+    w = struct.unpack(">I", data[16:20])[0]
+    entries += struct.pack("<BBBBHHII", w % 256, w % 256, 0, 0, 1, 32, len(data), offset)
+    offset += len(data)
+open(out, "wb").write(head + entries + b"".join(pngs))
+PY

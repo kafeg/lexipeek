@@ -12,3 +12,10 @@ execute_process(COMMAND git rev-list --count HEAD WORKING_DIRECTORY ${PROJECT_SO
 target_compile_definitions(lexipeek-qt PRIVATE LEXIPEEK_VERSION="0.1.${LEXIPEEK_COMMITS}")
 # Snapshots draw on the "minimal" platform (in memory, nothing on the screen).
 qt_import_plugins(lexipeek-qt INCLUDE Qt6::QMinimalIntegrationPlugin)
+# Windows: LexiPeek.exe with its icon and version.
+if(WIN32)
+  set(LEXIPEEK_ICO ${CMAKE_CURRENT_SOURCE_DIR}/icons/lexipeek.ico)
+  configure_file(lexipeek.rc.in ${CMAKE_CURRENT_BINARY_DIR}/lexipeek.rc @ONLY)
+  target_sources(lexipeek-qt PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/lexipeek.rc)
+  set_target_properties(lexipeek-qt PROPERTIES OUTPUT_NAME LexiPeek)
+endif()
