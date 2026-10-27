@@ -167,14 +167,15 @@ TEST_CASE("app: notes through the engine") {
     auto e = app::Engine::make(d.string(), app::device(8192, {"asimddp"}, "arm64"));
     auto c = e.lookup("Baum", Source::hotkey);
     CHECK(e.toggle_saved(c, ""));
-    auto v = e.notes(NotesTab::words);
+    CHECK(e.saved(c));
+    auto v = e.notes(NotesTab::words, 0);
     REQUIRE(v.rows.size() == 1);
     CHECK(v.rows[0].text == "Baum");
-    CHECK(e.notes(NotesTab::history).rows.size() == 1);
+    CHECK(e.notes(NotesTab::history, 0).rows.size() == 1);
     e.remove_note(NotesTab::words, "Baum");
-    CHECK(e.notes(NotesTab::words).rows.empty());
+    CHECK(e.notes(NotesTab::words, 0).rows.empty());
     e.clear_history();
-    CHECK(e.notes(NotesTab::history).rows.empty());
+    CHECK(e.notes(NotesTab::history, 0).rows.empty());
   }
   fs::remove_all(d);
 }
@@ -195,4 +196,21 @@ TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date
   CHECK(std::count(tsv.begin(), tsv.end(), '\t') == 4);
   CHECK(notes_tsv(s, NotesTab::phrases, "ru").starts_with("Ich mache die Tür zu\t\t\tru\t"));
   CHECK(notes_tsv(s, NotesTab::history, "ru").empty());
+}
+
+TEST_CASE("notes: 50 a page, the pager; TSV takes them all") {
+  auto d = fs::temp_directory_path() / "lexipeek-notes-pages";
+  fs::remove_all(d);
+  Store s(StoreOptions{d, {}, "mac-p"});
+  for (int i = 0; i < 120; i++) s.seen("w" + std::to_string(i), "word", "ru", "m");
+  auto v = notes_view(s, NotesTab::history, "ru");
+  CHECK(v.rows.size() == 50);
+  CHECK(v.pages == 3);
+  CHECK(v.pager == "1–50 of 120");
+  v = notes_view(s, NotesTab::history, "ru", 2);
+  CHECK(v.rows.size() == 20);
+  CHECK(v.pager == "101–120 of 120");
+  CHECK(notes_view(s, NotesTab::history, "ru", 9).page == 2);
+  auto tsv = notes_tsv(s, NotesTab::history, "ru");
+  CHECK(std::count(tsv.begin(), tsv.end(), '\n') == 120);
 }

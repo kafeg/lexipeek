@@ -487,3 +487,23 @@ TEST_CASE("core: History off writes nothing of what is opened") {
   CHECK(core.store().history().size() == 1);
   fs::remove_all(d);
 }
+
+TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back to all") {
+  auto c = word();
+  c.entries.push_back({"Mueller", "Haus — дом", "<b>Haus</b> дом, здание", "mueller", "Haus"});
+  CardNav n;
+  n.look("Häusern", Source::input);
+  n.arrived(c);
+  auto v = card_view(n.card(), n.state);
+  REQUIRE(v.rows.size() == 2);
+  CHECK(v.rows[1].open == "entry");
+  CHECK(v.rows[1].entry == 1);
+  n.open_entry(1);
+  v = card_view(n.card(), n.state);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].html == "<b>Haus</b> дом, здание");
+  CHECK(v.back == "← All dictionaries");
+  CHECK(v.entry_toggle.empty());
+  n.back();
+  CHECK(card_view(n.card(), n.state).rows.size() == 2);
+}

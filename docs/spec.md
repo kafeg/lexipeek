@@ -138,7 +138,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   click shows it whole over the card at full width (a shadow, the card dimmed under it), selectable, at most half the
   height limit (then it scrolls); ▲ or a click on the card folds it. A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
   words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the
-  dictionary's name only when there are more. The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
+  dictionary's name only when there are more; a click on one dictionary's line opens its full entry alone ("← All
+  dictionaries" comes back). The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
   offer a choice it is a menu: the text's language (the packs' into the answer) and the answer language — a pick looks
   the text up again. A copy button next to the translation and the dictionary's line.
   Text tabs (a line under the open one) Dictionary · Translate (· Analysis · AI, Context · AI when AI is on — see AI below). Translate shows one method with its name; the others are a switch (a switch
@@ -187,8 +188,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   field on top (focused on open; it grows to a few lines for a pasted text, Return looks it up), its card drawn in the
   window as in the pop-up (same rows, ←, ☆, badge menu, methods; its tabs a segmented control as Settings', the footer
   right under the text; no height limit, the page scrolls): a pasted
-  paragraph is a passage card with its translation. Notes (`notes_view`): newest first; a row is the text and one line (the saved line, else
-  the newest kept answer, else "—"), History also its looks; a click opens it in Look up, ✕ removes, "Clear history…"
+  paragraph is a passage card with its translation. Notes (`notes_view`): newest first, 50 a page with a pager (InkPeek's); a row is the text and one line (the saved
+  line, else the newest kept answer, else "—"), History also its looks; an open card's ★ follows Notes; a click opens it in Look up, ✕ removes, "Clear history…"
   (asks) under History. Under each list (InkPeek's Notes): **TSV…** — the open list for Anki or a spreadsheet (text,
   meaning, AI translation, language, date; `notes_tsv`); **Export…** — the whole store (saved, history, AI answers) as
   one SQLite file with InkPeek's tables and columns (`lexipeek-backup-<date>.db`, `VACUUM INTO`); **Import…** — a

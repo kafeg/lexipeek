@@ -68,6 +68,7 @@
 {"card_full", "Entrée complète ⏎"},
 {"page_of", "{1}–{2} sur {3}"},
 {"card_back_entry", "← Entrée"},
+{"card_back_all", "← Tous les dictionnaires"},
 {"card_no_methods", "Aucune méthode disponible"},
 {"card_save", "Enregistrer « {1} » dans les notes"},
 {"card_unsave", "Retirer « {1} » des notes"},

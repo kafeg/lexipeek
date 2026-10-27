@@ -201,6 +201,9 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
     if (!s.section.key.empty()) return section_page(s.section);
     if (c.entries.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
     for (size_t i = 0; i < c.entries.size(); i++) {
+      // One dictionary's line clicked: only its full entry.
+      if (s.entry_open >= 0 && static_cast<int>(i) != s.entry_open) continue;
+      bool full = s.full_entry || s.entry_open >= 0;
       auto &e = c.entries[i];
       // The selected form names itself first (InkPeek's line): "Häusern: das Haus (…) — дом".
       auto form = text::lower(e.word) == text::lower(c.text) ? "" : c.text + ": ";
@@ -211,9 +214,10 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
         auto dash = l.find(" — ");
         return dash != std::string::npos && text::lower(e.word) == text::lower(c.save_text) ? l.substr(dash + 5) : form + l;
       };
-      if (!s.full_entry) {
+      if (!full) {
         CardRow r{Style::entry, label, short_line(e.line), ""};
         r.copy = r.text;
+        if (c.entries.size() > 1) r.open = "entry", r.entry = static_cast<int>(i);
         rows.push_back(r);
         continue;
       }
@@ -351,13 +355,15 @@ CardView card_view(const Card &c, const CardState &s) {
   else if (v.tab == CardTab::context) v.rows = ai_rows(ai::Ask::context, s.context, word);
   else v.rows = dict ? dictionary_rows(c, s) : translate_rows(c, s);
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
-  if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
+  bool one = s.entry_open >= 0;
+  if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section && !one) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
   if (in_section && s.section.pages > 1) {
     auto &p = s.section;
     v.pager = tr("page_of", {digits(p.first + 1), digits(p.first + static_cast<int>(p.items.size())), digits(p.total)});
     v.prev = p.page > 0, v.next = p.page + 1 < p.pages;
   }
   if (in_section) v.back = tr("card_back_entry");
+  else if (one && dict) v.back = tr("card_back_all");
   else if (!s.before.empty()) v.back = "← " + s.before;
   v.menu = v.tab == CardTab::translate && (!c.methods.empty() || c.ai.translate);
   if (v.menu) {
@@ -515,7 +521,7 @@ std::string frequency(int rank) {
   return "";
 }
 
-NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
+NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer, int page) {
   NotesView v;
   v.tab = tab;
   auto line = [&](const std::string &text, const std::string &meaning, const std::string &lang) {
@@ -526,19 +532,36 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer) {
     if (a.empty()) a = ai::brief(st.newest_answer(text, catalog_language(code), "quick"));
     return a.empty() ? std::string("—") : a;
   };
+  struct Item {
+    std::string text, meaning, lang, looks;
+  };
+  std::vector<Item> items;
   std::size_t words = 0, phrases = 0;
   for (auto &e : st.saved()) {
     bool word = e.kind == "word";
     (word ? words : phrases)++;
-    if ((tab == NotesTab::words) == word && tab != NotesTab::history) v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), ""});
+    if ((tab == NotesTab::words) == word && tab != NotesTab::history) items.push_back({e.text, e.meaning, e.lang, ""});
   }
   auto history = st.history();
   if (tab == NotesTab::history)
-    for (auto &e : history) v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), std::to_string(e.count) + "×"});
+    for (auto &e : history) items.push_back({e.text, e.meaning, e.lang, std::to_string(e.count) + "×"});
   auto count = [](const char *key, std::size_t n) { return tr(key) + " (" + digits(static_cast<long long>(n)) + ")"; };
   v.tabs = {count("list_words", words), count("list_phrases", phrases), count("list_history", history.size())};
-  if (v.rows.empty()) v.empty = tr(tab == NotesTab::history ? "notes_empty_history" : "notes_empty_saved");
-  v.clear = tab == NotesTab::history && !v.rows.empty();
+  if (items.empty()) v.empty = tr(tab == NotesTab::history ? "notes_empty_history" : "notes_empty_saved");
+  v.clear = tab == NotesTab::history && !items.empty();
+  // A page of 50 (page < 0: all); only its lines are worked out.
+  const int per = 50;
+  int total = static_cast<int>(items.size()), first = 0, last = total;
+  if (page >= 0) {
+    v.pages = std::max(1, (total + per - 1) / per);
+    v.page = std::clamp(page, 0, v.pages - 1);
+    first = v.page * per, last = std::min(total, first + per);
+    if (v.pages > 1) v.pager = tr("page_of", {digits(first + 1), digits(last), digits(total)});
+  }
+  for (int i = first; i < last; i++) {
+    auto &e = items[static_cast<size_t>(i)];
+    v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), e.looks});
+  }
   return v;
 }
 
@@ -547,7 +570,7 @@ std::string notes_tsv(const Store &st, NotesTab tab, const std::string &answer) 
   auto cell = [](const std::string &s) { return text::trim(breaks.replace(s, " ")); };
   auto day = [](std::int64_t ms) { return text::local_day(ms); };
   auto ai_line = [&](const std::string &text) { return ai::brief(st.newest_answer(text, catalog_language(answer), "quick")); };
-  auto rows = notes_view(st, tab, answer).rows;
+  auto rows = notes_view(st, tab, answer, -1).rows;
   std::map<std::string, std::int64_t> times;
   if (tab == NotesTab::history)
     for (auto &e : st.history()) times[e.text] = e.seen;

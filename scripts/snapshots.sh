@@ -49,6 +49,7 @@ cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
 word-haus-full|lookup?text=Haus&full=1
+word-entry-one|lookup?text=Haus&entry=1
 word-machen-sections|lookup?text=machen&full=1
 section-related|lookup?text=machen&full=1&section=rel
 section-forms|lookup?text=machen&full=1&section=forms

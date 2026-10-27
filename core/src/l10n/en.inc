@@ -68,6 +68,7 @@
 {"card_full", "Full entry ⏎"},
 {"page_of", "{1}–{2} of {3}"},
 {"card_back_entry", "← Entry"},
+{"card_back_all", "← All dictionaries"},
 {"card_no_methods", "No method available"},
 {"card_save", "Save {1} to Notes"},
 {"card_unsave", "Remove {1} from Notes"},

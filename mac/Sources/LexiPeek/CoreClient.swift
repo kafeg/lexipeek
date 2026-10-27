@@ -50,7 +50,8 @@ final class CoreClient {
         engine.toggle_saved(card, std.string(translation))
     }
 
-    func notes(_ tab: lexipeek.NotesTab) -> lexipeek.NotesView { engine.notes(tab) }
+    func notes(_ tab: lexipeek.NotesTab, page: Int = 0) -> lexipeek.NotesView { engine.notes(tab, Int32(page)) }
+    func isSaved(_ card: lexipeek.Card) -> Bool { engine.saved(card) }
     func removeNote(_ tab: lexipeek.NotesTab, _ text: String) { engine.remove_note(tab, std.string(text)) }
     func clearHistory() { engine.clear_history() }
 

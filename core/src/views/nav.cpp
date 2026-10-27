@@ -37,6 +37,10 @@ CardStep CardNav::back() {
     state.section = SectionPage();
     return {};
   }
+  if (state.entry_open >= 0) {
+    state.entry_open = -1;
+    return {};
+  }
   if (trail_.empty()) return {};
   std::tie(card_, state) = trail_.back();
   trail_.pop_back();
@@ -47,6 +51,8 @@ CardStep CardNav::back() {
   s.kind = CardStep::Kind::restore, s.translate = state.translating;
   return s;
 }
+
+void CardNav::open_entry(int entry) { state.entry_open = entry; }
 
 CardStep CardNav::open_section(int entry, const std::string &key, int page) {
   if (!has_) return {};
@@ -91,7 +97,8 @@ bool CardNav::busy() const { return state.translating || state.quick.asking || s
 
 std::string CardNav::place() const {
   if (!has_) return "";
-  return card_.text + "|" + std::to_string(static_cast<int>(state.tab)) + "|" + (state.full_entry ? "1" : "0") + "|" + state.section.key + "|" +
+  return card_.text + "|" + std::to_string(static_cast<int>(state.tab)) + "|" + (state.full_entry ? "1" : "0") + "|" +
+         std::to_string(state.entry_open) + "|" + state.section.key + "|" +
          std::to_string(state.section.page) + "|" + (state.by_ai ? "1" : "0");
 }
 

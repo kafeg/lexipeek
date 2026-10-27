@@ -91,6 +91,7 @@ struct CardState {
   Translation translation;
   bool full_entry = false;
   SectionPage section;  // the entry's section open on Dictionary (key "": none)
+  int entry_open = -1;  // one dictionary's full entry, opened from its line (-1: none)
   std::string before;   // the text this card was opened from ("" = none): "←" goes back to it
   bool saved = false;  // ★: the card's text is in Notes
   bool by_ai = false;  // Translate shows the AI translation (a method picked in the card, or Card → Opening)
@@ -116,7 +117,7 @@ struct CardRow {
   Style style = Style::note;
   std::string label, text, html;
   std::string link = "";  // a word: a click opens it in this card ("←" comes back)
-  std::string open = "";  // a section's key: a click opens it (section rows)
+  std::string open = "";  // a section's key: a click opens it (section rows); "entry": the entry's full article
   int entry = 0;     // the entry the section belongs to
   std::string copy = "";  // what its copy button copies ("" = none): a translation, a dictionary's line
 };
@@ -213,6 +214,7 @@ class CardNav {
   // "←": from a section to its entry, else to the card before, as it was (answers on their way are asked again).
   CardStep back();
   CardStep open_section(int entry, const std::string &key, int page = 0);
+  void open_entry(int entry);  // one dictionary's full entry (its line clicked)
   CardStep turn(int by);  // a section's page before or after
   void section_arrived(const SectionPage &p) { state.section = p; }
   // Translate's method: picked (offline), its translation started and arrived (a stale one is dropped).
@@ -250,9 +252,11 @@ struct NotesView {
   std::vector<NotesRow> rows;
   std::string empty;   // shown instead of rows when there are none
   bool clear = false;  // "Clear history" under the list
+  int page = 0, pages = 1;          // 50 rows a page (InkPeek's)
+  std::string pager;                // "51–100 of 412", "" (one page)
 };
 
-NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer);
+NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer, int page = 0);
 // The tab as TSV for Anki or a spreadsheet (InkPeek's): text, meaning (the line shown), the AI translation, the answer
 // language, the date (local, yyyy-mm-dd); one row per line, tabs and line breaks inside a cell made spaces.
 std::string notes_tsv(const Store &s, NotesTab tab, const std::string &answer);

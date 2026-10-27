@@ -68,6 +68,7 @@
 {"card_full", "Ganzer Eintrag ⏎"},
 {"page_of", "{1}–{2} von {3}"},
 {"card_back_entry", "← Eintrag"},
+{"card_back_all", "← Alle Wörterbücher"},
 {"card_no_methods", "Keine Methode verfügbar"},
 {"card_save", "{1} in Notizen speichern"},
 {"card_unsave", "{1} aus Notizen entfernen"},

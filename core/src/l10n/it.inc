@@ -68,6 +68,7 @@
 {"card_full", "Voce completa ⏎"},
 {"page_of", "{1}–{2} di {3}"},
 {"card_back_entry", "← Voce"},
+{"card_back_all", "← Tutti i dizionari"},
 {"card_no_methods", "Nessun metodo disponibile"},
 {"card_save", "Salva «{1}» nelle Note"},
 {"card_unsave", "Rimuovi «{1}» dalle Note"},

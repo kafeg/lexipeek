@@ -114,10 +114,21 @@ final class CardModel: ObservableObject {
     private let lane: CardLane
     private var request = 0
 
+    private var observer: Any?
+
     init(client: CoreClient) {
         self.client = client
         lane = CardLane(client)
+        // Notes may have removed (or another card saved) this card's word: its ★ again.
+        observer = NotificationCenter.default.addObserver(forName: .notesChanged, object: nil, queue: .main) { [weak self] _ in
+            guard let self, let card = self.card else { return }
+            let saved = self.client.isSaved(card)
+            if saved != self.nav.state.saved { self.nav.state.saved = saved }
+        }
     }
+
+    // One dictionary's line clicked: its full entry alone ("←" comes back to all).
+    func openEntry(_ entry: Int) { nav.open_entry(Int32(entry)) }
 
     var state: lexipeek.CardState {
         get { nav.state }

@@ -70,6 +70,7 @@
 {"card_full", "Całe hasło ⏎"},
 {"page_of", "{1}–{2} z {3}"},
 {"card_back_entry", "← Hasło"},
+{"card_back_all", "← Wszystkie słowniki"},
 {"card_no_methods", "Brak dostępnej metody"},
 {"card_save", "Zapisz „{1}” w notatkach"},
 {"card_unsave", "Usuń „{1}” z notatek"},

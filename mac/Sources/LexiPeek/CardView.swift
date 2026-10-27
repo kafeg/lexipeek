@@ -309,6 +309,18 @@ struct CardView: View {
     @ViewBuilder
     private func row(_ r: CardLook.Row) -> some View {
         switch r.style {
+        case .entry where r.open == "entry":
+            // A dictionary's short line: a click opens its full entry alone.
+            Button { model.openEntry(r.entry) } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(r.label).font(font(-2)).foregroundStyle(.secondary)
+                    Text(r.text).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(L.t("card_full"))
         case .entry:
             VStack(alignment: .leading, spacing: 2) {
                 if !r.label.isEmpty { Text(r.label).font(font(-2)).foregroundStyle(.secondary) }

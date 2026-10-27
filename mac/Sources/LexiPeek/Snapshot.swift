@@ -6,10 +6,10 @@ enum Snapshot {
     static let dir = ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT"]
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
-    // [&section=<key>][&method=fast|ai][&whole=1] (save: ☆ once it is final; open: that word clicked in the card; section: the first
+    // [&section=<key>][&method=fast|ai][&whole=1][&entry=<n>] (save: ☆ once it is final; open: that word clicked in the card; section: the first
     // entry's section opened; tab=analysis|context: that AI tab clicked; method=ai: AI translation picked).
     private struct Request {
-        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool
+        var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool, entry: Int?
     }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
@@ -52,7 +52,7 @@ enum Snapshot {
             Request(name: $0, tab: v("tab").flatMap { tabs[$0] }, full: v("full") == "1", save: v("save") == "1", open: v("open"),
                     section: v("section"),
                     method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
-                    ai: v("method") == "ai", whole: v("whole") == "1")
+                    ai: v("method") == "ai", whole: v("whole") == "1", entry: v("entry").flatMap { Int($0) })
         }
         return url.host == "unread"
     }
@@ -126,6 +126,7 @@ enum Snapshot {
                 if let w = r.open { request?.open = nil; model.open(w); return }
                 if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
                 if let k = r.section { request?.section = nil; model.openSection(0, k); return }
+                if let e = r.entry { request?.entry = nil; model.openEntry(e); return }
             }
             if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
             request = nil

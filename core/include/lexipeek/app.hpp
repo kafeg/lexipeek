@@ -55,7 +55,9 @@ struct Engine {
   // provider's API key from the Keychain, "" for none.
   AiState ask(const Card &card, ai::Ask a, const std::string &key) const;
   // Notes, in the settings' answer language.
-  NotesView notes(NotesTab tab) const;
+  NotesView notes(NotesTab tab, int page) const;
+  // ★ of a card again (Notes may have removed its word).
+  bool saved(const Card &card) const;
   void remove_note(NotesTab tab, const std::string &text) const;
   void clear_history() const;
   // Notes → Export… / Import… / TSV…: what to say after it ("Saved: …", "Added: 3", the error).

@@ -20,6 +20,8 @@ struct NotesLook {
     var rows: [Row] = []
     var empty = ""
     var clear = false
+    var page = 0, pages = 1
+    var pager = ""
 
     init() {}
 
@@ -28,13 +30,22 @@ struct NotesLook {
         rows = v.rows.map { Row(text: String($0.text), line: String($0.line), looks: String($0.looks)) }
         empty = String(v.empty)
         clear = v.clear
+        page = Int(v.page)
+        pages = Int(v.pages)
+        pager = String(v.pager)
     }
 }
 
 final class NotesModel: ObservableObject {
     static let tabs: [lexipeek.NotesTab] = [.words, .phrases, .history]
 
-    @Published var tab = lexipeek.NotesTab.words { didSet { refresh() } }
+    @Published var tab = lexipeek.NotesTab.words {
+        didSet {
+            page = 0
+            refresh()
+        }
+    }
+    private var page = 0
     @Published private(set) var look = NotesLook()
     let client: CoreClient
     var open: (String) -> Void = { _ in }
@@ -47,7 +58,12 @@ final class NotesModel: ObservableObject {
         }
     }
 
-    func refresh() { look = NotesLook(client.notes(tab)) }
+    func refresh() { look = NotesLook(client.notes(tab, page: page)) }
+
+    func turn(_ by: Int) {
+        page = max(0, min(look.pages - 1, look.page + by))
+        refresh()
+    }
 
     // "Words (3)", "Phrases (1)", "History (12)": the window's sidebar.
     var counts: [String] { look.tabs }
@@ -121,6 +137,12 @@ struct NotesList: View {
             HStack {
                 if !model.look.rows.isEmpty { Button(L.t("tsv_btn")) { model.exportTSV() }.help(L.t("tsv_d")) }
                 Spacer()
+                if !model.look.pager.isEmpty {
+                    Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(model.look.page == 0)
+                    Text(model.look.pager).foregroundStyle(.secondary).monospacedDigit()
+                    Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(model.look.page + 1 >= model.look.pages)
+                    Spacer()
+                }
                 if model.look.clear { Button(L.t("clear_history_more")) { confirmClear = true } }
             }
             Divider()
