@@ -19,9 +19,9 @@
   toggles all with "Full entry ⏎"); the origin section is shown (InkPeek hides it by default: its setting is M4); other
   dictionaries' articles stay HTML (M4, with InkPeek's `shortMeaning`); a word's header is cut at two lines (InkPeek: up to 3).
   The origin section is now off by default (Settings → Card → Article).
-- Same as InkPeek (not changed here): unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
-  when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — a change belongs in InkPeek first;
-  a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
+- Kept as InkPeek, by decision: unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language
+  when it is unsure and no dictionary knows a word (`LangId.source`'s last branch) — detecting "not a language" would
+  misfire on real text; a separable verb's finite form is listed again on its own ("stand … auf" and "stand: stehen"), as InkPeek's gloss.
 - M3 ☆ and Notes done (core `toggle_saved`, `notes_view`; Notes window). Open: Notes has no TSV export / import
   (spec's "Then"); an open card's ★ is not refreshed when Notes removes its word; History lists all 1,000 at once.
 - M3 first run and Mozilla's English: done in the core (tested) and the window. Open: the first-run snapshot cases
