@@ -239,8 +239,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Rebuilt on every open: hotkey labels and Recents stay current.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(item(L.t("hk_lookup_t"), #selector(translateSelection), prefs.translateKey))
-        menu.addItem(item(L.t("menu_type"), #selector(typeText), prefs.inputKey))
+        // The hotkeys (⌥D, ⌥A) are not repeated here: a click in the menu bar is not how a selection is translated.
         let o = NSMenuItem(title: L.t("menu_open"), action: #selector(showMain), keyEquivalent: "o")
         o.target = self
         menu.addItem(o)
@@ -273,17 +272,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         s.target = self
         menu.addItem(s)
         menu.addItem(NSMenuItem(title: L.t("quit"), action: #selector(NSApplication.terminate), keyEquivalent: "q"))
-    }
-
-    private func item(_ title: String, _ action: Selector, _ s: Shortcut) -> NSMenuItem {
-        let i = NSMenuItem(title: title, action: action, keyEquivalent: s.key.count == 1 ? s.key.lowercased() : "")
-        var m: NSEvent.ModifierFlags = []
-        if s.modifiers & Shortcut.cmd != 0 { m.insert(.command) }
-        if s.modifiers & Shortcut.option != 0 { m.insert(.option) }
-        if s.modifiers & Shortcut.control != 0 { m.insert(.control) }
-        if s.modifiers & Shortcut.shift != 0 { m.insert(.shift) }
-        i.keyEquivalentModifierMask = m
-        i.target = self
-        return i
     }
 }
