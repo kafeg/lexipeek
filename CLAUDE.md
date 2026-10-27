@@ -125,7 +125,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
   The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. A clicked word
-  (row `link`) opens in the same card; `CardModel` keeps the cards before it (`CardState.before` names the last), "←" restores them.
+  (row `link`) opens in the same card; the core's `CardNav` (`views/nav.cpp`) keeps the cards before it and decides
+  every step ("←", sections, methods, the badge's re-lookup) as a `CardStep` the shell carries out (`CardModel.run`).
   ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`.
   The LexiPeek window (`MainWindow.swift`, menu bar → Open LexiPeek): Look up (an embedded `CardView`, its own
   `CardModel`) and Notes (`NotesPane.swift` draws `notes_view`, reloads on `.notesChanged` posted by the card). Each

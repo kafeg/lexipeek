@@ -274,7 +274,8 @@ struct CardView: View {
     private func bar(_ look: CardLook) -> some View {
         HStack(spacing: 12) {
             if !look.back.isEmpty {
-                Button(look.back) { model.back() }.buttonStyle(.link).lineLimit(1).truncationMode(.tail).help(L.t("card_back"))
+                Button { model.back() } label: { Text(look.back).lineLimit(1).truncationMode(.tail) }
+                    .buttonStyle(.link).frame(maxWidth: 180, alignment: .leading).help(L.t("card_back"))
             }
             if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link).fixedSize() }
             if look.menu { methods(look) }

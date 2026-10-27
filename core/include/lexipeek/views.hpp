@@ -161,6 +161,57 @@ std::string shown_translation(const CardState &s);
 // The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
 std::string frequency(int rank);
 
+// The card's navigation (InkPeek's card: a clicked word opens here, "←" comes back): the card shown, its state, the
+// cards it was opened from. A transition says what the shell does next; the shell does it and calls back.
+struct CardStep {
+  enum class Kind { none, lookup, restore, section };
+  Kind kind = Kind::none;
+  std::string text, lang, answer;  // lookup: the text, its language and the answer language ("" = as usual)
+  Source source = Source::input;
+  int entry = 0, page = 0;  // section: the entry, its key, the page
+  std::string key = "";
+  bool translate = false;  // restore: its translation was on its way, ask again (state.method)
+};
+
+class CardNav {
+ public:
+  CardState state;
+  bool has_card() const { return has_; }
+  Card card() const { return card_; }  // a copy: Swift takes no references
+
+  void reset();
+  // A text looked up (keep: the cards before stay, "←" comes back to the last one); the card arrives later.
+  CardStep look(const std::string &text, Source source, bool keep = false, const std::string &lang = "", const std::string &answer = "");
+  void arrived(const Card &c);
+  // A word clicked in the card (the gloss, a section): its card here.
+  CardStep open(const std::string &word);
+  // The badge's menu: this text again in another language or into another one ("" = as now).
+  CardStep relookup(const std::string &lang, const std::string &answer);
+  // "←": from a section to its entry, else to the card before, as it was (answers on their way are asked again).
+  CardStep back();
+  CardStep open_section(int entry, const std::string &key, int page = 0);
+  CardStep turn(int by);  // a section's page before or after
+  void section_arrived(const SectionPage &p) { state.section = p; }
+  // Translate's method: picked (offline), its translation started and arrived (a stale one is dropped).
+  void pick_method(Method m);
+  void pick_ai();
+  void translating(Method m);
+  void translated(Method m, const Translation &t);
+  void select(CardTab tab) { state.tab = tab; }
+  void next_tab(int by);  // ←/→ through the tabs the card shows
+  void toggle_entry() { state.full_entry = !state.full_entry; }
+  // Something is on its way (a translation, an AI answer).
+  bool busy() const;
+  // Where the body is: a new place (another card, tab, section or page) scrolls to the top.
+  std::string place() const;
+
+ private:
+  Card card_;
+  bool has_ = false;
+  std::string before_;
+  std::vector<std::pair<Card, CardState>> trail_;
+};
+
 // Notes: saved words, saved phrases (a passage counts as one), the history; newest first.
 enum class NotesTab { words, phrases, history };
 

@@ -98,74 +98,98 @@ struct CardLook {
     }
 }
 
-// The card's state: one request at a time, its translation by the chosen method; the core says what it shows.
+// The card in a shell: the core's CardNav decides (what is shown, "←", sections, methods); this asks the core for what a
+// step needs, one request at a time, and hands the answers back.
 final class CardModel: ObservableObject {
     @Published var input = ""
     @Published var showInput = false
-    @Published var card: lexipeek.Card? { didSet { relook() } }
-    @Published var state = lexipeek.CardState() { didSet { relook() } }
-    // What the card draws: worked out once per change of the card or its state (the views read it many times a render).
+    @Published private(set) var nav = lexipeek.CardNav() { didSet { relook() } }
+    // What the card draws and its card: worked out once per change (the views read them many times a render).
     private(set) var look: CardLook?
+    private(set) var card: lexipeek.Card?
     @Published var pinned = false
-    // The hotkey found no selection in this app (bundle id, name): the card says so and offers Cmd+C there.
     @Published var unread: String?  // the app (its name) that did not show its selection
 
     let client: CoreClient
     private let lane: CardLane
     private var request = 0
-    // The cards this one was opened from (a gloss word, a section's word): "←" goes back to them as they were.
-    private var trail: [(card: lexipeek.Card, state: lexipeek.CardState)] = []
 
     init(client: CoreClient) {
         self.client = client
         lane = CardLane(client)
     }
 
-    private func relook() { look = card.map { CardLook(lexipeek.card_view($0, state)) } }
+    var state: lexipeek.CardState {
+        get { nav.state }
+        set { nav.state = newValue }
+    }
+
+    private func relook() {
+        card = nav.has_card() ? nav.card() : nil
+        look = card.map { CardLook(lexipeek.card_view($0, nav.state)) }
+    }
 
     func reset(input: Bool) {
         request = 0
         self.input = ""
         showInput = input
-        card = nil
-        state = lexipeek.CardState()
+        nav.reset()
         unread = nil
-        trail = []
-    }
-
-    // The badge's menu: this text again in another language or into another one ("" = as before).
-    func relookup(lang: String = "", answer: String = "") {
-        guard let card else { return }
-        lookup(String(card.text), source: card.source, keep: true, lang: lang.isEmpty ? String(card.lang) : lang,
-               answer: answer.isEmpty ? String(card.answer) : answer)
     }
 
     // A look-up asked and not answered yet.
     var looking: Bool { request != 0 && card == nil }
 
     // Something is on its way: the card keeps its height meanwhile (no jumps), then fits what it shows.
-    var loading: Bool {
-        if card == nil { return !showInput }
-        return state.translating || [state.quick, state.analysis, state.context].contains { $0.asking }
-    }
+    var loading: Bool { card == nil ? !showInput : nav.busy() }
 
-    func lookup(_ text: String, source: lexipeek.Source, keep: Bool = false, lang: String = "", answer: String = "") {
+    var place: String { String(nav.place()) }
+
+    func lookup(_ text: String, source: lexipeek.Source) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        if !keep { trail = [] }
-        let before = trail.last.map { String($0.card.text) } ?? ""
-        state = lexipeek.CardState()
-        request = lane.lookup(t, source: source, lang: lang, answer: answer) { [weak self] id, card in
-            guard let self, id == self.request else { return }
-            var s = lexipeek.first_state(card)
-            if let m = Snapshot.method, s.has_method { s.method = m }
-            if Snapshot.ai { s.by_ai = card.ai.translate }
-            s.before = std.string(before)
-            self.card = card
-            self.state = s
-            NotificationCenter.default.post(name: .notesChanged, object: nil)
-            if s.has_method { self.translate(s.method) }
-            self.askAI()
+        run(nav.look(std.string(t), source, false, std.string(), std.string()))
+    }
+
+    // A word clicked in the card (the gloss, a section): its card here, "←" comes back to this one.
+    func open(_ word: String) { run(nav.open(std.string(word))) }
+
+    // The badge's menu: this text again in another language or into another one.
+    func relookup(lang: String = "", answer: String = "") { run(nav.relookup(std.string(lang), std.string(answer))) }
+
+    func back() { run(nav.back()) }
+
+    func openSection(_ entry: Int, _ key: String) { run(nav.open_section(Int32(entry), std.string(key), 0)) }
+
+    func turn(_ by: Int) { run(nav.turn(Int32(by))) }
+
+    // What a step asks for: a look-up, the card before made current again, a section's page.
+    private func run(_ step: lexipeek.CardStep) {
+        switch step.kind {
+        case .lookup:
+            request = lane.lookup(String(step.text), source: step.source, lang: String(step.lang), answer: String(step.answer)) { [weak self] id, card in
+                guard let self, id == self.request else { return }
+                self.nav.arrived(card)
+                if let m = Snapshot.method, self.nav.state.has_method { self.nav.state.method = m }
+                if Snapshot.ai { self.nav.state.by_ai = card.ai.translate }
+                NotificationCenter.default.post(name: .notesChanged, object: nil)
+                if self.nav.state.has_method { self.translate(self.nav.state.method) }
+                self.askAI()
+            }
+        case .restore:
+            guard let card else { return }
+            request = lane.restore(card)
+            if step.translate { translate(nav.state.method) }
+            askAI()
+        case .section:
+            guard let card else { return }
+            let id = request
+            client.section(card, entry: Int(step.entry), key: String(step.key), page: Int(step.page)) { [weak self] p in
+                guard let self, id == self.request else { return }
+                self.nav.section_arrived(p)
+            }
+        default:
+            break
         }
     }
 
@@ -173,109 +197,60 @@ final class CardModel: ObservableObject {
     func askAI() {
         guard let card, request != 0 else { return }
         let id = request
-        let asks = lexipeek.card_asks(card, state)
+        let asks = lexipeek.card_asks(card, nav.state)
         guard !asks.isEmpty else { return }
         let key = Keychain.current  // read only when something is asked
         for a in asks {
             var asking = lexipeek.AiState()
             asking.asking = true
-            state = lexipeek.with_answer(state, a, asking)
+            nav.state = lexipeek.with_answer(nav.state, a, asking)
             lane.ask(id, card, a, key: key) { [weak self] st in
                 guard let self, id == self.request else { return }
-                self.state = lexipeek.with_answer(self.state, a, st)
+                self.nav.state = lexipeek.with_answer(self.nav.state, a, st)
             }
         }
     }
 
     // A tab picked (a click, ←/→): an AI one asks when it opens.
     func select(_ tab: lexipeek.CardTab) {
-        state.tab = tab
+        nav.select(tab)
         askAI()
     }
 
+    func switchTab(_ by: Int = 1) {
+        nav.next_tab(Int32(by))
+        askAI()
+    }
+
+    func toggleEntry() { nav.toggle_entry() }
+
     // AI translation picked in the card's menu: this card only (Card → Opening makes it the default).
     func chooseAI() {
-        state.by_ai = true
+        nav.pick_ai()
         askAI()
     }
 
     func translate(_ m: lexipeek.Method) {
         guard request != 0 else { return }
-        state.has_method = true
-        state.method = m
-        state.translating = true
+        nav.translating(m)
         let id = request
         lane.translate(id, method: m) { [weak self] t in
-            guard let self, id == self.request, self.state.has_method, m == self.state.method else { return }
-            self.state.translation = t
-            self.state.translated = true
-            self.state.translating = false
+            guard let self, id == self.request else { return }
+            self.nav.translated(m, t)
         }
     }
 
     // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
     func choose(_ m: lexipeek.Method) {
-        state.by_ai = false
         Prefs.shared.method = String(lexipeek.app.method_id(m))
+        nav.pick_method(m)
         translate(m)
     }
 
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
     func toggleSaved() {
         guard let card, look?.canSave == true else { return }
-        state.saved = client.toggleSaved(card, translation: String(lexipeek.shown_translation(state)))
+        nav.state.saved = client.toggleSaved(card, translation: String(lexipeek.shown_translation(nav.state)))
         NotificationCenter.default.post(name: .notesChanged, object: nil)
     }
-
-    // A word clicked in the card (the gloss, a section): its card here, "←" comes back to this one.
-    func open(_ word: String) {
-        guard let card else { return }
-        trail.append((card, state))
-        lookup(word, source: .input, keep: true)
-    }
-
-    // "←": from a section to its entry, else to the card this one was opened from, as it was.
-    func back() {
-        if !String(state.section.key).isEmpty {
-            state.section = lexipeek.SectionPage()
-            return
-        }
-        guard let last = trail.popLast() else { return }
-        request = lane.restore(last.card)
-        card = last.card
-        state = last.state
-        if state.translating { translate(state.method) }
-        // Answers still on their way belonged to the old request: asked again.
-        for a in [lexipeek.ai.Ask.quick, .analysis, .context] where lexipeek.card_answer(state, a).asking {
-            state = lexipeek.with_answer(state, a, lexipeek.AiState())
-        }
-        askAI()
-    }
-
-    func openSection(_ entry: Int, _ key: String, page: Int = 0) {
-        guard let card else { return }
-        let id = request
-        client.section(card, entry: entry, key: key, page: page) { [weak self] p in
-            guard let self, id == self.request else { return }
-            self.state.section = p
-        }
-    }
-
-    func turn(_ by: Int) {
-        let s = state.section
-        if !String(s.key).isEmpty { openSection(Int(s.entry), String(s.key), page: Int(s.page) + by) }
-    }
-
-    // Where the body is: a new place (another card, tab, section or page) scrolls to the top.
-    var place: String {
-        guard let card else { return "" }
-        return "\(String(card.text))|\(state.tab.rawValue)|\(state.full_entry)|\(String(state.section.key))|\(state.section.page)|\(state.by_ai)"
-    }
-
-    // ←/→: the next tab the card shows.
-    func switchTab(_ by: Int = 1) {
-        guard let tabs = look?.tabItems.map(\.tab), tabs.count > 1, let i = tabs.firstIndex(of: state.tab) else { return }
-        select(tabs[(i + by + tabs.count) % tabs.count])
-    }
-    func toggleEntry() { state.full_entry.toggle() }
 }

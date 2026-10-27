@@ -411,3 +411,61 @@ TEST_CASE("views: offline translation off — Translate says so, or is the AI tr
   c.ai.translate = true;
   CHECK(first_state(c).by_ai);
 }
+
+TEST_CASE("nav: a clicked word opens here, ← comes back as it was; a section first") {
+  CardNav n;
+  auto s = n.look("Ich mache die Tür zu", Source::hotkey);
+  CHECK(s.kind == CardStep::Kind::lookup);
+  CHECK(s.text == "Ich mache die Tür zu");
+  n.arrived(phrase());
+  CHECK(n.state.before.empty());
+  n.translating(Method::fast);
+  n.state.tab = CardTab::dictionary;
+  s = n.open("Tür");
+  CHECK(s.kind == CardStep::Kind::lookup);
+  CHECK(s.text == "Tür");
+  auto w = word();
+  w.text = "Tür";
+  n.arrived(w);
+  CHECK(n.state.before == "Ich mache die Tür zu");
+  // A section, then ← to the entry, then ← to the phrase as it was (its translation asked again).
+  CHECK(n.open_section(0, "rel").kind == CardStep::Kind::section);
+  n.section_arrived({"rel", "Tür", 0, 0, 2, 30, 0, {}, ""});
+  CHECK(n.turn(1).page == 1);
+  CHECK(n.turn(-1).kind == CardStep::Kind::none);
+  CHECK(n.back().kind == CardStep::Kind::none);
+  CHECK(n.state.section.key.empty());
+  s = n.back();
+  CHECK(s.kind == CardStep::Kind::restore);
+  CHECK(s.translate);
+  CHECK(n.card().text == "Ich mache die Tür zu");
+  CHECK(n.state.tab == CardTab::dictionary);
+  CHECK(n.back().kind == CardStep::Kind::none);
+  // A new look-up forgets the trail.
+  n.look("Haus", Source::input);
+  n.arrived(word());
+  CHECK(n.state.before.empty());
+}
+
+TEST_CASE("nav: a stale translation is dropped; the badge's re-lookup keeps the card's language") {
+  CardNav n;
+  n.look("Häusern", Source::input);
+  n.arrived(word());
+  n.translating(Method::fast);
+  CHECK(n.busy());
+  n.pick_method(Method::direct);
+  n.translated(Method::fast, {"дома", "", "", ""});
+  CHECK(!n.state.translated);
+  n.translated(Method::direct, {"домам", "", "", ""});
+  CHECK(n.state.translation.text == "домам");
+  CHECK(!n.busy());
+  auto s = n.relookup("", "en");
+  CHECK(s.lang == "de");
+  CHECK(s.answer == "en");
+  CHECK(s.text == "Häusern");
+  n.arrived(word());
+  n.next_tab(1);
+  CHECK(n.state.tab == CardTab::translate);
+  n.next_tab(-1);
+  CHECK(n.state.tab == CardTab::dictionary);
+}
