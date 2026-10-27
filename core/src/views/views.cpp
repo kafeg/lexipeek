@@ -61,6 +61,42 @@ std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string
   return ids;
 }
 
+std::vector<MethodInfo> method_infos(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &d) {
+  std::vector<LangPair> have;
+  for (auto &r : pack_rows(m, installed))
+    if (r.installed) have.push_back({r.from, r.to});
+  std::vector<MethodInfo> out;
+  for (auto method : {Method::fast, Method::direct, Method::llm}) {
+    MethodInfo info;
+    info.method = method;
+    std::vector<Component> comps;
+    auto add = [&](const Component &c) {
+      if (std::none_of(comps.begin(), comps.end(), [&](auto &x) { return x.id == c.id; })) comps.push_back(c);
+    };
+    if (method == Method::fast) {
+      for (auto &c : needed(m, have, Method::fast))
+        if (c.kind == "model") add(c);
+    } else {
+      auto kind = method == Method::direct ? "opus" : "llm";
+      for (auto &p : have) {
+        if (auto c = covering(m, kind, p.from, p.to)) add(*c);
+        else info.bare.push_back(p.from + "→" + p.to);
+      }
+      // The device check needs a model even when no pair has one.
+      auto any = std::find_if(m.components.begin(), m.components.end(), [&](auto &c) { return c.kind == kind; });
+      if (any == m.components.end()) info.cannot = tr("mt_no_models");
+      else info.cannot = cannot(comps.empty() ? *any : comps.front(), d);
+    }
+    for (auto &c : comps) {
+      info.models++, info.size += c.size;
+      auto i = installed.find(c.id);
+      if (i == installed.end() || i->second != c.sha256) info.missing.push_back(c.id), info.left += c.size;
+    }
+    out.push_back(info);
+  }
+  return out;
+}
+
 std::vector<std::string> answer_languages(const Manifest &m) {
   std::vector<std::string> out;
   for (auto &p : pairs(m))

@@ -229,6 +229,18 @@ bool first_run_at_launch(bool has_pair, bool trusted, bool finished);
 std::string first_answer(const Manifest &m, const std::string &system);
 FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s);
 
+// A translation method for the installed pairs (InkPeek's MethodPane): what it needs here and why it cannot run.
+struct MethodInfo {
+  Method method = Method::fast;
+  std::string cannot;                // this machine cannot run it ("" = it can)
+  int models = 0;                    // the models the installed pairs need for it
+  std::int64_t size = 0;             // their size
+  std::vector<std::string> missing;  // those not downloaded (ids)
+  std::int64_t left = 0;             // their size
+  std::vector<std::string> bare;     // pairs no model covers ("de→pl")
+};
+std::vector<MethodInfo> method_infos(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &d);
+
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
 enum class SettingsSection { languages, card, ai, notes, general };
 
@@ -246,6 +258,12 @@ struct SettingsState {
   bool ai_key = false;                // the provider's API key is in the Keychain
   bool ai_testing = false;            // AI → Connection's test is running
   std::string ai_test;                // its last answer ("" = not tried)
+  int ram_mb = 0;                     // this machine's memory
+  bool dotprod = false;               // int8 acceleration
+  std::vector<MethodInfo> methods;    // Languages → Translation's cards (app::settings_page fills them)
+  std::string downloading;            // the method whose models are being downloaded ("fast", "direct", "llm")
+  double progress = 0;                // 0…1
+  std::string download_error;         // the last one failed
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -261,7 +279,9 @@ struct SettingRow {
     link,     // value: a URL
     text,     // a line to type: value, placeholder (key "ai_url", "ai_command")
     secret,   // the API key: the shell's field and Save (the key never comes here); on: one is kept
-    model     // the model: value (a line to type), placeholder its default; on: "Choose model…" from the provider's list
+    model,    // the model: value (a line to type), placeholder its default; on: "Choose model…" from the provider's list
+    method    // a translation method's card: value its id, on picked, enabled it can run here, detail its needs, ids to
+              // download with button's label (progress: being downloaded)
   };
   Kind kind = Kind::heading;
   std::string key = "", title = "", about = "";
@@ -271,6 +291,10 @@ struct SettingRow {
   std::string value = "";
   std::string placeholder = "";
   std::string edit = "";  // a prompt id: ✎ opens its editor (prompt_editor)
+  std::string detail = "";
+  std::vector<std::string> ids = {};
+  std::string button = "";
+  double progress = -1;  // a method's download: 0…1; -1 none
 };
 
 struct SettingsPage {

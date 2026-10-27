@@ -97,9 +97,38 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   auto codes = answer_codes(s, st);
   for (auto &c : codes) langs.push_back(language_name(c));
   rows.push_back(choice("answer", tr("answer_t"), tr("answer_d"), langs, index_of(codes, s.answer)));
-  rows.push_back(choice("method", tr("mt_t"), tr("method_d"), names(methods), index_of(methods, s.method ? std::string(method_name(*s.method)) : std::string())));
   rows.push_back(toggle("mt_english", tr("mt_english_t"), tr("mt_english_about"), s.mt_english));
   if (st.has_pair) rows.push_back(valued(Kind::button, "setup", tr("firstrun_t"), tr("firstrun_d"), tr("open_btn")));
+  // The methods as InkPeek's cards: what each does, what it needs for the installed pairs, why it cannot run here.
+  auto gb = [](int mb) {
+    char b[16];
+    std::snprintf(b, sizeof b, "%.1f", mb / 1024.0);
+    return std::string(b);
+  };
+  rows.push_back(heading(tr("mt_t"), st.ram_mb > 0 ? tr("mt_this", {gb(st.ram_mb), tr(st.dotprod ? "mt_yes" : "mt_no")}) : ""));
+  auto picked = s.method.value_or(Method::fast);
+  for (auto &m : st.methods) {
+    auto id = std::string(method_name(m.method));
+    SettingRow r{Kind::method, "method", method_title(m.method), tr("mt_" + id + "_d")};
+    r.value = id, r.on = m.method == picked, r.enabled = m.cannot.empty();
+    std::vector<std::string> lines;
+    if (!m.cannot.empty()) lines.push_back(m.cannot);
+    else if (m.method != Method::fast && m.models > 0)
+      lines.push_back(tr("mt_need", {digits(m.models), size_text(m.size)}) + (m.missing.empty() ? " · " + tr("mt_have") : ""));
+    if (m.cannot.empty() && !m.bare.empty()) {
+      std::string b;
+      for (auto &x : m.bare) b += (b.empty() ? "" : ", ") + x;
+      lines.push_back(tr("mt_none_for", {b}));
+    }
+    for (auto &l : lines) r.detail += (r.detail.empty() ? "" : "\n") + l;
+    if (m.cannot.empty() && !m.missing.empty()) {
+      r.ids = m.missing;
+      r.button = tr("download_size", {size_text(m.left)});
+    }
+    if (st.downloading == id) r.progress = st.progress;
+    rows.push_back(r);
+  }
+  if (!st.download_error.empty()) rows.push_back(valued(Kind::status, "download_error", tr("failed", {st.download_error}), "", ""));
   return rows;
 }
 

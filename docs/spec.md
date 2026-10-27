@@ -182,7 +182,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   de → ru · 410 MB", "unloads in 3 min", Unload now) · language pair · Settings… ⌘, · Quit.
 - **Settings:** InkPeek's sections and their tabs (its `MainActivity` and `*Settings.kt`), as toolbar tabs of a
   standard settings window (**General** first, as macOS settings), each with its sub-tabs (a segmented control): **Languages** — Packs · Translation (answer
-  language, method, Mozilla's English in between) · Other dictionaries (a folder, InkPeek's catalog of public
+  language, Mozilla's English in between, the methods as InkPeek's cards: what each does, what it needs for the
+  installed pairs and whether it is downloaded, pairs no model covers, why this machine cannot run it; a click picks
+  one, its Download button fetches its models with progress) · Other dictionaries (a folder, InkPeek's catalog of public
   sources, import; order, on / off) · **Card** — Opening (what a phrase opens on, as InkPeek's `phrase_open`) ·
   Article (the dictionary view: short line or full entry, the header's grammar, the sections shown, dictionary order)
   · Appearance (desktop: width, text size, font, height limit) · **AI** — Connection (provider, the server's address

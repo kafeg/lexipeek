@@ -312,6 +312,31 @@ TEST_CASE("views: what a pair needs, what removing it frees, answer languages") 
   CHECK(answer_languages(m) == std::vector<std::string>{"en", "ru"});
 }
 
+TEST_CASE("views: the methods for the installed pairs: models, downloaded, uncovered, this machine") {
+  auto m = parse_manifest(R"({"format": 1, "components": [
+    {"id": "dict-de-ru", "kind": "dict", "from": "de", "to": "ru", "file": {"name": "a", "size": 1, "sha256": "d1"}},
+    {"id": "dict-fr-ru", "kind": "dict", "from": "fr", "to": "ru", "file": {"name": "b", "size": 1, "sha256": "d2"}},
+    {"id": "model-de-en", "kind": "model", "from": "de", "to": "en", "file": {"name": "d", "size": 10, "sha256": "m1"}},
+    {"id": "model-fr-en", "kind": "model", "from": "fr", "to": "en", "file": {"name": "e", "size": 10, "sha256": "m2"}},
+    {"id": "model-en-ru", "kind": "model", "from": "en", "to": "ru", "file": {"name": "f", "size": 10, "sha256": "m3"}},
+    {"id": "langid", "kind": "langid", "file": {"name": "g", "size": 1, "sha256": "l"}},
+    {"id": "opus-a", "kind": "opus", "covers": ["de-ru"], "file": {"name": "h", "size": 100, "sha256": "o"}},
+    {"id": "llm-b", "kind": "llm", "covers": ["de-ru", "fr-ru"], "ram_mb": 6000, "cpu": ["asimddp"], "file": {"name": "i", "size": 1000, "sha256": "x"}}]})");
+  std::map<std::string, std::string> have{{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"},
+                                          {"dict-fr-ru", "d2"}, {"model-fr-en", "m2"}, {"opus-a", "o"}};
+  auto infos = method_infos(m, have, {16384, {"asimddp"}});
+  REQUIRE(infos.size() == 3);
+  CHECK(infos[0].models == 3);
+  CHECK(infos[0].missing.empty());
+  CHECK(infos[1].models == 1);
+  CHECK(infos[1].missing.empty());
+  CHECK(infos[1].bare == std::vector<std::string>{"fr→ru"});
+  CHECK(infos[2].cannot.empty());
+  CHECK(infos[2].missing == std::vector<std::string>{"llm-b"});
+  CHECK(infos[2].left == 1000);
+  CHECK(!method_infos(m, have, {4096, {}})[2].cannot.empty());
+}
+
 TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {
   auto m = parse_manifest(R"({"format": 1, "components": [
     {"id": "opus-a", "kind": "opus", "covers": ["de-ru"], "file": {"name": "a", "size": 1, "sha256": "new"}},

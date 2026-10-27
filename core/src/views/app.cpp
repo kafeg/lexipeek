@@ -88,7 +88,12 @@ MemoryView Engine::memory() const { return memory_view(core->memory()); }
 void Engine::cancel() const { core->cancel(); }
 
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {
-  return settings_view(section, tab, load_settings(dir(data)), state);
+  auto st = state;
+  if (section == SettingsSection::languages && tab == 1 && st.methods.empty()) {
+    Packs p(dir(data), "");
+    st.methods = method_infos(p.cached(), p.installed(), device(st.ram_mb, st.dotprod));
+  }
+  return settings_view(section, tab, load_settings(dir(data)), st);
 }
 
 std::string toggle(const std::string &data, const std::string &key, bool on) {

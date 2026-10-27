@@ -39,6 +39,10 @@ final class SettingsModel: ObservableObject {
     // AI → Modules' prompt editor and AI → Connection's model list, shown as sheets.
     @Published var editing: PromptEdit?
     @Published var choosingModel = false
+    // Languages → Translation: a method's models being downloaded (its id) and how far.
+    @Published private var downloading: String?
+    @Published private var downloadProgress = 0.0
+    @Published private var downloadError = ""
     var openFirstRun: (() -> Void)?
     // The app's language changed: the window's own labels again.
     var relabel: (() -> Void)?
@@ -70,6 +74,11 @@ final class SettingsModel: ObservableObject {
         s.ai_key = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
         s.ai_testing = aiTesting
         s.ai_test = std.string(aiTest)
+        s.ram_mb = CoreClient.device.ram_mb
+        s.dotprod = CoreClient.device.features.contains { String($0) == "asimddp" }
+        s.downloading = std.string(downloading ?? "")
+        s.progress = downloadProgress
+        s.download_error = std.string(downloadError)
         return s
     }
 
@@ -136,6 +145,36 @@ final class SettingsModel: ObservableObject {
             AXIsProcessTrustedWithOptions([k: true] as CFDictionary)
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
         default: break
+        }
+    }
+
+    // A method's card: picked (as in InkPeek, its models download from the card's button).
+    func pickMethod(_ id: String) {
+        choose("method", ["fast": 1, "direct": 2, "llm": 3][id] ?? 0)
+    }
+
+    func downloadMethod(_ id: String, _ ids: [String]) {
+        guard downloading == nil, !ids.isEmpty else { return }
+        let dl = lexipeek.app.Download()
+        downloading = id
+        downloadProgress = 0
+        downloadError = ""
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            let total = dl.get_total()
+            self?.downloadProgress = total > 0 ? Double(dl.get_done()) / Double(total) : 0
+        }
+        var v = lexipeek.mac.Strings()
+        for i in ids { v.push_back(std.string(i)) }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let s = lexipeek.app.install(std.string(), v, dl)
+            let e = s.cancelled ? "" : String(s.error)
+            DispatchQueue.main.async {
+                timer.invalidate()
+                self.downloading = nil
+                self.downloadError = e
+                self.client.reload()
+                self.revision += 1
+            }
         }
     }
 
@@ -255,6 +294,9 @@ struct SettingLine: Identifiable {
     var choices: [String]
     var selected: Int
     var placeholder, edit: String
+    var detail, button: String
+    var ids: [String]
+    var progress: Double
     var id: String { "\(kind.rawValue)|\(key)|\(title)" }
 
     init(_ r: lexipeek.SettingRow) {
@@ -269,6 +311,10 @@ struct SettingLine: Identifiable {
         selected = Int(r.selected)
         placeholder = String(r.placeholder)
         edit = String(r.edit)
+        detail = String(r.detail)
+        button = String(r.button)
+        ids = r.ids.map { String($0) }
+        progress = r.progress
     }
 }
 
@@ -371,6 +417,8 @@ struct RowsView: View {
                     Text(r.value).foregroundStyle(.secondary)
                 }
             } label: { label(r) }
+        case .method:
+            method(r)
         case .link:
             LabeledContent {
                 if let url = URL(string: r.value) {
@@ -380,6 +428,34 @@ struct RowsView: View {
         default:
             label(r)
         }
+    }
+}
+
+extension RowsView {
+    // A translation method as InkPeek's card: picked by a click; what it does, needs, why not here; its download.
+    func method(_ r: SettingLine) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: r.on ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(r.on ? Color.accentColor : .secondary)
+                .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(r.title).fontWeight(r.on ? .semibold : .regular)
+                Text(r.about).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if !r.detail.isEmpty {
+                    Text(r.detail).font(.caption).foregroundStyle(r.enabled ? .secondary : Color.orange).fixedSize(horizontal: false, vertical: true)
+                }
+                if r.progress >= 0 {
+                    ProgressView(value: r.progress).controlSize(.small)
+                } else if !r.button.isEmpty {
+                    Button(r.button) { model.downloadMethod(r.value, r.ids) }.controlSize(.small).padding(.top, 2)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 2)
+        .opacity(r.enabled ? 1 : 0.55)
+        .contentShape(Rectangle())
+        .onTapGesture { if r.enabled { model.pickMethod(r.value) } }
     }
 }
 

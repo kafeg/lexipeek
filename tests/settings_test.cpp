@@ -99,9 +99,33 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   REQUIRE(row(p, "answer"));
   CHECK(row(p, "answer")->choices == std::vector<std::string>{"English", "Russian"});
   CHECK(row(p, "answer")->selected == 1);
-  CHECK(row(p, "method")->choices.size() == 4);
-  CHECK(row(p, "method")->selected == 0);
   CHECK(row(p, "mt_english")->kind == Kind::toggle);
+  // The methods as cards (InkPeek's MethodPane): needs, downloaded, why not here.
+  st.ram_mb = 16384, st.dotprod = true;
+  MethodInfo fast, direct, llm;
+  direct.method = Method::direct, direct.models = 2, direct.size = 610'000'000, direct.missing = {"opus-a"}, direct.left = 300'000'000;
+  direct.bare = {"de→pl"};
+  llm.method = Method::llm, llm.cannot = "Needs 6 GB of memory; this machine has 4.0 GB.";
+  st.methods = {fast, direct, llm};
+  p = settings_view(SettingsSection::languages, 1, s, st);
+  std::vector<SettingRow> cards;
+  for (auto &r : p.rows)
+    if (r.kind == Kind::method) cards.push_back(r);
+  REQUIRE(cards.size() == 3);
+  CHECK(cards[0].on);  // no method set: Fast
+  CHECK(cards[0].detail.empty());
+  CHECK(cards[1].value == "direct");
+  CHECK(cards[1].detail == "For your pairs: 2 model(s), 610 MB\nNo model for de→pl: Mozilla translates them.");
+  CHECK(cards[1].ids == std::vector<std::string>{"opus-a"});
+  CHECK(cards[1].button == "Download 300 MB");
+  CHECK(!cards[2].enabled);
+  CHECK(cards[2].detail == llm.cannot);
+  CHECK(cards[2].ids.empty());
+  st.downloading = "direct", st.progress = 0.5;
+  p = settings_view(SettingsSection::languages, 1, s, st);
+  for (auto &r : p.rows)
+    if (r.kind == Kind::method) CHECK(r.progress == (r.value == "direct" ? 0.5 : -1));
+  st = state();
   CHECK(row(p, "setup")->value == "Open…");
   st.has_pair = false;
   p = settings_view(SettingsSection::languages, 1, s, st);
