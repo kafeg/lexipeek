@@ -328,8 +328,14 @@ extension NSWindow {
     // Shown in the middle of the screen with the cursor (where it already is when it is open).
     func present() {
         if !isVisible, let screen = NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) }) ?? NSScreen.main {
+            // A SwiftUI window gets its size on its first layout: measured first, else it grows past the screen's top.
+            if !styleMask.contains(.resizable), let v = contentView {
+                v.layoutSubtreeIfNeeded()
+                let size = v.fittingSize
+                if size.width > 0 && size.height > 0 { setContentSize(size) }
+            }
             let v = screen.visibleFrame
-            setFrameOrigin(NSPoint(x: v.midX - frame.width / 2, y: v.midY - frame.height / 2))
+            setFrameOrigin(NSPoint(x: v.midX - frame.width / 2, y: max(v.minY, min(v.maxY - frame.height, v.midY - frame.height / 2))))
         }
         makeKeyAndOrderFront(nil)
     }
