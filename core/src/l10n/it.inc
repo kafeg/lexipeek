@@ -383,6 +383,7 @@
 {"err_no_key", "Nessuna chiave API: aggiungine una in Impostazioni → IA."},
 {"err_no_model", "Nessun modello scelto: scegline uno in Impostazioni → IA."},
 {"err_other", "La richiesta all'IA non è riuscita. Riprova; se si ripete, controlla le impostazioni IA."},
+{"ai_cli_timeout", "Il programma non ha risposto in {1} minuti: è stato fermato."},
 {"err_server", "Il server non risponde: {1}\nControlla l'indirizzo e che il server sia avviato."},
 {"ai_off", "L'IA è spenta: scegli un fornitore in Impostazioni → IA."},
 {"ai_connect", "Connessione"},

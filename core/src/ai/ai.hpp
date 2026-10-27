@@ -55,6 +55,8 @@ Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::s
 // Removes <think>…</think> blocks; the JSON object of a reply (also inside a code fence or a sentence), "" when none.
 std::string strip_thinking(const std::string &s);
 std::string json_object(const std::string &s);
+// How long a CLI provider may take (seconds): then it is stopped and the card says so.
+inline constexpr int cli_timeout = 120;
 // A word for the shell, single-quoted.
 std::string shell_quote(const std::string &s);
 // The CLI's command line for a prompt (the system prompt first).

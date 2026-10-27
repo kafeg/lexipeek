@@ -383,6 +383,7 @@
 {"err_no_key", "No API key: add one in Settings → AI."},
 {"err_no_model", "No model chosen: pick one in Settings → AI."},
 {"err_other", "The AI request failed. Try again; if it repeats, check the AI settings."},
+{"ai_cli_timeout", "The program did not answer within {1} minutes: it was stopped."},
 {"err_server", "The server does not answer: {1}\nCheck the address and that the server is running."},
 {"ai_off", "AI is off: choose a provider in Settings → AI."},
 {"ai_connect", "Connection"},

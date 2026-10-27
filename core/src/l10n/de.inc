@@ -383,6 +383,7 @@
 {"err_no_key", "Kein API-Schlüssel: unter Einstellungen → KI hinzufügen."},
 {"err_no_model", "Kein Modell gewählt: unter Einstellungen → KI eines wählen."},
 {"err_other", "Die KI-Anfrage ist fehlgeschlagen. Erneut versuchen; passiert es wieder, die KI-Einstellungen prüfen."},
+{"ai_cli_timeout", "Das Programm hat in {1} Minuten nicht geantwortet: Es wurde beendet."},
 {"err_server", "Der Server antwortet nicht: {1}\nPrüfen Sie die Adresse und ob der Server läuft."},
 {"ai_off", "KI ist aus: unter Einstellungen → KI einen Anbieter wählen."},
 {"ai_connect", "Verbindung"},

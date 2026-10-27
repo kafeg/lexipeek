@@ -383,6 +383,7 @@
 {"err_no_key", "No hay clave API: añade una en Ajustes → IA."},
 {"err_no_model", "No hay modelo elegido: elige uno en Ajustes → IA."},
 {"err_other", "La solicitud a la IA falló. Vuelve a intentarlo; si se repite, revisa los ajustes de IA."},
+{"ai_cli_timeout", "El programa no respondió en {1} minutos: se detuvo."},
 {"err_server", "El servidor no responde: {1}\nRevisa la dirección y que el servidor esté en marcha."},
 {"ai_off", "La IA está desactivada: elige un proveedor en Ajustes → IA."},
 {"ai_connect", "Conexión"},

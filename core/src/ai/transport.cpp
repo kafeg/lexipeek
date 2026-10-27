@@ -28,12 +28,21 @@ FILE *open_pipe(const std::string &c) { return popen(c.c_str(), "r"); }
 int close_pipe(FILE *f) { return (pclose(f) >> 8) & 0xff; }
 #endif
 
-// The command's stdout; its stderr into a temp file read after it ends.
+// The command's stdout; its stderr into a temp file read after it ends. A program that hangs is stopped after
+// cli_timeout seconds (exit 143: SIGTERM).
 Ran run(const std::string &command) {
   Ran r;
   std::random_device rd;
   auto err = fs::temp_directory_path() / ("lexipeek-ai-" + std::to_string(rd()) + ".err");
-  auto *f = open_pipe("{ " + command + "; } 2>" + shell_quote(err.string()));
+#ifdef _WIN32
+  auto line = "{ " + command + "; } 2>" + shell_quote(err.string());
+#else
+  // set -m: the command is a process group of its own, stopped whole (its programs hold the pipe); the watcher writes
+  // nowhere, so the pipe ends when the command does.
+  auto line = "exec 2>/dev/null; set -m; { " + command + "; } 2>" + shell_quote(err.string()) + " & p=$!; ( sleep " +
+              std::to_string(cli_timeout) + "; kill -TERM -$p ) >/dev/null 2>&1 & w=$!; wait $p; s=$?; kill $w; exit $s";
+#endif
+  auto *f = open_pipe(line);
   if (!f) return r.err = "cannot start a shell", r;
   char buf[4096];
   for (size_t n; (n = std::fread(buf, 1, sizeof buf, f)) > 0;) r.out.append(buf, n);

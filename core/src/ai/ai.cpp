@@ -240,6 +240,7 @@ std::string command(const AiSettings &s) {
 Answer cli(const AiSettings &s, const std::string &prompt, const std::string &sys, const Transport &t) {
   auto r = t.run(cli_command(s, sys, prompt));
   if (r.code == 127) return fail(Code::no_cli, command(s));
+  if (r.code == 143) return fail(Code::failed, tr("ai_cli_timeout", {digits(cli_timeout / 60)}));
   auto out = trim(r.out);
   if (s.provider == "claude-cli") {
     // --output-format json: {"type":"result","is_error":false,"result":"…"}.

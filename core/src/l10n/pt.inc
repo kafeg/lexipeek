@@ -383,6 +383,7 @@
 {"err_no_key", "Sem chave da API: adicione uma em Definições → IA."},
 {"err_no_model", "Nenhum modelo escolhido: escolha um em Definições → IA."},
 {"err_other", "O pedido à IA falhou. Tente de novo; se voltar a acontecer, verifique as definições de IA."},
+{"ai_cli_timeout", "O programa não respondeu em {1} minutos: foi parado."},
 {"err_server", "O servidor não responde: {1}\nVerifique o endereço e se o servidor está a funcionar."},
 {"ai_off", "A IA está desligada: escolha um fornecedor em Definições → IA."},
 {"ai_connect", "Ligação"},

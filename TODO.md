@@ -11,8 +11,8 @@ with TSV / Export / Import. Next: M6 Windows (Qt). Milestones: `docs/spec.md` â†
   published again (InkPeek's Packs workflow): until then the AI model is "not built for this processor" on x86-64.
 
 ## Open
-- CI on Linux / Windows not run since M0 (macOS first); CLI providers (`claude -p`, `codex exec`) have no timeout and
-  their shell line is POSIX only.
+- CI on Linux / Windows not run since M0 (macOS first); the CLI providers' shell line (and its 2-minute stop) is
+  POSIX only.
 - No request sent to a real AI provider from here: try each once.
 - Own dictionaries are indexed in the background one at a time (a card waits for one index at most); no
   "indexingâ€¦" state in their rows.

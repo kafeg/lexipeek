@@ -387,6 +387,7 @@
 {"err_no_key", "Brak klucza API: dodaj go w Ustawieniach → AI."},
 {"err_no_model", "Nie wybrano modelu: wybierz go w Ustawieniach → AI."},
 {"err_other", "Żądanie do AI nie powiodło się. Spróbuj ponownie; jeśli to się powtórzy, sprawdź ustawienia AI."},
+{"ai_cli_timeout", "Program nie odpowiedział w {1} min: został zatrzymany."},
 {"err_server", "Serwer nie odpowiada: {1}\nSprawdź adres i czy serwer jest uruchomiony."},
 {"ai_off", "AI jest wyłączone: wybierz dostawcę w Ustawieniach → AI."},
 {"ai_connect", "Połączenie"},
