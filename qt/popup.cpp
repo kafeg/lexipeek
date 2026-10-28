@@ -59,7 +59,7 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   if (text) model.lookup(*text);
   show();
   platform::round(this);
-  if (focus) activateWindow(), raise();
+  if (focus) platform::activate(this);
   platform::register_hotkey(escape_key, Hotkey{"Esc", false, false, false, false}, [this] { close_card(); });
   platform::register_hotkey(pin_key, Hotkey{"P", false, false, true, false}, [this] { model.toggle_pin(); });
   was_down_ = platform::mouse_down();

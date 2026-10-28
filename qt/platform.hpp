@@ -60,6 +60,9 @@ std::function<ai::CliRan(const ai::CliCall &)> cli_runner();
 // The OS's last error as text ("" none): what a failed call above said.
 std::string last_error();
 
+// Brings a window to the front with the keyboard focus (Windows otherwise only flashes its taskbar button).
+void activate(QWidget *w);
+
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);
 

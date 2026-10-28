@@ -1,6 +1,7 @@
 #ifndef _WIN32
 #include "platform.hpp"
 #include <unistd.h>
+#include <QWidget>
 
 // Not Windows: nothing yet (Linux later; on macOS the Qt shell is only built to work on it).
 namespace lexipeek::qt::platform {
@@ -31,6 +32,10 @@ void receive(std::function<void(const QStringList &)>) {}
 void register_scheme() {}
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return nullptr; }
 std::string last_error() { return ""; }
+void activate(QWidget *w) {
+  w->raise();
+  w->activateWindow();
+}
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

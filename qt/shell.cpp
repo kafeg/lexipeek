@@ -17,7 +17,8 @@ void present(QWidget *w) {
   if (!w->isVisible()) {
     auto *s = QGuiApplication::screenAt(QCursor::pos());
     auto g = (s ? s : QGuiApplication::primaryScreen())->availableGeometry();
-    w->adjustSize();
+    // A window with its own size keeps it (the LexiPeek window, Settings); the others fit their content.
+    if (w->sizeHint().isValid() && w->size().width() < w->sizeHint().width()) w->adjustSize();
     w->move(g.center() - QPoint(w->width() / 2, w->height() / 2));
   }
   w->show();

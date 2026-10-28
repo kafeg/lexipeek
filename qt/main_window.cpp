@@ -155,6 +155,7 @@ void MainWindow::look(const QString &text) {
 }
 
 void MainWindow::refresh() {
+  hint_->setText(t("win_hint", lookup_key, input_key));
   auto v = c_.engine.notes(tab_, page_);
   for (int i = 0; i < 3 && i < static_cast<int>(v.tabs.size()); ++i) side_->item(words + i)->setText(q(v.tabs[i]));
   side_->item(lookup)->setText(t("win_lookup"));

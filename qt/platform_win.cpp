@@ -373,8 +373,11 @@ struct Receiver : QWidget {
 }  // namespace
 
 bool hand_over(const QStringList &args) {
-  CreateMutexW(nullptr, FALSE, L"Local\\LexiPeek");
-  if (GetLastError() != ERROR_ALREADY_EXISTS) return false;
+  // Another one running: the mutex exists (access denied: it runs at a higher integrity level, still ours).
+  bool made = CreateMutexW(nullptr, FALSE, L"Local\\LexiPeek") != nullptr;
+  auto e = GetLastError();
+  if (made && e != ERROR_ALREADY_EXISTS) return false;
+  if (!made && e != ERROR_ACCESS_DENIED) return false;
   // The first one may still be starting: its window comes within a few seconds.
   for (int i = 0; i < 50; ++i) {
     if (HWND w = FindWindowW(nullptr, receiver)) {
@@ -393,7 +396,8 @@ void receive(std::function<void(const QStringList &)> got) {
   auto *r = new Receiver;
   r->got = std::move(got);
   r->setWindowTitle(QString::fromWCharArray(receiver));
-  r->winId();  // the native window, never shown
+  // A launch at a lower integrity level (a link from the browser or Explorer) may still send its arguments.
+  ChangeWindowMessageFilterEx(reinterpret_cast<HWND>(r->winId()), WM_COPYDATA, MSGFLT_ALLOW, nullptr);  // the native window, never shown
 }
 
 void register_scheme() {
@@ -520,6 +524,19 @@ std::string last_error() {
   wchar_t buf[512];
   auto n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, buf, 512, nullptr);
   return std::to_string(code) + " " + QString::fromWCharArray(buf, static_cast<int>(n)).trimmed().toStdString();
+}
+
+void activate(QWidget *w) {
+  auto h = reinterpret_cast<HWND>(w->winId());
+  // The hotkey's process may take the foreground; AttachThreadInput lets it when another app holds it.
+  auto front = GetForegroundWindow();
+  auto theirs = GetWindowThreadProcessId(front, nullptr), mine = GetCurrentThreadId();
+  if (theirs != mine) AttachThreadInput(mine, theirs, TRUE);
+  SetForegroundWindow(h);
+  SetFocus(h);
+  if (theirs != mine) AttachThreadInput(mine, theirs, FALSE);
+  w->raise();
+  w->activateWindow();
 }
 
 void round(QWidget *w) {
