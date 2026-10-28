@@ -29,6 +29,26 @@ function AppTexts($proc) {
   $texts -join ' | '
 }
 function Keys($k) { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Milliseconds 300 }
+Add-Type @'
+using System; using System.Runtime.InteropServices;
+public static class Win {
+  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L, T, R, B; }
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+}
+'@
+# A real click in the middle of a window: the focus is there (a notification may hold it otherwise).
+function ClickIn($proc) {
+  $proc.Refresh()
+  $r = New-Object Win+Rect
+  [void][Win]::GetWindowRect($proc.MainWindowHandle, [ref]$r)
+  [void][Win]::SetForegroundWindow($proc.MainWindowHandle)
+  [void][Win]::SetCursorPos([int](($r.L + $r.R) / 2), [int](($r.T + $r.B) / 2))
+  [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0)
+  Start-Sleep -Milliseconds 500
+}
 
 # The OS parts first (in a desktop session the Credential Manager and hotkeys work, unlike over SSH).
 $selfTest = Join-Path $Out 'self-test.txt'
@@ -45,7 +65,7 @@ $file = Join-Path $env:TEMP 'lexipeek-e2e.txt'
 Set-Content $file 'Haus steht am Ende der Strasse.' -Encoding UTF8
 $pad = Start-Process notepad $file -PassThru
 Start-Sleep 2
-[Microsoft.VisualBasic.Interaction]::AppActivate($pad.Id)
+ClickIn $pad
 Keys '^{HOME}'
 Keys '^+{RIGHT}'
 Shot '1-selected'
@@ -61,6 +81,7 @@ Start-Sleep 1
 Shot '3-closed'
 Check (-not ((AppTexts $app) -match 'Haus')) 'Esc closes the card'
 
+ClickIn $pad
 Keys '%a'
 Start-Sleep 2
 Keys 'Tür~'
