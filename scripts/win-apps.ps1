@@ -11,6 +11,8 @@ public static class Win {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L, T, R, B; }
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
 }
 '@
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -27,7 +29,7 @@ function Click($x, $y, $times) {
   for ($i = 0; $i -lt $times; $i++) { [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0); Start-Sleep -Milliseconds 80 }
 }
 function Texts($proc) {
-  $c = New-Object System.Windows.Automation.PropertyCondition [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id
+  $c = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id)
   $out = @()
   foreach ($w in [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $c)) {
     foreach ($e in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) { $out += $e.Current.Name }
@@ -36,7 +38,7 @@ function Texts($proc) {
 }
 # The element showing the text (a browser's paragraph), searched in every top-level window.
 function FindText {
-  $c = New-Object System.Windows.Automation.PropertyCondition [System.Windows.Automation.AutomationElement]::NameProperty, 'Haus steht am Ende der Strasse.'
+  $c = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty, 'Haus steht am Ende der Strasse.')
   for ($i = 0; $i -lt 20; $i++) {
     $e = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $c)
     if ($e) { return $e }
@@ -71,10 +73,20 @@ foreach ($a in $apps) {
   Start-Sleep 6
   if ($a.browser) {
     $e = FindText
-    if (-not $e) { "FAIL $($a.name): the page's text not found"; $failed++; Shot $a.name; Get-Process $a.proc -ErrorAction SilentlyContinue | Stop-Process -Force; continue }
-    $r = $e.Current.BoundingRectangle
-    Click ([int]($r.X + 20)) ([int]($r.Y + $r.Height / 2)) 2  # a double click on "Haus"
+    if ($e) {
+      $r = $e.Current.BoundingRectangle
+      Click ([int]($r.X + 20)) ([int]($r.Y + $r.Height / 2)) 2  # a double click on "Haus"
+    } else {
+      # Not in UI Automation's tree yet: the page's first word sits 80 px into the page, under the browser's bar.
+      $w = Get-Process $a.proc | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+      $r = New-Object Win+Rect
+      [void][Win]::GetWindowRect($w.MainWindowHandle, [ref]$r)
+      Click ($r.L + 110) ($r.T + 195) 2
+      "     ($($a.name): the word by its place, not by UI Automation)"
+    }
   } else {
+    # WordPad may first wait for a printer (none here): Esc on that dialog.
+    for ($i = 0; $i -lt 15 -and -not (Get-Process $a.proc | Where-Object { $_.MainWindowTitle -match 'haus' }); $i++) { Keys '{ESC}'; Start-Sleep 1 }
     $w = Get-Process $a.proc | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
     [void][Win]::SetForegroundWindow($w.MainWindowHandle)
     Start-Sleep 1
