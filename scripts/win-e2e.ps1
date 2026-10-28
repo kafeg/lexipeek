@@ -87,13 +87,13 @@ Start-Sleep 2
 Keys 'Tür~'
 Start-Sleep 4
 Shot '4-typed'
-Check ((AppTexts $app) -match 'Tür') 'the input hotkey: a card to type in, Return looks it up'
+Check ((AppTexts $app) -match 'T.r') 'the input hotkey: a card to type in, Return looks it up'
 Keys '{ESC}'
 
 Start-Process 'lexipeek://lookup?text=Stra%C3%9Fe'
 Start-Sleep 4
 Shot '5-link'
-Check ((AppTexts $app) -match 'Straße') 'a lexipeek:// link opens its card'
+Check ((AppTexts $app) -match 'Stra.e') 'a lexipeek:// link opens its card'  # ASCII: PowerShell 5 reads a BOM-less script as ANSI
 Keys '{ESC}'
 
 $second = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
