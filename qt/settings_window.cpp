@@ -27,6 +27,7 @@
 #include <thread>
 #include "dicts_pane.hpp"
 #include "packs_pane.hpp"
+#include "version.h"
 #include "platform.hpp"
 #include "ui.hpp"
 
