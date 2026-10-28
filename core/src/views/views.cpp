@@ -414,7 +414,6 @@ CardView card_view(const Card &c, const CardState &s) {
     }
   }
   if (!c.save_text.empty()) {
-    v.star = s.saved ? "★" : "☆";
     v.can_save = true, v.saved = s.saved;
     v.star_help = tr(s.saved ? "card_unsave" : "card_save", {c.save_text});
   }

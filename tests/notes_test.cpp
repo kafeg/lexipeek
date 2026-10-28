@@ -57,7 +57,7 @@ TEST_CASE("☆: a word as its base form, also after its article; a phrase as it 
     CHECK(c.save_line == "das Haus (Hauses, pl. Häuser) — дом, здание");
     CHECK(!c.saved);
     CHECK(!first_state(c).saved);
-    CHECK(card_view(c, first_state(c)).star == "☆");
+    CHECK(!card_view(c, first_state(c)).saved);
 
     CHECK(core.toggle_saved(c, "дома"));
     CHECK(core.store().is_saved("Haus"));
@@ -68,7 +68,7 @@ TEST_CASE("☆: a word as its base form, also after its article; a phrase as it 
     CHECK(again.saved);
     auto s = first_state(again);
     CHECK(s.saved);
-    CHECK(card_view(again, s).star == "★");
+    CHECK(card_view(again, s).saved);
     CHECK(card_view(again, s).star_help == "Remove Haus from Notes");
 
     auto article = core.lookup(Request{.text = "das Haus", .source = Source::hotkey});

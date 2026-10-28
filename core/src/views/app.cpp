@@ -197,11 +197,6 @@ std::string ai_test(const std::string &data, const std::string &key) {
   return r.ok() ? tr("ai_test_ok", {ai::brief(r.json)}) : ai::error_text(r, s.ai);
 }
 
-std::vector<PairRow> rows(const std::string &data, const Device &d) {
-  Packs p(dir(data));
-  return pack_rows(p.cached(), p.installed(), d);
-}
-
 std::vector<std::string> answers(const std::string &data) { return answer_languages(Packs(dir(data)).cached()); }
 
 PacksView packs(const std::string &data, const Device &d) {
@@ -212,11 +207,6 @@ PacksView packs(const std::string &data, const Device &d) {
 std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to) {
   Packs p(dir(data));
   return lexipeek::missing_ids(p.cached(), p.installed(), {from, to}, load_settings(dir(data)).method.value_or(Method::fast));
-}
-
-std::vector<std::string> freed_ids(const std::string &data, const std::string &from, const std::string &to) {
-  Packs p(dir(data));
-  return lexipeek::freed_ids(p.cached(), p.installed(), {from, to});
 }
 
 std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().error; }

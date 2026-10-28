@@ -22,7 +22,7 @@ class MainWindow : public QWidget {
   void look(const QString &text);
   void refresh();  // Notes and the memory line again
   std::string lookup_key, input_key;  // the hotkeys' labels for the hints
-  Source source = Source::input;      // Source::cli writes nothing (snapshots)
+  Source source = Source::input;
 
  signals:
   void openSettings(int section, int tab);  // section -1: the one shown last

@@ -53,7 +53,6 @@ struct CardLook {
     var pager = ""
     var prev = false
     var next = false
-    var star = ""
     var copy = ""
     var fix = ""
     var fixPane = (lexipeek.SettingsSection.ai, 0)
@@ -88,7 +87,6 @@ struct CardLook {
         pager = String(v.pager)
         prev = v.prev
         next = v.next
-        star = String(v.star)
         copy = String(v.copy)
         fix = String(v.fix)
         fixPane = (v.fix_section, Int(v.fix_tab))

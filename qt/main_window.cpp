@@ -24,8 +24,6 @@ namespace lexipeek::qt {
 
 namespace {
 
-
-
 QString downloads(const QString &name) {
   return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/" + name;
 }

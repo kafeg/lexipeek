@@ -25,7 +25,6 @@ void apply();
 void force(std::optional<bool> dark);
 bool dark();
 QColor accent();
-QColor secondary();  // secondary text
 // The glyph's font at a pixel size (falls back to the text font where Windows' icon fonts are missing).
 QFont icons(int px);
 QString icon_font();  // the family in use, "" when the system has neither

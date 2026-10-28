@@ -141,7 +141,6 @@ std::optional<bool> forced;
 
 bool dark() { return forced ? *forced : QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark; }
 QColor accent() { return theme().accent; }
-QColor secondary() { return theme().secondary; }
 
 void apply() {
   static bool connected = false;

@@ -117,7 +117,6 @@
 {"card_unread", "{1} no muestra su selección a LexiPeek."},
 {"card_pin", "Mantener la tarjeta abierta (⌘P)"},
 {"card_open_word", "Abrir «{1}»"},
-{"card_back", "Atrás (⌘[)"},
 {"card_text_in", "Idioma del texto"},
 {"card_into", "Traducir a"},
 {"card_copy", "Copiar"},
@@ -531,7 +530,6 @@
 {"ai_open_settings", "Abrir Ajustes → IA"},
 // Windows (ui_platform "windows"): a key's text there.
 {"card_pin@win", "Mantener la tarjeta abierta (Ctrl+P)"},
-{"card_back@win", "Atrás (Retroceso)"},
 {"fr_pair@win", "El idioma en que lees y el idioma al que traducir. Diccionarios y traducción funcionan sin conexión, en este ordenador."},
 {"icon_d@win", "Un pequeño icono junto a una nueva selección abre la tarjeta. Se lee por UI Automation; el portapapeles no se toca."},
 {"login_d@win", "LexiPeek se inicia con Windows, en el área de notificación."},

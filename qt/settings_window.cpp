@@ -11,21 +11,17 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
-#include <QGroupBox>
 #include <QRadioButton>
-#include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
-#include <thread>
 #include "dicts_pane.hpp"
 #include "fluent.hpp"
 #include "packs_pane.hpp"
@@ -61,7 +57,6 @@ SettingsState SettingsShell::state() const {
 }
 
 namespace {
-
 
 // A row's title and its one-line description.
 QWidget *titled(const SettingRow &r) {
@@ -116,8 +111,6 @@ QKeySequence sequence(const Hotkey &h) {
                     static_cast<Qt::Key>(h.key.empty() ? 0 : h.key[0]));
   return QKeySequence(c);
 }
-
-
 
 }  // namespace
 

@@ -4,7 +4,6 @@
 #include <QFontDatabase>
 #include <QFontMetrics>
 #include <QHBoxLayout>
-#include <QGraphicsOpacityEffect>
 #include <QEvent>
 #include <QLabel>
 #include <QTextLayout>
@@ -492,7 +491,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
   }
 }
 
-// The bottom row (InkPeek's): back, the full entry, the method, a section's pager; copy, the badge, ☆.
+// The bottom row (InkPeek's): ←, the method, a pager; copy, the badge, ☆.
 QWidget *CardWidget::bar(const CardView &v) {
   auto *w = new QWidget;
   w->setObjectName("bar");

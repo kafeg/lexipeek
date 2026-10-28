@@ -107,7 +107,7 @@ void CardPopup::fit() {
   move(g.topLeft());
 }
 
-// With the focus (typing): ←/→ tabs, Return the full entry, Ctrl+S ☆, Backspace back.
+// With the focus (typing): ←/→ tabs, Ctrl+S ☆, Backspace back.
 void CardPopup::keyPressEvent(QKeyEvent *e) {
   if (e->key() == Qt::Key_Escape) return close_card();
   if (!model.has_card()) return QWidget::keyPressEvent(e);

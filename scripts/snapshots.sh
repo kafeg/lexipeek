@@ -114,7 +114,7 @@ for look in light dark; do
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   rm -rf "$ai"
-  rm -f "$dir"/*.done "$dir/card.png"
+  rm -f "$dir"/*.done
 done
 
 # One page with every shot in the order above, light and dark side by side (shown at 1×).

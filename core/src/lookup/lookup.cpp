@@ -221,7 +221,6 @@ Card Core::lookup(const Request &r) {
   if (c.save_kind.empty()) c.save_kind = "word";
   c.saved = impl_->store->is_saved(c.save_text) || impl_->store->is_saved(c.text);
   c.answer_name = language_name(c.answer);
-  if (!c.lang.empty()) c.lang_name = language_name(c.lang);
   if (!c.other.empty()) c.other_name = language_name(c.other);
   c.mt_off = impl_->o.mt_off;
   if (c.lang.empty() || c.lang == c.answer || c.mt_off) return c;

@@ -5,7 +5,6 @@
 #include <map>
 #include "core_client.hpp"
 
-class QTabBar;
 class QListWidget;
 class QTabWidget;
 class QScrollArea;

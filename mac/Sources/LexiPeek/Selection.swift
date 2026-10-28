@@ -123,5 +123,4 @@ enum Selection {
         return CGRect(x: r.minX, y: top - r.maxY, width: r.width, height: r.height)
     }
 
-    // Cmd+C, then the clipboard as it was.
 }

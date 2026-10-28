@@ -114,13 +114,12 @@ enum Snapshot {
         FileManager.default.createFile(atPath: URL(fileURLWithPath: dir).appendingPathComponent(name).path, contents: nil)
     }
 
-    // After each change of the card, once it is quiet: card.png; for a named request, once the card is final,
+    // For a named request, once the card is final:
     // <name>.png, <name>-end.png (scrolled to the end, when the body scrolls), then the marker <name>.done.
     static func card(_ view: NSView, _ model: CardModel) {
         guard dir != nil else { return }
         pending?.cancel()
         let work = DispatchWorkItem {
-            write(view, "card.png")
             guard let r = request else { return }
             let asking = [lexipeek.ai.Ask.quick, .analysis, .context].contains { lexipeek.card_answer(model.state, $0).asking }
             let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating && !asking)

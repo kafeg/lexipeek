@@ -117,7 +117,6 @@
 {"card_unread", "{1} gibt die Auswahl nicht an LexiPeek weiter."},
 {"card_pin", "Karte offen lassen (⌘P)"},
 {"card_open_word", "{1} öffnen"},
-{"card_back", "Zurück (⌘[)"},
 {"card_text_in", "Sprache des Textes"},
 {"card_into", "Übersetzen in"},
 {"card_copy", "Kopieren"},
@@ -531,7 +530,6 @@
 {"ai_open_settings", "Einstellungen → KI öffnen"},
 // Windows (ui_platform "windows"): a key's text there.
 {"card_pin@win", "Karte offen lassen (Strg+P)"},
-{"card_back@win", "Zurück (Rücktaste)"},
 {"fr_pair@win", "Die Sprache, in der Sie lesen, und die, in die übersetzt wird. Wörterbücher und Übersetzung arbeiten offline, auf diesem Computer."},
 {"icon_d@win", "Ein kleines Symbol neben einer neuen Auswahl öffnet die Karte. Gelesen über UI Automation; die Zwischenablage bleibt unberührt."},
 {"login_d@win", "LexiPeek startet mit Windows, im Infobereich."},

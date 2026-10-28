@@ -119,7 +119,6 @@
 {"card_unread", "{1} nie pokazuje LexiPeek zaznaczenia."},
 {"card_pin", "Nie zamykaj karty (⌘P)"},
 {"card_open_word", "Otwórz „{1}”"},
-{"card_back", "Wstecz (⌘[)"},
 {"card_text_in", "Język tekstu"},
 {"card_into", "Tłumacz na"},
 {"card_copy", "Kopiuj"},
@@ -535,7 +534,6 @@
 {"ai_open_settings", "Otwórz Ustawienia → AI"},
 // Windows (ui_platform "windows"): a key's text there.
 {"card_pin@win", "Nie zamykaj karty (Ctrl+P)"},
-{"card_back@win", "Wstecz (Backspace)"},
 {"fr_pair@win", "Język, w którym czytasz, i język tłumaczenia. Słowniki i tłumaczenie działają offline, na tym komputerze."},
 {"icon_d@win", "Mała ikona obok nowego zaznaczenia otwiera kartę. Odczyt przez UI Automation; schowek pozostaje nietknięty."},
 {"login_d@win", "LexiPeek startuje razem z Windows, w obszarze powiadomień."},

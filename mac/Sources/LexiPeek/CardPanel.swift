@@ -128,7 +128,7 @@ final class CardController {
         }
     }
 
-    // In the card (when it has the focus): ←/→ tabs, Return the full entry, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
+    // In the card (when it has the focus): ←/→ tabs, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
     private func key(_ e: NSEvent) -> NSEvent? {
         guard e.window === panel, model.card != nil else { return e }
         if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {

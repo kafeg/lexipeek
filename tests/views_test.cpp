@@ -17,7 +17,7 @@ Card word() {
   Card c;
   c.kind = Card::Kind::word;
   c.text = "Häusern";
-  c.lang = "de", c.answer = "ru", c.lang_name = "German", c.answer_name = "Russian";
+  c.lang = "de", c.answer = "ru", c.answer_name = "Russian";
   c.header = "das Haus (Hauses, pl. Häuser)";
   c.base = "Haus";
   c.entries = {{"InkPeek · de → ru", "das Haus (Hauses, pl. Häuser) — дом", "<b>Haus</b> дом", "de-ru", "Haus"}};
@@ -270,13 +270,12 @@ TEST_CASE("views: a passage without gloss has only Translate, a wider card") {
 TEST_CASE("views: same language, no pack, unknown language, nothing to translate with") {
   auto c = phrase();
   c.lang = "ru";
-  c.lang_name = "Russian";
   c.methods = {};
   auto v = card_view(c, first_state(c));
   CHECK(v.badge == "ru");
   CHECK(v.rows[0].text == "Already in the answer language (Russian).");
   CHECK(!v.menu);
-  c.lang = c.lang_name = "";
+  c.lang = "";
   c.other = "fr";
   c.other_name = "French";
   v = card_view(c, first_state(c));
@@ -377,7 +376,6 @@ TEST_CASE("app: settings by data dir, method ids") {
   CHECK(!s.method);
   CHECK(app::method_id(Method::direct) == "direct");
   CHECK(app::language("de") == "German");
-  CHECK(app::rows(d, app::device(8192, {"asimddp"}, "arm64")).empty());
   CHECK(app::answers(d).empty());
   wipe(d);
 }

@@ -170,7 +170,6 @@ struct CardView {
   std::string fix;        // the button to the settings that fix what the card says ("Open Settings → AI"), "" = none
   SettingsSection fix_section = SettingsSection::ai;
   int fix_tab = 0;
-  std::string star;       // "☆", "★" (saved), "" (nothing to save)
   bool can_save = false, saved = false;
   std::string star_help;  // "Save to Notes", "Remove from Notes"
   int width = 400;        // the card's look (Settings → Card → Appearance): points
