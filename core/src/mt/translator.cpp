@@ -96,7 +96,7 @@ struct Translator::Impl {
     auto kind = m == Method::direct ? "opus" : "llm";
     auto c = covering(manifest, kind, from, to);
     if (!c) {
-      p.error = tr("mt_no_cover", {kind, from + "-" + to});
+      p.error = tr("mt_no_cover", {m == Method::direct ? "OPUS-MT" : "Hy-MT2", from + " → " + to});
       return p;
     }
     p.c = *c;
@@ -105,13 +105,13 @@ struct Translator::Impl {
       p.by = "OPUS-MT";
       p.dirs = {layout.opus(c->id)};
       if (auto t = c->tags.find(to); t != c->tags.end()) p.tag = t->second;
-      if (!std::filesystem::exists(p.dirs[0])) p.error = tr("not_installed", {c->id});
+      if (!std::filesystem::exists(p.dirs[0])) p.error = tr("not_installed", {p.by});
     } else {
       p.key = "llm:" + c->id;
       p.by = c->name;
       p.llm = true;
       p.gguf = layout.llm(c->id);
-      if (!std::filesystem::exists(p.gguf)) p.error = tr("not_installed", {c->id});
+      if (!std::filesystem::exists(p.gguf)) p.error = tr("not_installed", {p.by.empty() ? c->id : p.by});
       // This build's llama.cpp runs only with them on x86-64 (AVX2, FMA): without, it would stop on its first one.
       if (cpu_arch() == "x86_64") {
         auto have = cpu_features();
@@ -150,7 +150,7 @@ struct Translator::Impl {
     auto h = std::make_unique<Bergamots>();
     for (auto &d : p.dirs) {
       auto cfg = bergamot_config(d);
-      if (cfg.empty()) throw std::runtime_error("Missing model file in " + d.string());
+      if (cfg.empty()) throw std::runtime_error(tr("mt_cannot_load"));
       h->steps.push_back(std::make_unique<BergamotModel>(cfg));
     }
     return h;

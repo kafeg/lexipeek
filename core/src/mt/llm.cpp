@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <mutex>
 #include <stdexcept>
+#include "lexipeek/l10n.hpp"
 #include "llama.h"
 #include "mt/engines.hpp"
 
@@ -31,14 +32,14 @@ LlmModel::LlmModel(const std::string &path, int threads) : impl_(std::make_uniqu
   mp.load_mode = LLAMA_LOAD_MODE_MMAP;
   mp.use_extra_bufts = false;  // repacked weights would be a second copy in memory
   impl_->model = llama_model_load_from_file(path.c_str(), mp);
-  if (!impl_->model) throw std::runtime_error("Cannot load " + path);
+  if (!impl_->model) throw std::runtime_error(tr("mt_cannot_load"));
   auto cp = llama_context_default_params();
   cp.n_ctx = CTX;
   cp.n_batch = 512;
   cp.n_threads = threads;
   cp.n_threads_batch = threads;
   impl_->ctx = llama_init_from_model(impl_->model, cp);
-  if (!impl_->ctx) throw std::runtime_error("Cannot start the model");
+  if (!impl_->ctx) throw std::runtime_error(tr("mt_cannot_load"));
 }
 
 LlmModel::~LlmModel() = default;
@@ -51,7 +52,7 @@ std::string LlmModel::generate(const std::string &prompt, int max_tokens, const 
   int nt = -llama_tokenize(vocab, prompt.c_str(), size, nullptr, 0, false, true);
   std::vector<llama_token> toks(static_cast<size_t>(std::max(nt, 0)));
   llama_tokenize(vocab, prompt.c_str(), size, toks.data(), nt, false, true);
-  if (nt >= CTX - 8) throw std::runtime_error("Text too long for the model");
+  if (nt >= CTX - 8) throw std::runtime_error(tr("mt_too_long"));
   int room = std::min(max_tokens, CTX - nt - 1);
   if (llama_decode(impl_->ctx, llama_batch_get_one(toks.data(), nt))) throw std::runtime_error("Decoding failed");
   std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)> smpl(llama_sampler_init_greedy(), llama_sampler_free);

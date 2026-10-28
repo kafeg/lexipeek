@@ -105,7 +105,7 @@ std::string unpack(const fs::path &file, const fs::path &dir) {
     la_int64_t off = 0;
     while ((r = archive_read_data_block(a.get(), &buf, &n, &off)) == ARCHIVE_OK) out.write(static_cast<const char *>(buf), static_cast<std::streamsize>(n));
     if (r != ARCHIVE_EOF) return std::string("Broken archive: ") + archive_error_string(a.get());
-    if (!out.flush()) return "Cannot write " + name;
+    if (!out.flush()) return tr("err_write", {name});
   }
   if (r != ARCHIVE_EOF) return std::string("Broken archive: ") + archive_error_string(a.get());
   return "";

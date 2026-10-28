@@ -500,7 +500,12 @@ extension RowsView {
         .padding(.vertical, 2)
         .opacity(r.enabled ? 1 : 0.55)
         .contentShape(Rectangle())
-        .onTapGesture { if r.enabled { model.choose(r.key, r.selected) } }
+        // Picked: chosen, and its models fetched when they are missing (InkPeek's MethodPane).
+        .onTapGesture {
+            guard r.enabled else { return }
+            model.choose(r.key, r.selected)
+            if !r.button.isEmpty && r.progress < 0 { model.downloadMethod(r.value, r.ids) }
+        }
     }
 }
 

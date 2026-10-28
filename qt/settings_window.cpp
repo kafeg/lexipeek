@@ -457,7 +457,12 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       radio->setChecked(r.on);
       radio->setEnabled(r.enabled);
       auto selected = r.selected;
-      connect(radio, &QRadioButton::clicked, this, [this, key, dir, selected] { after(app::choose(dir, key, selected, sh_.state())); });
+      // Picked: chosen, and its models fetched when they are missing (InkPeek's MethodPane).
+      bool fetch = !r.button.empty() && r.progress < 0;
+      connect(radio, &QRadioButton::clicked, this, [this, key, dir, selected, fetch, value = r.value, ids = r.ids] {
+        after(app::choose(dir, key, selected, sh_.state()));
+        if (fetch) download(value, ids);
+      });
       l->addWidget(radio);
       auto *col = new QVBoxLayout;
       col->setContentsMargins(22, 0, 0, 0);

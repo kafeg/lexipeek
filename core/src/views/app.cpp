@@ -130,15 +130,11 @@ SettingsPage settings_page(const std::string &data, SettingsSection section, int
 }
 
 std::string toggle(const std::string &data, const std::string &key, bool on) {
-  auto s = load_settings(dir(data));
-  settings_toggle(s, key, on);
-  return save_settings(dir(data), s);
+  return update_settings(dir(data), [&](Settings &s) { settings_toggle(s, key, on); });
 }
 
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state) {
-  auto s = load_settings(dir(data));
-  settings_choose(s, key, index, state);
-  return save_settings(dir(data), s);
+  return update_settings(dir(data), [&](Settings &s) { settings_choose(s, key, index, state); });
 }
 
 std::string ai_provider(const std::string &data) { return load_settings(dir(data)).ai.provider; }
@@ -149,23 +145,17 @@ std::string ai_provider_title(const std::string &data) {
 }
 
 std::string set_text(const std::string &data, const std::string &key, const std::string &value) {
-  auto s = load_settings(dir(data));
-  settings_text(s, key, value);
-  return save_settings(dir(data), s);
+  return update_settings(dir(data), [&](Settings &s) { settings_text(s, key, value); });
 }
 
 PromptEditor prompt_editor(const std::string &data, const std::string &id) { return lexipeek::prompt_editor(load_settings(dir(data)), id); }
 
 std::string set_prompts(const std::string &data, const std::vector<std::string> &ids, const std::vector<std::string> &texts) {
-  auto s = load_settings(dir(data));
-  settings_prompts(s, ids, texts);
-  return save_settings(dir(data), s);
+  return update_settings(dir(data), [&](Settings &s) { settings_prompts(s, ids, texts); });
 }
 
 std::string reset_prompts(const std::string &data) {
-  auto s = load_settings(dir(data));
-  s.ai.prompts.clear();
-  return save_settings(dir(data), s);
+  return update_settings(dir(data), [&](Settings &s) { s.ai.prompts.clear(); });
 }
 
 namespace {
@@ -192,10 +182,7 @@ std::string ai_test(const std::string &data, const std::string &key) {
   ai::Query q{ai::Ask::quick, key, s.answer == "en" ? "Haus" : "house", 1, false, lang, s.answer == "en" ? "German" : "English"};
   auto recall = s.ai.recall;
   auto r = ai::ask(q, s.ai, recall, transport());
-  if (recall != s.ai.recall) {
-    s.ai.recall = recall;
-    save_settings(dir(data), s);
-  }
+  if (recall != s.ai.recall) update_settings(dir(data), [&](Settings &disk) { disk.ai.recall = recall; });
   return r.ok() ? tr("ai_test_ok", {ai::brief(r.json)}) : ai::error_text(r, s.ai);
 }
 
@@ -260,9 +247,7 @@ DictsView dictionaries(const std::string &data) { return dicts_view(dir(data)); 
 namespace {
 template <class F>
 void edit(const std::string &data, F f) {
-  auto s = load_settings(dir(data));
-  f(s.dicts);
-  save_settings(dir(data), s);
+  update_settings(dir(data), [&](Settings &s) { f(s.dicts); });
 }
 
 std::vector<std::string> shown(const std::string &data) {

@@ -137,7 +137,7 @@ Status download(const std::string &url, const std::filesystem::path &file, std::
   auto have = std::filesystem::exists(file, ec) ? static_cast<std::int64_t>(std::filesystem::file_size(file, ec)) : 0;
   if (ec) have = 0;
   Sink s{c.h, text::open_file(file, have ? "ab" : "wb"), file, have, total, &progress, &cancel};
-  if (!s.f) return {"Cannot write " + file.filename().string()};
+  if (!s.f) return {tr("err_write", {text::utf8_of(file.filename())})};
   char err[CURL_ERROR_SIZE] = "";
   common(c.h, url);
   curl_easy_setopt(c.h, CURLOPT_ERRORBUFFER, err);
@@ -150,7 +150,7 @@ Status download(const std::string &url, const std::filesystem::path &file, std::
   auto r = curl_easy_perform(c.h);
   bool closed = s.f && std::fclose(s.f) == 0;
   if (r == CURLE_ABORTED_BY_CALLBACK) return {"", true};
-  if (s.failed || (r == CURLE_OK && !closed)) return {"Cannot write " + file.filename().string()};
+  if (s.failed || (r == CURLE_OK && !closed)) return {tr("err_write", {text::utf8_of(file.filename())})};
   if (r != CURLE_OK) return {message(r, err)};
   return {};
 }

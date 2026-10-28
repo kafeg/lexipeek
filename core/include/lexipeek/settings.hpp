@@ -1,6 +1,7 @@
 // One JSON for the app and the CLI: <data>/settings.json. Unknown fields are kept as they are.
 #pragma once
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <optional>
 #include <string>
@@ -74,5 +75,7 @@ struct Settings {
 Settings load_settings(const std::filesystem::path &data);
 // "" or the error. Written whole, then renamed.
 std::string save_settings(const std::filesystem::path &data, const Settings &s);
+// Load, change, save as one step (one lock for every thread: an AI answer's recall and a click in Settings).
+std::string update_settings(const std::filesystem::path &data, const std::function<void(Settings &)> &change);
 
 }  // namespace lexipeek

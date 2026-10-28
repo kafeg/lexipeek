@@ -299,9 +299,7 @@ ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
     std::lock_guard g(impl_->mu);
     std::lock_guard o(impl_->opt_mu);
     impl_->o.ai.recall = recall;
-    auto disk = load_settings(impl_->o.data);
-    disk.ai.recall = recall;
-    save_settings(impl_->o.data, disk);
+    update_settings(impl_->o.data, [&](Settings &disk) { disk.ai.recall = recall; });
   }
   return r;
 }

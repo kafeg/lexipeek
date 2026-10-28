@@ -177,13 +177,14 @@ Imported download_dict(const fs::path &data, const CatalogItem &item, const Prog
   fs::remove(file, ec);
   if (!r.error.empty()) return r;
   // The address with the dictionaries it brought: the catalog marks it while one of them is on disk.
-  auto set = load_settings(data);
-  std::erase_if(set.dicts.got, [&](const std::string &g) { return g.substr(0, g.find('\t')) == item.url; });
   std::string line = item.url;
   for (auto &n : r.added) line += "\t" + n;
   for (auto &n : r.already) line += "\t" + n;
-  set.dicts.got.push_back(line);
-  if (auto e = save_settings(data, set); !e.empty()) r.error = e;
+  auto e = update_settings(data, [&](Settings &set) {
+    std::erase_if(set.dicts.got, [&](const std::string &g) { return g.substr(0, g.find('\t')) == item.url; });
+    set.dicts.got.push_back(line);
+  });
+  if (!e.empty()) r.error = e;
   return r;
 }
 

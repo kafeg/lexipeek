@@ -1,7 +1,9 @@
 #include "lexipeek/settings.hpp"
 #include <fstream>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include "lexipeek/l10n.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek {
 
@@ -143,11 +145,19 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   auto tmp = data / "settings.json.tmp";
   {
     std::ofstream f(tmp, std::ios::binary);
-    if (!f) return "Cannot write " + tmp.string();
+    if (!f) return tr("err_write", {text::utf8_of(tmp.filename())});
     f << j.dump(2) << "\n";
   }
   fs::rename(tmp, data / "settings.json", ec);
   return ec ? ec.message() : "";
+}
+
+std::string update_settings(const fs::path &data, const std::function<void(Settings &)> &change) {
+  static std::mutex mu;
+  std::lock_guard g(mu);
+  auto s = load_settings(data);
+  change(s);
+  return save_settings(data, s);
 }
 
 }  // namespace lexipeek
