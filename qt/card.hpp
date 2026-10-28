@@ -82,7 +82,7 @@ class CardWidget : public QWidget {
   bool embedded_;
   QVBoxLayout *box_;
   QString typed_;
-  bool whole_ = false;
+  bool whole_ = false, pending_ = false;
   std::string place_;
   CardView v_;
 };

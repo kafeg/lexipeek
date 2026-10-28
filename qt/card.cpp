@@ -239,7 +239,16 @@ CardWidget::CardWidget(CardModel &model, bool embedded, QWidget *parent) : QWidg
   box_ = new QVBoxLayout(this);
   box_->setContentsMargins(0, 0, 0, 0);
   box_->setSpacing(0);
-  connect(&m_, &CardModel::changed, this, &CardWidget::rebuild);
+  // Drawn again once the event that changed it is over: a click or Return on a widget of the card must not delete it
+  // inside its own signal.
+  connect(&m_, &CardModel::changed, this, [this] {
+    if (pending_) return;
+    pending_ = true;
+    QMetaObject::invokeMethod(this, [this] {
+      pending_ = false;
+      rebuild();
+    }, Qt::QueuedConnection);
+  });
   rebuild();
 }
 
@@ -358,7 +367,7 @@ void CardWidget::changeEvent(QEvent *e) {
 
 void CardWidget::show_whole(bool on) {
   whole_ = on;
-  rebuild();
+  QMetaObject::invokeMethod(this, [this] { rebuild(); }, Qt::QueuedConnection);  // ⌃ is a widget of the card
 }
 
 bool CardWidget::eventFilter(QObject *o, QEvent *e) {
