@@ -6,6 +6,7 @@
 #include <QTextStream>
 #include <QLocale>
 #include <QStyle>
+#include <QStyleHints>
 #include <QStyleFactory>
 #include <QTimer>
 #include <cstdlib>
@@ -21,6 +22,7 @@ using namespace lexipeek::qt;
 
 namespace {
 
+#ifndef _WIN32
 QPalette dark() {
   QPalette p;
   p.setColor(QPalette::Window, QColor(0x2b, 0x2b, 0x2b));
@@ -36,6 +38,7 @@ QPalette dark() {
   p.setColor(QPalette::Mid, QColor(0x50, 0x50, 0x50));
   return p;
 }
+#endif
 
 // One picture: make draws it, ready says it is final (it may first ask for more, e.g. a tab).
 struct Shot {
@@ -63,9 +66,11 @@ const CardCase cards[] = {
 int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   QDir().mkpath(dir);
   app.setQuitOnLastWindowClosed(false);
-  // Fusion everywhere: the minimal platform draws Windows' own style with the wrong palette (its look: win-e2e.ps1).
+  // Windows: its own platform and style, windows never shown; elsewhere the minimal platform and Fusion.
+#ifndef _WIN32
   QApplication::setStyle(QStyleFactory::create("Fusion"));
-  auto light = QApplication::style()->standardPalette();
+#endif
+  auto light = QApplication::palette();
   auto *model = new CardModel(client);
   model->source = Source::cli;
   auto *main = new MainWindow(client);
@@ -128,7 +133,13 @@ int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   QElapsedTimer since;
   auto start = [&] {
     if (i == static_cast<int>(shots.size()) * 2) return app.quit();
-    QApplication::setPalette(i >= static_cast<int>(shots.size()) ? dark() : light);
+    bool is_dark = i >= static_cast<int>(shots.size());
+#ifdef _WIN32
+    QGuiApplication::styleHints()->setColorScheme(is_dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
+    (void)light;
+#else
+    QApplication::setPalette(is_dark ? dark() : light);
+#endif
     if (shown && shown != main && shown != settings && shown != about && shown != first) delete shown;
     else if (shown) shown->hide();
     shown = shots[i % shots.size()].make();
@@ -212,7 +223,9 @@ int self_test(const QString &path) {
 
 int main(int argc, char **argv) {
   for (int i = 1; i < argc; ++i)
+#ifndef _WIN32
     if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
+#endif
   QApplication app(argc, argv);
 #ifdef _WIN32
   QApplication::setFont(QFont("Segoe UI", 10));  // Windows 11's own (Qt's default there is 9 pt)
