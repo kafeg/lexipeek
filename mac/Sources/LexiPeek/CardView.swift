@@ -285,19 +285,21 @@ struct CardView: View {
         }
     }
 
-    // The bottom row: back, the full entry, the method, a section's pager; the badge, ☆ and the pin on the right.
+    // The bottom row: back (its tooltip says where), the method, a pager (a section's pages, the full entries'
+    // dictionaries); the badge, ☆ and the pin on the right.
     private func bar(_ look: CardLook) -> some View {
         HStack(spacing: 12) {
             if !look.back.isEmpty {
-                Button { model.back() } label: { Text(look.back).lineLimit(1).truncationMode(.tail) }
-                    .buttonStyle(.link).frame(maxWidth: 180, alignment: .leading).help(L.t("card_back"))
+                Button { model.back() } label: { Image(systemName: "chevron.left") }
+                    .buttonStyle(.borderless).help(look.back)
             }
-            if !look.entryToggle.isEmpty { Button(look.entryToggle) { model.toggleEntry() }.buttonStyle(.link).fixedSize() }
             if look.menu { methods(look) }
             if !look.pager.isEmpty {
-                Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(!look.prev)
-                Text(look.pager).foregroundStyle(.secondary).monospacedDigit().fixedSize()
-                Button("▶") { model.turn(1) }.buttonStyle(.borderless).disabled(!look.next)
+                HStack(spacing: 6) {
+                    Button { model.turn(-1) } label: { Image(systemName: "chevron.left") }.buttonStyle(.borderless).disabled(!look.prev)
+                    Text(look.pager).foregroundStyle(.secondary).monospacedDigit().fixedSize()
+                    Button { model.turn(1) } label: { Image(systemName: "chevron.right") }.buttonStyle(.borderless).disabled(!look.next)
+                }
             }
             Spacer(minLength: 4)
             if !look.copy.isEmpty { copyButton(look.copy) }
@@ -334,7 +336,7 @@ struct CardView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .help(L.t("card_full"))
+            .help(L.t("card_entry_tip"))
         case .entry:
             VStack(alignment: .leading, spacing: 2) {
                 if !r.label.isEmpty { Text(r.label).font(font(-2)).foregroundStyle(.secondary) }

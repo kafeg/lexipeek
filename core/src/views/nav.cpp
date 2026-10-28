@@ -63,7 +63,12 @@ CardStep CardNav::open_section(int entry, const std::string &key, int page) {
 
 CardStep CardNav::turn(int by) {
   auto &p = state.section;
-  if (p.key.empty() || p.page + by < 0 || p.page + by >= p.pages) return {};
+  if (p.key.empty()) {
+    int to = state.entry_page + by;
+    if (state.full_entry && state.entry_open < 0 && to >= 0 && to < static_cast<int>(card_.entries.size())) state.entry_page = to;
+    return {};
+  }
+  if (p.page + by < 0 || p.page + by >= p.pages) return {};
   return open_section(p.entry, p.key, p.page + by);
 }
 
@@ -98,7 +103,7 @@ bool CardNav::busy() const { return state.translating || state.quick.asking || s
 std::string CardNav::place() const {
   if (!has_) return "";
   return card_.text + "|" + std::to_string(static_cast<int>(state.tab)) + "|" + (state.full_entry ? "1" : "0") + "|" +
-         std::to_string(state.entry_open) + "|" + state.section.key + "|" +
+         std::to_string(state.entry_open) + "|" + std::to_string(state.entry_page) + "|" + state.section.key + "|" +
          std::to_string(state.section.page) + "|" + (state.by_ai ? "1" : "0");
 }
 

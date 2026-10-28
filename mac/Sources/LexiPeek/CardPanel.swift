@@ -139,7 +139,6 @@ final class CardController {
         switch e.keyCode {
         case 0x7B: model.switchTab(-1)
         case 0x7C: model.switchTab(1)
-        case 0x24: model.toggleEntry()
         case 0x33: model.back()
         case 0x21 where e.modifierFlags.contains(.command): model.back()
         default: return e

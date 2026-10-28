@@ -136,14 +136,15 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
   translation only (its text in one line above it). At most 45% of the screen high, the rest scrolls inside; the card
   keeps its height while something loads, then fits what it shows (smaller too).
-  The header has the card's whole width; every button is in the bottom row (InkPeek's): ←, Full entry, the method (its tooltip: how long the
-  translation took, or that it was kept from before), a
-  section's pager on the left; copy (the translation, else the first dictionary line), the badge, ☆ and the pin on the right. A cut header (InkPeek's title) ends in "…"; a
+  The header has the card's whole width; every button is in the bottom row (InkPeek's): ← (an icon; its tooltip says where it goes), the method (its tooltip: how long the
+  translation took, or that it was kept from before), a pager (‹ › and a section's "21–40 of 63" or the full
+  entries' "1 / 3") on the left; copy (the translation, else the first dictionary line), the badge, ☆ and the pin on the right. A cut header (InkPeek's title) ends in "…"; a
   click shows it whole over the card at full width (a shadow, the card dimmed under it), selectable, at most half the
   height limit (then it scrolls); ▲ or a click on the card folds it. A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
   words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the
-  dictionary's name only when there are more; a click on one dictionary's line opens its full entry alone ("← All
-  dictionaries" comes back). The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
+  dictionary's name only when there are more; a click on one dictionary's line opens its full entry alone (← comes back to all
+  of them). With full entries (Card → Article) the card shows one dictionary's at a time, ‹ › to the others in the
+  card's order (InkPeek's ◀ ▶); there is no switch in the card. The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
   offer a choice it is a menu: the text's language (the packs' into the answer) and the answer language — a pick looks
   the text up again. A copy button next to the translation and the dictionary's line.
   Text tabs (a line under the open one) Dictionary · Translate (· Analysis · AI, Context · AI when AI is on — see AI below). Translate shows one method with its name; the others are a switch (a switch
@@ -173,7 +174,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   core per request: never in settings.json, logs, snapshots or the UI. Data sent: only the text and the prompt.
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc and a click
   outside close it. ⌥D with a card open: another selection → its card at once; the same one or none → closes.
-  In the card: ←/→ switch tabs, Return opens the full entry, ⌘S is ☆.
+  In the card: ←/→ switch tabs, ⌘S is ☆.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
   one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.

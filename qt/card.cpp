@@ -62,8 +62,8 @@ void CardModel::next_tab(int by) {
   relook();
 }
 
-void CardModel::toggle_entry() {
-  nav.toggle_entry();
+void CardModel::full_entries() {
+  nav.full_entries();
   relook();
 }
 
@@ -435,7 +435,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
         auto entry = r.entry;
         auto *b = label(plain_link(q(r.text).toHtmlEscaped()), font(), true, false);
         b->setCursor(Qt::PointingHandCursor);
-        b->setToolTip(t("card_full"));
+        b->setToolTip(t("card_entry_tip"));
         connect(b, &QLabel::linkActivated, this, [this, entry] { m_.open_entry(entry); });
         l->addWidget(b);
       } else {
@@ -501,14 +501,8 @@ QWidget *CardWidget::bar(const CardView &v) {
   l->setContentsMargins(embedded_ ? 0 : 10, 4, embedded_ ? 0 : 8, 4);
   l->setSpacing(4);
   auto f = font(-2);
-  if (!v.back.empty()) {
-    // Cut with "…" to leave the row's other buttons their room.
-    int room = v.entry_toggle.empty() ? 180 : 130;
-    auto *b = link(QFontMetrics(f).elidedText(q(v.back), Qt::ElideRight, room), f, [this] { m_.back(); });
-    b->setToolTip(t("card_back"));
-    l->addWidget(b);
-  }
-  if (!v.entry_toggle.empty()) l->addWidget(link(q(v.entry_toggle), f, [this] { m_.toggle_entry(); }));
+  // ← with where it goes as its tooltip.
+  if (!v.back.empty()) l->addWidget(command(fluent::Glyph::back, q(v.back), [this] { m_.back(); }));
   if (v.menu) {
     auto *b = menu_button(q(v.menu_title) + " ▾", f);
     b->setToolTip(q(v.menu_help));
@@ -524,11 +518,16 @@ QWidget *CardWidget::bar(const CardView &v) {
     l->addWidget(b);
   }
   if (!v.pager.empty()) {
-    l->addWidget(link("◀", f, [this] { m_.turn(-1); }));
+    auto *prev = command(fluent::Glyph::left, {}, [this] { m_.turn(-1); });
+    prev->setEnabled(v.prev);
+    l->addWidget(prev);
     auto *pager = label(q(v.pager), f, false, false);
     pager->setWordWrap(false);
+    ui::grey(pager);
     l->addWidget(pager);
-    l->addWidget(link("▶", f, [this] { m_.turn(1); }));
+    auto *next = command(fluent::Glyph::right, {}, [this] { m_.turn(1); });
+    next->setEnabled(v.next);
+    l->addWidget(next);
   }
   l->addStretch();
   if (!v.copy.empty()) {

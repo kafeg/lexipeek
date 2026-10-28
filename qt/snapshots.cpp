@@ -193,7 +193,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
                          if (model->look().tabs) {
                            if (r.tab && model->nav.state.tab != *r.tab) return model->select(*r.tab), true;
                            if (r.open) return model->open(*std::exchange(r.open, std::nullopt)), true;
-                           if (r.full && !model->nav.state.full_entry && !model->nav.card().entries.empty()) return model->toggle_entry(), true;
+                           if (r.full && !model->nav.state.full_entry && !model->nav.card().entries.empty()) return model->full_entries(), true;
                            if (r.section) return model->open_section(0, *std::exchange(r.section, std::nullopt)), true;
                            if (r.entry) return model->open_entry(*std::exchange(r.entry, std::nullopt)), true;
                            if (r.page && model->nav.state.section.page == 0 && !model->nav.state.section.key.empty())

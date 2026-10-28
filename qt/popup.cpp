@@ -114,8 +114,6 @@ void CardPopup::keyPressEvent(QKeyEvent *e) {
   switch (e->key()) {
     case Qt::Key_Left: return model.next_tab(-1);
     case Qt::Key_Right: return model.next_tab(1);
-    case Qt::Key_Return:
-    case Qt::Key_Enter: return model.toggle_entry();
     case Qt::Key_Backspace: return model.back();
     default: QWidget::keyPressEvent(e);
   }

@@ -36,7 +36,7 @@ class CardModel : public QObject {
   void open_entry(int entry);
   void select(CardTab tab);
   void next_tab(int by);
-  void toggle_entry();
+  void full_entries();  // as Card → Article's full entries (snapshots)
   void choose(Method m);  // picked in the card: also Settings → Translation's
   void use(Method m);     // only this card (snapshots)
   void choose_ai();

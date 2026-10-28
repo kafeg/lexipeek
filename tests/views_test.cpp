@@ -86,14 +86,12 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.rows[0].text == "дом");  // the header and the form are above it
   CHECK(v.rows[0].copy == "дом");
   CHECK(v.rows[0].html.empty());
-  CHECK(v.entry_toggle == "Full entry ⏎");
   CHECK(!v.menu);
   CHECK(v.back.empty());
   s.full_entry = true;
   v = card_view(c, s);
   CHECK(v.rows[0].html == "<b>Haus</b> дом");
   CHECK(v.rows[0].text.empty());
-  CHECK(v.entry_toggle == "Short ⏎");
   c.rank = 255;
   CHECK(card_view(c, s).subtitle == "form: Häusern · among the 1,000 most frequent words · looked up 3 times");
   c.looks = 1, c.rank = 4800;
@@ -158,12 +156,11 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   CHECK(v.pager == "21–23 of 23");
   CHECK(v.prev);
   CHECK(!v.next);
-  CHECK(v.back == "← Entry");
-  CHECK(v.entry_toggle.empty());
+  CHECK(v.back == "Entry");
   s.section = {};
   s.before = "Ich mache die Tür zu";
   v = card_view(c, s);
-  CHECK(v.back == "← Ich mache die Tür zu");
+  CHECK(v.back == "Ich mache die Tür zu");
   CHECK(v.pager.empty());
 }
 
@@ -177,7 +174,6 @@ TEST_CASE("views: a word without entries opens on Translate; Dictionary says so"
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::note);
   CHECK(v.rows[0].text == "No entry in the dictionaries");
-  CHECK(v.entry_toggle.empty());
 }
 
 TEST_CASE("views: Translate — progress, the translation, an error, the methods' menu") {
@@ -189,7 +185,6 @@ TEST_CASE("views: Translate — progress, the translation, an error, the methods
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::progress);
   CHECK(v.rows[0].text == "Translating…");
-  CHECK(v.entry_toggle.empty());
   REQUIRE(v.menu);
   CHECK(v.menu_title == "Fast · Mozilla");
   REQUIRE(v.methods.size() == 3);
@@ -244,7 +239,6 @@ TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
   CHECK(v.rows[3].label == "die");
   CHECK(v.rows[3].text.empty());
   CHECK(v.rows[3].link == "die");
-  CHECK(v.entry_toggle.empty());
   CHECK(!v.menu);
   c.gloss[0].word = "Ich";
   c.gloss[0].base = "ich";
@@ -504,10 +498,37 @@ TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back 
   v = card_view(n.card(), n.state);
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].html == "<b>Haus</b> дом, здание");
-  CHECK(v.back == "← All dictionaries");
-  CHECK(v.entry_toggle.empty());
+  CHECK(v.back == "All dictionaries");
+  CHECK(v.pager.empty());
   n.back();
   CHECK(card_view(n.card(), n.state).rows.size() == 2);
+}
+
+TEST_CASE("views: full entries show one dictionary at a time, ◀ ▶ turn") {
+  auto c = word();
+  c.entries.push_back({"Mueller", "Haus — дом", "<b>Haus</b> дом, здание", "mueller", "Haus"});
+  CardNav n;
+  n.look("Häusern", Source::input);
+  n.arrived(c);
+  n.full_entries();
+  auto v = card_view(n.card(), n.state);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].html == "<b>Haus</b> дом");
+  CHECK(v.pager == "1 / 2");
+  CHECK(!v.prev);
+  CHECK(v.next);
+  CHECK(v.back.empty());
+  auto at = n.place();
+  n.turn(1);
+  v = card_view(n.card(), n.state);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].html == "<b>Haus</b> дом, здание");
+  CHECK(v.pager == "2 / 2");
+  CHECK(v.prev);
+  CHECK(!v.next);
+  CHECK(n.place() != at);  // the body scrolls to the top
+  n.turn(1);
+  CHECK(n.state.entry_page == 1);
 }
 
 TEST_CASE("core: prepare() goes one dictionary at a time and stops when the library is made again") {

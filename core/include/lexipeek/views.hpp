@@ -89,7 +89,8 @@ struct CardState {
   bool translating = false;
   bool translated = false;  // translation holds the answer
   Translation translation;
-  bool full_entry = false;
+  bool full_entry = false;  // full entries (Card → Article), one dictionary at a time
+  int entry_page = 0;       // the dictionary they show; ◀ ▶ turn
   SectionPage section;  // the entry's section open on Dictionary (key "": none)
   int entry_open = -1;  // one dictionary's full entry, opened from its line (-1: none)
   std::string before;   // the text this card was opened from ("" = none): "←" goes back to it
@@ -152,14 +153,13 @@ struct CardView {
   std::vector<TabItem> tab_items;    // Dictionary · Translate · Analysis · AI · Context · AI, those the card has
   CardTab tab = CardTab::translate;  // the one shown
   std::vector<CardRow> rows;
-  std::string entry_toggle;  // "Full entry ⏎", "Short ⏎", "" (none)
   bool menu = false;         // the methods' menu is shown
   std::string menu_title;    // the current method's name or "No method available"
   std::string menu_help;     // its tooltip: "Translated in 0.8 s", "Translated before: kept", ""
   std::vector<MethodItem> methods;
-  std::string back;   // "← Ich mache die Tür zu", "← Entry" (from a section), "" (none)
-  std::string pager;  // a section's page: "21–40 of 63", "" (one page)
-  bool prev = false, next = false;  // the section has a page before, after
+  std::string back;   // ← is shown, this its tooltip: "Ich mache die Tür zu", "Entry" (from a section), "" (none)
+  std::string pager;  // a section's page "21–40 of 63", the full entries' dictionary "1 / 3", "" (one page)
+  bool prev = false, next = false;  // a page before, after
   std::string copy;       // what the copy button copies: the translation, the first dictionary line, an AI answer ("" = none)
   std::string fix;        // a failed AI answer: the button to its settings ("Open Settings → AI"), "" = none
   std::string star;       // "☆", "★" (saved), "" (nothing to save)
@@ -217,7 +217,7 @@ class CardNav {
   CardStep back();
   CardStep open_section(int entry, const std::string &key, int page = 0);
   void open_entry(int entry);  // one dictionary's full entry (its line clicked)
-  CardStep turn(int by);  // a section's page before or after
+  CardStep turn(int by);  // a section's page, else the full entries' dictionary, before or after
   void section_arrived(const SectionPage &p) { state.section = p; }
   // Translate's method: picked (offline), its translation started and arrived (a stale one is dropped).
   void pick_method(Method m);
@@ -226,7 +226,7 @@ class CardNav {
   void translated(Method m, const Translation &t);
   void select(CardTab tab) { state.tab = tab; }
   void next_tab(int by);  // ←/→ through the tabs the card shows
-  void toggle_entry() { state.full_entry = !state.full_entry; }
+  void full_entries() { state.full_entry = true; }  // as Card → Article's full entries (snapshots)
   // Something is on its way (a translation, an AI answer).
   bool busy() const;
   // Where the body is: a new place (another card, tab, section or page) scrolls to the top.

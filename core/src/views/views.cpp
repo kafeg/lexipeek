@@ -195,14 +195,18 @@ std::vector<CardRow> section_page(const SectionPage &p) {
   return rows;
 }
 
+// The full entries' dictionary shown (kept inside the card's).
+int page_of(const Card &c, const CardState &s) { return std::clamp(s.entry_page, 0, std::max(0, static_cast<int>(c.entries.size()) - 1)); }
+
 std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
     if (c.entries.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
     for (size_t i = 0; i < c.entries.size(); i++) {
-      // One dictionary's line clicked: only its full entry.
+      // One dictionary's line clicked: only its full entry; full entries: the one turned to.
       if (s.entry_open >= 0 && static_cast<int>(i) != s.entry_open) continue;
+      if (s.entry_open < 0 && s.full_entry && static_cast<int>(i) != page_of(c, s)) continue;
       bool full = s.full_entry || s.entry_open >= 0;
       auto &e = c.entries[i];
       // The selected form names itself first (InkPeek's line): "Häusern: das Haus (…) — дом".
@@ -369,15 +373,21 @@ CardView card_view(const Card &c, const CardState &s) {
   if (ai_tab && !v.rows.empty() && v.rows.front().style == Style::error) v.fix = tr("ai_open_settings");
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
   bool one = s.entry_open >= 0;
-  if (dict && c.kind == Card::Kind::word && !c.entries.empty() && !in_section && !one) v.entry_toggle = tr(s.full_entry ? "card_short" : "card_full");
   if (in_section && s.section.pages > 1) {
     auto &p = s.section;
     v.pager = tr("page_of", {digits(p.first + 1), digits(p.first + static_cast<int>(p.items.size())), digits(p.total)});
     v.prev = p.page > 0, v.next = p.page + 1 < p.pages;
   }
+  // Full entries, one dictionary at a time (InkPeek's): "1 / 3", ◀ ▶.
+  int n = static_cast<int>(c.entries.size());
+  if (dict && c.kind == Card::Kind::word && s.full_entry && !one && !in_section && n > 1) {
+    int i = page_of(c, s);
+    v.pager = digits(i + 1) + " / " + digits(n);
+    v.prev = i > 0, v.next = i + 1 < n;
+  }
   if (in_section) v.back = tr("card_back_entry");
   else if (one && dict) v.back = tr("card_back_all");
-  else if (!s.before.empty()) v.back = "← " + s.before;
+  else if (!s.before.empty()) v.back = s.before;
   v.menu = v.tab == CardTab::translate && (!c.methods.empty() || c.ai.translate);
   if (v.menu) {
     v.menu_title = tr(c.methods.empty() ? "mt_ask_ai" : "card_no_methods");

@@ -45,7 +45,6 @@ struct CardLook {
     var tabItems: [Tab] = []
     var tab = lexipeek.CardTab.translate
     var rows: [Row] = []
-    var entryToggle = ""
     var menu = false
     var menuTitle = ""
     var menuHelp = ""
@@ -80,7 +79,6 @@ struct CardLook {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
                 open: String($0.open), entry: Int($0.entry), copy: String($0.copy))
         }
-        entryToggle = String(v.entry_toggle)
         menu = v.menu
         menuTitle = String(v.menu_title)
         menuHelp = String(v.menu_help)
@@ -239,7 +237,6 @@ final class CardModel: ObservableObject {
         askAI()
     }
 
-    func toggleEntry() { nav.toggle_entry() }
 
     // AI translation picked in the card's menu: this card only (Card → Opening makes it the default).
     func chooseAI() {
