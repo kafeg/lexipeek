@@ -21,7 +21,7 @@ QLabel *text(const QString &s, double delta, bool grey_, bool bold) {
 void grey(QWidget *w) {
   auto p = w->palette();
   auto c = p.color(QPalette::WindowText);
-  c.setAlphaF(0.6);
+  c.setAlphaF(0.6f);
   p.setColor(QPalette::WindowText, c);
   w->setPalette(p);
 }
