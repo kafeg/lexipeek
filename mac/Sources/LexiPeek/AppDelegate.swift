@@ -64,12 +64,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         trustTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
+            let fine = Access.shared.fine
             Access.shared.check()
+            if fine != Access.shared.fine { self.updateItem() }
             guard self.settings.trusted != Selection.trusted else { return }
             self.settings.trusted = Selection.trusted
-            self.updateItem()
         }
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
+        NotificationCenter.default.addObserver(forName: .openFirstRun, object: nil, queue: .main) { [weak self] _ in self?.openFirstRun() }
         NotificationCenter.default.addObserver(forName: .openPane, object: nil, queue: .main) { [weak self] n in
             guard let self, let (section, tab) = n.object as? (lexipeek.SettingsSection, Int),
                   let s = SettingsSection.allCases.first(where: { $0.core == section }) else { return }
@@ -298,15 +300,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // Rebuilt on every open: hotkey labels and Recents stay current.
-    // The menu-bar icon; ⚠ while Accessibility is off (the hotkey cannot read the selection).
+    // The menu-bar icon; ⚠ while the hotkey cannot work (Accessibility off, no language pack), its tooltip why.
     private func updateItem() {
-        let on = Selection.trusted
-        let image = on ? NSImage(named: "MenuBarIcon") : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        let a = Access.shared
+        let why = !a.trusted ? L.t("access_off_t") : !a.hasPair ? L.t("nopack_t") : "LexiPeek"
+        let image = a.fine ? NSImage(named: "MenuBarIcon") : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         image?.isTemplate = true
-        image?.accessibilityDescription = on ? "LexiPeek" : L.t("access_off_t")
+        image?.accessibilityDescription = why
         item?.button?.image = image
-        item?.button?.toolTip = on ? "LexiPeek" : L.t("access_off_t")
+        item?.button?.toolTip = why
     }
+
+    @objc private func setUp() { openFirstRun() }
 
     @objc private func askAccess() { Access.ask() }
 
@@ -318,6 +323,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
             menu.addItem(a)
             let why = NSMenuItem(title: L.t("access_off_t"), action: nil, keyEquivalent: "")
+            why.isEnabled = false
+            menu.addItem(why)
+            menu.addItem(.separator())
+        }
+        if !Access.shared.hasPair {
+            let s = NSMenuItem(title: L.t("menu_setup"), action: #selector(setUp), keyEquivalent: "")
+            s.target = self
+            s.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+            menu.addItem(s)
+            let why = NSMenuItem(title: L.t("nopack_t"), action: nil, keyEquivalent: "")
             why.isEnabled = false
             menu.addItem(why)
             menu.addItem(.separator())

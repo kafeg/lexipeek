@@ -148,6 +148,8 @@ Card Core::lookup(const Request &r) {
   c.text = c.kind == Card::Kind::word ? text::clean_query(raw) : text::clean_phrase(raw);
   if (c.text.empty()) return c.kind = Card::Kind::empty, c;
   auto &lib = *impl_->lib;
+  auto all = lib.all();
+  c.no_packs = std::none_of(all.begin(), all.end(), [](auto *d) { return d->pack(); });
   try {
     std::tie(c.lang, c.other) = impl_->source(c.text, c.answer);
     // A text in the answer language itself: no pack translates it, the card says so.

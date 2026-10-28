@@ -48,7 +48,9 @@ SettingsState SettingsShell::state() const {
   s.input = platform::hotkey_label(app::settings(dir).input);
   s.checking = checking;
   s.update = update.text, s.update_version = update.version, s.update_url = update.url;
-  s.ai_key = !platform::secret(app::ai_provider(dir)).empty();
+  auto provider = app::ai_provider(dir);
+  if (!keys.contains(provider)) keys[provider] = !platform::secret(provider).empty();
+  s.ai_key = keys[provider];
   s.ai_testing = testing;
   s.ai_test = test;
   s.device = client.device;
@@ -206,10 +208,12 @@ void SettingsWindow::draw_now() {
   for (auto *pane : {packs_, dicts_})
     if (pane) pane->hide(), pane->setParent(nullptr);
   ui::clear(page_);
-  auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], sh_.state());
+  auto st = sh_.state();
+  auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], st);
   auto *target = page_;
   auto *title = ui::text(page.sections[static_cast<int>(section_)], 8, false, true);
   page_->addWidget(title);
+  if (!st.has_pair) page_->addWidget(fluent::banner(t("nopack_t"), t("nopack_d"), t("setup_btn"), [this] { emit openFirstRun(); }));
   // A section's sub-tabs: text tabs over its page.
   if (!page.tabs.empty()) {
     QStringList names;
@@ -429,6 +433,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto store = [this, e, dir] {
         if (e->text().isEmpty()) return;
         platform::set_secret(app::ai_provider(dir), e->text().toStdString());
+        sh_.keys.clear();
         e->clear();
         sh_.test.clear();
         draw();
@@ -441,6 +446,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
         auto *remove = new QPushButton(t("remove"));
         connect(remove, &QPushButton::clicked, this, [this, dir] {
           platform::set_secret(app::ai_provider(dir), "");
+          sh_.keys.clear();
           draw();
         });
         l->addWidget(remove);

@@ -21,6 +21,7 @@ struct SettingsShell {
   UpdateCheck update;
   std::string test, downloading, download_error, lookup_error, input_error;
   double progress = 0;
+  mutable std::map<std::string, bool> keys;  // per provider: a key is stored (the store read once, again after a change)
   SettingsState state() const;
 };
 

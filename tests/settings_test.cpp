@@ -139,7 +139,7 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   for (auto &r : p.rows)
     if (r.kind == Kind::method) CHECK(r.progress == (r.value == "direct" ? 0.5 : -1));
   st = state();
-  CHECK(row(p, "setup")->value == "Set Up…");
+  CHECK(!row(p, "setup"));  // a pair installed: another one comes from Packs
   st.has_pair = false;
   p = settings_view(SettingsSection::languages, 1, s, st);
   CHECK(p.rows.front().key == "setup");

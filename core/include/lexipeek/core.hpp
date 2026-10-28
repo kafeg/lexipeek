@@ -115,6 +115,7 @@ struct Card {
   // The packs' languages for the badge's menu: the texts' into answer, the answers' (codes).
   std::vector<std::string> books = {}, answers = {};
   bool mt_off = false;  // offline translation is off: Translate is AI only
+  bool no_packs = false;  // no language pack installed: the card says so and opens Settings → Packs
 };
 
 

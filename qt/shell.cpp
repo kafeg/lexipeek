@@ -3,6 +3,7 @@
 #include "ui.hpp"
 #include <QApplication>
 #include <QGuiApplication>
+#include <QLocale>
 #include <QScreen>
 #include <QStyleHints>
 #include <QUrl>
@@ -27,11 +28,12 @@ void present(QWidget *w) {
   w->raise();
   w->activateWindow();
 }
-// The menu bar's glyph in the taskbar's colour.
-QIcon tray_icon() {
+// The menu bar's glyph in the taskbar's colour; ⚠ when warn.
+QIcon tray_icon(bool warn) {
+  bool light = platform::taskbar_light();
+  if (warn) return fluent::icon(fluent::Glyph::warning, light ? Qt::black : Qt::white);
   QIcon i;
-  auto colour = platform::taskbar_light() ? "black" : "white";
-  for (int px : {16, 20, 24, 32}) i.addFile(QString(":/icons/tray_%1_%2.png").arg(colour).arg(px));
+  for (int px : {16, 20, 24, 32}) i.addFile(QString(":/icons/tray_%1_%2.png").arg(light ? "black" : "white").arg(px));
   return i;
 }
 }  // namespace
@@ -39,10 +41,14 @@ QIcon tray_icon() {
 Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
   QApplication::setQuitOnLastWindowClosed(false);
   QApplication::setWindowIcon(QIcon(":/icons/icon_256.png"));
-  tray_.setIcon(tray_icon());
+  update_tray();
   // Light or dark mode switches the taskbar too (a custom mode sets it alone: seen at the next switch or launch).
-  connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, [this] { tray_.setIcon(tray_icon()); });
-  tray_.setToolTip("LexiPeek");
+  connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, &Shell::update_tray);
+  // A pack installed or removed anywhere (Settings, the first run, the CLI): the icon follows.
+  connect(&health_, &QTimer::timeout, this, [this] {
+    if (app::has_pair(c_.data()) != pair_) update_tray();
+  });
+  health_.start(2000);
   tray_.setContextMenu(&menu_);
   connect(&menu_, &QMenu::aboutToShow, this, &Shell::fill_menu);
   connect(&tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason r) {
@@ -58,6 +64,9 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
 }
 
 void Shell::apply() {
+  // The app's language (Settings → General) at once, as on the Mac.
+  auto ui = QLocale::system().uiLanguages();
+  app::set_language(c_.data(), (ui.isEmpty() ? QLocale::system().name() : ui.first()).left(2).toStdString());
   s_ = app::settings(c_.data());
   popup_.pin_moved = s_.pin_moved;
   icon_.set_enabled(s_.selection_icon, s_.ignore_apps);
@@ -67,6 +76,7 @@ void Shell::apply() {
   fluent::apply();
   register_hotkeys();
   c_.configure();
+  update_tray();
 }
 
 void Shell::register_hotkeys() {
@@ -93,6 +103,13 @@ void Shell::translate_selection() {
   }
 }
 
+void Shell::update_tray() {
+  pair_ = app::has_pair(c_.data());
+  tray_.setIcon(tray_icon(!pair_));
+  tray_.setToolTip(pair_ ? "LexiPeek" : "LexiPeek — " + t("nopack_t"));
+  if (main_) main_->refresh();
+}
+
 void Shell::type_text() {
   if (popup_.open() && popup_.model.input) return popup_.close_card();
   popup_.show_card(std::nullopt, Source::input, {}, true);
@@ -105,6 +122,7 @@ void Shell::open_main(int page) {
     main_->lookup_key = platform::hotkey_label(s_.lookup), main_->input_key = platform::hotkey_label(s_.input);
     connect(main_, &MainWindow::openSettings, this, &Shell::open_settings);
     connect(main_, &MainWindow::openAbout, this, &Shell::open_about);
+    connect(main_, &MainWindow::openFirstRun, this, &Shell::open_first_run);
     connect(&popup_.model, &CardModel::changed, main_, &MainWindow::refresh);
   }
   if (page >= 0) main_->show_page(page);
@@ -159,6 +177,11 @@ void Shell::handle(const QStringList &args) {
 // Built on every open: Recents and the memory line stay current.
 void Shell::fill_menu() {
   menu_.clear();
+  if (!pair_) {
+    menu_.addAction(fluent::icon(fluent::Glyph::warning), t("menu_setup"), this, &Shell::open_first_run);
+    menu_.addAction(t("nopack_t"))->setEnabled(false);
+    menu_.addSeparator();
+  }
   menu_.addAction(t("menu_open"), this, [this] { open_main(); });
   auto *recents = menu_.addMenu(t("recents"));
   for (auto &r : c_.engine.recents(10)) {

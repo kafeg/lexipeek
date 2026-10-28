@@ -74,7 +74,7 @@ struct CardView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
                             if !look.fix.isEmpty {
-                                Button(look.fix) { NotificationCenter.default.post(name: .openPane, object: (lexipeek.SettingsSection.ai, 0)) }
+                                Button(look.fix) { NotificationCenter.default.post(name: .openPane, object: look.fixPane) }
                                     .controlSize(.small)
                             }
                             // In the window the bar follows the text, not the page's bottom.

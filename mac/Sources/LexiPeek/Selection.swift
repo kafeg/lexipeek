@@ -1,15 +1,22 @@
 import AppKit
+import CxxStdlib
+import LexiPeekCore
 import ApplicationServices
 import os
 
-// Accessibility: whether it is on (checked every second by the app; on in snapshots) and the way to turn it on.
+// What keeps the hotkey from working, checked every second by the app (all fine in snapshots): Accessibility off,
+// no language pack installed; and the way to turn Accessibility on.
 final class Access: ObservableObject {
     static let shared = Access()
     @Published private(set) var trusted = Snapshot.dir != nil || Selection.trusted
+    @Published private(set) var hasPair = Snapshot.dir != nil || lexipeek.app.has_pair(std.string())
+    var fine: Bool { trusted && hasPair }
 
     func check() {
         let t = Snapshot.dir != nil || Selection.trusted
         if t != trusted { trusted = t }
+        let p = Snapshot.dir != nil || lexipeek.app.has_pair(std.string())
+        if p != hasPair { hasPair = p }
     }
 
     // The system's prompt (it adds LexiPeek to the list) and the Accessibility pane.

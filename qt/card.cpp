@@ -306,7 +306,7 @@ void CardWidget::rebuild() {
   bl->setContentsMargins(14, 0, 24, 8);
   bl->setSpacing(8);
   for (auto &r : v_.rows) bl->addWidget(row(r, v_));
-  if (!v_.fix.empty()) bl->addWidget(link(q(v_.fix), font(-2), [this] { emit openPane(static_cast<int>(SettingsSection::ai), 0); }));
+  if (!v_.fix.empty()) bl->addWidget(link(q(v_.fix), font(-2), [this] { emit openPane(static_cast<int>(v_.fix_section), v_.fix_tab); }));
   if (embedded_) bl->addWidget(bar(v_));  // in the window the bar follows the text
   bl->addStretch();
   auto *scroll = new QScrollArea;

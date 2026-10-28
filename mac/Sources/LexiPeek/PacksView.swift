@@ -57,9 +57,7 @@ final class PacksModel: ObservableObject {
 }
 
 struct PacksPane: View {
-    @StateObject private var model: PacksModel
-
-    init(client: CoreClient) { _model = StateObject(wrappedValue: PacksModel(client: client)) }
+    @ObservedObject var model: PacksModel
 
     var body: some View {
         let v = model.view

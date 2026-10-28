@@ -1,5 +1,6 @@
 // The LexiPeek window (mac MainWindow): Look up (its own card) · Words · Phrases · History (Notes) · Help.
 #pragma once
+#include <QVBoxLayout>
 #include <QWidget>
 #include "card.hpp"
 
@@ -26,6 +27,7 @@ class MainWindow : public QWidget {
  signals:
   void openSettings(int section, int tab);  // section -1: the one shown last
   void openAbout();
+  void openFirstRun();
 
  protected:
   void changeEvent(QEvent *e) override;
@@ -42,6 +44,7 @@ class MainWindow : public QWidget {
   QLineEdit *query_ = nullptr;
   QLabel *hint_ = nullptr, *memory_ = nullptr, *said_ = nullptr;
   QWidget *notes_ = nullptr, *help_ = nullptr;
+  QVBoxLayout *banner_ = nullptr;  // ⚠ while no language pack is installed
   NotesTab tab_ = NotesTab::words;
   int page_ = 0;
 };

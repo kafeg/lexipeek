@@ -56,6 +56,7 @@ struct CardLook {
     var star = ""
     var copy = ""
     var fix = ""
+    var fixPane = (lexipeek.SettingsSection.ai, 0)
     var canSave = false
     var saved = false
     var starHelp = ""
@@ -90,6 +91,7 @@ struct CardLook {
         star = String(v.star)
         copy = String(v.copy)
         fix = String(v.fix)
+        fixPane = (v.fix_section, Int(v.fix_tab))
         canSave = v.can_save
         saved = v.saved
         starHelp = String(v.star_help)

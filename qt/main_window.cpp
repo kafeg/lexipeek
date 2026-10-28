@@ -73,7 +73,13 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   help_ = new QWidget;
   auto *hs = ui::scroll(help_);
   pages_->addWidget(hs);
-  row->addWidget(pages_, 1);
+  auto *col = new QVBoxLayout;
+  col->setContentsMargins(0, 0, 0, 0);
+  banner_ = new QVBoxLayout;
+  banner_->setContentsMargins(16, 12, 16, 0);
+  col->addLayout(banner_);
+  col->addWidget(pages_, 1);
+  row->addLayout(col, 1);
 
   connect(side_, &QListWidget::currentRowChanged, this, [this](int r) {
     if (r == lookup) pages_->setCurrentIndex(0);
@@ -166,6 +172,8 @@ void MainWindow::refresh() {
   side_->item(help)->setText(t("help_t"));
   auto m = c_.engine.memory();
   memory_->setText(q(m.held ? m.line + " · " + m.detail : m.line));
+  ui::clear(banner_);
+  if (!app::has_pair(c_.data())) banner_->addWidget(fluent::banner(t("nopack_t"), t("nopack_d"), t("setup_btn"), [this] { emit openFirstRun(); }));
   if (pages_->currentIndex() == 1) draw_notes();
 }
 

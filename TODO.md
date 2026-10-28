@@ -17,7 +17,14 @@ links, one instance, the Credential Manager, the Run key, CLI providers, the tra
   conflict, the hotkey's decision (ignored app, the same selection closes, nothing read → typing), the tray / menu
   bar menu with its recents (Mac 5, Qt 10), `lexipeek://` parsing, the first run's "Step 1 of 2" text, export file names.
 - Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); Notes'
-  backup / restore / TSV on the window's thread; the pop-up's ☆ not refreshed after Notes removes the word.
+  backup / restore / TSV on the window's thread; the pop-up's ☆ not refreshed after Notes removes the word; the
+  window redrawn on every pop-up change; reading the selection blocks the UI (both shells); downloads share the AI pool.
+- From the review: a per-call cancel token (one card's ← may stop the other's LLM translation); one lock for
+  settings.json's load-modify-save; picking a method downloads it, its title instead of the raw component id; AI
+  tabs dimmed without a key; engine and download errors through tr(); the path rule (`path_of`) in stardict, store,
+  translator, dicts; packs.json parsed once per look-up; dead fields (`Card::lang_name`, `Component::license`,
+  `Model::publisher`, `CardView::star`, `CardRow::copy`), `app::rows`, `app::freed_ids`; the answer language default
+  ("ru") and a daily update check as InkPeek's.
 
 ## Open
 - CI on Linux / Windows not run since M0 (macOS first); the CLI providers' shell line (and its 2-minute stop) is

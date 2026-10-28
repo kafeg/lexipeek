@@ -144,6 +144,9 @@ struct LangItem {
   bool on = false;          // the card's
 };
 
+// Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
+enum class SettingsSection { languages, card, ai, general };
+
 struct CardView {
   HeaderStyle style = HeaderStyle::passage;
   std::string title;     // the header ("das Haus (Hauses, pl. Häuser)") or the text
@@ -164,7 +167,9 @@ struct CardView {
   std::string pager;  // a section's page "21–40 of 63", the full entries' dictionary "1 / 3", "" (one page)
   bool prev = false, next = false;  // a page before, after
   std::string copy;       // what the copy button copies: the translation, the first dictionary line, an AI answer ("" = none)
-  std::string fix;        // a failed AI answer: the button to its settings ("Open Settings → AI"), "" = none
+  std::string fix;        // the button to the settings that fix what the card says ("Open Settings → AI"), "" = none
+  SettingsSection fix_section = SettingsSection::ai;
+  int fix_tab = 0;
   std::string star;       // "☆", "★" (saved), "" (nothing to save)
   bool can_save = false, saved = false;
   std::string star_help;  // "Save to Notes", "Remove from Notes"
@@ -326,9 +331,6 @@ struct MethodInfo {
   std::vector<std::string> bare;     // pairs no model covers ("de→pl")
 };
 std::vector<MethodInfo> method_infos(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &d);
-
-// Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
-enum class SettingsSection { languages, card, ai, general };
 
 // What the shell knows and the core does not: this Mac and the app.
 struct SettingsState {

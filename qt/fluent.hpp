@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QToolButton>
 #include <QWidget>
+#include <functional>
 #include <optional>
 
 namespace lexipeek::qt::fluent {
@@ -15,7 +16,7 @@ namespace lexipeek::qt::fluent {
 enum class Glyph : char16_t {
   back = 0xE72B, chevron = 0xE70D, copy = 0xE8C8, star = 0xE734, star_filled = 0xE735, pin = 0xE718, pinned = 0xE840,
   search = 0xE721, history = 0xE81C, comment = 0xE90A, help = 0xE897, settings = 0xE713, info = 0xE946, globe = 0xE774,
-  card = 0xE8A1, robot = 0xE99A, keyboard = 0xE765, close = 0xE711, up = 0xE70E, remove = 0xE74D, more = 0xE712, left = 0xE76B, right = 0xE76C
+  card = 0xE8A1, robot = 0xE99A, keyboard = 0xE765, close = 0xE711, up = 0xE70E, remove = 0xE74D, more = 0xE712, left = 0xE76B, right = 0xE76C, warning = 0xE7BA
 };
 
 // The theme now (Fusion, the palette, the style sheet), again whenever the system's scheme changes.
@@ -35,6 +36,8 @@ QIcon icon(Glyph g, QColor color = {});
 // A rounded panel around a row (Windows Settings' "settings card").
 QFrame *card(QWidget *content);
 QFrame *card(QLayout *content);
+// A warning over a window's page: ⚠, what is wrong, why, and the button that fixes it.
+QFrame *banner(const QString &title, const QString &detail, const QString &button, std::function<void()> click);
 // A small icon button (a row's ▲ ▼ ✕ ⋯): the glyph, its tooltip.
 QToolButton *icon_button(Glyph g, const QString &tip);
 

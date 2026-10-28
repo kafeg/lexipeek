@@ -208,7 +208,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
-    if (c.entries.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
+    if (c.entries.empty()) rows.push_back({Style::note, "", tr(c.no_packs ? "card_no_packs" : "card_no_entry"), ""});
     for (size_t i = 0; i < c.entries.size(); i++) {
       // One dictionary's line clicked: only its full entry; full entries: the one turned to.
       if (s.entry_open >= 0 && static_cast<int>(i) != s.entry_open) continue;
@@ -307,6 +307,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   if (s.by_ai && c.ai.translate) return ai_rows(ai::Ask::quick, s.quick, c.kind == Card::Kind::word);
   auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
   if (!c.lang.empty() && c.lang == c.answer) return note(tr("card_already", {name(c.answer, c.answer_name)}));
+  if (c.no_packs) return note(tr("card_no_packs"));
   if (c.lang.empty())
     return note(c.other_name.empty() ? tr("card_no_lang") : tr("card_no_pack", {name(c.other, c.other_name), name(c.answer, c.answer_name)}));
   if (c.mt_off) return note(tr("card_mt_off"));
@@ -377,6 +378,9 @@ CardView card_view(const Card &c, const CardState &s) {
         v.copy += (v.copy.empty() ? "" : "\n\n") + marks.replace(r.text, "");
   bool ai_tab = v.tab == CardTab::analysis || v.tab == CardTab::context || (v.tab == CardTab::translate && s.by_ai);
   if (ai_tab && !v.rows.empty() && v.rows.front().style == Style::error) v.fix = tr("ai_open_settings");
+  // No pack at all, or none from the text's language: the way to Settings → Packs.
+  if (c.no_packs || (v.tab == CardTab::translate && !s.by_ai && c.lang.empty() && !c.other_name.empty()))
+    v.fix = tr("packs_open"), v.fix_section = SettingsSection::languages, v.fix_tab = 0;
   bool in_section = dict && c.kind == Card::Kind::word && !s.section.key.empty();
   bool one = s.entry_open >= 0;
   if (in_section && s.section.pages > 1) {

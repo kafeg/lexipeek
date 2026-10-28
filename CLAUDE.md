@@ -28,7 +28,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
-  (word, full entry with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
+  (word, full entries with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
   to the end, same language, no pack, unknown, input, selection failed, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
   settings section × tab in its toolbar window (`settings-<section>[-<tab>]`) and the About window (`about`), light and dark, into `build/snapshots/index.html`;
   `UI_LANG=de scripts/snapshots.sh` runs it in that app language (`build/snapshots-de/`). **Look at every image before
@@ -62,7 +62,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   every language with the same placeholders, every screen in every language, every `tr("…")` / `L.t("…")` key, and greps
   Swift for user-visible English literals. Data (dictionaries, the card's articles) is not translated.
 - `core/src/views/`: `views` — what screens show: `card_view(Card, CardState)` → `CardView` (header and its style, badge,
-  tabs and the open one, body rows per tab, every state's text, ☆, footer: "←", method menu, "Full entry ⏎", a section's pager),
+  tabs and the open one, body rows per tab, every state's text and its `fix` button (the pane that fixes it), ☆, footer: ← (its tooltip says where), method menu, a pager: a section's pages or the full entries' dictionaries),
   `first_state`, Notes (`notes_view`, `remove_note`: Words · Phrases · History rows), the first run
   (`first_run_view(Manifest, installed, FirstRunState)` → step, texts, choices, progress; `first_run_at_launch`,
   `first_answer`, `has_pair`), the packs list (`pack_rows`, `missing_ids`, `freed_ids`, `answer_languages`, `packs_summary`,

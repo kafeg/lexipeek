@@ -47,6 +47,8 @@ final class SettingsModel: ObservableObject {
     var relabel: (() -> Void)?
     var showSection: ((SettingsSection, Int) -> Void)?
     let client: CoreClient
+    // Kept while the window lives: a download started in Packs ends (and reloads) after another pane is shown.
+    lazy var packs = PacksModel(client: client)
 
     init(client: CoreClient) {
         self.client = client
@@ -251,26 +253,34 @@ enum SettingsWindow {
     }
 }
 
-// While Accessibility is off: what does not work and the way to turn it on (the Settings and LexiPeek windows).
+// While something keeps the hotkey from working (Accessibility off, no language pack): what and the way to fix it
+// (the Settings and LexiPeek windows).
 struct AccessBanner: View {
     @ObservedObject private var access = Access.shared
 
     var body: some View {
-        if !access.trusted {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.title3)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L.t("access_off_t")).fontWeight(.semibold)
-                    Text(L.t("access_off_d")).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                Button(L.t("access_open")) { Access.ask() }
-            }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.12)))
-            .padding([.horizontal, .top], 12)
-        }
+        if !access.trusted { banner(L.t("access_off_t"), L.t("access_off_d"), L.t("access_open")) { Access.ask() } }
+        if !access.hasPair { banner(L.t("nopack_t"), L.t("nopack_d"), L.t("setup_btn")) { NotificationCenter.default.post(name: .openFirstRun, object: nil) } }
     }
+
+    private func banner(_ title: String, _ detail: String, _ button: String, _ action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).fontWeight(.semibold)
+                Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button(button, action: action)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.12)))
+        .padding([.horizontal, .top], 12)
+    }
+}
+
+extension Notification.Name {
+    static let openFirstRun = Notification.Name("lexipeek.openFirstRun")
 }
 
 // A section: its sub-tabs, then its pane (the core's rows, or Packs, Other dictionaries drawn by their own views).
@@ -296,7 +306,7 @@ struct SectionView: View {
                 .overlay(alignment: .bottom) { Divider() }
             }
             switch String(page.pane) {
-            case "packs": PacksPane(client: model.client)
+            case "packs": PacksPane(model: model.packs)
             case "other": OtherDictionariesPane(client: model.client)
             default: RowsView(rows: page.rows.map { SettingLine($0) }, model: model)
             }
@@ -680,6 +690,7 @@ private struct ShortcutField: View {
             Button(recording ? L.t("hk_press") : shortcut.label) { recording ? stop() : start() }
                 .frame(minWidth: 90)
         }
+        .onDisappear { stop() }  // a monitor left on would eat every key of the app
     }
 
     private func start() {

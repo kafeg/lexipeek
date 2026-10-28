@@ -569,3 +569,18 @@ TEST_CASE("views: copy takes the translation, a dictionary's line or an AI answe
   CHECK(v.fix == "Open Settings → AI");
   CHECK(v.copy.empty());
 }
+
+TEST_CASE("views: no language pack — the card says so and opens Settings → Packs") {
+  auto c = word();
+  c.entries.clear(), c.lang.clear(), c.no_packs = true;
+  auto s = first_state(c);
+  s.tab = CardTab::translate;
+  auto v = card_view(c, s);
+  REQUIRE(!v.rows.empty());
+  CHECK(v.rows[0].text.starts_with("No language pack installed yet"));
+  CHECK(v.fix == "Open Settings → Packs");
+  CHECK(v.fix_section == SettingsSection::languages);
+  c.no_packs = false, c.other = "fr", c.other_name = "French";
+  v = card_view(c, s);
+  CHECK(v.fix == "Open Settings → Packs");  // a pack from French is not installed
+}

@@ -7,6 +7,7 @@
 #include <QHBoxLayout>
 #include <QHash>
 #include <QIconEngine>
+#include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
@@ -61,6 +62,7 @@ QString fallback(Glyph g) {
     case Glyph::keyboard: return "⌨";
     case Glyph::close: case Glyph::remove: return "✕";
     case Glyph::up: return "▴";
+    case Glyph::warning: return "⚠";
     case Glyph::left: return "‹";
     case Glyph::right: return "›";
     case Glyph::more: return "⋯";
@@ -254,6 +256,32 @@ QFrame *card(QLayout *content) {
   auto *w = new QWidget;
   content->setContentsMargins(0, 0, 0, 0);
   w->setLayout(content);
+  return card(w);
+}
+
+QFrame *banner(const QString &title, const QString &detail, const QString &button, std::function<void()> click) {
+  auto *w = new QWidget;
+  auto *l = new QHBoxLayout(w);
+  l->setContentsMargins(0, 0, 0, 0);
+  l->setSpacing(12);
+  auto *mark = new QLabel;
+  mark->setPixmap(icon(Glyph::warning, QColor("#d97706")).pixmap(20, 20));
+  l->addWidget(mark, 0, Qt::AlignTop);
+  auto *col = new QVBoxLayout;
+  col->setSpacing(2);
+  auto *t = new QLabel(title);
+  auto f = t->font();
+  f.setBold(true);
+  t->setFont(f);
+  auto *d = new QLabel(detail);
+  d->setWordWrap(true);
+  d->setForegroundRole(QPalette::PlaceholderText);
+  col->addWidget(t);
+  col->addWidget(d);
+  l->addLayout(col, 1);
+  auto *b = new QPushButton(button);
+  QObject::connect(b, &QPushButton::clicked, std::move(click));
+  l->addWidget(b, 0, Qt::AlignVCenter);
   return card(w);
 }
 

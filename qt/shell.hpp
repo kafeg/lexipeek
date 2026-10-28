@@ -1,6 +1,7 @@
 // The tray app (mac AppDelegate): its icon and menu, the hotkeys, the pop-up card, the windows.
 #pragma once
 #include <QMenu>
+#include <QTimer>
 #include <QObject>
 #include <QSystemTrayIcon>
 #include "first_run.hpp"
@@ -28,6 +29,7 @@ class Shell : public QObject {
  private:
   void fill_menu();
   void register_hotkeys();
+  void update_tray();  // ⚠ while no language pack is installed
   CoreClient &c_;
   CardPopup popup_;
   SelectionIcon icon_;
@@ -37,6 +39,8 @@ class Shell : public QObject {
   FirstRunWindow *first_ = nullptr;
   QSystemTrayIcon tray_;
   QMenu menu_;
+  QTimer health_;
+  bool pair_ = true;
   Settings s_;
 };
 

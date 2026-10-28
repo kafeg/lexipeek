@@ -82,13 +82,17 @@ final class FirstRunModel: ObservableObject {
         timers.append(Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, self.state.trusted != Selection.trusted else { return }
             self.state.trusted = Selection.trusted
+            // Past the Accessibility step: the list, fetched now.
+            if self.look.step == .list && !self.state.fetching { self.fetch() }
         })
         if look.step == .list || look.step == .pair { fetch() }
     }
 
+    // The window closed: a download stops too (the next one resumes it).
     func stop() {
         timers.forEach { $0.invalidate() }
         timers = []
+        if state.downloading { downloader.cancel() }
     }
 
     func primary() {
@@ -104,7 +108,9 @@ final class FirstRunModel: ObservableObject {
 
     func other() {
         switch look.step {
-        case .access: state.access_later = true
+        case .access:
+            state.access_later = true
+            if look.step == .list { fetch() }
         case .download: state.error = std.string()
         default: break
         }

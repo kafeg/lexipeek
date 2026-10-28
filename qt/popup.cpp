@@ -61,6 +61,7 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   close_card();
   shown = text.value_or("");
   model.reset();
+  card->clear_input();
   model.input = !text;
   auto anchor = bounds.isEmpty() ? QRect(QCursor::pos(), QSize(0, 0)) : bounds;
   auto *s = QGuiApplication::screenAt(anchor.center());
