@@ -16,7 +16,10 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QGroupBox>
+#include <QRadioButton>
 #include <QTabBar>
+#include <QTabWidget>
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
@@ -109,14 +112,6 @@ QKeySequence sequence(const Hotkey &h) {
   return QKeySequence(c);
 }
 
-// A method's card (InkPeek's MethodPane): picked by a click.
-class MethodCard : public QFrame {
- public:
-  std::function<void()> pick;
-  void mousePressEvent(QMouseEvent *) override {
-    if (pick) pick();
-  }
-};
 
 
 }  // namespace
@@ -124,26 +119,20 @@ class MethodCard : public QFrame {
 SettingsWindow::SettingsWindow(CoreClient &client) : sh_(client) {
   setWindowTitle(t("settings_more"));
   auto *l = new QVBoxLayout(this);
-  l->setContentsMargins(0, 0, 0, 0);
-  l->setSpacing(0);
-  sections_ = new QTabBar;
-  sections_->setExpanding(false);
-  sections_->setDrawBase(true);
+  sections_ = new QTabWidget;
   auto names = settings_sections();
-  for (auto s : shown_sections) sections_->addTab(q(names[static_cast<int>(s)]));
-  auto *bar = new QHBoxLayout;
-  bar->setContentsMargins(12, 10, 12, 0);
-  bar->addStretch();
-  bar->addWidget(sections_);
-  bar->addStretch();
-  l->addLayout(bar);
-  body_ = new QVBoxLayout;
-  l->addLayout(body_, 1);
-  connect(sections_, &QTabBar::currentChanged, this, [this](int i) {
+  for (auto s : shown_sections) {
+    auto *page = new QWidget;
+    new QVBoxLayout(page);
+    sections_->addTab(page, q(names[static_cast<int>(s)]));
+  }
+  l->addWidget(sections_);
+  connect(sections_, &QTabWidget::currentChanged, this, [this](int i) {
     section_ = shown_sections[i];
     draw();
   });
-  setFixedSize(600, 580);
+  resize(640, 620);
+  setMinimumSize(560, 480);
   draw();
 }
 
@@ -178,23 +167,29 @@ void SettingsWindow::draw() {
   int scrolled = old && section_ == drawn_section_ && tabs_[section_] == drawn_tab_ ? old->verticalScrollBar()->value() : 0;
   drawn_section_ = section_, drawn_tab_ = tabs_[section_];
   for (auto *pane : {packs_, dicts_})
-    if (pane) body_->removeWidget(pane), pane->hide();
-  ui::clear(body_);
+    if (pane) pane->hide(), pane->setParent(nullptr);
+  int index = 0;
+  for (int i = 0; i < 4; ++i)
+    if (shown_sections[i] == section_) index = i;
+  auto *section = static_cast<QVBoxLayout *>(sections_->widget(index)->layout());
+  ui::clear(section);
   auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], sh_.state());
+  auto *target = section;
+  // A section's sub-tabs: tabs inside the tab, the open one drawn.
   if (!page.tabs.empty()) {
-    auto *tabs = new QTabBar;
-    for (auto &x : page.tabs) tabs->addTab(q(x));
-    tabs->setCurrentIndex(page.tab);
-    connect(tabs, &QTabBar::currentChanged, this, [this](int i) {
+    auto *sub = new QTabWidget;
+    for (auto &x : page.tabs) {
+      auto *w = new QWidget;
+      new QVBoxLayout(w);
+      sub->addTab(w, q(x));
+    }
+    sub->setCurrentIndex(page.tab);
+    connect(sub, &QTabWidget::currentChanged, this, [this](int i) {
       tabs_[section_] = i;
       QMetaObject::invokeMethod(this, [this] { draw(); }, Qt::QueuedConnection);
     });
-    auto *row = new QHBoxLayout;
-    row->setContentsMargins(12, 10, 12, 4);
-    row->addStretch();
-    row->addWidget(tabs);
-    row->addStretch();
-    body_->addLayout(row);
+    section->addWidget(sub);
+    target = static_cast<QVBoxLayout *>(sub->widget(page.tab)->layout());
   }
   if (page.pane == "packs") {
     if (!packs_) {
@@ -202,24 +197,32 @@ void SettingsWindow::draw() {
       connect(p, &PacksPane::changed, this, [this] { emit changed(); });
       packs_ = p;
     }
-    body_->addWidget(packs_, 1);
+    target->addWidget(packs_, 1);
     packs_->show();
     return;
   }
   if (page.pane == "other") {
     if (!dicts_) dicts_ = new DictsPane(sh_.client);
     static_cast<DictsPane *>(dicts_)->draw();
-    body_->addWidget(dicts_, 1);
+    target->addWidget(dicts_, 1);
     dicts_->show();
     return;
   }
+  // Rows; a heading starts a group box of the rows under it.
   auto *rows = new QWidget;
   auto *rl = new QVBoxLayout(rows);
-  rl->setContentsMargins(20, 12, 20, 16);
-  rl->setSpacing(12);
+  rl->setSpacing(10);
+  QVBoxLayout *group = rl;
   for (auto &r : page.rows) {
-    if (r.kind == SettingRow::Kind::heading) rl->addSpacing(6);
-    rl->addWidget(row(r));
+    if (r.kind == SettingRow::Kind::heading) {
+      auto *box = new QGroupBox(q(r.title));
+      group = new QVBoxLayout(box);
+      group->setSpacing(10);
+      if (!r.about.empty()) group->addWidget(ui::text(r.about, -1, true));
+      rl->addWidget(box);
+      continue;
+    }
+    group->addWidget(row(r));
   }
   if (!error_.empty()) {
     auto *e = ui::text(error_, -1);
@@ -232,7 +235,7 @@ void SettingsWindow::draw() {
   scroll->setWidget(rows);
   scroll->setWidgetResizable(true);
   scroll->setFrameShape(QFrame::NoFrame);
-  body_->addWidget(scroll, 1);
+  target->addWidget(scroll, 1);
   ui::keep_scroll(scroll, scrolled);
 }
 
@@ -351,13 +354,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       return beside(r, s);
     }
     case K::link: {
-      auto *b = new QToolButton;
-      b->setText("↗");
-      b->setAutoRaise(true);
-      b->setToolTip(q(r.value));
       auto url = q(r.value);
-      connect(b, &QToolButton::clicked, this, [url] { QDesktopServices::openUrl(QUrl(url)); });
-      return beside(r, b);
+      auto *l = ui::link(url, [url] { QDesktopServices::openUrl(QUrl(url)); });
+      return beside(r, l);
     }
     case K::text:
     case K::model: {
@@ -417,25 +416,28 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       return under(r, w);
     }
     case K::method: {
-      auto *card = new MethodCard;
-      card->setFrameShape(QFrame::StyledPanel);
-      card->setCursor(r.enabled ? Qt::PointingHandCursor : Qt::ArrowCursor);
+      // A translation method (InkPeek's MethodPane): a radio button, what it does, needs, why not here; its download.
+      auto *w = new QWidget;
+      auto *l = new QVBoxLayout(w);
+      l->setContentsMargins(0, 0, 0, 0);
+      l->setSpacing(2);
+      auto *radio = new QRadioButton(q(r.title));
+      radio->setAutoExclusive(false);
+      radio->setChecked(r.on);
+      radio->setEnabled(r.enabled);
       auto selected = r.selected;
-      if (r.enabled) card->pick = [this, key, dir, selected] { after(app::choose(dir, key, selected, sh_.state())); };
-      auto *l = new QHBoxLayout(card);
-      auto *dot = ui::text(QString(r.on ? "◉" : "○"), 2);
-      l->addWidget(dot, 0, Qt::AlignTop);
+      connect(radio, &QRadioButton::clicked, this, [this, key, dir, selected] { after(app::choose(dir, key, selected, sh_.state())); });
+      l->addWidget(radio);
       auto *col = new QVBoxLayout;
-      col->setSpacing(3);
-      col->addWidget(ui::text(r.title, 0, false, r.on));
-      col->addWidget(ui::text(r.about, -1.5, true));
-      if (!r.detail.empty()) col->addWidget(ui::text((r.enabled ? "" : "⚠ ") + r.detail, -1.5, true));
+      col->setContentsMargins(22, 0, 0, 0);
+      col->setSpacing(2);
+      col->addWidget(ui::text(r.about, -1, true));
+      if (!r.detail.empty()) col->addWidget(ui::text((r.enabled ? "" : "⚠ ") + r.detail, -1, true));
       if (r.progress >= 0) {
         auto *p = new QProgressBar;
         p->setRange(0, 1000);
         p->setValue(static_cast<int>(r.progress * 1000));
         p->setTextVisible(false);
-        p->setFixedHeight(6);
         col->addWidget(p);
       } else if (!r.button.empty()) {
         auto *b = new QPushButton(q(r.button));
@@ -444,9 +446,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
         connect(b, &QPushButton::clicked, this, [this, method, ids] { download(method, ids); });
         col->addWidget(b, 0, Qt::AlignLeft);
       }
-      l->addLayout(col, 1);
-      if (!r.enabled) card->setEnabled(false);
-      return card;
+      l->addLayout(col);
+      return w;
     }
   }
   return titled(r);
@@ -533,22 +534,21 @@ void SettingsWindow::download(const std::string &method, const std::vector<std::
 AboutWindow::AboutWindow(CoreClient &client) : sh_(client) {
   setWindowTitle(t("menu_about"));
   auto *l = new QVBoxLayout(this);
-  tabs_ = new QTabBar;
-  for (auto &x : about_tabs()) tabs_->addTab(q(x));
-  auto *row = new QHBoxLayout;
-  row->addStretch();
-  row->addWidget(tabs_);
-  row->addStretch();
-  l->addLayout(row);
-  body_ = new QVBoxLayout;
-  l->addLayout(body_, 1);
-  connect(tabs_, &QTabBar::currentChanged, this, &AboutWindow::refresh);
-  setFixedWidth(460);
+  tabs_ = new QTabWidget;
+  for (auto &x : about_tabs()) {
+    auto *page = new QWidget;
+    new QVBoxLayout(page);
+    tabs_->addTab(page, q(x));
+  }
+  l->addWidget(tabs_);
+  connect(tabs_, &QTabWidget::currentChanged, this, &AboutWindow::refresh);
+  setFixedWidth(480);
   refresh();
 }
 
 void AboutWindow::refresh() {
-  ui::clear(body_);
+  auto *body = tabs_->currentWidget()->layout();
+  ui::clear(body);
   auto *rows = new QWidget;
   auto *rl = new QVBoxLayout(rows);
   rl->setSpacing(10);
@@ -558,13 +558,8 @@ void AboutWindow::refresh() {
       rl->addWidget(ui::text(r.title, 0, false, true));
       if (!r.about.empty()) rl->addWidget(ui::text(r.about, -1.5, true));
     } else if (r.kind == K::link) {
-      auto *b = new QToolButton;
-      b->setText(q(r.title) + " ↗");
-      b->setAutoRaise(true);
-      b->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
       auto url = q(r.value);
-      connect(b, &QToolButton::clicked, this, [url] { QDesktopServices::openUrl(QUrl(url)); });
-      rl->addWidget(b, 0, Qt::AlignLeft);
+      rl->addWidget(ui::link(q(r.title), [url] { QDesktopServices::openUrl(QUrl(url)); }), 0, Qt::AlignLeft);
     } else if (r.kind == K::button) {
       auto *b = new QPushButton(q(r.value));
       b->setEnabled(r.enabled && !sh_.checking);
@@ -590,7 +585,7 @@ void AboutWindow::refresh() {
     }
   }
   rl->addStretch();
-  body_->addWidget(rows, 1);
+  body->addWidget(rows);
   adjustSize();
 }
 

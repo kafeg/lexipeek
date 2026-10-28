@@ -15,8 +15,8 @@ inline QLabel *text(const std::string &s, double delta = 0, bool grey = false, b
   return text(QString::fromStdString(s), delta, grey, bold);
 }
 void grey(QWidget *w);
-// A borderless button in the link colour.
-QToolButton *link(const QString &s, std::function<void()> click);
+// A link (the system's link colour, a click runs click).
+QLabel *link(const QString &s, std::function<void()> click);
 // Everything in a layout, nested layouts and their widgets too.
 void clear(QLayout *l);
 // A scroll area's position back after its content was drawn again (once the layout has run).

@@ -26,14 +26,11 @@ void grey(QWidget *w) {
   w->setPalette(p);
 }
 
-QToolButton *link(const QString &s, std::function<void()> click) {
-  auto *b = new QToolButton;
-  b->setText(s);
-  b->setAutoRaise(true);
-  b->setCursor(Qt::PointingHandCursor);
-  b->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
-  QObject::connect(b, &QToolButton::clicked, std::move(click));
-  return b;
+QLabel *link(const QString &s, std::function<void()> click) {
+  auto *l = new QLabel("<a href=\"#\">" + s.toHtmlEscaped() + "</a>");
+  l->setTextFormat(Qt::RichText);
+  QObject::connect(l, &QLabel::linkActivated, [click = std::move(click)] { click(); });
+  return l;
 }
 
 void clear(QLayout *l) {

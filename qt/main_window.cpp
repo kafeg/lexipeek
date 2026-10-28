@@ -12,6 +12,9 @@
 #include <QStandardPaths>
 #include <QTimer>
 #include <QToolButton>
+#include <QHeaderView>
+#include <QShortcut>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 #include "ui.hpp"
 
@@ -41,7 +44,6 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   sl->setContentsMargins(8, 8, 8, 12);
   side_ = new QListWidget;
   side_->setFrameShape(QFrame::NoFrame);
-  side_->setStyleSheet("QListWidget { background: transparent; } QListWidget::item { padding: 6px; }");
   for (int i = 0; i < 5; ++i) side_->addItem("");
   sl->addWidget(side_, 1);
   memory_ = ui::text(QString(), -1.5, true);
@@ -64,8 +66,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
 
   auto *line = new QFrame;
   line->setFrameShape(QFrame::VLine);
-  line->setFrameShadow(QFrame::Plain);
-  line->setStyleSheet("color: palette(mid);");
+  line->setFrameShadow(QFrame::Sunken);
   row->addWidget(line);
 
   pages_ = new QStackedWidget;
@@ -167,43 +168,43 @@ void MainWindow::draw_notes() {
     empty->setAlignment(Qt::AlignCenter);
     l->addWidget(empty, 1);
   } else {
-    auto *list = new QWidget;
-    auto *ll = new QVBoxLayout(list);
-    ll->setSpacing(2);
+    // A list: the text, its meaning, the looks; Return or a double click opens the card, Delete or the button removes.
+    auto *list = new QTreeWidget;
+    list->setColumnCount(3);
+    list->setHeaderHidden(true);
+    list->setRootIsDecorated(false);
+    list->setUniformRowHeights(true);
+    list->setAlternatingRowColors(true);
     for (auto &r : v.rows) {
-      auto *row = new QWidget;
-      auto *rl = new QHBoxLayout(row);
-      rl->setContentsMargins(4, 4, 4, 4);
-      auto *text = new QToolButton;
-      text->setAutoRaise(true);
-      text->setToolButtonStyle(Qt::ToolButtonTextOnly);
-      text->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-      text->setStyleSheet("QToolButton { text-align: left; border: none; }");
-      auto shown = fontMetrics().elidedText(q(r.text), Qt::ElideRight, 480);
-      auto meaning = fontMetrics().elidedText(q(r.line), Qt::ElideRight, 480);
-      text->setText(shown + "\n" + meaning);
-      text->setToolTip(q(r.text));
-      auto open = q(r.text);
-      connect(text, &QToolButton::clicked, this, [this, open] { look(open); });
-      rl->addWidget(text, 1);
-      if (!r.looks.empty()) rl->addWidget(ui::text(q(r.looks), -1.5, true));
-      auto *x = new QToolButton;
-      x->setText("✕");
-      x->setAutoRaise(true);
-      x->setToolTip(tab_ == NotesTab::history ? t("forget") : t("unsave_word"));
-      auto key = r.text;
-      connect(x, &QToolButton::clicked, this, [this, key] {
-        c_.engine.remove_note(tab_, key);
-        refresh();
-      });
-      rl->addWidget(x);
-      ll->addWidget(row);
+      auto *item = new QTreeWidgetItem({q(r.text), q(r.line), q(r.looks)});
+      item->setToolTip(0, q(r.text));
+      item->setForeground(1, palette().color(QPalette::PlaceholderText));
+      item->setTextAlignment(2, Qt::AlignRight);
+      list->addTopLevelItem(item);
     }
-    ll->addStretch();
-    auto *scroll = new QScrollArea;
-    scroll->setWidget(list);
-    scroll->setWidgetResizable(true);
-    l->addWidget(scroll, 1);
+    list->header()->setStretchLastSection(false);
+    list->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    list->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+    list->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    list->setColumnWidth(0, 220);
+    connect(list, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem *item) { look(item->text(0)); });
+    auto remove = [this, list] {
+      if (auto *item = list->currentItem()) {
+        c_.engine.remove_note(tab_, item->text(0).toStdString());
+        refresh();
+      }
+    };
+    auto *del = new QShortcut(QKeySequence::Delete, list);
+    connect(del, &QShortcut::activated, this, remove);
+    l->addWidget(list, 1);
+    auto *x = new QPushButton(tab_ == NotesTab::history ? t("forget") : t("unsave_word"));
+    x->setEnabled(false);
+    connect(list, &QTreeWidget::currentItemChanged, x, [x](QTreeWidgetItem *now) { x->setEnabled(now); });
+    connect(x, &QPushButton::clicked, this, remove);
+    auto *row = new QHBoxLayout;
+    row->addStretch();
+    row->addWidget(x);
+    l->addLayout(row);
   }
   auto *bar = new QHBoxLayout;
   if (!v.rows.empty()) {
@@ -243,7 +244,7 @@ void MainWindow::draw_notes() {
   l->addLayout(bar);
   auto *line = new QFrame;
   line->setFrameShape(QFrame::HLine);
-  line->setStyleSheet("color: palette(mid);");
+  line->setFrameShadow(QFrame::Sunken);
   l->addWidget(line);
   auto *backup = new QHBoxLayout;
   backup->addWidget(ui::text(t("backup_d"), -1.5, true), 1);

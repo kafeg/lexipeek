@@ -173,9 +173,15 @@ QLabel *label(const QString &text, const QFont &f, bool rich = false, bool selec
 }
 
 
+// The card's own look: a borderless button in the link colour.
 QToolButton *link(const QString &text, const QFont &f, std::function<void()> click) {
-  auto *b = ui::link(text, std::move(click));
+  auto *b = new QToolButton;
+  b->setText(text);
   b->setFont(f);
+  b->setAutoRaise(true);
+  b->setCursor(Qt::PointingHandCursor);
+  b->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
+  QObject::connect(b, &QToolButton::clicked, std::move(click));
   return b;
 }
 

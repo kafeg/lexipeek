@@ -6,6 +6,7 @@
 #include "core_client.hpp"
 
 class QTabBar;
+class QTabWidget;
 class QScrollArea;
 class QVBoxLayout;
 
@@ -41,8 +42,7 @@ class SettingsWindow : public QWidget {
   void press(const SettingRow &r);
   void download(const std::string &method, const std::vector<std::string> &ids);
   SettingsShell sh_;
-  QTabBar *sections_;
-  QVBoxLayout *body_;
+  QTabWidget *sections_;
   QWidget *packs_ = nullptr, *dicts_ = nullptr;  // kept while the window lives: a download goes on across redraws
   SettingsSection section_ = SettingsSection::general, drawn_section_ = SettingsSection::general;
   int drawn_tab_ = -1;
@@ -58,8 +58,7 @@ class AboutWindow : public QWidget {
 
  private:
   SettingsShell sh_;
-  QTabBar *tabs_;
-  QVBoxLayout *body_;
+  QTabWidget *tabs_;
 };
 
 // The order of Settings' sections: General first (as the Mac app), the core keeps InkPeek's.
