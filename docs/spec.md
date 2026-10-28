@@ -219,9 +219,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
-  every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form) — Hotkeys
-  (the two hotkeys, per-app rules) · System (Accessibility, open at login, the app's language, how long a model stays
-  in memory after a use: 1, 5, 15 min, 1 h, until quit; 5 min by default). The icon at the selection and "a moved card
+  every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form) — System
+  (Accessibility, open at login, the app's language, how long a model stays in memory after a use: 1, 5, 15 min, 1 h,
+  until quit; 5 min by default) · Hotkeys (the two hotkeys, per-app rules). The icon at the selection and "a moved card
   stays" are on Card → Opening. **About LexiPeek** is a window of its own (menu bar under Settings…, the app menu, the
   window's sidebar), two tabs: About (version, "Check now", links) · Licenses (the packs'). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as

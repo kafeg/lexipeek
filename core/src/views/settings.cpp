@@ -268,10 +268,10 @@ std::vector<SettingRow> appearance(const Settings &s) {
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
-// General (InkPeek's ⚙ page in desktop form): Hotkeys (the keys, per-app rules) · System (Accessibility, login, the
-// app's language, the model in memory).
+// General (InkPeek's ⚙ page in desktop form): System (Accessibility, login, the app's language, the model in memory)
+// · Hotkeys (the keys, per-app rules).
 std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int tab) {
-  if (tab == 0)
+  if (tab == 1)
     return {valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
             valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
             heading(tr("apps_t")),
@@ -306,7 +306,7 @@ std::vector<std::string> settings_tab_keys(SettingsSection section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};
     case SettingsSection::card: return {"opening", "article", "appearance"};
     case SettingsSection::ai: return {"connection", "modules"};
-    case SettingsSection::general: return {"keys", "system"};
+    case SettingsSection::general: return {"system", "keys"};
   }
   return {};
 }
@@ -316,7 +316,7 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::languages: return names({"lang_packs", "lang_translation", "lang_own"});
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
-    case SettingsSection::general: return names({"hotkeys_t", "system_t"});
+    case SettingsSection::general: return names({"system_t", "hotkeys_t"});
   }
   return {};
 }

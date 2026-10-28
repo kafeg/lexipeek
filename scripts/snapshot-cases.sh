@@ -118,6 +118,6 @@ settings_shots() {
   echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
-    settings-general-keys settings-general-system about
+    settings-general-system settings-general-keys about
 }
 

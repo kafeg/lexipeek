@@ -81,7 +81,7 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
   CHECK(p.pane == "packs");
   CHECK(settings_view(SettingsSection::languages, 2, s, st).pane == "other");
   CHECK(settings_view(SettingsSection::card, 9, s, st).tab == 2);  // clamped
-  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs == std::vector<std::string>{"Hotkeys", "System"});
+  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs == std::vector<std::string>{"System", "Hotkeys"});
   // Every row has a title and a one-line description, but headings.
   s.ai.provider = "custom";
   for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general})
@@ -190,15 +190,15 @@ TEST_CASE("settings: Card — opening, article, sections, appearance") {
   CHECK(s.card.height == 75);
 }
 
-TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → Opening; About its own rows") {
+TEST_CASE("settings: General — System and Hotkeys tabs; the icon on Card → Opening; About its own rows") {
   Settings s;
   auto st = state();
-  auto p = settings_view(SettingsSection::general, 0, s, st);
+  auto p = settings_view(SettingsSection::general, 1, s, st);
   CHECK(row(p, "lookup")->kind == Kind::hotkey);
   CHECK(row(p, "input")->kind == Kind::hotkey);
   CHECK(row(p, "ignore_apps")->kind == Kind::apps);
   CHECK(!row(p, "access"));
-  p = settings_view(SettingsSection::general, 1, s, st);
+  p = settings_view(SettingsSection::general, 0, s, st);
   CHECK(row(p, "access")->kind == Kind::status);
   CHECK(row(p, "access")->value == "Allowed");
   CHECK(row(p, "open_at_login"));
@@ -208,7 +208,7 @@ TEST_CASE("settings: General — Hotkeys and System tabs; the icon on Card → O
   CHECK(row(p, "ui_lang")->choices[2] == "Русский");
   CHECK(!row(p, "updates"));
   st.trusted = false;
-  CHECK(row(settings_view(SettingsSection::general, 1, s, st), "access")->kind == Kind::button);
+  CHECK(row(settings_view(SettingsSection::general, 0, s, st), "access")->kind == Kind::button);
   st.trusted = true;
   p = settings_view(SettingsSection::card, 0, s, st);
   CHECK(row(p, "selection_icon"));
