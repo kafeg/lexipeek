@@ -540,6 +540,35 @@ void activate(QWidget *w) {
   w->activateWindow();
 }
 
+QImage glyph_mask(const QString &family, char16_t code, int px) {
+  BITMAPINFO bi{};
+  bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+  bi.bmiHeader.biWidth = px, bi.bmiHeader.biHeight = -px, bi.bmiHeader.biPlanes = 1, bi.bmiHeader.biBitCount = 32;
+  void *bits = nullptr;
+  HDC dc = CreateCompatibleDC(nullptr);
+  HBITMAP bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+  if (!bmp) return DeleteDC(dc), QImage();
+  auto old = SelectObject(dc, bmp);
+  auto name = family.toStdWString();
+  HFONT font = CreateFontW(-px * 4 / 5, 0, 0, 0, FW_NORMAL, 0, 0, 0, DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
+                           ANTIALIASED_QUALITY, DEFAULT_PITCH, name.c_str());
+  auto old_font = SelectObject(dc, font);
+  SetBkMode(dc, TRANSPARENT);
+  SetTextColor(dc, RGB(255, 255, 255));
+  RECT r{0, 0, px, px};
+  wchar_t ch[2] = {static_cast<wchar_t>(code), 0};
+  DrawTextW(dc, ch, 1, &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+  GdiFlush();
+  // White on black: its brightness is the mask.
+  QImage out(px, px, QImage::Format_Alpha8);
+  auto *src = static_cast<const uchar *>(bits);
+  for (int y = 0; y < px; ++y)
+    for (int x = 0; x < px; ++x) out.scanLine(y)[x] = src[(y * px + x) * 4 + 1];
+  SelectObject(dc, old_font), DeleteObject(font);
+  SelectObject(dc, old), DeleteObject(bmp), DeleteDC(dc);
+  return out;
+}
+
 void round(QWidget *w) {
   auto pref = DWMWCP_ROUND;
   DwmSetWindowAttribute(reinterpret_cast<HWND>(w->winId()), DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof pref);

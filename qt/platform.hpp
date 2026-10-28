@@ -1,5 +1,6 @@
 // What the OS does for the shell (Windows: platform_win.cpp; elsewhere platform_none.cpp, nothing yet).
 #pragma once
+#include <QImage>
 #include <QRect>
 #include <QStringList>
 #include <functional>
@@ -62,6 +63,10 @@ std::string last_error();
 
 // Brings a window to the front with the keyboard focus (Windows otherwise only flashes its taskbar button).
 void activate(QWidget *w);
+
+// One glyph of the system's icon font (Segoe Fluent Icons / Segoe MDL2 Assets) drawn by the system, as an alpha mask
+// of px × px device pixels; null where there is none (Qt does not draw that font's private-use code points).
+QImage glyph_mask(const QString &family, char16_t code, int px);
 
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);

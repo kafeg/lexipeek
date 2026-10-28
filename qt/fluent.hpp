@@ -27,7 +27,8 @@ QColor secondary();  // secondary text
 QFont icons(int px);
 QString icon_font();  // the family in use, "" when the system has neither
 QString glyph(Glyph g);
-QIcon icon(Glyph g, int px = 16);
+// The glyph as an icon in a colour (the text's when none).
+QIcon icon(Glyph g, int px = 16, QColor color = {});
 
 // A rounded panel around a row (Windows Settings' "settings card").
 QFrame *card(QWidget *content);

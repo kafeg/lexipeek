@@ -234,11 +234,11 @@ QToolButton *menu_button(const QString &text, const QFont &f) {
   return b;
 }
 
-// An icon button of the command bar: the system's glyph, its tooltip.
-QToolButton *command(fluent::Glyph g, const QString &tip, std::function<void()> click) {
+// An icon button of the command bar: the system's glyph (in a colour: ☆ saved, the pin on), its tooltip.
+QToolButton *command(fluent::Glyph g, const QString &tip, std::function<void()> click, QColor color = {}) {
   auto *b = new QToolButton;
-  b->setText(fluent::glyph(g));
-  b->setFont(fluent::icons(15));
+  b->setIcon(fluent::icon(g, 16, color));
+  b->setIconSize(QSize(16, 16));
   b->setToolTip(tip);
   b->setProperty("command", true);
   b->setCursor(Qt::PointingHandCursor);
@@ -559,14 +559,12 @@ QWidget *CardWidget::bar(const CardView &v) {
     l->addWidget(b);
   }
   if (v.can_save) {
-    auto *s = command(v.saved ? fluent::Glyph::star_filled : fluent::Glyph::star, q(v.star_help), [this] { m_.toggle_saved(); });
-    if (v.saved) s->setStyleSheet("color: " + fluent::accent().name());
-    l->addWidget(s);
+    l->addWidget(command(v.saved ? fluent::Glyph::star_filled : fluent::Glyph::star, q(v.star_help), [this] { m_.toggle_saved(); },
+                         v.saved ? fluent::accent() : QColor()));
   }
   if (!embedded_) {
-    auto *p = command(m_.pinned ? fluent::Glyph::pinned : fluent::Glyph::pin, t("card_pin"), [this] { m_.toggle_pin(); });
-    if (m_.pinned) p->setStyleSheet("color: " + fluent::accent().name());
-    l->addWidget(p);
+    l->addWidget(command(m_.pinned ? fluent::Glyph::pinned : fluent::Glyph::pin, t("card_pin"), [this] { m_.toggle_pin(); },
+                         m_.pinned ? fluent::accent() : QColor()));
   }
   return w;
 }

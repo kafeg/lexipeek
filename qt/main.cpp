@@ -14,7 +14,6 @@
 #include "card.hpp"
 #include "first_run.hpp"
 #include "fluent.hpp"
-#include <QFontInfo>
 #include <QImage>
 #include <QPainter>
 #include "main_window.hpp"
@@ -74,40 +73,12 @@ int self_test(const QString &path) {
   QSettings scheme("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek\\shell\\open\\command", QSettings::NativeFormat);
   check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
   {
-    // The system's icon glyphs: the font found, and a glyph drawn in it leaves pixels.
-    QImage img(32, 32, QImage::Format_ARGB32);
-    img.fill(Qt::transparent);
-    QPainter p(&img);
-    p.setFont(fluent::icons(20));
-    p.setPen(Qt::black);
-    p.drawText(img.rect(), Qt::AlignCenter, fluent::glyph(fluent::Glyph::copy));
-    p.end();
+    // The system's icon glyphs: the font found, and an icon drawn from it leaves pixels.
+    auto img = fluent::icon(fluent::Glyph::copy, 20).pixmap(40, 40).toImage();
     int ink = 0;
-    for (int y = 0; y < 32; ++y)
-      for (int x = 0; x < 32; ++x) ink += qAlpha(img.pixel(x, y)) > 0;
-    check(!fluent::icon_font().isEmpty() && ink > 20, "icons: " + fluent::icon_font() + ", a glyph's pixels " + QString::number(ink));
-    auto try_draw = [](QFont f, QString text) {
-      QImage im(32, 32, QImage::Format_ARGB32);
-      im.fill(Qt::transparent);
-      QPainter q(&im);
-      q.setFont(f);
-      q.setPen(Qt::black);
-      q.drawText(im.rect(), Qt::AlignCenter, text);
-      q.end();
-      int n = 0;
-      for (int y = 0; y < 32; ++y)
-        for (int x = 0; x < 32; ++x) n += qAlpha(im.pixel(x, y)) > 0;
-      return n;
-    };
-    QFont a(fluent::icon_font());
-    a.setPixelSize(20);
-    QFont b = a;
-    b.setStyleStrategy(QFont::NoFontMerging);
-    QFont c("Segoe UI");
-    c.setPixelSize(20);
-    out << "info glyph ink: default " << try_draw(a, QString(QChar(0xE8C8))) << ", no merging " << try_draw(b, QString(QChar(0xE8C8)))
-        << ", letter A in the icon font " << try_draw(a, "A") << ", A in Segoe UI " << try_draw(c, "A")
-        << ", exact match " << QFontInfo(a).family() << "\n";
+    for (int y = 0; y < img.height(); ++y)
+      for (int x = 0; x < img.width(); ++x) ink += qAlpha(img.pixel(x, y)) > 0;
+    check(!fluent::icon_font().isEmpty() && ink > 20, "icons: " + fluent::icon_font() + ", the copy icon's pixels " + QString::number(ink));
   }
   out << "info front app: " << q(platform::front_app()) << ", selection: " << (platform::selection() ? "some" : "none") << "\n";
   out << "info data dir: " << q(app::data_dir()) << ", version " << q(version()) << ", cpu " << q(cpu_arch());

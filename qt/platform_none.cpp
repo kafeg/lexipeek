@@ -36,6 +36,7 @@ void activate(QWidget *w) {
   w->raise();
   w->activateWindow();
 }
+QImage glyph_mask(const QString &, char16_t, int) { return {}; }
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

@@ -1,4 +1,5 @@
 #include "fluent.hpp"
+#include "platform.hpp"
 #include <QApplication>
 #include <QDir>
 #include <QFontDatabase>
@@ -177,14 +178,28 @@ QFont icons(int px) {
 
 QString glyph(Glyph g) { return icon_family().isEmpty() ? fallback(g) : QString(QChar(static_cast<char16_t>(g))); }
 
-QIcon icon(Glyph g, int px) {
+QIcon icon(Glyph g, int px, QColor color) {
+  if (!color.isValid()) color = theme().text;
   QPixmap pm(px * 2, px * 2);
   pm.setDevicePixelRatio(2);
   pm.fill(Qt::transparent);
   QPainter p(&pm);
-  p.setFont(icons(px));
-  p.setPen(theme().text);
-  p.drawText(QRect(0, 0, px, px), Qt::AlignCenter, glyph(g));
+  // Drawn by the system where it can (Qt leaves the icon font's code points blank), else as text.
+  auto mask = icon_family().isEmpty() ? QImage() : platform::glyph_mask(icon_family(), static_cast<char16_t>(g), px * 2);
+  if (!mask.isNull()) {
+    QImage tinted(mask.size(), QImage::Format_ARGB32_Premultiplied);
+    tinted.fill(color);
+    QPainter t(&tinted);
+    t.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    t.drawImage(0, 0, mask);
+    t.end();
+    tinted.setDevicePixelRatio(2);
+    p.drawImage(QPointF(0, 0), tinted);
+  } else {
+    p.setFont(mask.isNull() && !icon_family().isEmpty() ? QApplication::font() : icons(px));
+    p.setPen(color);
+    p.drawText(QRect(0, 0, px, px), Qt::AlignCenter, mask.isNull() && !icon_family().isEmpty() ? fallback(g) : glyph(g));
+  }
   return QIcon(pm);
 }
 
