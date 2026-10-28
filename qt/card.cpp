@@ -283,7 +283,7 @@ QWidget *CardWidget::tabs(const CardView &v) {
     b->setAutoRaise(true);
     b->setCursor(Qt::PointingHandCursor);
     b->setStyleSheet(on ? "QToolButton { border: none; border-bottom: 2px solid palette(highlight); padding: 0 0 4px 0; }"
-                        : "QToolButton { border: none; color: palette(placeholder-text); padding: 0 0 4px 0; }");
+                        : "QToolButton { border: none; color: gray; padding: 0 0 4px 0; }");
     auto tab = t.tab;
     connect(b, &QToolButton::clicked, this, [this, tab] { m_.select(tab); });
     l->addWidget(b);

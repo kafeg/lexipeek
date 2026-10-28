@@ -36,7 +36,7 @@ void FirstRunWindow::refresh() {
   head->addWidget(icon);
   auto *titles = new QVBoxLayout;
   titles->setSpacing(2);
-  titles->addWidget(ui::text(t("fr_step", std::to_string(look_.number), std::to_string(look_.steps)).toStdString(), -2, true));
+  titles->addWidget(ui::text(t("fr_step", std::to_string(look_.number), std::to_string(look_.steps)).toStdString(), -1.5, true));
   titles->addWidget(ui::text(look_.title, 4, false, true));
   head->addLayout(titles, 1);
   box_->addLayout(head);
@@ -86,10 +86,10 @@ void FirstRunWindow::refresh() {
     p->setRange(0, look_.fraction >= 0 ? 1000 : 0);
     p->setValue(static_cast<int>(std::max(0.0, look_.fraction) * 1000));
     box_->addWidget(p);
-    if (!look_.progress_text.empty()) box_->addWidget(ui::text(look_.progress_text, -2, true));
+    if (!look_.progress_text.empty()) box_->addWidget(ui::text(look_.progress_text, -1.5, true));
   }
   if (!look_.error.empty()) box_->addWidget(ui::text("⚠ " + look_.error, -1));
-  if (!look_.note.empty()) box_->addWidget(ui::text(look_.note, -2, true));
+  if (!look_.note.empty()) box_->addWidget(ui::text(look_.note, -1.5, true));
   box_->addStretch();
   auto *buttons = new QHBoxLayout;
   buttons->addStretch();

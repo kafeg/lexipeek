@@ -6,7 +6,7 @@
 
 namespace lexipeek::qt::ui {
 
-QLabel *text(const QString &s, int delta, bool grey_, bool bold) {
+QLabel *text(const QString &s, double delta, bool grey_, bool bold) {
   auto *l = new QLabel(s);
   l->setWordWrap(true);
   auto f = l->font();
@@ -17,9 +17,12 @@ QLabel *text(const QString &s, int delta, bool grey_, bool bold) {
   return l;
 }
 
+// Secondary: the text's own colour, fainter (the same in light and dark, not the style's placeholder tint).
 void grey(QWidget *w) {
   auto p = w->palette();
-  p.setColor(QPalette::WindowText, p.color(QPalette::PlaceholderText));
+  auto c = p.color(QPalette::WindowText);
+  c.setAlphaF(0.6);
+  p.setColor(QPalette::WindowText, c);
   w->setPalette(p);
 }
 

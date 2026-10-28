@@ -62,7 +62,7 @@ QWidget *titled(const SettingRow &r) {
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(1);
   l->addWidget(ui::text(r.title));
-  if (!r.about.empty()) l->addWidget(ui::text(r.about, -2, true));
+  if (!r.about.empty()) l->addWidget(ui::text(r.about, -1.5, true));
   w->setToolTip(q(r.about));
   return w;
 }
@@ -247,7 +247,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->setContentsMargins(0, 0, 0, 0);
       l->setSpacing(1);
       l->addWidget(ui::text(r.title, 0, false, true));
-      if (!r.about.empty()) l->addWidget(ui::text(r.about, -2, true));
+      if (!r.about.empty()) l->addWidget(ui::text(r.about, -1.5, true));
       return w;
     }
     case K::toggle: {
@@ -298,7 +298,7 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->addWidget(e);
       auto err = input ? sh_.input_error : sh_.lookup_error;
       if (!err.empty()) {
-        auto *x = ui::text(err, -2);
+        auto *x = ui::text(err, -1.5);
         x->setStyleSheet("color: #d0342c");
         l->addWidget(x);
       }
@@ -428,8 +428,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *col = new QVBoxLayout;
       col->setSpacing(3);
       col->addWidget(ui::text(r.title, 0, false, r.on));
-      col->addWidget(ui::text(r.about, -2, true));
-      if (!r.detail.empty()) col->addWidget(ui::text((r.enabled ? "" : "⚠ ") + r.detail, -2, true));
+      col->addWidget(ui::text(r.about, -1.5, true));
+      if (!r.detail.empty()) col->addWidget(ui::text((r.enabled ? "" : "⚠ ") + r.detail, -1.5, true));
       if (r.progress >= 0) {
         auto *p = new QProgressBar;
         p->setRange(0, 1000);
@@ -556,7 +556,7 @@ void AboutWindow::refresh() {
     using K = SettingRow::Kind;
     if (r.kind == K::heading) {
       rl->addWidget(ui::text(r.title, 0, false, true));
-      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -2, true));
+      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -1.5, true));
     } else if (r.kind == K::link) {
       auto *b = new QToolButton;
       b->setText(q(r.title) + " ↗");
@@ -586,7 +586,7 @@ void AboutWindow::refresh() {
       w->addWidget(ui::text(r.title), 1);
       w->addWidget(ui::text(r.value, 0, true));
       rl->addLayout(w);
-      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -2, true));
+      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -1.5, true));
     }
   }
   rl->addStretch();

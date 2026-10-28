@@ -63,7 +63,10 @@ const CardCase cards[] = {
 int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   QDir().mkpath(dir);
   app.setQuitOnLastWindowClosed(false);
+  // Windows: its own style, as the app shows; elsewhere Fusion (the same on every Mac).
+#ifndef _WIN32
   QApplication::setStyle(QStyleFactory::create("Fusion"));
+#endif
   auto light = QApplication::style()->standardPalette();
   auto *model = new CardModel(client);
   model->source = Source::cli;
@@ -209,6 +212,9 @@ int main(int argc, char **argv) {
   for (int i = 1; i < argc; ++i)
     if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
   QApplication app(argc, argv);
+#ifdef _WIN32
+  QApplication::setFont(QFont("Segoe UI", 10));  // Windows 11's own (Qt's default there is 9 pt)
+#endif
   auto args = app.arguments();
   std::string data;
   if (auto i = args.indexOf("--data"); i > 0 && i + 1 < args.size()) data = args[i + 1].toStdString();

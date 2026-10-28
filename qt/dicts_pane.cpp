@@ -86,7 +86,7 @@ void DictsPane::draw() {
     m->setTextInteractionFlags(Qt::TextSelectableByMouse);
     body_->addWidget(m);
   }
-  body_->addWidget(ui::text(v.import_note, -2, true));
+  body_->addWidget(ui::text(v.import_note, -1.5, true));
   body_->addSpacing(6);
   body_->addWidget(ui::text(t("lang_own_tab"), 0, false, true));
   bool own = false;
@@ -112,7 +112,7 @@ void DictsPane::draw() {
     auto *col = new QVBoxLayout;
     col->setSpacing(1);
     auto *title = ui::text(r.title);
-    auto *detail = ui::text(r.detail, -2, true);
+    auto *detail = ui::text(r.detail, -1.5, true);
     title->setEnabled(r.on), detail->setEnabled(r.on);
     col->addWidget(title);
     col->addWidget(detail);
@@ -141,7 +141,7 @@ void DictsPane::draw() {
     body_->addLayout(row);
   }
   if (!own) body_->addWidget(ui::text(v.empty, 0, true));
-  body_->addWidget(ui::text(v.note, -2, true));
+  body_->addWidget(ui::text(v.note, -1.5, true));
   if (!v.folders.empty()) {
     body_->addSpacing(6);
     body_->addWidget(ui::text(t("folders_t"), 0, false, true));
@@ -150,7 +150,7 @@ void DictsPane::draw() {
       auto *col = new QVBoxLayout;
       col->setSpacing(1);
       col->addWidget(ui::text(f.title));
-      col->addWidget(ui::text(f.detail, -2, true));
+      col->addWidget(ui::text(f.detail, -1.5, true));
       row->addLayout(col, 1);
       auto *remove = new QPushButton(t("remove"));
       auto path = f.path;
@@ -264,7 +264,7 @@ void CatalogDialog::draw() {
   }
   sources->addStretch();
   ui::clear(body_);
-  body_->addWidget(ui::text(v.legend, -2, true));
+  body_->addWidget(ui::text(v.legend, -1.5, true));
   if (!downloading_.empty()) {
     auto *row = new QHBoxLayout;
     row->addWidget(ui::text(downloading_));
@@ -286,7 +286,7 @@ void CatalogDialog::draw() {
     auto *col = new QVBoxLayout;
     col->setSpacing(1);
     col->addWidget(ui::text(r.title));
-    col->addWidget(ui::text(r.detail, -2, true));
+    col->addWidget(ui::text(r.detail, -1.5, true));
     row->addLayout(col, 1);
     auto *get = new QPushButton(t("download"));
     get->setEnabled(downloading_.empty());

@@ -44,7 +44,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   side_->setStyleSheet("QListWidget { background: transparent; } QListWidget::item { padding: 6px; }");
   for (int i = 0; i < 5; ++i) side_->addItem("");
   sl->addWidget(side_, 1);
-  memory_ = ui::text(QString(), -2, true);
+  memory_ = ui::text(QString(), -1.5, true);
   sl->addWidget(memory_);
   auto *buttons = new QHBoxLayout;
   auto *settings = new QToolButton;
@@ -186,7 +186,7 @@ void MainWindow::draw_notes() {
       auto open = q(r.text);
       connect(text, &QToolButton::clicked, this, [this, open] { look(open); });
       rl->addWidget(text, 1);
-      if (!r.looks.empty()) rl->addWidget(ui::text(q(r.looks), -2, true));
+      if (!r.looks.empty()) rl->addWidget(ui::text(q(r.looks), -1.5, true));
       auto *x = new QToolButton;
       x->setText("✕");
       x->setAutoRaise(true);
@@ -246,7 +246,7 @@ void MainWindow::draw_notes() {
   line->setStyleSheet("color: palette(mid);");
   l->addWidget(line);
   auto *backup = new QHBoxLayout;
-  backup->addWidget(ui::text(t("backup_d"), -2, true), 1);
+  backup->addWidget(ui::text(t("backup_d"), -1.5, true), 1);
   auto *out = new QPushButton(t("export_btn"));
   connect(out, &QPushButton::clicked, this, [this] {
     auto f = QFileDialog::getSaveFileName(this, {}, downloads("lexipeek-backup-" + today() + ".db"));
@@ -262,7 +262,7 @@ void MainWindow::draw_notes() {
   backup->addWidget(out);
   backup->addWidget(in);
   l->addLayout(backup);
-  said_ = ui::text(said, -2, true);
+  said_ = ui::text(said, -1.5, true);
   said_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   l->addWidget(said_);
 }

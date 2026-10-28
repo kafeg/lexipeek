@@ -10,8 +10,8 @@
 namespace lexipeek::qt::ui {
 
 // A wrapping label: delta points from the app's font, grey the secondary colour.
-QLabel *text(const QString &s, int delta = 0, bool grey = false, bool bold = false);
-inline QLabel *text(const std::string &s, int delta = 0, bool grey = false, bool bold = false) {
+QLabel *text(const QString &s, double delta = 0, bool grey = false, bool bold = false);
+inline QLabel *text(const std::string &s, double delta = 0, bool grey = false, bool bold = false) {
   return text(QString::fromStdString(s), delta, grey, bold);
 }
 void grey(QWidget *w);

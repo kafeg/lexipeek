@@ -89,7 +89,7 @@ QWidget *PacksPane::line(const PackLine &l) {
   auto *col = new QVBoxLayout;
   col->setSpacing(1);
   col->addWidget(ui::text(l.title));
-  col->addWidget(ui::text(l.detail, -2, true));
+  col->addWidget(ui::text(l.detail, -1.5, true));
   row->addLayout(col, 1);
   if (!l.button.label.empty()) {
     auto *b = new QPushButton(q(l.button.label));
