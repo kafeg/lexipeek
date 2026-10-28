@@ -158,7 +158,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key; `platform_none.cpp` elsewhere).
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
-  platform with fonts: nothing on the screen) — look at every image.
+  platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
+  Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
+  Manager): `scripts/win-e2e.ps1` there (self-test, a selection in Notepad, hotkeys, Esc, typing, a link, a second
+  launch, screenshots); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
+  UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` (PNGs committed). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
