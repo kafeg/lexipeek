@@ -206,12 +206,12 @@ std::vector<std::string> answers(const std::string &data) { return answer_langua
 
 PacksView packs(const std::string &data, const Device &d) {
   Packs p(dir(data), "");
-  return packs_view(p.cached(), p.installed(), d);
+  return packs_view(p.cached(), p.installed(), d, load_settings(dir(data)).method.value_or(Method::fast));
 }
 
 std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to) {
   Packs p(dir(data));
-  return lexipeek::missing_ids(p.cached(), p.installed(), {from, to});
+  return lexipeek::missing_ids(p.cached(), p.installed(), {from, to}, load_settings(dir(data)).method.value_or(Method::fast));
 }
 
 std::vector<std::string> freed_ids(const std::string &data, const std::string &from, const std::string &to) {

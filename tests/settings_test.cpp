@@ -116,7 +116,8 @@ TEST_CASE("settings: Translation — answer, method, the English, Set Up while n
   CHECK(cards[0].selected == 4);
   CHECK(cards[2].selected == 2);  // direct
   CHECK(!cards[0].on);
-  CHECK(cards[1].on);  // no method set: Fast
+  CHECK(!cards[1].on);
+  CHECK(cards[2].on);  // the default: OPUS-MT
   CHECK(cards[1].detail.empty());
   CHECK(cards[2].value == "direct");
   CHECK(cards[2].detail == "Models for your pairs: 2 · 610 MB\nNo model for de→pl: Mozilla translates them.");

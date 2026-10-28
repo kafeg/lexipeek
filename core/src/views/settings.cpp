@@ -472,7 +472,7 @@ std::string packs_summary(const std::vector<PairRow> &rows) {
   return n == 0 ? tr("packs_none") : trn("packs_installed", n);
 }
 
-PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device) {
+PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device, Method method) {
   PacksView v;
   auto rows = pack_rows(m, installed, device);
   v.summary = packs_summary(rows);
@@ -480,15 +480,16 @@ PacksView packs_view(const Manifest &m, const std::map<std::string, std::string>
   if (rows.empty()) v.empty = tr("packs_no_list");
   for (auto &r : rows) {
     PackLine l{r.from + "-" + r.to, r.title, pair_detail(r), {}, {}};
-    auto need = missing_ids(m, installed, {r.from, r.to});
+    auto need = missing_ids(m, installed, {r.from, r.to}, method);
     if (!r.installed) {
       l.button = {tr("download"), need, r.title};
       v.available.push_back(l);
       continue;
     }
     auto update = need;
-    for (auto &p : r.extras)
-      if (p.update) update.push_back(p.id);
+    for (auto *parts : {&r.base, &r.extras})
+      for (auto &p : *parts)
+        if (p.update) update.push_back(p.id);
     if (!update.empty()) l.button = {tr("update_btn"), update, r.title};
     for (auto &p : r.extras) {
       if (p.installed) l.menu.push_back({tr("remove_x", {p.title}), {p.id}, p.title, true});

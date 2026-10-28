@@ -56,10 +56,13 @@ struct PacksView {
   std::vector<PackLine> installed, available;
   std::string empty;  // no list yet
 };
-PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device);
+// method: the one a pair's Download brings along (Settings → Translation).
+PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device,
+                     Method method = Method::direct);
 
 // What a pair needs that is not installed yet (ids).
-std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair);
+std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair,
+                                     Method method = Method::direct);
 // What removing a pair frees: its parts no other installed pair needs (ids).
 std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair);
 // The answer languages the packs offer (codes), by their English names.

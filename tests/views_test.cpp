@@ -368,7 +368,7 @@ TEST_CASE("app: settings by data dir, method ids") {
   auto d = (fs::temp_directory_path() / "lexipeek-app").string();
   wipe(d);
   auto s = app::settings(d);
-  CHECK(app::method_id(s).empty());
+  CHECK(app::method_id(s) == "direct");  // the default: OPUS-MT
   app::set_method(s, "llm");
   CHECK(app::method_id(s) == "llm");
   CHECK(app::save(d, s).empty());

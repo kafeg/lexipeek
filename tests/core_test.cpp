@@ -242,12 +242,16 @@ TEST_CASE("packs view: an installed pair's update and menu, an available one's d
   auto &de = v.installed[0];
   CHECK(de.button.label == "Update");
   CHECK(de.button.ids == std::vector<std::string>{"opus-a"});  // its file changed
+  have["dict-de-ru"] = "old";  // a re-released dictionary is offered too
+  CHECK(packs_view(m, have, Device{8192, {"asimddp"}, "arm64"}).installed[0].button.ids == std::vector<std::string>{"dict-de-ru", "opus-a"});
+  have["dict-de-ru"] = "d1";
   REQUIRE(de.menu.size() == 3);
   CHECK(de.menu[0].remove);  // OPUS-MT is there
   CHECK(!de.menu[1].enabled);  // the AI model needs more memory
   CHECK(de.menu[1].label.starts_with("Hy-MT2 1.8B: "));
   CHECK(de.menu[2].remove);
   CHECK(de.menu[2].divider);
+  CHECK(std::find(de.menu[2].ids.begin(), de.menu[2].ids.end(), "opus-a") != de.menu[2].ids.end());  // removing the pair frees OPUS-MT
   CHECK(v.available[0].button.label == "Download");
   CHECK(v.available[0].button.ids == std::vector<std::string>{"dict-fr-ru", "model-fr-en"});
   CHECK(v.available[0].button.what == "French → Russian");

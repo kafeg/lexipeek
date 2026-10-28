@@ -14,6 +14,9 @@ Service) instead of Android's intents, without what is e-ink only (black and whi
   sections, the base form of an inflected word; a phrase or a passage gets a word-by-word gloss, separable verbs
   included.
 - Offline translation, three methods as in InkPeek: Fast · Mozilla, Direct · OPUS-MT, AI model · Hy-MT2 (Metal).
+  The default is Direct · OPUS-MT (unlike InkPeek's Fast: a desktop has the memory, ~1.2 GB, and its quality is
+  better); a pair's download brings it, removing a pair frees it; where no OPUS-MT model covers a pair or the machine
+  cannot run it, the card uses Fast · Mozilla.
 - Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256.
 
 ## Not yet

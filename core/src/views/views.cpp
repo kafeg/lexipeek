@@ -36,6 +36,8 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
     }
     for (auto kind : {"opus", "llm"})
       if (auto c = covering(m, kind, pr.from, pr.to)) r.extras.push_back(part(*c));
+    // The default method's model (OPUS-MT) comes with a pair's download.
+    if (auto c = covering(m, "opus", pr.from, pr.to); c && !installed.contains(c->id)) r.missing += c->size;
     rows.push_back(r);
   }
   auto rank = [](const std::string &l) { return l == "full" ? 0 : l == "basic" ? 1 : l == "experimental" ? 2 : 3; };
@@ -47,9 +49,10 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
   return rows;
 }
 
-std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair) {
+std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair,
+                                     Method method) {
   std::vector<std::string> ids;
-  for (auto &c : needed(m, {pair}))
+  for (auto &c : needed(m, {pair}, method))
     if (!installed.contains(c.id)) ids.push_back(c.id);
   return ids;
 }
@@ -58,8 +61,11 @@ std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string
   std::vector<LangPair> have;
   for (auto &r : pack_rows(m, installed))
     if (r.installed) have.push_back({r.from, r.to});
+  // Every method's models no other pair needs (an OPUS or Hy-MT2 model too).
   std::vector<std::string> ids;
-  for (auto &c : freed(m, have, pair)) ids.push_back(c.id);
+  for (auto method : {Method::fast, Method::direct, Method::llm})
+    for (auto &c : freed(m, have, pair, method))
+      if (std::find(ids.begin(), ids.end(), c.id) == ids.end()) ids.push_back(c.id);
   return ids;
 }
 

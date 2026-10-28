@@ -33,11 +33,13 @@ CardStep CardNav::relookup(const std::string &lang, const std::string &answer) {
 }
 
 CardStep CardNav::back() {
-  if (!state.section.key.empty()) {
+  // A section or one dictionary's entry shows only on Dictionary: elsewhere ← goes to the card before.
+  bool dict = state.tab == CardTab::dictionary;
+  if (dict && !state.section.key.empty()) {
     state.section = SectionPage();
     return {};
   }
-  if (state.entry_open >= 0) {
+  if (dict && state.entry_open >= 0) {
     state.entry_open = -1;
     return {};
   }
@@ -63,6 +65,7 @@ CardStep CardNav::open_section(int entry, const std::string &key, int page) {
 
 CardStep CardNav::turn(int by) {
   auto &p = state.section;
+  if (state.tab != CardTab::dictionary) return {};
   if (p.key.empty()) {
     int to = state.entry_page + by;
     if (state.full_entry && state.entry_open < 0 && to >= 0 && to < static_cast<int>(card_.entries.size())) state.entry_page = to;

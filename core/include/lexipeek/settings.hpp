@@ -53,7 +53,7 @@ struct AiSettings {
 
 struct Settings {
   std::string answer = "ru";     // the answer language
-  std::optional<Method> method;  // none: the first available
+  std::optional<Method> method = Method::direct;  // OPUS-MT (desktop: memory allows it); none: the first available
   bool mt_off = false;           // no offline translation: dictionaries only, Translate is AI only (InkPeek's "off")
   Hotkey lookup{"D"}, input{"A"};
   bool open_at_login = false;
