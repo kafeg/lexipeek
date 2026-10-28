@@ -17,7 +17,6 @@ namespace lexipeek::qt::platform {
 // fire runs on the main thread. A key code (key "Esc") for the card's own keys while it is open.
 bool register_hotkey(int id, const Hotkey &h, std::function<void()> fire);
 void unregister_hotkey(int id);
-std::string hotkey_label(const Hotkey &h);  // "Alt+D"
 
 struct Selected {
   std::string text;

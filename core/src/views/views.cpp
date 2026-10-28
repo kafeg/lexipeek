@@ -118,10 +118,11 @@ std::string method_title(Method m) { return tr(m == Method::fast ? "mt_fast_t" :
 MemoryView memory_view(const Translator::Memory &m) {
   MemoryView v;
   v.held = !m.key.empty();
-  if (!v.held) return v.line = tr("mem_none"), v;
+  if (!v.held) return v.line = v.text = tr("mem_none"), v;
   v.line = tr("mem_line", {m.title.empty() ? m.key : m.title, size_text(m.bytes)});
   v.detail = m.seconds < 0 ? tr("mem_kept") : m.seconds < 60 ? tr("mem_soon") : tr("mem_until", {tr("keep_min", {digits((m.seconds + 59) / 60)})});
   v.unload = tr("mem_unload");
+  v.text = v.line + " · " + v.detail;
   return v;
 }
 

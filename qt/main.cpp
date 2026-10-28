@@ -60,7 +60,7 @@ int self_test(const QString &path) {
   platform::unregister_hotkey(90);
   check(platform::register_hotkey(90, h, [] {}), "hotkey: registered again after unregistering");
   platform::unregister_hotkey(90);
-  check(platform::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
+  check(app::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
   check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
   if (auto run = platform::cli_runner()) {
     ai::CliCall echo{"findstr", {"ein"}, {{"LEXIPEEK_X", "1"}}, "das ist ein Haus\nnichts\n", ""};

@@ -51,7 +51,7 @@ final class CoreClient {
 
     // The newest looks, one per word: (text, meaning).
     func recents() -> [(String, String)] {
-        engine.recents(Int32(Recents.limit)).map { (String($0.text), String($0.meaning)) }
+        engine.recents(lexipeek.app.recents_shown()).map { (String($0.text), String($0.meaning)) }
     }
 
     // ☆ in the card → whether it is saved now (one line appended to the log: fast enough for the main thread).

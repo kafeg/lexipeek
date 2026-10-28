@@ -12,7 +12,7 @@ struct FirstRunLook {
     }
 
     var step = lexipeek.FirstStep.access
-    var number = 1, steps = 3
+    var stepText = ""
     var title = "", text = "", note = ""
     var button = "", secondary = ""
     var buttonEnabled = true
@@ -31,8 +31,7 @@ struct FirstRunLook {
             c.map { Choice(id: String($0.code), title: String($0.title), detail: String($0.detail)) }
         }
         step = v.step
-        number = Int(v.number)
-        steps = Int(v.steps)
+        stepText = String(v.step_text)
         title = String(v.title)
         text = String(v.text)
         note = String(v.note)
@@ -177,7 +176,7 @@ struct FirstRunView: View {
             HStack(spacing: 12) {
                 Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(L.t("fr_step", "\(look.number)", "\(look.steps)")).font(.caption).foregroundStyle(.secondary)
+                    Text(look.stepText).font(.caption).foregroundStyle(.secondary)
                     Text(look.title).font(.title2.weight(.semibold))
                 }
             }

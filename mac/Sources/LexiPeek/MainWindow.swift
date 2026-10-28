@@ -36,7 +36,7 @@ final class MainModel: ObservableObject {
 
     func refreshMemory() {
         let m = client.memory()
-        memory = m.held ? "\(String(m.line)) · \(String(m.detail))" : String(m.line)
+        memory = String(m.text)
     }
 
     func show(_ p: MainPage) {

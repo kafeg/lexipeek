@@ -66,24 +66,3 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(Placement.resized(CGRect(x: 0, y: 10, width: 300, height: 100), height: 300, screen: screen).minY, 0)
     }
 }
-
-final class RecentsTests: XCTestCase {
-    func testTitle() {
-        XCTAssertEqual(Recents.title("one\ntwo"), "one two")
-        XCTAssertEqual(Recents.title(String(repeating: "x", count: 50)).count, 40)
-    }
-}
-
-final class LookupURLTests: XCTestCase {
-    func testLookup() {
-        XCTAssertEqual(LookupURL(URL(string: "lexipeek://lookup?text=Das%20Haus%20ist%20alt")!), .lookup("Das Haus ist alt"))
-        XCTAssertEqual(LookupURL(URL(string: "lexipeek://lookup?text=Tr%C3%A4umen")!), .lookup("Träumen"))
-        XCTAssertEqual(LookupURL(URL(string: "lexipeek://input")!), .input)
-    }
-
-    func testRejects() {
-        XCTAssertNil(LookupURL(URL(string: "lexipeek://lookup?text=%20")!))
-        XCTAssertNil(LookupURL(URL(string: "lexipeek://other?text=a")!))
-        XCTAssertNil(LookupURL(URL(string: "https://lookup?text=a")!))
-    }
-}

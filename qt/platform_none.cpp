@@ -8,14 +8,6 @@ namespace lexipeek::qt::platform {
 
 bool register_hotkey(int, const Hotkey &, std::function<void()>) { return false; }
 void unregister_hotkey(int) {}
-std::string hotkey_label(const Hotkey &h) {
-  std::string s;
-  if (h.control) s += "Ctrl+";
-  if (h.option) s += "Alt+";
-  if (h.shift) s += "Shift+";
-  if (h.command) s += "Meta+";
-  return s + h.key;
-}
 std::optional<Selected> selection() { return std::nullopt; }
 std::string probe_selection() { return ""; }
 std::string front_app() { return ""; }

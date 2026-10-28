@@ -582,3 +582,27 @@ TEST_CASE("views: no language pack — the card says so and opens Settings → P
   v = card_view(c, s);
   CHECK(v.fix == "Open Settings → Packs");  // a pack from French is not installed
 }
+
+TEST_CASE("app: hotkey labels, lexipeek:// links, menu lines, Notes' file names") {
+  Hotkey h{"D", true, false, true, false};
+  CHECK(app::hotkey_label(h) == "⌃⌥D");
+  set_ui_platform("windows");
+  CHECK(app::hotkey_label(h) == "Ctrl+Alt+D");
+  set_ui_language("de");
+  CHECK(app::hotkey_label(h) == "Strg+Alt+D");
+  set_ui_language("en");
+  set_ui_platform("mac");
+  auto l = app::link("lexipeek://lookup?text=Tr%C3%A4umen%20gehen");
+  CHECK(l.lookup);
+  CHECK(l.text == "Träumen gehen");
+  CHECK(app::link("LEXIPEEK://input").input);
+  CHECK(!app::link("lexipeek://lookup?text=%20").lookup);
+  CHECK(!app::link("lexipeek://other?text=a").lookup);
+  CHECK(!app::link("https://lookup?text=a").lookup);
+  CHECK(app::menu_line("one\ntwo") == "one two");
+  auto cut = app::menu_line(std::string(50, 'x'));
+  CHECK(cut.size() == 39 + std::string("…").size());
+  CHECK(app::menu_line(std::string(40, 'y')).size() == 40);
+  CHECK(app::notes_file(NotesTab::phrases).starts_with("lexipeek-phrases-"));
+  CHECK(app::backup_file().ends_with(".db"));
+}

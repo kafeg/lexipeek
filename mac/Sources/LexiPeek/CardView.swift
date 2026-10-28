@@ -136,7 +136,7 @@ struct CardView: View {
         VStack(alignment: .leading, spacing: 2) {
             ForEach(recents.indices, id: \.self) { i in
                 Button { model.lookup(recents[i].text, source: .input) } label: {
-                    (Text(Recents.title(recents[i].text)) + Text(recents[i].meaning.isEmpty ? "" : " — \(recents[i].meaning)").foregroundColor(.secondary))
+                    (Text(String(lexipeek.app.menu_line(std.string(recents[i].text)))) + Text(recents[i].meaning.isEmpty ? "" : " — \(recents[i].meaning)").foregroundColor(.secondary))
                         .lineLimit(1).truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 3).padding(.leading, 8).padding(.trailing, 6)

@@ -107,11 +107,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 model.unread = "Example"
                 continue
             }
-            switch LookupURL(url) {
-            case .lookup(let t): card.show(text: t, source: .url, bounds: nil, focus: false)
-            case .input: card.show(text: nil, source: .input, bounds: nil, focus: true)
-            case nil: break
-            }
+            let l = lexipeek.app.link(std.string(url.absoluteString))
+            if l.lookup { card.show(text: String(l.text), source: .url, bounds: nil, focus: false) }
+            if l.input { card.show(text: nil, source: .input, bounds: nil, focus: true) }
         }
     }
 
@@ -345,7 +343,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let sub = NSMenu()
         for (t, meaning) in client.recents() {
             let title = meaning.isEmpty ? t : "\(t) — \(meaning)"
-            let i = NSMenuItem(title: Recents.title(title), action: #selector(openRecent), keyEquivalent: "")
+            let i = NSMenuItem(title: String(lexipeek.app.menu_line(std.string(title))), action: #selector(openRecent), keyEquivalent: "")
             i.target = self
             i.representedObject = t
             sub.addItem(i)

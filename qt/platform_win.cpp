@@ -185,15 +185,6 @@ void unregister_hotkey(int id) {
   if (fired().erase(id)) UnregisterHotKey(nullptr, id);
 }
 
-std::string hotkey_label(const Hotkey &h) {
-  std::string s;
-  if (h.control) s += "Ctrl+";
-  if (h.option) s += "Alt+";
-  if (h.shift) s += "Shift+";
-  if (h.command) s += "Win+";
-  return s + h.key;
-}
-
 std::string probe_selection() {
   std::string out;
   auto hr = [&](const char *what, HRESULT h) { out += std::string(what) + " hr=0x" + QString::number(static_cast<uint>(h), 16).toStdString() + "\n"; };

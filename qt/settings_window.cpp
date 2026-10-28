@@ -41,7 +41,7 @@ SettingsState SettingsShell::state() const {
   s.login = platform::login();
   s.version = version();
   s.answers = app::answers(dir);
-  s.input = platform::hotkey_label(app::settings(dir).input);
+  s.input = app::hotkey_label(app::settings(dir).input);
   s.checking = checking;
   s.update = update.text, s.update_version = update.version, s.update_url = update.url;
   auto provider = app::ai_provider(dir);

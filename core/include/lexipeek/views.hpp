@@ -296,7 +296,8 @@ struct Choice {
 
 struct FirstRunView {
   FirstStep step = FirstStep::access;
-  int number = 1, steps = 3;  // "Step 1 of 3"
+  int number = 1, steps = 3;  // which step of how many
+  std::string step_text;      // "Step 1 of 3"
   std::string title, text, note;
   std::string button, secondary;  // the main and the other button ("" = none)
   bool button_enabled = true;
@@ -433,6 +434,7 @@ void settings_text(Settings &s, const std::string &key, const std::string &value
 struct MemoryView {
   bool held = false;
   std::string line, detail, unload;  // unload: the button's label
+  std::string text;                  // line and detail in one line (the LexiPeek window)
 };
 MemoryView memory_view(const Translator::Memory &m);
 

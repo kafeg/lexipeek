@@ -83,12 +83,6 @@ final class NotesModel: ObservableObject {
     // What the last Export / Import / TSV said.
     @Published var said = ""
 
-    private static var today: String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: Date())
-    }
-
     // A save panel in Downloads with the file's name; nil when cancelled.
     private func saveTo(_ name: String) -> String? {
         let p = NSSavePanel()
@@ -98,13 +92,12 @@ final class NotesModel: ObservableObject {
     }
 
     func exportTSV() {
-        let kind = ["words", "phrases", "history"][NotesModel.tabs.firstIndex(of: tab) ?? 0]
-        guard let f = saveTo("lexipeek-\(kind)-\(Self.today).tsv") else { return }
+        guard let f = saveTo(String(lexipeek.app.notes_file(tab))) else { return }
         client.exportTSV(tab, f) { [weak self] in self?.said = $0 }
     }
 
     func backup() {
-        guard let f = saveTo("lexipeek-backup-\(Self.today).db") else { return }
+        guard let f = saveTo(String(lexipeek.app.backup_file())) else { return }
         client.backup(f) { [weak self] in self?.said = $0 }
     }
 

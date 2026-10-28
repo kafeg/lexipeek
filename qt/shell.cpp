@@ -6,8 +6,6 @@
 #include <QLocale>
 #include <QScreen>
 #include <QStyleHints>
-#include <QUrl>
-#include <QUrlQuery>
 #include <algorithm>
 
 namespace lexipeek::qt {
@@ -83,7 +81,7 @@ void Shell::register_hotkeys() {
   bool a = platform::register_hotkey(translate_key, s_.lookup, [this] { translate_selection(); });
   bool b = platform::register_hotkey(input_key, s_.input, [this] { type_text(); });
   if (settings_) settings_->hotkey_errors(a ? "" : t("hk_taken").toStdString(), b ? "" : t("hk_taken").toStdString());
-  if (main_) main_->lookup_key = platform::hotkey_label(s_.lookup), main_->input_key = platform::hotkey_label(s_.input);
+  if (main_) main_->lookup_key = app::hotkey_label(s_.lookup), main_->input_key = app::hotkey_label(s_.input);
 }
 
 // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -119,7 +117,7 @@ void Shell::open_main(int page) {
   if (!main_) {
     main_ = new MainWindow(c_);
     main_->card.key = popup_.model.key;
-    main_->lookup_key = platform::hotkey_label(s_.lookup), main_->input_key = platform::hotkey_label(s_.input);
+    main_->lookup_key = app::hotkey_label(s_.lookup), main_->input_key = app::hotkey_label(s_.input);
     connect(main_, &MainWindow::openSettings, this, &Shell::open_settings);
     connect(main_, &MainWindow::openAbout, this, &Shell::open_about);
     connect(main_, &MainWindow::openFirstRun, this, &Shell::open_first_run);
@@ -147,8 +145,8 @@ void Shell::open_first_run() {
     first_ = new FirstRunWindow(c_);
     connect(first_, &FirstRunWindow::finished, this, &Shell::apply);
   }
-  first_->state.hotkey = platform::hotkey_label(s_.lookup);
-  first_->state.input = platform::hotkey_label(s_.input);
+  first_->state.hotkey = app::hotkey_label(s_.lookup);
+  first_->state.input = app::hotkey_label(s_.input);
   first_->refresh();
   present(first_);
   first_->start();
@@ -163,12 +161,10 @@ void Shell::open_about() {
 // lexipeek://lookup?text=… (the card with it) and lexipeek://input (the card to type in); a launch without one opens the window.
 void Shell::handle(const QStringList &args) {
   for (auto &a : args) {
-    QUrl url(a);
-    if (url.scheme().toLower() != "lexipeek") continue;
-    auto host = url.host().toLower();
-    if (host == "input") return popup_.show_card(std::nullopt, Source::input, {}, true);
-    auto text = QUrlQuery(url).queryItemValue("text", QUrl::FullyDecoded).trimmed();
-    if (host == "lookup" && !text.isEmpty()) return popup_.show_card(text.toStdString(), Source::url, {}, false);
+    if (!a.startsWith("lexipeek:", Qt::CaseInsensitive)) continue;
+    auto l = app::link(a.toStdString());
+    if (l.input) return popup_.show_card(std::nullopt, Source::input, {}, true);
+    if (l.lookup) return popup_.show_card(l.text, Source::url, {}, false);
     return;
   }
   open_main();
@@ -184,10 +180,10 @@ void Shell::fill_menu() {
   }
   menu_.addAction(t("menu_open"), this, [this] { open_main(); });
   auto *recents = menu_.addMenu(t("recents"));
-  for (auto &r : c_.engine.recents(10)) {
+  for (auto &r : c_.engine.recents(app::recents_shown())) {
     auto title = r.meaning.empty() ? r.text : r.text + " — " + r.meaning;
     auto text = r.text;
-    recents->addAction(QFontMetrics(menu_.font()).elidedText(q(title), Qt::ElideRight, 360),
+    recents->addAction(q(app::menu_line(title)),
                        this, [this, text] { popup_.show_card(text, Source::input, {}, false); });
   }
   if (recents->isEmpty()) recents->addAction(t("nothing_yet"))->setEnabled(false);

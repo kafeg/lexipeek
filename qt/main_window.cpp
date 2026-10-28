@@ -28,7 +28,6 @@ QString downloads(const QString &name) {
   return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/" + name;
 }
 
-QString today() { return QDate::currentDate().toString("yyyy-MM-dd"); }
 
 }  // namespace
 
@@ -169,7 +168,7 @@ void MainWindow::refresh() {
   side_->item(lookup)->setText(t("win_lookup"));
   side_->item(help)->setText(t("help_t"));
   auto m = c_.engine.memory();
-  memory_->setText(q(m.held ? m.line + " · " + m.detail : m.line));
+  memory_->setText(q(m.text));
   ui::clear(banner_);
   if (!app::has_pair(c_.data())) banner_->addWidget(fluent::banner(t("nopack_t"), t("nopack_d"), t("setup_btn"), [this] { emit openFirstRun(); }));
   if (pages_->currentIndex() == 1) draw_notes();
@@ -230,8 +229,7 @@ void MainWindow::draw_notes() {
     auto *tsv = new QPushButton(t("tsv_btn"));
     tsv->setToolTip(t("tsv_d"));
     connect(tsv, &QPushButton::clicked, this, [this] {
-      const char *kind[] = {"words", "phrases", "history"};
-      auto f = QFileDialog::getSaveFileName(this, {}, downloads(QString("lexipeek-%1-%2.tsv").arg(kind[static_cast<int>(tab_)], today())));
+      auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::notes_file(tab_))));
       if (!f.isEmpty()) said_->setText(q(c_.engine.export_tsv(tab_, f.toStdString())));
     });
     bar->addWidget(tsv);
@@ -269,7 +267,7 @@ void MainWindow::draw_notes() {
   backup->addWidget(ui::text(t("backup_d"), -1.5, true), 1);
   auto *out = new QPushButton(t("export_btn"));
   connect(out, &QPushButton::clicked, this, [this] {
-    auto f = QFileDialog::getSaveFileName(this, {}, downloads("lexipeek-backup-" + today() + ".db"));
+    auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::backup_file())));
     if (!f.isEmpty()) said_->setText(q(c_.engine.backup(f.toStdString())));
   });
   auto *in = new QPushButton(t("import_btn"));

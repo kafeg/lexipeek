@@ -105,6 +105,21 @@ std::string refresh(const std::string &data);
 
 // The first-run window (views.hpp): by the data dir's packs list and installed parts.
 FirstRunView first_run(const std::string &data, const FirstRunState &s);
+
+// A hotkey as this OS writes it: "⌥D" on macOS, "Ctrl+Alt+D" (the keys' names in the app's language) on Windows.
+std::string hotkey_label(const Hotkey &h);
+// A lexipeek:// link: lookup?text=… (lookup, its text) or input; neither for anything else.
+struct Link {
+  bool lookup = false, input = false;
+  std::string text;
+};
+Link link(const std::string &url);
+// The menu's recent look-ups: how many, and an entry's one line of at most 40 characters.
+inline int recents_shown() { return 5; }  // a function: Swift does not import a constexpr
+std::string menu_line(const std::string &text);
+// Notes' export and backup files, today's: "lexipeek-words-2026-10-28.tsv", "lexipeek-backup-2026-10-28.db".
+std::string notes_file(NotesTab tab);
+std::string backup_file();
 // It opens at launch (no pair yet, or Accessibility not granted and the window never finished).
 bool first_run_at_launch(const std::string &data, bool trusted);
 bool has_pair(const std::string &data);

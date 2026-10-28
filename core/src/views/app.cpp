@@ -1,5 +1,7 @@
 #include "lexipeek/app.hpp"
 #include <algorithm>
+#include <cctype>
+#include <chrono>
 #include <fstream>
 #include <cstdlib>
 #include <filesystem>
@@ -213,7 +215,9 @@ std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().e
 
 FirstRunView first_run(const std::string &data, const FirstRunState &s) {
   Packs p(dir(data));
-  return first_run_view(p.cached(), p.installed(), s);
+  auto v = first_run_view(p.cached(), p.installed(), s);
+  v.step_text = tr("fr_step", {digits(v.number), digits(v.steps)});
+  return v;
 }
 
 bool has_pair(const std::string &data) {
@@ -331,5 +335,68 @@ Imported download_dict(const std::string &data, const CatalogList &list, int ite
   return lexipeek::download_dict(
       dir(data), it, [&](std::int64_t done, std::int64_t total) { *dl.done = done, *dl.total = total; }, [&] { return dl.stop->load(); });
 }
+
+std::string hotkey_label(const Hotkey &h) {
+  if (ui_platform() != "windows")
+    return std::string(h.control ? "⌃" : "") + (h.option ? "⌥" : "") + (h.shift ? "⇧" : "") + (h.command ? "⌘" : "") + h.key;
+  std::string s;
+  for (auto [on, key] : {std::pair{h.control, "key_ctrl"}, {h.option, "key_alt"}, {h.shift, "key_shift"}, {h.command, "key_win"}})
+    if (on) s += tr(key) + "+";
+  return s + h.key;
+}
+
+Link link(const std::string &url) {
+  Link l;
+  auto lower = text::lower(url);
+  if (!lower.starts_with("lexipeek://")) return l;
+  auto rest = url.substr(11);
+  auto q = rest.find('?');
+  auto host = text::lower(rest.substr(0, std::min(q, rest.find('/'))));
+  if (host == "input") return l.input = true, l;
+  if (host != "lookup" || q == std::string::npos) return l;
+  // The text item, percent-decoded ("+" stays a plus, as the system's URL parser has it).
+  auto query = rest.substr(q + 1);
+  for (size_t at = 0; at <= query.size();) {
+    auto end = std::min(query.find('&', at), query.size());
+    auto item = query.substr(at, end - at);
+    if (item.starts_with("text=")) {
+      std::string t;
+      for (size_t i = 5; i < item.size(); ++i) {
+        if (item[i] == '%' && i + 2 < item.size() && std::isxdigit(static_cast<unsigned char>(item[i + 1])) &&
+            std::isxdigit(static_cast<unsigned char>(item[i + 2])))
+          t += static_cast<char>(std::stoi(item.substr(i + 1, 2), nullptr, 16)), i += 2;
+        else t += item[i];
+      }
+      l.text = text::trim(t);
+      l.lookup = !l.text.empty();
+      return l;
+    }
+    at = end + 1;
+  }
+  return l;
+}
+
+std::string menu_line(const std::string &text) {
+  auto line = text;
+  std::replace_if(line.begin(), line.end(), [](char c) { return c == '\n' || c == '\r'; }, ' ');
+  // At most 40 characters (code points), the 40th an ellipsis.
+  size_t n = 0, at = 0;
+  for (size_t i = 0; i < line.size(); ++i)
+    if ((static_cast<unsigned char>(line[i]) & 0xC0) != 0x80 && ++n == 40) at = i;
+  if (n <= 40) return line;
+  return text::trim(line.substr(0, at)) + "…";
+}
+
+namespace {
+std::string today() {
+  return text::local_day(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+}
+}  // namespace
+
+std::string notes_file(NotesTab tab) {
+  const char *kinds[] = {"words", "phrases", "history"};
+  return std::string("lexipeek-") + kinds[static_cast<int>(tab)] + "-" + today() + ".tsv";
+}
+std::string backup_file() { return "lexipeek-backup-" + today() + ".db"; }
 
 }  // namespace lexipeek::app

@@ -37,7 +37,7 @@ void FirstRunWindow::refresh() {
   head->addWidget(icon);
   auto *titles = new QVBoxLayout;
   titles->setSpacing(2);
-  titles->addWidget(ui::text(t("fr_step", std::to_string(look_.number), std::to_string(look_.steps)).toStdString(), -1.5, true));
+  titles->addWidget(ui::text(look_.step_text, -1.5, true));
   titles->addWidget(ui::text(look_.title, 4, false, true));
   head->addLayout(titles, 1);
   box_->addLayout(head);

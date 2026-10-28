@@ -148,7 +148,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
-  `LexiPeekKit` — pure Swift (shortcuts, placement, recents, URLs), tested without the core. `CoreClient` — two
+  `LexiPeekKit` — pure Swift (shortcuts, placement), tested without the core; hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — two
   serial queues (look-ups, one translation worker) and a concurrent AI queue; each `CardModel` asks through its `CardLane` (a newer request turns its older ones into no-ops).
 - `qt/` (M6, Windows; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, on
   by default on Windows; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
