@@ -40,6 +40,13 @@ struct HotkeyFilter : QAbstractNativeEventFilter {
   }
 };
 
+// The error of the last failed call here, kept before anything else can change GetLastError.
+DWORD failed_with = 0;
+bool noted(bool ok) {
+  if (!ok) failed_with = GetLastError();
+  return ok;
+}
+
 std::wstring wide(const std::string &s) { return QString::fromStdString(s).toStdWString(); }
 std::string utf8(const wchar_t *s, int n = -1) {
   return (n < 0 ? QString::fromWCharArray(s) : QString::fromWCharArray(s, n)).toStdString();
@@ -132,7 +139,7 @@ bool register_hotkey(int id, const Hotkey &h, std::function<void()> fire) {
   UINT mods = MOD_NOREPEAT | (h.option ? MOD_ALT : 0) | (h.control ? MOD_CONTROL : 0) | (h.shift ? MOD_SHIFT : 0) |
               (h.command ? MOD_WIN : 0);
   auto vk = key_code(h.key);
-  if (!vk || !RegisterHotKey(nullptr, id, mods, vk)) return false;
+  if (!vk || !noted(RegisterHotKey(nullptr, id, mods, vk))) return false;
   fired()[id] = std::move(fire);
   return true;
 }
@@ -244,7 +251,7 @@ std::string secret(const std::string &provider) {
 
 bool set_secret(const std::string &provider, const std::string &value) {
   auto t = target(provider);
-  if (value.empty()) return CredDeleteW(t.c_str(), CRED_TYPE_GENERIC, 0) || GetLastError() == ERROR_NOT_FOUND;
+  if (value.empty()) return noted(CredDeleteW(t.c_str(), CRED_TYPE_GENERIC, 0) || GetLastError() == ERROR_NOT_FOUND);
   CREDENTIALW c{};
   c.Type = CRED_TYPE_GENERIC;
   c.TargetName = t.data();
@@ -253,7 +260,7 @@ bool set_secret(const std::string &provider, const std::string &value) {
   c.Persist = CRED_PERSIST_LOCAL_MACHINE;
   std::wstring user = L"LexiPeek";
   c.UserName = user.data();
-  return CredWriteW(&c, 0);
+  return noted(CredWriteW(&c, 0));
 }
 
 namespace {
@@ -417,7 +424,7 @@ ai::CliRan run_cli(const ai::CliCall &c) {
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return run_cli; }
 
 std::string last_error() {
-  auto code = GetLastError();
+  auto code = failed_with;
   if (!code) return "";
   wchar_t buf[512];
   auto n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, buf, 512, nullptr);
