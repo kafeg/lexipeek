@@ -14,7 +14,6 @@ public static class Win {
 }
 '@
 New-Item -ItemType Directory -Force $Out | Out-Null
-$A = [System.Windows.Automation.AutomationElement]
 function Shot($n) {
   $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
   $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
@@ -28,18 +27,18 @@ function Click($x, $y, $times) {
   for ($i = 0; $i -lt $times; $i++) { [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0); Start-Sleep -Milliseconds 80 }
 }
 function Texts($proc) {
-  $c = New-Object System.Windows.Automation.PropertyCondition $A::ProcessIdProperty, $proc.Id
+  $c = New-Object System.Windows.Automation.PropertyCondition [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id
   $out = @()
-  foreach ($w in $A::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $c)) {
+  foreach ($w in [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $c)) {
     foreach ($e in $w.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) { $out += $e.Current.Name }
   }
   $out -join ' | '
 }
 # The element showing the text (a browser's paragraph), searched in every top-level window.
 function FindText {
-  $c = New-Object System.Windows.Automation.PropertyCondition $A::NameProperty, 'Haus steht am Ende der Strasse.'
+  $c = New-Object System.Windows.Automation.PropertyCondition [System.Windows.Automation.AutomationElement]::NameProperty, 'Haus steht am Ende der Strasse.'
   for ($i = 0; $i -lt 20; $i++) {
-    $e = $A::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $c)
+    $e = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $c)
     if ($e) { return $e }
     Start-Sleep -Milliseconds 500
   }
@@ -54,7 +53,7 @@ $url = 'file:///' + ($page -replace '\\', '/')
 $apps = @(
   @{ name = 'notepad'; file = 'notepad.exe'; args = @($text); browser = $false; proc = 'notepad' },
   @{ name = 'wordpad'; file = 'C:\Program Files\Windows NT\Accessories\wordpad.exe'; args = @($text); browser = $false; proc = 'wordpad' },
-  @{ name = 'edge'; file = 'msedge.exe'; args = @('--no-first-run', "--user-data-dir=$Out\profiles\edge", $url); browser = $true; proc = 'msedge' },
+  @{ name = 'edge'; file = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'; args = @('--no-first-run', "--user-data-dir=$Out\profiles\edge", $url); browser = $true; proc = 'msedge' },
   @{ name = 'chrome'; file = 'C:\Program Files\Google\Chrome\Application\chrome.exe'; args = @('--no-first-run', '--no-default-browser-check', "--user-data-dir=$Out\profiles\chrome", $url); browser = $true; proc = 'chrome' },
   @{ name = 'firefox'; file = 'C:\Program Files\Mozilla Firefox\firefox.exe'; args = @('-no-remote', '-profile', "$Out\profiles\firefox", $url); browser = $true; proc = 'firefox' }
 )
