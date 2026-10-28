@@ -103,13 +103,15 @@ final class CardLane {
     private var cards: [Int: lexipeek.Card] = [:]
     private var translating = 0  // the request whose translation is running, 0 = none
 
+    private let tag = lexipeek.app.Engine.new_tag()  // this card's translations, for cancel
+
     init(_ client: CoreClient) { self.client = client }
 
     private func current(_ id: Int) -> Bool { lock.withLock { latest == id } }
 
     // Its own running translation gives way (another card's goes on).
     private func stop() {
-        if lock.withLock({ translating != 0 }) { client.engine.cancel() }
+        if lock.withLock({ translating != 0 }) { client.engine.cancel(tag) }
     }
 
     // Returns the request's id; done runs on the main queue, only if no newer request came.
@@ -140,7 +142,7 @@ final class CardLane {
         client.worker.async { [engine = client.engine] in
             guard self.current(id), let card = self.lock.withLock({ self.cards[id] }) else { return }
             self.lock.withLock { self.translating = id }
-            let t = engine.translate(card, method)
+            let t = engine.translate(card, method, self.tag)
             self.lock.withLock { if self.translating == id { self.translating = 0 } }
             DispatchQueue.main.async { if self.current(id) { done(t) } }
         }

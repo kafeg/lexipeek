@@ -70,6 +70,7 @@ class CardLane {
   };
   void stop();
   CoreClient &c_;
+  int tag_ = app::Engine::new_tag();  // this card's translations, for cancel
   std::shared_ptr<State> s_ = std::make_shared<State>();
 };
 

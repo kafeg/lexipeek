@@ -239,7 +239,7 @@ Card Core::lookup(const Request &r) {
   return c;
 }
 
-Translation Core::translate(const Card &card, std::optional<Method> m) {
+Translation Core::translate(const Card &card, std::optional<Method> m, int tag) {
   auto method = m ? m : card.method;
   if (card.lang == card.answer && !card.lang.empty()) return {card.text, "", "", ""};
   if (!method || card.lang.empty()) return {"", "", "", tr("mt_none")};
@@ -271,14 +271,14 @@ Translation Core::translate(const Card &card, std::optional<Method> m) {
     t.kept = true;
   } else {
     auto start = std::chrono::steady_clock::now();
-    t = impl_->tr->translate(card.lang, card.answer, card.text, *method);
+    t = impl_->tr->translate(card.lang, card.answer, card.text, *method, tag);
     t.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
     if (t.ok() && keep) impl_->store->put_answer(card.text, card.answer, section, ver, answer_model(*method), t.text);
     if (t.ok() && pivot && !t.english.empty()) keep_english(t.english);
   }
   // Kept before the setting was on: only the English step now.
   if (pivot && show && en.empty() && t.ok())
-    if (auto e = impl_->tr->translate(card.lang, "en", card.text, Method::fast); e.ok()) keep_english(e.text);
+    if (auto e = impl_->tr->translate(card.lang, "en", card.text, Method::fast, tag); e.ok()) keep_english(e.text);
   t.english = pivot && show ? en : "";
   return t;
 }
@@ -378,7 +378,7 @@ SectionPage Core::section(const Card &card, int entry, const std::string &key, i
   return p;
 }
 
-void Core::cancel() { impl_->tr->cancel(); }
+void Core::cancel(int tag) { impl_->tr->cancel(tag); }
 
 void Core::release() { impl_->tr->release(); }
 

@@ -46,7 +46,8 @@ struct Engine {
   Card lookup(const std::string &text, Source source) const;
   // Again with the text's language or the answer language picked in the card ("" = as usual).
   Card lookup_as(const std::string &text, Source source, const std::string &lang, const std::string &answer) const;
-  Translation translate(const Card &card, Method m) const;
+  // tag: the card's (new_tag()): cancel(tag) stops its translation and no other card's.
+  Translation translate(const Card &card, Method m, int tag = 0) const;
   SectionPage section(const Card &card, int entry, const std::string &key, int page) const;
   std::vector<Seen> recents(int n) const;
   // ☆ in the card → whether it is saved now.
@@ -69,7 +70,8 @@ struct Engine {
   void release() const;
   // The held model for the menu bar's menu.
   MemoryView memory() const;
-  void cancel() const;
+  void cancel(int tag = 0) const;
+  static int new_tag();
 };
 
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).

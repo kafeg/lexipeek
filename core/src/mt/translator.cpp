@@ -69,6 +69,7 @@ struct Translator::Impl {
   std::mutex lid_mu;
   std::unique_ptr<LangIdModel> lid;
   std::atomic<bool> stop{false};
+  std::atomic<int> tag{0};  // the running translation's
   std::atomic<long long> idle_ms{-1};  // set_idle's; -1: the options'
   std::mutex about_mu;
   std::map<std::string, std::pair<std::string, std::int64_t>> about;  // key → title, bytes of what was loaded
@@ -185,12 +186,13 @@ std::string Translator::load(const std::string &from, const std::string &to, Met
   return "";
 }
 
-Translation Translator::translate(const std::string &from, const std::string &to, const std::string &text, Method m) {
+Translation Translator::translate(const std::string &from, const std::string &to, const std::string &text, Method m, int tag) {
   Translation r;
   if (from == to) {
     r.text = text;
     return r;
   }
+  impl_->tag = tag;
   impl_->stop = false;
   auto p = impl_->plan(from, to, m);
   r.by = p.by;
@@ -256,7 +258,9 @@ std::vector<Language> Translator::langid(const std::string &text, int k) {
   }
 }
 
-void Translator::cancel() { impl_->stop = true; }
+void Translator::cancel(int tag) {
+  if (tag == 0 || impl_->tag == tag) impl_->stop = true;
+}
 
 void Translator::release() { impl_->host.release(); }
 

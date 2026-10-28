@@ -42,7 +42,7 @@ void CardLane::stop() {
     std::lock_guard g(s_->mu);
     running = s_->translating != 0;
   }
-  if (running) c_.engine.cancel();
+  if (running) c_.engine.cancel(tag_);
 }
 
 int CardLane::lookup(const std::string &text, Source source, const std::string &lang, const std::string &answer,
@@ -82,9 +82,10 @@ void CardLane::translate(int id, Method m, std::function<void(Translation)> done
   stop();
   auto e = c_.engine;
   auto s = s_;
+  auto tag = tag_;
   c_.run<Translation>(
       c_.worker,
-      [s, e, id, m] {
+      [s, e, id, m, tag] {
         Card card;
         {
           std::lock_guard g(s->mu);
@@ -92,7 +93,7 @@ void CardLane::translate(int id, Method m, std::function<void(Translation)> done
           card = s->cards[id];
           s->translating = id;
         }
-        auto t = e.translate(card, m);
+        auto t = e.translate(card, m, tag);
         std::lock_guard g(s->mu);
         if (s->translating == id) s->translating = 0;
         return t;

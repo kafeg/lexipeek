@@ -44,15 +44,16 @@ class Translator {
   Translator(const Translator &) = delete;
   Translator &operator=(const Translator &) = delete;
 
-  // Blocking.
-  Translation translate(const std::string &from, const std::string &to, const std::string &text, Method m);
+  // Blocking; tag: whose it is (a card's), for cancel.
+  Translation translate(const std::string &from, const std::string &to, const std::string &text, Method m, int tag = 0);
   // Why the method cannot translate from → to here ("" = it can): a missing model, a missing pack.
   std::string why_not(const std::string &from, const std::string &to, Method m);
   // Loads the method's model for from → to without translating; "" or the error.
   std::string load(const std::string &from, const std::string &to, Method m);
   std::vector<Language> langid(const std::string &text, int k = 3);
-  // Stops a running AI translation (it returns the error "Cancelled"); the next translate starts afresh.
-  void cancel();
+  // Stops a running AI translation (it returns the error "Cancelled") when it is tag's (0: anyone's); the next
+  // translate starts afresh.
+  void cancel(int tag = 0);
   // Frees the held model (idle, memory pressure).
   void release();
   // What is held: "" none, else the key ("fast:de-ru", "direct:<id>", "llm:<id>").

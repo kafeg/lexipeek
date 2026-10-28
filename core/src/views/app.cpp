@@ -1,5 +1,6 @@
 #include "lexipeek/app.hpp"
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <chrono>
 #include <fstream>
@@ -74,7 +75,11 @@ Card Engine::lookup(const std::string &text, Source source) const { return core-
 Card Engine::lookup_as(const std::string &text, Source source, const std::string &lang, const std::string &answer) const {
   return core->lookup({text, source, answer, lang});
 }
-Translation Engine::translate(const Card &card, Method m) const { return core->translate(card, m); }
+Translation Engine::translate(const Card &card, Method m, int tag) const { return core->translate(card, m, tag); }
+int Engine::new_tag() {
+  static std::atomic<int> n{0};
+  return ++n;
+}
 SectionPage Engine::section(const Card &card, int entry, const std::string &key, int page) const { return core->section(card, entry, key, page); }
 std::vector<Seen> Engine::recents(int n) const { return core->recents(n); }
 bool Engine::toggle_saved(const Card &card, const std::string &translation) const { return core->toggle_saved(card, translation); }
@@ -118,7 +123,7 @@ void Engine::prepare() const {
 void Engine::reload() const { core->reload(); }
 void Engine::release() const { core->release(); }
 MemoryView Engine::memory() const { return memory_view(core->memory()); }
-void Engine::cancel() const { core->cancel(); }
+void Engine::cancel(int tag) const { core->cancel(tag); }
 
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {
   auto st = state;

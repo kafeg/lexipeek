@@ -159,12 +159,12 @@ class Core {
   SectionPage section(const Card &card, int entry, const std::string &key, int page);
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   // Fast through English: the English is kept as the text's translation into English (InkPeek's), shown when asked.
-  Translation translate(const Card &card, std::optional<Method> m = std::nullopt);
+  Translation translate(const Card &card, std::optional<Method> m = std::nullopt, int tag = 0);
   // Blocking, only on the person's action: the card's text's AI answer, the saved one when there is (offline); key: the
   // provider's API key, from the shell (never kept here).
   ai::Answer ask(const Card &card, ai::Ask a, const std::string &key);
-  // A newer request: stops a running AI translation.
-  void cancel();
+  // A newer request: stops a running AI translation (tag's only; 0: any).
+  void cancel(int tag = 0);
   // Memory pressure, idle: frees the held model.
   void release();
   Translator::Memory memory() const;
