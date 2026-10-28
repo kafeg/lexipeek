@@ -2,6 +2,7 @@
 #include <QCursor>
 #include <QGuiApplication>
 #include <QKeyEvent>
+#include <QLineEdit>
 #include <QScreen>
 #include <QVBoxLayout>
 
@@ -59,7 +60,14 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   if (text) model.lookup(*text);
   show();
   platform::round(this);
-  if (focus) platform::activate(this);
+  if (focus) {
+    platform::activate(this);
+    // Once more after the card is drawn (its text field is made then): the focus in the field.
+    QTimer::singleShot(50, this, [this] {
+      platform::activate(this);
+      if (auto *e = findChild<QLineEdit *>()) e->setFocus(Qt::ActiveWindowFocusReason);
+    });
+  }
   platform::register_hotkey(escape_key, Hotkey{"Esc", false, false, false, false}, [this] { close_card(); });
   platform::register_hotkey(pin_key, Hotkey{"P", false, false, true, false}, [this] { model.toggle_pin(); });
   was_down_ = platform::mouse_down();
