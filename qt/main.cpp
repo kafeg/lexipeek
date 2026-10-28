@@ -195,9 +195,9 @@ int self_test(const QString &path) {
   check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
   if (auto run = platform::cli_runner()) {
     ai::CliCall echo{"findstr", {"ein"}, {{"LEXIPEEK_X", "1"}}, "das ist ein Haus\nnichts\n", ""};
-    auto r = run(echo);
-    check(r.code == 0 && r.out.find("das ist ein Haus") != std::string::npos && r.out.find("nichts") == std::string::npos,
-          "cli: a program with the prompt on stdin (" + QString::number(r.code) + ")");
+    auto ran = run(echo);
+    check(ran.code == 0 && ran.out.find("das ist ein Haus") != std::string::npos && ran.out.find("nichts") == std::string::npos,
+          "cli: a program with the prompt on stdin (" + QString::number(ran.code) + ")");
     check(run({"no-such-program-lexipeek", {}, {}, "", ""}).code == 127, "cli: a missing program is 127");
   }
   platform::register_scheme();
