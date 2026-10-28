@@ -170,11 +170,15 @@ int self_test(const QString &path) {
     failed += !ok;
   };
   const std::string provider = "self-test";
-  check(platform::set_secret(provider, "k-123 ключ"), "secret: written " + q(platform::last_error()));
+  auto said = [](bool ok) { return ok ? QString() : " " + q(platform::last_error()); };
+  bool w = platform::set_secret(provider, "k-123 ключ");
+  check(w, "secret: written" + said(w));
   check(platform::secret(provider) == "k-123 ключ", "secret: read back as written");
-  check(platform::set_secret(provider, ""), "secret: removed");
+  bool r = platform::set_secret(provider, "");
+  check(r, "secret: removed" + said(r));
   check(platform::secret(provider).empty(), "secret: gone");
-  check(platform::set_secret(provider, ""), "secret: removing a missing one is fine");
+  bool again = platform::set_secret(provider, "");
+  check(again, "secret: removing a missing one is fine" + said(again));
   bool was = platform::login();
   platform::set_login(!was);
   check(platform::login() == !was, "login: switched");
@@ -183,7 +187,7 @@ int self_test(const QString &path) {
   check(platform::ram_mb() > 512, "ram: " + QString::number(platform::ram_mb()) + " MB");
   Hotkey h{"Q", true, false, true, true};
   bool reg = platform::register_hotkey(90, h, [] {});
-  check(reg, "hotkey: Ctrl+Alt+Shift+Q registered " + q(reg ? "" : platform::last_error()));
+  check(reg, "hotkey: Ctrl+Alt+Shift+Q registered" + said(reg));
   platform::unregister_hotkey(90);
   check(platform::register_hotkey(90, h, [] {}), "hotkey: registered again after unregistering");
   platform::unregister_hotkey(90);
