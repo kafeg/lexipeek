@@ -58,13 +58,48 @@ UINT key_code(const std::string &k) {
   return 0;
 }
 
+// A classic Edit or RichEdit control with the focus (Notepad and many Win32 apps: UI Automation gives no text there):
+// its selection by EM_GETSEL and its text by WM_GETTEXT, never the clipboard.
+std::optional<Selected> read_edit() {
+  GUITHREADINFO gui{};
+  gui.cbSize = sizeof gui;
+  if (!GetGUIThreadInfo(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), &gui) || !gui.hwndFocus) return std::nullopt;
+  wchar_t cls[64];
+  GetClassNameW(gui.hwndFocus, cls, 64);
+  auto name = QString::fromWCharArray(cls).toLower();
+  if (name != "edit" && !name.startsWith("richedit")) return std::nullopt;
+  DWORD_PTR start = 0, end = 0, length = 0;
+  SendMessageTimeoutW(gui.hwndFocus, EM_GETSEL, reinterpret_cast<WPARAM>(&start), reinterpret_cast<LPARAM>(&end), SMTO_ABORTIFHUNG, 500, nullptr);
+  if (end <= start) return std::nullopt;
+  SendMessageTimeoutW(gui.hwndFocus, WM_GETTEXTLENGTH, 0, 0, SMTO_ABORTIFHUNG, 500, &length);
+  if (length == 0 || length > 4'000'000) return std::nullopt;
+  std::wstring text(length + 1, L'\0');
+  DWORD_PTR got = 0;
+  SendMessageTimeoutW(gui.hwndFocus, WM_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()), SMTO_ABORTIFHUNG, 500, &got);
+  text.resize(got);
+  if (end > text.size()) return std::nullopt;
+  Selected s;
+  s.text = utf8(text.c_str() + start, static_cast<int>(end - start));
+  if (s.text.empty()) return std::nullopt;
+  // The caret's line as the anchor (the selection's own rectangle is not asked for).
+  RECT caret = gui.rcCaret;
+  POINT a{caret.left, caret.top}, b{caret.right, caret.bottom};
+  ClientToScreen(gui.hwndCaret ? gui.hwndCaret : gui.hwndFocus, &a);
+  ClientToScreen(gui.hwndCaret ? gui.hwndCaret : gui.hwndFocus, &b);
+  if (gui.hwndCaret) s.bounds = QRect(QPoint(a.x, a.y), QPoint(b.x, b.y));
+  return s;
+}
+
 // The selection's text and rectangle by UI Automation: the focused element's TextPattern (a thread of its own: COM
 // MTA, and a hung app cannot hang the shell).
 std::optional<Selected> read_selection() {
   CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   std::optional<Selected> out;
   IUIAutomation *uia = nullptr;
-  if (SUCCEEDED(CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation),
+  // CUIAutomation8: the newer client, with the proxies of Win32 controls.
+  if (SUCCEEDED(CoCreateInstance(__uuidof(CUIAutomation8), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation),
+                                 reinterpret_cast<void **>(&uia))) ||
+      SUCCEEDED(CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation),
                                  reinterpret_cast<void **>(&uia)))) {
     IUIAutomationElement *el = nullptr;
     if (SUCCEEDED(uia->GetFocusedElement(&el)) && el) {
@@ -108,6 +143,7 @@ std::optional<Selected> read_selection() {
     uia->Release();
   }
   CoUninitialize();
+  if (!out) out = read_edit();
   return out;
 }
 
@@ -167,8 +203,8 @@ std::string probe_selection() {
   };
   CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   IUIAutomation *uia = nullptr;
-  HRESULT h = CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation), reinterpret_cast<void **>(&uia));
-  hr("CoCreateInstance", h);
+  HRESULT h = CoCreateInstance(__uuidof(CUIAutomation8), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation), reinterpret_cast<void **>(&uia));
+  hr("CoCreateInstance CUIAutomation8", h);
   if (!uia) return out;
   IUIAutomationElement *el = nullptr;
   hr("GetFocusedElement", uia->GetFocusedElement(&el));
@@ -207,6 +243,8 @@ std::string probe_selection() {
   if (el) el->Release();
   uia->Release();
   CoUninitialize();
+  auto e = read_edit();
+  out += "edit fallback: " + (e ? e->text : std::string("none")) + "\n";
   return out;
 }
 
