@@ -22,18 +22,11 @@ QLabel *text(const QString &s, double delta, bool grey_, bool bold) {
   return l;
 }
 
-// Secondary: the text's own colour, fainter (the same in light and dark, not the style's placeholder tint).
-void grey(QWidget *w) {
-  auto p = w->palette();
-  auto c = QApplication::palette().color(QPalette::WindowText);  // the theme now (a widget's may lag a theme change)
-  c.setAlphaF(0.6f);
-  p.setColor(QPalette::WindowText, c);
-  w->setPalette(p);
-}
+// Secondary text: the palette's role, so it follows a theme change without a redraw.
+void grey(QWidget *w) { w->setForegroundRole(QPalette::PlaceholderText); }
 
 QLabel *link(const QString &s, std::function<void()> click) {
-  auto colour = QApplication::palette().color(QPalette::Link).name();
-  auto *l = new QLabel("<a href=\"#\" style=\"color: " + colour + "\">" + s.toHtmlEscaped() + "</a>");
+  auto *l = new QLabel("<a href=\"#\">" + s.toHtmlEscaped() + "</a>");  // the palette's Link colour
   l->setTextFormat(Qt::RichText);
   QObject::connect(l, &QLabel::linkActivated, [click = std::move(click)] { click(); });
   return l;
