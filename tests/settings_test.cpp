@@ -1,6 +1,7 @@
 // Settings' panes from the core, their changes, and the card's settings honoured by the card.
 #include <doctest/doctest.h>
 #include "temp.hpp"
+#include "lexipeek/l10n.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -342,4 +343,21 @@ TEST_CASE("settings: offline translation off is kept as \"off\"") {
   CHECK(load_settings(d).mt_off);
   CHECK(!load_settings(d).method);
   wipe(d);
+}
+
+TEST_CASE("settings: the hotkeys' default is Ctrl+Alt on Windows, a saved one stays") {
+  auto d = fs::temp_directory_path() / "lexipeek-settings-hotkeys";
+  wipe(d);
+  fs::create_directories(d);
+  set_ui_platform("windows");
+  auto s = load_settings(d);
+  CHECK(s.lookup.control);
+  CHECK(s.lookup.option);
+  CHECK(s.input.control);
+  s.lookup = Hotkey{"K", true, false, false, false};
+  CHECK(save_settings(d, s).empty());
+  CHECK_FALSE(load_settings(d).lookup.control);
+  set_ui_platform("mac");
+  wipe(d);
+  CHECK_FALSE(load_settings(d).lookup.control);
 }

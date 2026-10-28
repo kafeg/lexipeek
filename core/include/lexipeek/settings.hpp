@@ -9,6 +9,7 @@
 
 namespace lexipeek {
 
+// The default is ⌥D / ⌥A; on Windows (ui_platform) load_settings makes it Ctrl+Alt+D / Ctrl+Alt+A.
 struct Hotkey {
   std::string key = "D";  // a letter or a digit
   bool option = true, command = false, control = false, shift = false;
