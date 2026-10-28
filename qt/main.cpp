@@ -63,10 +63,8 @@ const CardCase cards[] = {
 int snapshots(QApplication &app, CoreClient &client, const QString &dir) {
   QDir().mkpath(dir);
   app.setQuitOnLastWindowClosed(false);
-  // Windows: its own style, as the app shows; elsewhere Fusion (the same on every Mac).
-#ifndef _WIN32
+  // Fusion everywhere: the minimal platform draws Windows' own style with the wrong palette (its look: win-e2e.ps1).
   QApplication::setStyle(QStyleFactory::create("Fusion"));
-#endif
   auto light = QApplication::style()->standardPalette();
   auto *model = new CardModel(client);
   model->source = Source::cli;
