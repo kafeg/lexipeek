@@ -2,6 +2,24 @@ import AppKit
 import ApplicationServices
 import os
 
+// Accessibility: whether it is on (checked every second by the app; on in snapshots) and the way to turn it on.
+final class Access: ObservableObject {
+    static let shared = Access()
+    @Published private(set) var trusted = Snapshot.dir != nil || Selection.trusted
+
+    func check() {
+        let t = Snapshot.dir != nil || Selection.trusted
+        if t != trusted { trusted = t }
+    }
+
+    // The system's prompt (it adds LexiPeek to the list) and the Accessibility pane.
+    static func ask() {
+        let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+        AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
+        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+    }
+}
+
 // The selected text of the frontmost app, by Accessibility only (the clipboard is never touched).
 enum Selection {
     struct Result {

@@ -94,9 +94,7 @@ final class FirstRunModel: ObservableObject {
     func primary() {
         switch look.step {
         case .access:
-            let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-            AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+            Access.ask()
         case .list: fetch()
         case .pair: install()
         case .download: if state.downloading { downloader.cancel() } else { install() }

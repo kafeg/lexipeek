@@ -77,10 +77,13 @@ struct MainView: View {
                 .padding(12)
             }
         } detail: {
-            switch model.page {
-            case .lookup: lookup
-            case .notes: NotesList(model: notes).onAppear { notes.refresh() }
-            case .help: HelpPane(open: model.openPane)
+            VStack(spacing: 0) {
+                AccessBanner()
+                switch model.page {
+                case .lookup: lookup
+                case .notes: NotesList(model: notes).onAppear { notes.refresh() }
+                case .help: HelpPane(open: model.openPane)
+                }
             }
         }
         .frame(minWidth: 720, minHeight: 460)

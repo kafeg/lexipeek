@@ -53,6 +53,7 @@ struct CardView: View {
     private func content(_ look: CardLook?) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if let u = model.unread { unread(u) }
+            if model.noAccess { noAccess }
             if model.showInput {
                 TextField(L.t("card_input_hint"), text: $model.input)
                     .textFieldStyle(.roundedBorder)
@@ -215,6 +216,13 @@ struct CardView: View {
             .help(L.t("card_copy"))
     }
 
+
+    private var noAccess: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(L.t("card_no_access"), systemImage: "exclamationmark.triangle.fill").font(.callout).foregroundStyle(.secondary)
+            Button(L.t("access_open")) { Access.ask() }.buttonStyle(.link).font(.callout)
+        }
+    }
 
     private func unread(_ name: String) -> some View {
         Text(L.t("card_unread", name)).font(.callout).foregroundStyle(.secondary)

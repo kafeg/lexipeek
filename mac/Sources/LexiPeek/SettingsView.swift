@@ -150,10 +150,7 @@ final class SettingsModel: ObservableObject {
         case "ai_test": testAI()
         case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
-        case "access":
-            let k = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-            AXIsProcessTrustedWithOptions([k: true] as CFDictionary)
-            NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+        case "access": Access.ask()
         default: break
         }
     }
@@ -254,6 +251,28 @@ enum SettingsWindow {
     }
 }
 
+// While Accessibility is off: what does not work and the way to turn it on (the Settings and LexiPeek windows).
+struct AccessBanner: View {
+    @ObservedObject private var access = Access.shared
+
+    var body: some View {
+        if !access.trusted {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).font(.title3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L.t("access_off_t")).fontWeight(.semibold)
+                    Text(L.t("access_off_d")).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Button(L.t("access_open")) { Access.ask() }
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.12)))
+            .padding([.horizontal, .top], 12)
+        }
+    }
+}
+
 // A section: its sub-tabs, then its pane (the core's rows, or Packs, Other dictionaries drawn by their own views).
 struct SectionView: View {
     let section: SettingsSection
@@ -262,6 +281,7 @@ struct SectionView: View {
     var body: some View {
         let page = model.page(section)
         VStack(spacing: 0) {
+            AccessBanner()
             if !page.tabs.isEmpty {
                 let labels = page.tabs.map { String($0) }
                 Picker("", selection: Binding(get: { Int(page.tab) }, set: { model.select(section, $0) })) {

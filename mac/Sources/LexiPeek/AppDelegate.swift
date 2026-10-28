@@ -43,9 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         NSApp.mainMenu = mainMenu()
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item?.button?.image = NSImage(named: "MenuBarIcon")
-        item?.button?.image?.isTemplate = true
-        item?.button?.image?.accessibilityDescription = "LexiPeek"
+        updateItem()
         menu.delegate = self
         item?.menu = menu
         NSApp.servicesProvider = self
@@ -65,8 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pressure?.resume()
 
         trustTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, self.settings.trusted != Selection.trusted else { return }
+            guard let self else { return }
+            Access.shared.check()
+            guard self.settings.trusted != Selection.trusted else { return }
             self.settings.trusted = Selection.trusted
+            self.updateItem()
         }
         settings.openFirstRun = { [weak self] in self?.openFirstRun() }
         NotificationCenter.default.addObserver(forName: .openPane, object: nil, queue: .main) { [weak self] n in
@@ -140,7 +141,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 // Nothing read: say which app, type meanwhile.
                 card.show(text: nil, source: .input, bounds: nil, focus: true)
-                if Selection.trusted && !id.isEmpty { model.unread = app?.localizedName ?? id }
+                if !Selection.trusted { model.noAccess = true }
+                else if !id.isEmpty { model.unread = app?.localizedName ?? id }
             }
         }
     }
@@ -296,8 +298,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // Rebuilt on every open: hotkey labels and Recents stay current.
+    // The menu-bar icon; ⚠ while Accessibility is off (the hotkey cannot read the selection).
+    private func updateItem() {
+        let on = Selection.trusted
+        let image = on ? NSImage(named: "MenuBarIcon") : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        image?.isTemplate = true
+        image?.accessibilityDescription = on ? "LexiPeek" : L.t("access_off_t")
+        item?.button?.image = image
+        item?.button?.toolTip = on ? "LexiPeek" : L.t("access_off_t")
+    }
+
+    @objc private func askAccess() { Access.ask() }
+
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        if !Selection.trusted {
+            let a = NSMenuItem(title: L.t("menu_access"), action: #selector(askAccess), keyEquivalent: "")
+            a.target = self
+            a.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+            menu.addItem(a)
+            let why = NSMenuItem(title: L.t("access_off_t"), action: nil, keyEquivalent: "")
+            why.isEnabled = false
+            menu.addItem(why)
+            menu.addItem(.separator())
+        }
         // The hotkeys (⌥D, ⌥A) are not repeated here: a click in the menu bar is not how a selection is translated.
         let o = NSMenuItem(title: L.t("menu_open"), action: #selector(showMain), keyEquivalent: "o")
         o.target = self

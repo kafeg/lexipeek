@@ -113,6 +113,7 @@ final class CardModel: ObservableObject {
     private(set) var card: lexipeek.Card?
     @Published var pinned = false
     @Published var unread: String?  // the app (its name) that did not show its selection
+    @Published var noAccess = false  // the hotkey without Accessibility: nothing could be read
 
     let client: CoreClient
     private let lane: CardLane
@@ -150,6 +151,7 @@ final class CardModel: ObservableObject {
         showInput = input
         nav.reset()
         unread = nil
+        noAccess = false
     }
 
     // A look-up asked and not answered yet.

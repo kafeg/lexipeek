@@ -27,7 +27,11 @@ Browser extension, whole-page translation, Linux, sync — see Milestones.
 
 ## Platform
 macOS 14+, Apple Silicon only. A menu-bar app (`LSUIElement`). Needs Accessibility (hotkey on the selection, reading
-the selected text); the first run asks for it and explains why.
+the selected text); the first run asks for it and explains why. While it is off (after a rebuild too: an ad-hoc signed
+build is a new app to it), every place says so: the menu-bar icon is ⚠ (its tooltip why), the menu's first item opens
+System Settings → Accessibility, the Settings window and the LexiPeek window show a banner with "Open System
+Settings…", and the lookup hotkey's card (to type in) has a line with the same link. Checked every second; all of it
+goes the moment it is on.
 
 ## Stack
 One C++ core with all the logic; a thin native shell per OS that only draws what the core gives it.
