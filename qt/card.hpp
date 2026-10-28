@@ -27,7 +27,7 @@ class CardModel : public QObject {
   std::function<std::string()> key = [] { return std::string(); };
 
   void reset();
-  void lookup(const std::string &text);
+  void lookup(const std::string &text, const std::string &lang = "", const std::string &answer = "");
   void open(const std::string &word);
   void relookup(const std::string &lang, const std::string &answer);
   void back();
@@ -37,7 +37,8 @@ class CardModel : public QObject {
   void select(CardTab tab);
   void next_tab(int by);
   void toggle_entry();
-  void choose(Method m);
+  void choose(Method m);  // picked in the card: also Settings → Translation's
+  void use(Method m);     // only this card (snapshots)
   void choose_ai();
   void toggle_saved();
   void toggle_pin();
@@ -61,6 +62,7 @@ class CardWidget : public QWidget {
  public:
   CardWidget(CardModel &model, bool embedded = false, QWidget *parent = nullptr);
   void rebuild();
+  void show_whole(bool on);  // a cut title whole (a click on it)
 
  signals:
   void openPane(int section, int tab);  // a failed AI answer's settings
@@ -72,11 +74,14 @@ class CardWidget : public QWidget {
   QWidget *tabs(const CardView &v);
   QWidget *bar(const CardView &v);
   QFont font(int delta = 0, bool bold = false) const;
+  bool eventFilter(QObject *o, QEvent *e) override;
   QWidget *field();
   CardModel &m_;
   bool embedded_;
   QVBoxLayout *box_;
   QString typed_;
+  bool whole_ = false;
+  std::string place_;
   CardView v_;
 };
 

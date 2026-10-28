@@ -5,7 +5,9 @@
 #include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QGraphicsOpacityEffect>
+#include <QEvent>
 #include <QLabel>
+#include <QTextLayout>
 #include <QLineEdit>
 #include <QMenu>
 #include <QRegularExpression>
@@ -32,7 +34,9 @@ void CardModel::reset() {
   relook();
 }
 
-void CardModel::lookup(const std::string &text) { run(nav.look(text, source, false, "", "")); }
+void CardModel::lookup(const std::string &text, const std::string &lang, const std::string &answer) {
+  run(nav.look(text, source, false, lang, answer));
+}
 void CardModel::open(const std::string &word) { run(nav.open(word)); }
 void CardModel::relookup(const std::string &lang, const std::string &answer) { run(nav.relookup(lang, answer)); }
 void CardModel::back() { run(nav.back()); }
@@ -66,6 +70,11 @@ void CardModel::choose(Method m) {
   app::set_method(s, app::method_id(m));
   app::save(c_.data(), s);
   c_.configure();
+  nav.pick_method(m);
+  translate(m);
+}
+
+void CardModel::use(Method m) {
   nav.pick_method(m);
   translate(m);
 }
@@ -163,6 +172,25 @@ QString markdown(const std::string &s) {
   return h.replace("\n", "<br>");
 }
 
+// The text in at most lines lines of width, the last one ending with "…" when it is cut.
+QString cut(const QString &text, const QFont &f, int width, int lines) {
+  QFontMetrics m(f);
+  QTextLayout layout(text, f);
+  layout.beginLayout();
+  QString out;
+  for (int n = 0; n < lines; ++n) {
+    auto line = layout.createLine();
+    if (!line.isValid()) break;
+    line.setLineWidth(width);
+    if (n == lines - 1 && line.textStart() + line.textLength() < text.size())
+      out += m.elidedText(text.mid(line.textStart()), Qt::ElideRight, width);
+    else
+      out += text.mid(line.textStart(), line.textLength());
+  }
+  layout.endLayout();
+  return out.trimmed() == text.trimmed() ? text : out;
+}
+
 QLabel *label(const QString &text, const QFont &f, bool rich = false, bool select = true) {
   auto *l = new QLabel(text);
   l->setFont(f);
@@ -206,6 +234,7 @@ QFont CardWidget::font(int delta, bool bold) const {
 
 void CardWidget::rebuild() {
   v_ = m_.look();
+  if (auto place = m_.nav.place(); place != place_) place_ = place, whole_ = false;
   ui::clear(box_);
   if (!embedded_) setFixedWidth(v_.width > 0 ? v_.width : 400);
   auto *top = new QWidget;
@@ -252,27 +281,64 @@ void CardWidget::rebuild() {
   if (!embedded_) adjustSize();
 }
 
+// As InkPeek's title: a word's or a phrase's two lines, a passage's one, cut with "…"; a click on a cut one shows it whole
+// (scrolling, half the card's limit at most) with ⌃ to fold it again.
 QWidget *CardWidget::header(const CardView &v) {
   auto *w = new QWidget;
   auto *l = new QVBoxLayout(w);
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(2);
   auto f = v.style == HeaderStyle::word ? font(4, true) : v.style == HeaderStyle::phrase ? font(0, true) : font(-1);
-  auto *title = label(q(v.title), f, false, false);
-  title->setToolTip(q(v.tooltip));
-  // A passage's header: one grey line, cut at the card's width (the whole text in the tooltip).
-  if (v.style == HeaderStyle::passage) {
-    ui::grey(title);
-    title->setWordWrap(false);
-    title->setText(QFontMetrics(f).elidedText(q(v.title), Qt::ElideRight, (v.width > 0 ? v.width : 400) - 28));
+  int width = (embedded_ ? std::max(this->width(), 300) : (v.width > 0 ? v.width : 400)) - 28;
+  int lines = v.style == HeaderStyle::passage ? 1 : 2;
+  auto full = q(v.title);
+  auto shown = cut(full, f, width, lines);
+  bool is_cut = shown != full;
+  if (whole_ && is_cut) {
+    auto *all = label(full, f);
+    if (v.style == HeaderStyle::passage) ui::grey(all);
+    auto *scroll = new QScrollArea;
+    scroll->setWidget(all);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    auto *screen = QApplication::primaryScreen();
+    int limit = screen ? screen->availableGeometry().height() * (v.height > 0 ? v.height : 45) / 200 : 250;
+    all->setFixedWidth(width);
+    scroll->setFixedHeight(std::min(all->heightForWidth(width) + 4, limit));
+    l->addWidget(scroll);
+    auto *fold = link("⌃", font(0), [this] { show_whole(false); });
+    fold->setToolTip(t("card_collapse"));
+    l->addWidget(fold, 0, Qt::AlignHCenter);
+  } else {
+    auto *title = label(shown, f, false, false);
+    title->setToolTip(is_cut ? t("card_whole") : q(v.tooltip));
+    if (v.style == HeaderStyle::passage) ui::grey(title);
+    if (is_cut) {
+      title->setCursor(Qt::PointingHandCursor);
+      title->installEventFilter(this);
+      title->setObjectName("cut-title");
+    }
+    l->addWidget(title);
   }
-  l->addWidget(title);
   if (!v.subtitle.empty()) {
     auto *s = label(q(v.subtitle), font(-2), false, false);
     ui::grey(s);
     l->addWidget(s);
   }
   return w;
+}
+
+void CardWidget::show_whole(bool on) {
+  whole_ = on;
+  rebuild();
+}
+
+bool CardWidget::eventFilter(QObject *o, QEvent *e) {
+  if (e->type() == QEvent::MouseButtonRelease && o->objectName() == "cut-title") {
+    QMetaObject::invokeMethod(this, [this] { show_whole(true); }, Qt::QueuedConnection);
+    return true;
+  }
+  return QWidget::eventFilter(o, e);
 }
 
 // Text tabs with a line under the open one (the pop-up card's).
