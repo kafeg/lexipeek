@@ -100,7 +100,10 @@ void CardPopup::close_card() {
 // Its height follows the card; the top edge stays, inside the screen.
 void CardPopup::fit() {
   if (!isVisible()) return;
+  // While something loads it keeps its height (no jumping), then fits what it shows.
+  int was = height();
   adjustSize();
+  if (model.busy() && height() < was) resize(width(), was);
   auto g = geometry();
   if (g.bottom() > screen_.bottom()) g.moveBottom(screen_.bottom());
   if (g.right() > screen_.right()) g.moveRight(screen_.right());

@@ -112,6 +112,9 @@ QToolButton[command="true"]:hover { background: HOVER; }
 QToolButton[command="true"]:pressed { background: SELECTED; }
 QToolButton[command="true"]::menu-indicator { image: none; width: 0; }
 QFrame#card { background: LAYER; border: 1px solid STROKE; border-radius: 6px; }
+QListWidget#recents { background: transparent; border: none; outline: 0; }
+QListWidget#recents::item { padding: 3px 6px; border-radius: 4px; }
+QListWidget#recents::item:hover, QListWidget#recents::item:selected { background: HOVER; color: TEXT; }
 QListWidget#nav { background: transparent; border: none; outline: 0; }
 QListWidget#nav::item { padding: 8px 10px; margin: 1px 0; border-radius: 4px; border-left: 3px solid transparent; }
 QListWidget#nav::item:hover { background: HOVER; }

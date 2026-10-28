@@ -25,7 +25,10 @@ SelectionIcon::SelectionIcon() : QToolButton(nullptr) {
     emit open(found_);
   });
   connect(&reading_, &QFutureWatcher<std::optional<platform::Selected>>::finished, this, [this] {
-    if (auto s = reading_.result()) show_at(*s, up_at_);
+    if (auto s = reading_.result()) {
+      s->bounds = platform::logical(s->bounds);
+      show_at(*s, up_at_);
+    }
   });
 }
 

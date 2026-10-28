@@ -149,7 +149,7 @@ std::optional<Selected> read_selection() {
 }
 
 // UI Automation gives physical pixels; Qt's windows go by logical ones on the screen there.
-QRect logical(const QRect &px) {
+QRect to_logical(const QRect &px) {
   if (px.isEmpty()) return px;
   for (auto *s : QGuiApplication::screens()) {
     auto g = s->geometry();
@@ -246,9 +246,7 @@ std::optional<Selected> selection() {
     std::thread([f = std::move(f)]() mutable { f.wait(); }).detach();
     return std::nullopt;
   }
-  auto s = f.get();
-  if (s) s->bounds = logical(s->bounds);
-  return s;
+  return f.get();
 }
 
 std::string front_app() {
@@ -529,6 +527,14 @@ void activate(QWidget *w) {
   if (theirs != mine) AttachThreadInput(mine, theirs, FALSE);
   w->raise();
   w->activateWindow();
+}
+
+QRect logical(const QRect &px) { return to_logical(px); }
+
+bool memory_low() {
+  static HANDLE h = CreateMemoryResourceNotification(LowMemoryResourceNotification);
+  BOOL low = FALSE;
+  return h && QueryMemoryResourceNotification(h, &low) && low;
 }
 
 bool taskbar_light() {

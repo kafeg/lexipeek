@@ -5,6 +5,7 @@
 #include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QEvent>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QTextLayout>
 #include <QLineEdit>
@@ -19,7 +20,12 @@
 
 namespace lexipeek::qt {
 
-CardModel::CardModel(CoreClient &client) : c_(client), lane_(client) {}
+CardModel::CardModel(CoreClient &client) : c_(client), lane_(client) {
+  // Notes may have removed (or another card saved) this card's word: its ★ again.
+  connect(&notes_bus(), &NotesBus::changed, this, [this] {
+    if (!nav.has_card()) return;
+    if (bool saved = c_.engine.saved(nav.card()); saved != nav.state.saved) nav.state.saved = saved, relook();
+  });}
 
 void CardModel::relook() {
   look_ = nav.has_card() ? card_view(nav.card(), nav.state) : CardView{};
@@ -90,6 +96,7 @@ void CardModel::toggle_saved() {
   if (!nav.has_card() || !look_.can_save) return;
   nav.state.saved = c_.engine.toggle_saved(nav.card(), shown_translation(nav.state));
   relook();
+  emit notes_bus().changed();
 }
 
 void CardModel::toggle_pin() {
@@ -108,6 +115,7 @@ void CardModel::run(const CardStep &step) {
         if (nav.state.has_method) translate(nav.state.method);
         ask_ai();
         relook();
+        emit notes_bus().changed();  // its history
       });
       relook();
       break;
@@ -384,6 +392,15 @@ void CardWidget::show_whole(bool on) {
 }
 
 bool CardWidget::eventFilter(QObject *o, QEvent *e) {
+  // ↑↓ in the field: through the recent look-ups.
+  if (e->type() == QEvent::KeyPress && recents_ && qobject_cast<QLineEdit *>(o)) {
+    int key = static_cast<QKeyEvent *>(e)->key(), n = recents_->count();
+    if ((key == Qt::Key_Down || key == Qt::Key_Up) && n > 0) {
+      int at = recents_->currentRow() + (key == Qt::Key_Down ? 1 : -1);
+      recents_->setCurrentRow(std::clamp(at, -1, n - 1));
+      return true;
+    }
+  }
   if (e->type() == QEvent::MouseButtonRelease && o->objectName() == "cut-title") {
     QMetaObject::invokeMethod(this, [this] { show_whole(true); }, Qt::QueuedConnection);
     return true;
@@ -567,14 +584,46 @@ QWidget *CardWidget::bar(const CardView &v) {
 }
 
 // The card's text field (typing): Return looks it up.
+// The text field; on an empty card the recent look-ups under it (a click, or ↑↓ and Return, opens one).
 QWidget *CardWidget::field() {
+  auto *w = new QWidget;
+  auto *l = new QVBoxLayout(w);
+  l->setContentsMargins(0, 0, 0, 0);
+  l->setSpacing(6);
   auto *e = new QLineEdit(typed_);
   e->setPlaceholderText(t("card_input_hint"));
   e->setFont(font());
   connect(e, &QLineEdit::textChanged, this, [this](const QString &s) { typed_ = s; });
-  connect(e, &QLineEdit::returnPressed, this, [this] { emit submitted(typed_); });
+  connect(e, &QLineEdit::returnPressed, this, [this] {
+    auto *r = recents_ && typed_.trimmed().isEmpty() ? recents_->currentItem() : nullptr;
+    emit submitted(r ? r->data(Qt::UserRole).toString() : typed_);
+  });
+  l->addWidget(e);
+  recents_ = nullptr;
+  if (!m_.has_card() && !m_.looking()) {
+    auto seen = m_.recents();
+    if (!seen.empty()) {
+      auto *list = new QListWidget;
+      list->setObjectName("recents");
+      list->setFrameShape(QFrame::NoFrame);
+      list->setFocusPolicy(Qt::NoFocus);
+      list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+      list->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+      list->setFont(font(-1));
+      for (auto &s : seen) {
+        auto *item = new QListWidgetItem(q(app::menu_line(s.meaning.empty() ? s.text : s.text + " — " + s.meaning)));
+        item->setData(Qt::UserRole, q(s.text));
+        list->addItem(item);
+      }
+      list->setFixedHeight(list->sizeHintForRow(0) * list->count() + 4);
+      connect(list, &QListWidget::itemClicked, this, [this](QListWidgetItem *i) { emit submitted(i->data(Qt::UserRole).toString()); });
+      l->addWidget(list);
+      recents_ = list;
+      e->installEventFilter(this);
+    }
+  }
   if (!m_.has_card()) QMetaObject::invokeMethod(e, [e] { e->setFocus(); }, Qt::QueuedConnection);
-  return e;
+  return w;
 }
 
 }  // namespace lexipeek::qt

@@ -30,6 +30,8 @@ void activate(QWidget *w) {
 }
 QImage glyph_mask(const QString &, char16_t, int) { return {}; }
 bool taskbar_light() { return false; }
+bool memory_low() { return false; }
+QRect logical(const QRect &px) { return px; }
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

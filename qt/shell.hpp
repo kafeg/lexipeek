@@ -1,5 +1,6 @@
 // The tray app (mac AppDelegate): its icon and menu, the hotkeys, the pop-up card, the windows.
 #pragma once
+#include <QFutureWatcher>
 #include <QMenu>
 #include <QTimer>
 #include <QObject>
@@ -29,7 +30,8 @@ class Shell : public QObject {
  private:
   void fill_menu();
   void register_hotkeys();
-  void update_tray();  // ⚠ while no language pack is installed
+  void update_tray();
+  void selection_read();  // ⚠ while no language pack is installed
   CoreClient &c_;
   CardPopup popup_;
   SelectionIcon icon_;
@@ -40,6 +42,10 @@ class Shell : public QObject {
   QSystemTrayIcon tray_;
   QMenu menu_;
   QTimer health_;
+  // The hotkey's selection, read off the window's thread (an app may take a while to answer).
+  QFutureWatcher<std::optional<platform::Selected>> reading_;
+  std::string reading_app_;
+  bool reading_open_ = false;
   bool pair_ = true;
   Settings s_;
 };

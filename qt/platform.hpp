@@ -23,7 +23,8 @@ struct Selected {
   QRect bounds;  // on the screen, logical pixels; empty when unknown
 };
 // The focused app's selected text (Windows: UI Automation, never the clipboard); nullopt when none or unreadable.
-std::optional<Selected> selection();
+std::optional<Selected> selection();  // any thread; its bounds in physical pixels: logical() on the main thread
+QRect logical(const QRect &px);
 // What UI Automation sees at the focus now (the element, its patterns, the selection's text): a diagnostic.
 std::string probe_selection();
 // The focused app's program ("chrome.exe"): Settings → General's apps where the hotkey does nothing.
@@ -38,6 +39,8 @@ bool front_is_mine();
 
 // This machine's memory, MB.
 int ram_mb();
+// The system says memory is low now (Windows: its low-memory notification): the held model is freed.
+bool memory_low();
 
 // Opens at login (Windows: the Run key).
 bool login();

@@ -1,5 +1,7 @@
 // The card: CardModel carries out the core's CardNav steps; CardWidget draws the core's CardView (as mac/CardView).
 #pragma once
+#include <QListWidget>
+#include <QPointer>
 #include <QWidget>
 #include <functional>
 #include "core_client.hpp"
@@ -17,6 +19,7 @@ class CardModel : public QObject {
   bool has_card() const { return nav.has_card(); }
   CardView look() const { return look_; }
   bool looking() const { return request_ != 0 && !nav.has_card(); }
+  std::vector<Seen> recents() const { return c_.engine.recents(app::recents_shown()); }  // under the input field
   bool busy() const { return nav.busy() || waiting_; }  // a translation, an AI answer, a look-up or a section on its way
   bool pinned = false;  // the pop-up card stays open on an outside click
   std::string unread;   // the app whose selection could not be read ("" = none)
@@ -81,6 +84,7 @@ class CardWidget : public QWidget {
   bool embedded_;
   QVBoxLayout *box_;
   QString typed_;
+  QPointer<QListWidget> recents_;  // the recent look-ups under an empty card's field
 
  public:
   void clear_input() { typed_.clear(); }  // a new card: an empty field

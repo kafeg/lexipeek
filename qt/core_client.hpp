@@ -17,6 +17,14 @@ QString t(const char *key, const std::string &a);
 QString t(const char *key, const std::string &a, const std::string &b);
 inline QString q(const std::string &s) { return QString::fromStdString(s); }
 
+// Notes changed (☆, a look-up's history, a removal, an import): the cards' ★ and the Notes list follow.
+class NotesBus : public QObject {
+  Q_OBJECT
+ signals:
+  void changed();
+};
+NotesBus &notes_bus();
+
 class CoreClient : public QObject {
  public:
   CoreClient(const std::string &data, const Device &device);

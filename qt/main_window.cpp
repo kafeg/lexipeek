@@ -33,6 +33,10 @@ QString downloads(const QString &name) {
 
 MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   setWindowTitle("LexiPeek");
+  connect(new QShortcut(QKeySequence::HelpContents, this), &QShortcut::activated, this, [this] { show_page(help); });
+  connect(&notes_bus(), &NotesBus::changed, this, [this] {
+    if (isVisible()) refresh();
+  });
   auto *row = new QHBoxLayout(this);
   row->setContentsMargins(0, 0, 0, 0);
   row->setSpacing(0);
@@ -209,7 +213,7 @@ void MainWindow::draw_notes() {
     auto remove = [this, list] {
       if (auto *item = list->currentItem()) {
         c_.engine.remove_note(tab_, item->text(0).toStdString());
-        refresh();
+        emit notes_bus().changed();
       }
     };
     auto *del = new QShortcut(QKeySequence::Delete, list);
@@ -254,7 +258,7 @@ void MainWindow::draw_notes() {
     connect(c, &QPushButton::clicked, this, [this] {
       if (QMessageBox::question(this, t("clear_history_q"), t("notes_clear_d")) != QMessageBox::Yes) return;
       c_.engine.clear_history();
-      refresh();
+      emit notes_bus().changed();
     });
     bar->addWidget(c);
   }
@@ -275,7 +279,7 @@ void MainWindow::draw_notes() {
     auto f = QFileDialog::getOpenFileName(this, {}, QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
     if (f.isEmpty()) return;
     said_->setText(q(c_.engine.restore(f.toStdString())));
-    refresh();
+    emit notes_bus().changed();
   });
   backup->addWidget(out);
   backup->addWidget(in);

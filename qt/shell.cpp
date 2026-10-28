@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QGuiApplication>
 #include <QLocale>
+#include <QtConcurrent>
 #include <QScreen>
 #include <QStyleHints>
 #include <algorithm>
@@ -45,8 +46,10 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
   // A pack installed or removed anywhere (Settings, the first run, the CLI): the icon follows.
   connect(&health_, &QTimer::timeout, this, [this] {
     if (app::has_pair(c_.data()) != pair_) update_tray();
+    if (platform::memory_low()) c_.engine.release();  // as the Mac's memory pressure
   });
   health_.start(2000);
+  connect(&reading_, &QFutureWatcher<std::optional<platform::Selected>>::finished, this, &Shell::selection_read);
   tray_.setContextMenu(&menu_);
   connect(&menu_, &QMenu::aboutToShow, this, &Shell::fill_menu);
   connect(&tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason r) {
@@ -89,14 +92,20 @@ void Shell::translate_selection() {
   auto app = platform::front_app();
   bool off = std::find(s_.ignore_apps.begin(), s_.ignore_apps.end(), app) != s_.ignore_apps.end();
   if (off) return popup_.close_card();
-  bool open = popup_.open();
-  auto s = platform::selection();
-  if (open && (!s || s->text == popup_.shown)) return popup_.close_card();
+  if (reading_.isRunning()) return;
+  reading_open_ = popup_.open(), reading_app_ = app;
+  reading_.setFuture(QtConcurrent::run(platform::selection));
+}
+
+void Shell::selection_read() {
+  auto s = reading_.result();
+  if (s) s->bounds = platform::logical(s->bounds);
+  if (reading_open_ && (!s || s->text == popup_.shown)) return popup_.close_card();
   if (s) return popup_.show_card(s->text, Source::hotkey, s->bounds, false);
   // Nothing read: say which app, type meanwhile.
   popup_.show_card(std::nullopt, Source::input, {}, true);
-  if (!app.empty()) {
-    popup_.model.unread = app;
+  if (!reading_app_.empty()) {
+    popup_.model.unread = reading_app_;
     popup_.card->rebuild();
   }
 }
@@ -121,7 +130,6 @@ void Shell::open_main(int page) {
     connect(main_, &MainWindow::openSettings, this, &Shell::open_settings);
     connect(main_, &MainWindow::openAbout, this, &Shell::open_about);
     connect(main_, &MainWindow::openFirstRun, this, &Shell::open_first_run);
-    connect(&popup_.model, &CardModel::changed, main_, &MainWindow::refresh);
   }
   if (page >= 0) main_->show_page(page);
   main_->refresh();
