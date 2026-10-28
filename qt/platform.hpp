@@ -55,6 +55,9 @@ void register_scheme();
 // How CLI AI providers run here (Windows: a process in a job object, the prompt on stdin); none: the core's POSIX shell.
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner();
 
+// The OS's last error as text ("" none): what a failed call above said.
+std::string last_error();
+
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);
 

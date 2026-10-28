@@ -416,6 +416,14 @@ ai::CliRan run_cli(const ai::CliCall &c) {
 
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return run_cli; }
 
+std::string last_error() {
+  auto code = GetLastError();
+  if (!code) return "";
+  wchar_t buf[512];
+  auto n = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0, buf, 512, nullptr);
+  return std::to_string(code) + " " + QString::fromWCharArray(buf, static_cast<int>(n)).trimmed().toStdString();
+}
+
 void round(QWidget *w) {
   auto pref = DWMWCP_ROUND;
   DwmSetWindowAttribute(reinterpret_cast<HWND>(w->winId()), DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof pref);

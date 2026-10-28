@@ -29,6 +29,7 @@ bool hand_over(const QStringList &) { return false; }
 void receive(std::function<void(const QStringList &)>) {}
 void register_scheme() {}
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return nullptr; }
+std::string last_error() { return ""; }
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform
