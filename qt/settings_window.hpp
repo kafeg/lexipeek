@@ -6,6 +6,7 @@
 #include "core_client.hpp"
 
 class QTabBar;
+class QListWidget;
 class QTabWidget;
 class QScrollArea;
 class QVBoxLayout;
@@ -41,17 +42,20 @@ class SettingsWindow : public QWidget {
 
  private:
   void draw();
+  void draw_now();
   QWidget *row(const SettingRow &r);
   void after(const std::string &error);
   void press(const SettingRow &r);
   void download(const std::string &method, const std::vector<std::string> &ids);
   SettingsShell sh_;
-  QTabWidget *sections_;
+  QListWidget *nav_;
+  QVBoxLayout *page_;
   QWidget *packs_ = nullptr, *dicts_ = nullptr;  // kept while the window lives: a download goes on across redraws
   SettingsSection section_ = SettingsSection::general, drawn_section_ = SettingsSection::general;
   int drawn_tab_ = -1;
   std::map<SettingsSection, int> tabs_;
   std::string error_;
+  bool pending_ = false;
 };
 
 class AboutWindow : public QWidget {

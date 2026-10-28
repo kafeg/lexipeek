@@ -35,8 +35,9 @@ class MainWindow : public QWidget {
   QWidget *notes_page();
   void draw_notes();
   void draw_help();
+  void icons();
   CoreClient &c_;
-  QListWidget *side_ = nullptr;
+  QListWidget *side_ = nullptr, *foot_ = nullptr;
   QStackedWidget *pages_ = nullptr;
   QLineEdit *query_ = nullptr;
   QLabel *hint_ = nullptr, *memory_ = nullptr, *said_ = nullptr;

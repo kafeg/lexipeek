@@ -1,5 +1,5 @@
 # The Windows app end to end, in a signed-in desktop session (not over SSH: no desktop there): LexiPeek.exe started on
-# a data dir with packs, a word selected in Notepad, the lookup hotkey, the card read by UI Automation, Esc, the input
+# a data dir with packs, a word selected in Notepad, Ctrl+Alt+D, the card read by UI Automation, Esc, the input
 # hotkey, a lexipeek:// link, a second launch; a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-e2e.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
 param([Parameter(Mandatory)] [string]$Exe, [Parameter(Mandatory)] [string]$Data, [Parameter(Mandatory)] [string]$Out)
@@ -70,7 +70,7 @@ Keys '^{HOME}'
 Keys '^+{RIGHT}'
 Shot '1-selected'
 
-Keys '%d'
+Keys '^%d'
 Start-Sleep 4
 Shot '2-card'
 $t = AppTexts $app
@@ -82,7 +82,7 @@ Shot '3-closed'
 Check (-not ((AppTexts $app) -match 'Haus')) 'Esc closes the card'
 
 ClickIn $pad
-Keys '%a'
+Keys '^%a'
 Start-Sleep 2
 Keys 'Tag~'
 Start-Sleep 4

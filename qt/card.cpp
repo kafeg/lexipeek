@@ -15,6 +15,7 @@
 #include <QScrollArea>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "fluent.hpp"
 #include "ui.hpp"
 
 namespace lexipeek::qt {
@@ -222,14 +223,26 @@ QLabel *link(const QString &text, const QFont &f, std::function<void()> click, c
   return l;
 }
 
-// A menu button of the bottom row (the method, the badge): its text and ▾, no frame.
+// A menu button of the bottom row (the method, the badge): its text and ▾, as the command bar's buttons.
 QToolButton *menu_button(const QString &text, const QFont &f) {
   auto *b = new QToolButton;
   b->setText(text);
   b->setFont(f);
-  b->setAutoRaise(true);
+  b->setProperty("command", true);
+  b->setCursor(Qt::PointingHandCursor);
   b->setPopupMode(QToolButton::InstantPopup);
-  b->setStyleSheet("QToolButton { border: none; padding: 0 2px; } QToolButton::menu-indicator { image: none; width: 0; }");
+  return b;
+}
+
+// An icon button of the command bar: the system's glyph, its tooltip.
+QToolButton *command(fluent::Glyph g, const QString &tip, std::function<void()> click) {
+  auto *b = new QToolButton;
+  b->setText(fluent::glyph(g));
+  b->setFont(fluent::icons(15));
+  b->setToolTip(tip);
+  b->setProperty("command", true);
+  b->setCursor(Qt::PointingHandCursor);
+  QObject::connect(b, &QToolButton::clicked, std::move(click));
   return b;
 }
 
@@ -484,10 +497,10 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
 QWidget *CardWidget::bar(const CardView &v) {
   auto *w = new QWidget;
   w->setObjectName("bar");
-  if (!embedded_) w->setStyleSheet("#bar { border-top: 1px solid palette(mid); background: palette(alternate-base); }");
+  if (embedded_) w->setObjectName("inline-bar");  // the flyout's bar is styled by fluent's sheet
   auto *l = new QHBoxLayout(w);
-  l->setContentsMargins(embedded_ ? 0 : 14, 6, embedded_ ? 0 : 14, 6);
-  l->setSpacing(9);
+  l->setContentsMargins(embedded_ ? 0 : 10, 4, embedded_ ? 0 : 8, 4);
+  l->setSpacing(4);
   auto f = font(-2);
   if (!v.back.empty()) {
     // Cut with "…" to leave the row's other buttons their room.
@@ -521,9 +534,7 @@ QWidget *CardWidget::bar(const CardView &v) {
   l->addStretch();
   if (!v.copy.empty()) {
     auto text = q(v.copy);
-    auto *c = link("⧉", font(0), [text] { QApplication::clipboard()->setText(text); });
-    c->setToolTip(t("card_copy"));
-    l->addWidget(c);
+    l->addWidget(command(fluent::Glyph::copy, t("card_copy"), [text] { QApplication::clipboard()->setText(text); }));
   }
   if (!v.badge.empty() || !v.books.empty() || !v.answers.empty()) {
     auto *b = menu_button(q(v.badge) + (v.books.empty() && v.answers.empty() ? "" : " ▾"), f);
@@ -548,18 +559,13 @@ QWidget *CardWidget::bar(const CardView &v) {
     l->addWidget(b);
   }
   if (v.can_save) {
-    auto *s = link(v.saved ? "★" : "☆", font(1), [this] { m_.toggle_saved(); });
-    s->setToolTip(q(v.star_help));
+    auto *s = command(v.saved ? fluent::Glyph::star_filled : fluent::Glyph::star, q(v.star_help), [this] { m_.toggle_saved(); });
+    if (v.saved) s->setStyleSheet("color: " + fluent::accent().name());
     l->addWidget(s);
   }
   if (!embedded_) {
-    auto *p = link("📌", font(-1), [this] { m_.toggle_pin(); });
-    p->setToolTip(t("card_pin"));
-    if (!m_.pinned) {
-      auto *dim = new QGraphicsOpacityEffect(p);
-      dim->setOpacity(0.35);
-      p->setGraphicsEffect(dim);
-    }
+    auto *p = command(m_.pinned ? fluent::Glyph::pinned : fluent::Glyph::pin, t("card_pin"), [this] { m_.toggle_pin(); });
+    if (m_.pinned) p->setStyleSheet("color: " + fluent::accent().name());
     l->addWidget(p);
   }
   return w;

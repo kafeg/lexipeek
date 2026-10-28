@@ -95,7 +95,7 @@ foreach ($a in $apps) {
   Start-Sleep 1
   $probe = Join-Path $Out "$($a.name)-probe.txt"
   Start-Process $Exe -ArgumentList '--probe-selection', $probe -Wait
-  Keys '%d'
+  Keys '^%d'
   Start-Sleep 4
   Shot $a.name
   $t = Texts $lp

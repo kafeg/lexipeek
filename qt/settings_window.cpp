@@ -27,6 +27,7 @@
 #include <QVBoxLayout>
 #include <thread>
 #include "dicts_pane.hpp"
+#include "fluent.hpp"
 #include "packs_pane.hpp"
 #include "version.h"
 #include "platform.hpp"
@@ -118,23 +119,37 @@ QKeySequence sequence(const Hotkey &h) {
 
 }  // namespace
 
+// Windows Settings' layout: the sections in a list on the left, the open one's page on the right.
 SettingsWindow::SettingsWindow(CoreClient &client) : sh_(client) {
   setWindowTitle(t("settings_more"));
-  auto *l = new QVBoxLayout(this);
-  sections_ = new QTabWidget;
+  auto *l = new QHBoxLayout(this);
+  l->setContentsMargins(0, 0, 0, 0);
+  l->setSpacing(0);
+  auto *side = new QWidget;
+  auto *sl = new QVBoxLayout(side);
+  sl->setContentsMargins(8, 12, 4, 12);
+  nav_ = new QListWidget;
+  nav_->setObjectName("nav");
+  nav_->setFixedWidth(200);
+  nav_->setIconSize(QSize(16, 16));
   auto names = settings_sections();
-  for (auto s : shown_sections) {
-    auto *page = new QWidget;
-    new QVBoxLayout(page);
-    sections_->addTab(page, q(names[static_cast<int>(s)]));
-  }
-  l->addWidget(sections_);
-  connect(sections_, &QTabWidget::currentChanged, this, [this](int i) {
+  const fluent::Glyph glyphs[] = {fluent::Glyph::settings, fluent::Glyph::globe, fluent::Glyph::card, fluent::Glyph::robot};
+  for (int i = 0; i < 4; ++i) nav_->addItem(new QListWidgetItem(fluent::icon(glyphs[i]), q(names[static_cast<int>(shown_sections[i])])));
+  nav_->setCurrentRow(0);
+  sl->addWidget(nav_);
+  l->addWidget(side);
+  auto *right = new QWidget;
+  page_ = new QVBoxLayout(right);
+  page_->setContentsMargins(20, 16, 24, 16);
+  page_->setSpacing(12);
+  l->addWidget(right, 1);
+  connect(nav_, &QListWidget::currentRowChanged, this, [this](int i) {
+    if (i < 0) return;
     section_ = shown_sections[i];
     draw();
   });
-  resize(640, 620);
-  setMinimumSize(560, 480);
+  resize(860, 640);
+  setMinimumSize(680, 480);
   draw();
 }
 
@@ -142,7 +157,7 @@ void SettingsWindow::select(SettingsSection section, int tab) {
   tabs_[section] = tab;
   section_ = section;
   for (int i = 0; i < 4; ++i)
-    if (shown_sections[i] == section) sections_->setCurrentIndex(i);
+    if (shown_sections[i] == section) nav_->setCurrentRow(i);
   draw();
 }
 
@@ -152,6 +167,8 @@ void SettingsWindow::refresh() { draw(); }
 void SettingsWindow::changeEvent(QEvent *e) {
   QWidget::changeEvent(e);
   if (e->type() != QEvent::ApplicationPaletteChange) return;
+  const fluent::Glyph glyphs[] = {fluent::Glyph::settings, fluent::Glyph::globe, fluent::Glyph::card, fluent::Glyph::robot};
+  for (int i = 0; i < 4; ++i) nav_->item(i)->setIcon(fluent::icon(glyphs[i]));
   if (packs_) static_cast<PacksPane *>(packs_)->draw();
   if (dicts_) static_cast<DictsPane *>(dicts_)->draw();
   draw();
@@ -167,40 +184,44 @@ void SettingsWindow::after(const std::string &error) {
   error_ = error;
   emit changed();
   auto names = settings_sections();
-  for (int i = 0; i < 4; ++i) sections_->setTabText(i, q(names[static_cast<int>(shown_sections[i])]));
+  for (int i = 0; i < 4; ++i) nav_->item(i)->setText(q(names[static_cast<int>(shown_sections[i])]));
   setWindowTitle(t("settings_more"));
   draw();
 }
 
+// Drawn again once the event that changed it is over: a toggle or a button of the page must not delete itself in its
+// own signal.
 void SettingsWindow::draw() {
+  if (pending_) return;
+  pending_ = true;
+  QMetaObject::invokeMethod(this, [this] {
+    pending_ = false;
+    draw_now();
+  }, Qt::QueuedConnection);
+}
+
+void SettingsWindow::draw_now() {
   // The same pane drawn again keeps its place (a toggle, a download's progress).
   auto *old = findChild<QScrollArea *>("rows");
   int scrolled = old && section_ == drawn_section_ && tabs_[section_] == drawn_tab_ ? old->verticalScrollBar()->value() : 0;
   drawn_section_ = section_, drawn_tab_ = tabs_[section_];
   for (auto *pane : {packs_, dicts_})
     if (pane) pane->hide(), pane->setParent(nullptr);
-  int index = 0;
-  for (int i = 0; i < 4; ++i)
-    if (shown_sections[i] == section_) index = i;
-  auto *section = static_cast<QVBoxLayout *>(sections_->widget(index)->layout());
-  ui::clear(section);
+  ui::clear(page_);
   auto page = app::settings_page(sh_.client.data(), section_, tabs_[section_], sh_.state());
-  auto *target = section;
-  // A section's sub-tabs: tabs inside the tab, the open one drawn.
+  auto *target = page_;
+  auto *title = ui::text(page.sections[static_cast<int>(section_)], 8, false, true);
+  page_->addWidget(title);
+  // A section's sub-tabs: text tabs over its page.
   if (!page.tabs.empty()) {
-    auto *sub = new QTabWidget;
-    for (auto &x : page.tabs) {
-      auto *w = new QWidget;
-      new QVBoxLayout(w);
-      sub->addTab(w, q(x));
-    }
-    sub->setCurrentIndex(page.tab);
-    connect(sub, &QTabWidget::currentChanged, this, [this](int i) {
+    QStringList names;
+    for (auto &x : page.tabs) names << q(x);
+    auto *tabs = new fluent::TabBar(names, page.tab);
+    connect(tabs, &fluent::TabBar::picked, this, [this](int i) {
       tabs_[section_] = i;
       QMetaObject::invokeMethod(this, [this] { draw(); }, Qt::QueuedConnection);
     });
-    section->addWidget(sub);
-    target = static_cast<QVBoxLayout *>(sub->widget(page.tab)->layout());
+    page_->addWidget(tabs);
   }
   if (page.pane == "packs") {
     if (!packs_) {
@@ -219,21 +240,20 @@ void SettingsWindow::draw() {
     dicts_->show();
     return;
   }
-  // Rows; a heading starts a group box of the rows under it.
+  // Each row in its card; a heading is a group's title over the cards under it (Windows Settings').
   auto *rows = new QWidget;
   auto *rl = new QVBoxLayout(rows);
-  rl->setSpacing(10);
-  QVBoxLayout *group = rl;
+  rl->setContentsMargins(0, 4, 8, 8);
+  rl->setSpacing(4);
   for (auto &r : page.rows) {
     if (r.kind == SettingRow::Kind::heading) {
-      auto *box = new QGroupBox(q(r.title));
-      group = new QVBoxLayout(box);
-      group->setSpacing(10);
-      if (!r.about.empty()) group->addWidget(ui::text(r.about, -1, true));
-      rl->addWidget(box);
+      rl->addSpacing(14);
+      rl->addWidget(ui::text(r.title, 0, false, true));
+      if (!r.about.empty()) rl->addWidget(ui::text(r.about, -1, true));
+      rl->addSpacing(2);
       continue;
     }
-    group->addWidget(row(r));
+    rl->addWidget(fluent::card(row(r)));
   }
   if (!error_.empty()) {
     auto *e = ui::text(error_, -1);
@@ -262,10 +282,10 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       return w;
     }
     case K::toggle: {
-      auto *box = new QCheckBox;
+      auto *box = new fluent::Toggle;
       box->setChecked(r.on);
       box->setEnabled(r.enabled);
-      connect(box, &QCheckBox::toggled, this, [this, key, dir](bool on) {
+      connect(box, &fluent::Toggle::toggled, this, [this, key, dir](bool on) {
         if (key == "open_at_login") platform::set_login(on), on = platform::login();
         after(app::toggle(dir, key, on));
       });

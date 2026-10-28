@@ -1,0 +1,55 @@
+// The Windows 11 look (Fluent) for every window: palettes, one style sheet, the system's icon glyphs, and the few
+// controls Qt has no Fluent form of (a toggle switch, a settings card, a text tab bar).
+#pragma once
+#include <QAbstractButton>
+#include <QFrame>
+#include <QIcon>
+#include <QWidget>
+#include <optional>
+
+namespace lexipeek::qt::fluent {
+
+// Segoe Fluent Icons (Windows 11) / Segoe MDL2 Assets (Windows 10) code points.
+enum class Glyph : char16_t {
+  back = 0xE72B, chevron = 0xE70D, copy = 0xE8C8, star = 0xE734, star_filled = 0xE735, pin = 0xE718, pinned = 0xE840,
+  search = 0xE721, history = 0xE81C, comment = 0xE90A, help = 0xE897, settings = 0xE713, info = 0xE946, globe = 0xE774,
+  card = 0xE8A1, robot = 0xE99A, keyboard = 0xE765, close = 0xE711
+};
+
+// The theme now (Fusion, the palette, the style sheet), again whenever the system's scheme changes.
+void apply();
+// Light or dark whatever the system says (snapshots); nullopt: the system's again.
+void force(std::optional<bool> dark);
+bool dark();
+QColor accent();
+QColor secondary();  // secondary text
+// The glyph's font at a pixel size (falls back to the text font where Windows' icon fonts are missing).
+QFont icons(int px);
+QString glyph(Glyph g);
+QIcon icon(Glyph g, int px = 16);
+
+// A rounded panel around a row (Windows Settings' "settings card").
+QFrame *card(QWidget *content);
+
+// An on/off switch.
+class Toggle : public QAbstractButton {
+  Q_OBJECT
+ public:
+  explicit Toggle(QWidget *parent = nullptr);
+  QSize sizeHint() const override { return {40, 20}; }
+
+ protected:
+  void paintEvent(QPaintEvent *) override;
+};
+
+// Text tabs with the accent line under the open one (Windows Settings' SelectorBar).
+class TabBar : public QWidget {
+  Q_OBJECT
+ public:
+  TabBar(const QStringList &tabs, int current, QWidget *parent = nullptr);
+
+ signals:
+  void picked(int index);
+};
+
+}  // namespace lexipeek::qt::fluent

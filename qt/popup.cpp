@@ -1,6 +1,7 @@
 #include "popup.hpp"
 #include <QCursor>
 #include <QGuiApplication>
+#include <QGraphicsDropShadowEffect>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QScreen>
@@ -9,7 +10,7 @@
 namespace lexipeek::qt {
 
 namespace {
-constexpr int escape_key = 100, pin_key = 101, gap = 6;
+constexpr int escape_key = 100, pin_key = 101, gap = 6, shadow = 16;
 
 // Under the anchor (the selection or the cursor), above it when there is no room, inside the screen.
 QPoint place(QSize size, QRect anchor, QRect screen) {
@@ -21,14 +22,25 @@ QPoint place(QSize size, QRect anchor, QRect screen) {
 }
 }  // namespace
 
+// A flyout as Windows 11's: the card in a frame with rounded corners and a hairline, a soft shadow around it (drawn
+// here, the same on Windows 10).
 CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint), model(client) {
   setAttribute(Qt::WA_ShowWithoutActivating);
-  setObjectName("popup");
-  setStyleSheet("#popup { border: 1px solid palette(mid); }");
+  setAttribute(Qt::WA_TranslucentBackground);
   auto *box = new QVBoxLayout(this);
-  box->setContentsMargins(0, 0, 0, 0);
+  box->setContentsMargins(shadow, shadow - 4, shadow, shadow + 4);
+  auto *frame = new QFrame;
+  frame->setObjectName("flyout");
+  auto *fl = new QVBoxLayout(frame);
+  fl->setContentsMargins(1, 1, 1, 1);
   card = new CardWidget(model);
-  box->addWidget(card);
+  fl->addWidget(card);
+  box->addWidget(frame);
+  auto *drop = new QGraphicsDropShadowEffect(frame);
+  drop->setBlurRadius(28);
+  drop->setOffset(0, 6);
+  drop->setColor(QColor(0, 0, 0, 70));
+  frame->setGraphicsEffect(drop);
   connect(&model, &CardModel::changed, this, [this] { QMetaObject::invokeMethod(this, [this] { fit(); }, Qt::QueuedConnection); });
   connect(card, &CardWidget::submitted, this, [this](const QString &t) {
     if (t.trimmed().isEmpty()) return;
@@ -55,11 +67,12 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   screen_ = (s ? s : QGuiApplication::primaryScreen())->availableGeometry();
   card->rebuild();
   adjustSize();
-  move(place(size(), anchor, screen_));
+  // The frame at the anchor; the window around it is larger by the shadow.
+  auto inner = size() - QSize(2 * shadow, 2 * shadow);
+  move(place(inner, anchor, screen_) - QPoint(shadow, shadow - 4));
   model.source = source;
   if (text) model.lookup(*text);
   show();
-  platform::round(this);
   if (focus) {
     platform::activate(this);
     // Once more after the card is drawn (its text field is made then): the focus in the field.

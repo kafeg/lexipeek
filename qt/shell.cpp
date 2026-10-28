@@ -1,4 +1,5 @@
 #include "shell.hpp"
+#include "fluent.hpp"
 #include "ui.hpp"
 #include <QApplication>
 #include <QGuiApplication>
@@ -54,7 +55,7 @@ void Shell::apply() {
   QGuiApplication::styleHints()->setColorScheme(s_.theme == "light"  ? Qt::ColorScheme::Light
                                                 : s_.theme == "dark" ? Qt::ColorScheme::Dark
                                                                      : Qt::ColorScheme::Unknown);
-  ui::follow_scheme();
+  fluent::apply();
   register_hotkeys();
   c_.configure();
 }

@@ -17,6 +17,7 @@
 #include <QShortcut>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include "fluent.hpp"
 #include "ui.hpp"
 
 namespace lexipeek::qt {
@@ -43,32 +44,28 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   side->setFixedWidth(210);
   auto *sl = new QVBoxLayout(side);
   sl->setContentsMargins(8, 8, 8, 12);
+  // Windows Settings' layout: the pages in a list on the left; Settings and About at its foot.
   side_ = new QListWidget;
-  side_->setFrameShape(QFrame::NoFrame);
+  side_->setObjectName("nav");
+  side_->setIconSize(QSize(16, 16));
   for (int i = 0; i < 5; ++i) side_->addItem("");
   sl->addWidget(side_, 1);
   memory_ = ui::text(QString(), -1.5, true);
+  memory_->setContentsMargins(12, 0, 0, 4);
   sl->addWidget(memory_);
-  auto *buttons = new QHBoxLayout;
-  auto *settings = new QToolButton;
-  settings->setText(t("settings_more"));
-  settings->setAutoRaise(true);
-  connect(settings, &QToolButton::clicked, this, [this] { emit openSettings(-1, 0); });
-  auto *about = new QToolButton;
-  about->setText("ⓘ");
-  about->setToolTip(t("menu_about"));
-  about->setAutoRaise(true);
-  connect(about, &QToolButton::clicked, this, [this] { emit openAbout(); });
-  buttons->addWidget(settings);
-  buttons->addStretch();
-  buttons->addWidget(about);
-  sl->addLayout(buttons);
+  foot_ = new QListWidget;
+  foot_->setObjectName("nav");
+  foot_->setIconSize(QSize(16, 16));
+  foot_->addItem("");
+  foot_->addItem("");
+  foot_->setFixedHeight(84);
+  connect(foot_, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+    foot_->clearSelection();
+    if (foot_->row(item) == 0) emit openSettings(-1, 0);
+    else emit openAbout();
+  });
+  sl->addWidget(foot_);
   row->addWidget(side);
-
-  auto *line = new QFrame;
-  line->setFrameShape(QFrame::VLine);
-  line->setFrameShadow(QFrame::Sunken);
-  row->addWidget(line);
 
   pages_ = new QStackedWidget;
   pages_->addWidget(lookup_page());
@@ -86,8 +83,9 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   auto *timer = new QTimer(this);
   connect(timer, &QTimer::timeout, this, &MainWindow::refresh);
   timer->start(15000);
-  resize(860, 560);
+  resize(900, 600);
   side_->setCurrentRow(0);
+  icons();
   refresh();
 }
 
@@ -138,6 +136,7 @@ void MainWindow::show_page(int page) { side_->setCurrentRow(page); }
 void MainWindow::changeEvent(QEvent *e) {
   QWidget::changeEvent(e);
   if (e->type() != QEvent::ApplicationPaletteChange) return;
+  icons();
   if (pages_->currentIndex() == 1) draw_notes();
   if (pages_->currentIndex() == 2) draw_help();
 }
@@ -151,7 +150,16 @@ void MainWindow::look(const QString &text) {
   card.lookup(text.toStdString());
 }
 
+void MainWindow::icons() {
+  const fluent::Glyph glyphs[] = {fluent::Glyph::search, fluent::Glyph::star, fluent::Glyph::comment, fluent::Glyph::history, fluent::Glyph::help};
+  for (int i = 0; i < 5; ++i) side_->item(i)->setIcon(fluent::icon(glyphs[i]));
+  foot_->item(0)->setIcon(fluent::icon(fluent::Glyph::settings));
+  foot_->item(1)->setIcon(fluent::icon(fluent::Glyph::info));
+}
+
 void MainWindow::refresh() {
+  foot_->item(0)->setText(t("settings_more"));
+  foot_->item(1)->setText(t("menu_about"));
   hint_->setText(t("win_hint", lookup_key, input_key));
   auto v = c_.engine.notes(tab_, page_);
   for (int i = 0; i < 3 && i < static_cast<int>(v.tabs.size()); ++i) side_->item(words + i)->setText(q(v.tabs[i]));

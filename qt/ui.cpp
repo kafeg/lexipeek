@@ -47,19 +47,6 @@ void clear(QLayout *l) {
   }
 }
 
-void follow_scheme() {
-  static const QString native = QApplication::style()->name();
-  auto apply = [] {
-    if (native != "windowsvista") return;  // Windows 11's own style and Fusion draw dark themselves
-    bool dark = QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-    auto want = dark ? QString("fusion") : native;
-    if (QApplication::style()->name() != want) QApplication::setStyle(QStyleFactory::create(want));
-  };
-  static bool connected = false;
-  if (!connected) QObject::connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, apply), connected = true;
-  apply();
-}
-
 QScrollArea *scroll(QWidget *inner) {
   auto *s = new QScrollArea;
   s->setWidget(inner);

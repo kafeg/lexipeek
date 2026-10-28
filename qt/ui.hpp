@@ -19,10 +19,6 @@ void grey(QWidget *w);
 QLabel *link(const QString &s, std::function<void()> click);
 // Everything in a layout, nested layouts and their widgets too.
 void clear(QLayout *l);
-// The style for the colour scheme now, and again whenever it changes: Windows 10's own style draws no dark, so dark
-// takes Fusion (which follows the system's dark palette) and light goes back to the system's style.
-void follow_scheme();
-
 // A frameless scroll area around inner that paints nothing of its own (a tab page's background shows through).
 QScrollArea *scroll(QWidget *inner);
 // A scroll area's position back after its content was drawn again (once the layout has run).

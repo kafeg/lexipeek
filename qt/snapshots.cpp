@@ -17,29 +17,13 @@
 #include "first_run.hpp"
 #include "main_window.hpp"
 #include "settings_window.hpp"
+#include "fluent.hpp"
 #include "ui.hpp"
 
 namespace lexipeek::qt {
 
 namespace {
 
-#ifndef _WIN32
-QPalette dark() {
-  QPalette p;
-  p.setColor(QPalette::Window, QColor(0x2b, 0x2b, 0x2b));
-  p.setColor(QPalette::WindowText, QColor(0xe8, 0xe8, 0xe8));
-  p.setColor(QPalette::Base, QColor(0x1e, 0x1e, 0x1e));
-  p.setColor(QPalette::AlternateBase, QColor(0x33, 0x33, 0x33));
-  p.setColor(QPalette::Text, QColor(0xe8, 0xe8, 0xe8));
-  p.setColor(QPalette::Button, QColor(0x3a, 0x3a, 0x3a));
-  p.setColor(QPalette::ButtonText, QColor(0xe8, 0xe8, 0xe8));
-  p.setColor(QPalette::PlaceholderText, QColor(0x9a, 0x9a, 0x9a));
-  p.setColor(QPalette::Highlight, QColor(0x3d, 0x8b, 0xfd));
-  p.setColor(QPalette::Link, QColor(0x6c, 0xa8, 0xff));
-  p.setColor(QPalette::Mid, QColor(0x50, 0x50, 0x50));
-  return p;
-}
-#endif
 
 // One picture: make draws it; step, once it is quiet, does what is still asked and says true, or false when it is final.
 struct Shot {
@@ -109,10 +93,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
   QDir().mkpath(o.out);
   app.setQuitOnLastWindowClosed(false);
   // Windows: its own platform and style, windows never shown; elsewhere the minimal platform and Fusion.
-#ifndef _WIN32
-  QApplication::setStyle(QStyleFactory::create("Fusion"));
-  auto light = QApplication::palette();
-#endif
+
   auto *model = new CardModel(client);
   auto *main = new MainWindow(client);
   // AI answers from files: any key will do (the provider would want one).
@@ -253,12 +234,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
   auto start = [&] {
     if (i == n * 2) return app.quit();
     bool is_dark = i >= n;
-#ifdef _WIN32
-    QGuiApplication::styleHints()->setColorScheme(is_dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
-    ui::follow_scheme();
-#else
-    QApplication::setPalette(is_dark ? dark() : light);
-#endif
+    fluent::force(is_dark);
     if (i % n == 0 && !o.firstrun_from.isEmpty())
       for (auto *file : {"packs.json", "installed.json"}) QDir(q(client.data())).remove(file);
     if (shown && shown != card) shown->hide();
