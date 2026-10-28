@@ -4,8 +4,11 @@ TYPE ?= Release
 GEN := $(shell command -v ninja >/dev/null 2>&1 && echo "-G Ninja")
 
 .PHONY: deps build test bench asan clean app app-test install snapshots
-# The app's signing identity: ad-hoc by default (Accessibility must then be granted again after each build).
-SIGN ?= -
+# The app's signing identity. macOS ties the Accessibility grant (and the Keychain's AI keys) to it: an ad-hoc build is
+# a new app each time. With the local certificate (scripts/create-dev-certificate.sh, once) builds keep the grant;
+# without it (CI) ad-hoc. SIGN=<identity> picks another.
+DEV_IDENTITY ?= LexiPeek Dev
+SIGN ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q "$(DEV_IDENTITY)" && echo "$(DEV_IDENTITY)" || echo "-")
 APP := mac/build/Build/Products/Release/LexiPeek.app
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 # The version as InkPeek's: <major.minor>.<commits>, the build number the commits.
