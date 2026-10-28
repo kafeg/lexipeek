@@ -22,6 +22,7 @@ class FirstRunWindow : public QWidget {
 
  protected:
   void closeEvent(QCloseEvent *e) override;
+  void changeEvent(QEvent *e) override;
 
  private:
   void primary();

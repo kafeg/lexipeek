@@ -28,6 +28,7 @@ void CardModel::relook() {
 
 void CardModel::reset() {
   request_ = 0;
+  waiting_ = false;
   pinned = false;
   unread.clear();
   nav.reset();
@@ -99,8 +100,10 @@ void CardModel::toggle_pin() {
 void CardModel::run(const CardStep &step) {
   switch (step.kind) {
     case CardStep::Kind::lookup:
+      waiting_ = true;
       request_ = lane_.lookup(step.text, step.source, step.lang, step.answer, [this](int id, Card card) {
         if (id != request_) return;
+        waiting_ = false;
         nav.arrived(card);
         if (nav.state.has_method) translate(nav.state.method);
         ask_ai();
@@ -118,10 +121,12 @@ void CardModel::run(const CardStep &step) {
       auto id = request_;
       auto e = c_.engine;
       auto card = nav.card();
+      waiting_ = true;
       c_.run<SectionPage>(
           c_.lookups, [e, card, step] { return e.section(card, step.entry, step.key, step.page); },
           [this, id](SectionPage p) {
             if (id != request_) return;
+            waiting_ = false;
             nav.section_arrived(p);
             relook();
           });
@@ -172,6 +177,11 @@ QString markdown(const std::string &s) {
   return h.replace("\n", "<br>");
 }
 
+// Rich text as a link in the text's own colour (Qt's rich text knows no palette() in its CSS).
+QString plain_link(const QString &html) {
+  return "<a href='#' style='text-decoration: none; color: " + QApplication::palette().color(QPalette::WindowText).name() + "'>" + html + "</a>";
+}
+
 // The text in at most lines lines of width, the last one ending with "…" when it is cut.
 QString cut(const QString &text, const QFont &f, int width, int lines) {
   QFontMetrics m(f);
@@ -201,15 +211,25 @@ QLabel *label(const QString &text, const QFont &f, bool rich = false, bool selec
 }
 
 
-// The card's own look: a borderless button in the link colour.
-QToolButton *link(const QString &text, const QFont &f, std::function<void()> click) {
+// The card's own look: a link in the link colour, as wide as its text.
+QLabel *link(const QString &text, const QFont &f, std::function<void()> click, const QColor &color = {}) {
+  auto c = color.isValid() ? color : QApplication::palette().color(QPalette::Link);
+  auto *l = new QLabel("<a href='#' style='text-decoration: none; color: " + c.name() + "'>" + text.toHtmlEscaped() + "</a>");
+  l->setFont(f);
+  l->setTextFormat(Qt::RichText);
+  l->setCursor(Qt::PointingHandCursor);
+  QObject::connect(l, &QLabel::linkActivated, [click = std::move(click)] { click(); });
+  return l;
+}
+
+// A menu button of the bottom row (the method, the badge): its text and ▾, no frame.
+QToolButton *menu_button(const QString &text, const QFont &f) {
   auto *b = new QToolButton;
   b->setText(text);
   b->setFont(f);
   b->setAutoRaise(true);
-  b->setCursor(Qt::PointingHandCursor);
-  b->setStyleSheet("QToolButton { color: palette(link); border: none; padding: 0; }");
-  QObject::connect(b, &QToolButton::clicked, std::move(click));
+  b->setPopupMode(QToolButton::InstantPopup);
+  b->setStyleSheet("QToolButton { border: none; padding: 0 2px; } QToolButton::menu-indicator { image: none; width: 0; }");
   return b;
 }
 
@@ -255,6 +275,8 @@ void CardWidget::rebuild() {
   }
   if (!(embedded_ && v_.style == HeaderStyle::passage)) tl->addWidget(header(v_));
   if (v_.tabs) tl->addWidget(tabs(v_));
+  // Wrapped labels: the height their lines need at the card's width (a layout's size hint does not know it).
+  if (!embedded_) top->setFixedHeight(tl->totalHeightForWidth(width()));
 
   auto *body = new QWidget;
   auto *bl = new QVBoxLayout(body);
@@ -265,6 +287,7 @@ void CardWidget::rebuild() {
   if (embedded_) bl->addWidget(bar(v_));  // in the window the bar follows the text
   bl->addStretch();
   auto *scroll = new QScrollArea;
+  scroll->setObjectName("body");
   scroll->setWidget(body);
   scroll->setWidgetResizable(true);
   scroll->setFrameShape(QFrame::NoFrame);
@@ -273,8 +296,7 @@ void CardWidget::rebuild() {
     auto *screen = QApplication::primaryScreen();
     int limit = screen ? screen->availableGeometry().height() * (v_.height > 0 ? v_.height : 45) / 100 : 500;
     body->setFixedWidth(width());
-    body->adjustSize();
-    scroll->setFixedHeight(std::min(body->sizeHint().height(), limit));
+    scroll->setFixedHeight(std::min(bl->totalHeightForWidth(width()), limit));
   }
   box_->addWidget(scroll, 1);
   if (!embedded_) box_->addWidget(bar(v_));
@@ -301,6 +323,7 @@ QWidget *CardWidget::header(const CardView &v) {
     scroll->setWidget(all);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     auto *screen = QApplication::primaryScreen();
     int limit = screen ? screen->availableGeometry().height() * (v.height > 0 ? v.height : 45) / 200 : 250;
     all->setFixedWidth(width);
@@ -328,6 +351,11 @@ QWidget *CardWidget::header(const CardView &v) {
   return w;
 }
 
+void CardWidget::changeEvent(QEvent *e) {
+  QWidget::changeEvent(e);
+  if (e->type() == QEvent::ApplicationPaletteChange) rebuild();
+}
+
 void CardWidget::show_whole(bool on) {
   whole_ = on;
   rebuild();
@@ -346,18 +374,21 @@ QWidget *CardWidget::tabs(const CardView &v) {
   auto *w = new QWidget;
   auto *l = new QHBoxLayout(w);
   l->setContentsMargins(0, 0, 0, 0);
-  l->setSpacing(14);
+  l->setSpacing(12);
+  auto pal = QApplication::palette();
+  // The tabs in one row: a smaller size when they would not fit the card.
+  int room = (embedded_ ? std::max(width(), 300) : (v.width > 0 ? v.width : 400)) - 28, size = -1;
+  for (; size > -4; --size) {
+    int need = 12 * static_cast<int>(v.tab_items.size() - 1);
+    for (auto &t : v.tab_items) need += QFontMetrics(font(size, true)).horizontalAdvance(q(t.title));
+    if (need <= room) break;
+  }
   for (auto &t : v.tab_items) {
     bool on = t.tab == v.tab;
-    auto *b = new QToolButton;
-    b->setText(q(t.title));
-    b->setFont(font(-1, on));
-    b->setAutoRaise(true);
-    b->setCursor(Qt::PointingHandCursor);
-    b->setStyleSheet(on ? "QToolButton { border: none; border-bottom: 2px solid palette(highlight); padding: 0 0 4px 0; }"
-                        : "QToolButton { border: none; color: gray; padding: 0 0 4px 0; }");
     auto tab = t.tab;
-    connect(b, &QToolButton::clicked, this, [this, tab] { m_.select(tab); });
+    auto *b = link(q(t.title), font(size, on), [this, tab] { m_.select(tab); }, on ? pal.color(QPalette::WindowText) : QColor(Qt::gray));
+    b->setStyleSheet(on ? "QLabel { border-bottom: 2px solid " + pal.color(QPalette::Highlight).name() + "; padding-bottom: 3px; }"
+                        : "QLabel { border-bottom: 2px solid transparent; padding-bottom: 3px; }");
     l->addWidget(b);
   }
   l->addStretch();
@@ -379,8 +410,9 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
       }
       auto body = r.html.empty() ? q(r.text).toHtmlEscaped() : q(r.html);
       if (r.open == "entry") {
+        // A dictionary's short line (its headword and meaning): a click opens its full entry alone.
         auto entry = r.entry;
-        auto *b = label("<a href='#' style='text-decoration: none; color: palette(text)'>" + body + "</a>", font(), true, false);
+        auto *b = label(plain_link(q(r.text).toHtmlEscaped()), font(), true, false);
         b->setCursor(Qt::PointingHandCursor);
         b->setToolTip(t("card_full"));
         connect(b, &QLabel::linkActivated, this, [this, entry] { m_.open_entry(entry); });
@@ -398,7 +430,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
         l->setCursor(Qt::PointingHandCursor);
         l->setToolTip(t("card_open_word", word));
         connect(l, &QLabel::linkActivated, this, [this, word] { m_.open(word); });
-        l->setText("<a href='#' style='text-decoration: none; color: palette(text)'>" + html + "</a>");
+        l->setText(plain_link(html));
       }
       return l;
     }
@@ -414,7 +446,7 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
       auto entry = r.entry;
       auto key = r.open;
       auto html = q(r.label).toHtmlEscaped() + "<br><span style='color: gray; font-size: small'>" + q(r.text).toHtmlEscaped() + "</span>";
-      auto *l = label("<a href='#' style='text-decoration: none; color: palette(text)'>" + html + "</a>", font(), true, false);
+      auto *l = label(plain_link(html), font(), true, false);
       l->setCursor(Qt::PointingHandCursor);
       connect(l, &QLabel::linkActivated, this, [this, entry, key] { m_.open_section(entry, key); });
       return l;
@@ -446,17 +478,17 @@ QWidget *CardWidget::bar(const CardView &v) {
   if (!embedded_) w->setStyleSheet("#bar { border-top: 1px solid palette(mid); background: palette(alternate-base); }");
   auto *l = new QHBoxLayout(w);
   l->setContentsMargins(embedded_ ? 0 : 14, 6, embedded_ ? 0 : 14, 6);
-  l->setSpacing(12);
+  l->setSpacing(9);
   auto f = font(-2);
-  if (!v.back.empty()) l->addWidget(link(q(v.back), f, [this] { m_.back(); }));
+  if (!v.back.empty()) {
+    auto *b = link(QFontMetrics(f).elidedText(q(v.back), Qt::ElideRight, 180), f, [this] { m_.back(); });
+    b->setToolTip(t("card_back"));
+    l->addWidget(b);
+  }
   if (!v.entry_toggle.empty()) l->addWidget(link(q(v.entry_toggle), f, [this] { m_.toggle_entry(); }));
   if (v.menu) {
-    auto *b = new QToolButton;
-    b->setText(q(v.menu_title) + " ▾");
-    b->setFont(f);
-    b->setAutoRaise(true);
+    auto *b = menu_button(q(v.menu_title) + " ▾", f);
     b->setToolTip(q(v.menu_help));
-    b->setPopupMode(QToolButton::InstantPopup);
     auto *menu = new QMenu(b);
     for (auto &m : v.methods) {
       auto *a = menu->addAction(q(m.title));
@@ -470,7 +502,9 @@ QWidget *CardWidget::bar(const CardView &v) {
   }
   if (!v.pager.empty()) {
     l->addWidget(link("◀", f, [this] { m_.turn(-1); }));
-    l->addWidget(label(q(v.pager), f, false, false));
+    auto *pager = label(q(v.pager), f, false, false);
+    pager->setWordWrap(false);
+    l->addWidget(pager);
     l->addWidget(link("▶", f, [this] { m_.turn(1); }));
   }
   l->addStretch();
@@ -481,12 +515,8 @@ QWidget *CardWidget::bar(const CardView &v) {
     l->addWidget(c);
   }
   if (!v.badge.empty() || !v.books.empty() || !v.answers.empty()) {
-    auto *b = new QToolButton;
-    b->setText(q(v.badge) + (v.books.empty() && v.answers.empty() ? "" : " ▾"));
-    b->setFont(f);
-    b->setAutoRaise(true);
+    auto *b = menu_button(q(v.badge) + (v.books.empty() && v.answers.empty() ? "" : " ▾"), f);
     if (!v.books.empty() || !v.answers.empty()) {
-      b->setPopupMode(QToolButton::InstantPopup);
       auto *menu = new QMenu(b);
       menu->addSection(t("card_text_in"));
       for (auto &x : v.books) {

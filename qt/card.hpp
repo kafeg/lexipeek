@@ -17,7 +17,7 @@ class CardModel : public QObject {
   bool has_card() const { return nav.has_card(); }
   CardView look() const { return look_; }
   bool looking() const { return request_ != 0 && !nav.has_card(); }
-  bool busy() const { return nav.busy(); }
+  bool busy() const { return nav.busy() || waiting_; }  // a translation, an AI answer, a look-up or a section on its way
   bool pinned = false;  // the pop-up card stays open on an outside click
   std::string unread;   // the app whose selection could not be read ("" = none)
   bool input = false;   // the card shows its text field (typing)
@@ -54,6 +54,7 @@ class CardModel : public QObject {
   CoreClient &c_;
   CardLane lane_;
   int request_ = 0;
+  bool waiting_ = false;
   CardView look_;
 };
 
@@ -75,6 +76,7 @@ class CardWidget : public QWidget {
   QWidget *bar(const CardView &v);
   QFont font(int delta = 0, bool bold = false) const;
   bool eventFilter(QObject *o, QEvent *e) override;
+  void changeEvent(QEvent *e) override;
   QWidget *field();
   CardModel &m_;
   bool embedded_;

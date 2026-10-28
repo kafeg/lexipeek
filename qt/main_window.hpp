@@ -27,6 +27,9 @@ class MainWindow : public QWidget {
   void openSettings(int section, int tab);  // section -1: the one shown last
   void openAbout();
 
+ protected:
+  void changeEvent(QEvent *e) override;
+
  private:
   QWidget *lookup_page();
   QWidget *notes_page();

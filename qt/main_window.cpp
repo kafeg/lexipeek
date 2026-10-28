@@ -1,5 +1,6 @@
 #include "main_window.hpp"
 #include <QDate>
+#include <QEvent>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -136,6 +137,13 @@ QWidget *MainWindow::notes_page() {
 }
 
 void MainWindow::show_page(int page) { side_->setCurrentRow(page); }
+
+void MainWindow::changeEvent(QEvent *e) {
+  QWidget::changeEvent(e);
+  if (e->type() != QEvent::ApplicationPaletteChange) return;
+  if (pages_->currentIndex() == 1) draw_notes();
+  if (pages_->currentIndex() == 2) draw_help();
+}
 
 void MainWindow::look(const QString &text) {
   if (text.trimmed().isEmpty()) return;

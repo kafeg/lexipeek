@@ -1,5 +1,6 @@
 #include "first_run.hpp"
 #include <QComboBox>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QListWidget>
@@ -127,6 +128,11 @@ void FirstRunWindow::primary() {
 
 void FirstRunWindow::other() {
   if (look_.step == FirstStep::download) state.error.clear(), refresh();
+}
+
+void FirstRunWindow::changeEvent(QEvent *e) {
+  QWidget::changeEvent(e);
+  if (e->type() == QEvent::ApplicationPaletteChange) refresh();
 }
 
 void FirstRunWindow::closeEvent(QCloseEvent *e) {

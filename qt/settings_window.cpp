@@ -3,6 +3,7 @@
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
+#include <QEvent>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -146,6 +147,15 @@ void SettingsWindow::select(SettingsSection section, int tab) {
 }
 
 void SettingsWindow::refresh() { draw(); }
+
+// A theme change: drawn again (labels keep the colours they were made with).
+void SettingsWindow::changeEvent(QEvent *e) {
+  QWidget::changeEvent(e);
+  if (e->type() != QEvent::ApplicationPaletteChange) return;
+  if (packs_) static_cast<PacksPane *>(packs_)->draw();
+  if (dicts_) static_cast<DictsPane *>(dicts_)->draw();
+  draw();
+}
 
 void SettingsWindow::hotkey_errors(const std::string &lookup, const std::string &input) {
   if (sh_.lookup_error == lookup && sh_.input_error == input) return;

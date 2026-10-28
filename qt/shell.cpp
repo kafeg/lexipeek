@@ -36,6 +36,9 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
   connect(&tray_, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason r) {
     if (r == QSystemTrayIcon::Trigger || r == QSystemTrayIcon::DoubleClick) open_main();
   });
+  // The AI key per request, from the OS's store (never kept by the core).
+  auto key = [this] { return platform::secret(app::ai_provider(c_.data())); };
+  popup_.model.key = key;
   connect(popup_.card, &CardWidget::openPane, this, &Shell::open_settings);
   connect(&icon_, &SelectionIcon::open, this, [this](const platform::Selected &s) { popup_.show_card(s.text, Source::hotkey, s.bounds, false); });
   tray_.show();
@@ -85,6 +88,7 @@ void Shell::type_text() {
 void Shell::open_main(int page) {
   if (!main_) {
     main_ = new MainWindow(c_);
+    main_->card.key = popup_.model.key;
     main_->lookup_key = platform::hotkey_label(s_.lookup), main_->input_key = platform::hotkey_label(s_.input);
     connect(main_, &MainWindow::openSettings, this, &Shell::open_settings);
     connect(main_, &MainWindow::openAbout, this, &Shell::open_about);

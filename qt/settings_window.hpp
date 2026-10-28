@@ -33,7 +33,11 @@ class SettingsWindow : public QWidget {
 
  signals:
   void changed();  // settings.json was written: the shell applies it
+
   void openFirstRun();
+
+ protected:
+  void changeEvent(QEvent *e) override;
 
  private:
   void draw();

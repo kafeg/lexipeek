@@ -12,12 +12,12 @@ class PacksPane : public QWidget {
   Q_OBJECT
  public:
   explicit PacksPane(CoreClient &client);
+  void draw();
 
  signals:
   void changed();  // packs installed or removed
 
  private:
-  void draw();
   void refresh();
   void run(const PackAction &a);
   void finished(const Status &s);

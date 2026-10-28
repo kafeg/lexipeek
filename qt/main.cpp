@@ -92,7 +92,9 @@ int main(int argc, char **argv) {
   else if (auto *env = std::getenv("LEXIPEEK_DATA")) data = env;
   set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
   if (auto run = platform::cli_runner()) ai::set_cli_runner(run);
-  app::set_language(data, QLocale::system().name().left(2).toStdString());
+  // The system's UI language ("ru" of "ru-RU"), not its formats' locale.
+  auto ui = QLocale::system().uiLanguages();
+  app::set_language(data, (ui.isEmpty() ? QLocale::system().name() : ui.first()).left(2).toStdString());
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   auto opt = [&](const char *name) {
     auto i = args.indexOf(name);

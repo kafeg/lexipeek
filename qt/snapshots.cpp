@@ -11,7 +11,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
-#include <QUrlQuery>
+#include <map>
 #include <optional>
 #include "card.hpp"
 #include "first_run.hpp"
@@ -59,7 +59,26 @@ struct Request {
   bool first = true;
 };
 
-std::string value(const QUrlQuery &q, const char *k) { return q.queryItemValue(k, QUrl::FullyDecoded).toStdString(); }
+// A case's url as the Mac app's script writes it (not percent-encoded: "#" and "+" are text): host and its fields.
+struct Url {
+  QString host;
+  std::map<std::string, std::string> fields;
+};
+Url parse(const QString &url) {
+  Url u;
+  auto at = url.indexOf('?');
+  u.host = url.left(at < 0 ? url.size() : at);
+  if (at >= 0)
+    for (auto &kv : url.mid(at + 1).split('&')) {
+      auto eq = kv.indexOf('=');
+      u.fields[kv.left(eq).toStdString()] = eq < 0 ? "" : kv.mid(eq + 1).toStdString();
+    }
+  return u;
+}
+std::string value(const Url &u, const char *k) {
+  auto i = u.fields.find(k);
+  return i == u.fields.end() ? "" : i->second;
+}
 
 // The fixture answers for a case into the replies dir ("error": every request fails with 401).
 void answers(const QString &fixtures, const QString &kind) {
@@ -77,6 +96,7 @@ void answers(const QString &fixtures, const QString &kind) {
 }
 
 QScrollArea *scroller(QWidget *w) {
+  if (auto *body = w->findChild<QScrollArea *>("body"); body && body->isVisible() && body->verticalScrollBar()->maximum() > 0) return body;
   for (auto *s : w->findChildren<QScrollArea *>())
     if (s->isVisible() && s->verticalScrollBar()->maximum() > 0) return s;
   return nullptr;
@@ -94,6 +114,8 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
 #endif
   auto *model = new CardModel(client);
   auto *main = new MainWindow(client);
+  // AI answers from files: any key will do (the provider would want one).
+  if (qEnvironmentVariableIsSet("LEXIPEEK_AI_REPLIES")) model->key = main->card.key = [] { return std::string("snapshot"); };
   main->lookup_key = "Alt+D", main->input_key = "Alt+A";
   auto *settings = new SettingsWindow(client);
   auto *about = new AboutWindow(client);
@@ -109,9 +131,8 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
       auto parts = in.readLine().split('|');
       if (parts.size() < 2 || parts[0].isEmpty()) continue;
       auto name = parts[0], kind = parts.size() > 2 ? parts[2] : QString();
-      QUrl url("lexipeek://" + parts[1], QUrl::TolerantMode);
-      QUrlQuery query(url);
-      auto host = url.host();
+      auto query = parse(parts[1]);
+      auto host = query.host;
       if (host == "window") {
         auto page = value(query, "page"), look = value(query, "look");
         int p = page == "words" ? MainWindow::words : page == "phrases" ? MainWindow::phrases : page == "history" ? MainWindow::history
@@ -132,12 +153,12 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
         shots.push_back({name, [first, step, from, &client] {
                            FirstRunState s = first->state;
                            s.list_error.clear(), s.error.clear(), s.downloading = false, s.done = s.total = 0;
-                           auto copy = [&](const char *file) {
-                             QFile::remove(QDir(q(client.data())).filePath(file));
-                             QFile::copy(QDir(from).filePath(file), QDir(q(client.data())).filePath(file));
-                           };
+                           QDir to(q(client.data()));
+                           for (auto *file : {"packs.json", "installed.json"}) to.remove(file);
+                           auto copy = [&](const char *file) { QFile::copy(QDir(from).filePath(file), to.filePath(file)); };
                            if (step == "pair" || step == "download" || step == "error") copy("packs.json");
                            if (step == "done") copy("packs.json"), copy("installed.json");
+                           s.fetching = step == "list";
                            if (step == "list-error") s.list_error = "Could not resolve host: github.com";
                            if (step == "download") s.downloading = true, s.done = 27'000'000, s.total = 68'000'000;
                            if (step == "error") s.error = "Could not connect to server";
@@ -167,7 +188,8 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
       auto req = std::make_shared<Request>(r);
       auto fixtures = o.fixtures;
       shots.push_back({name,
-                       [model, &card, host, text, kind, fixtures, req] {
+                       [model, &card, host, text, kind, fixtures, req, r] {
+                         *req = r;  // each pass asks again
                          answers(fixtures, kind);
                          model->reset();
                          model->input = host == "input" || host == "unread";
@@ -203,23 +225,26 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
                        }});
     }
   }
+  std::vector<Shot> panes;
   if (o.settings) {
     static const char *keys[] = {"languages", "card", "ai", "general"};
     for (auto s : shown_sections) {
       auto tabs = settings_tab_keys(s);
       auto base = QString("settings-") + keys[static_cast<int>(s)];
       for (int tab = 0; tab < std::max<int>(1, static_cast<int>(tabs.size())); ++tab)
-        shots.push_back({(tabs.empty() ? base : base + "-" + q(tabs[tab])) + o.suffix, [settings, s, tab] {
+        panes.push_back({(tabs.empty() ? base : base + "-" + q(tabs[tab])) + o.suffix, [settings, s, tab] {
                            settings->select(s, tab);
                            return settings;
                          },
                          [] { return true; }, [] { return false; }, true});
     }
-    shots.push_back({"about" + o.suffix, [about] {
+    panes.push_back({"about" + o.suffix, [about] {
                        about->refresh();
                        return about;
                      }});
   }
+  // Settings first: the cases after them may change the data dir (☆, a first-run step's files).
+  shots.insert(shots.begin(), panes.begin(), panes.end());
 
   int i = 0, failed = 0, settled = 0, n = static_cast<int>(shots.size());
   QWidget *shown = nullptr;
@@ -232,6 +257,8 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
 #else
     QApplication::setPalette(is_dark ? dark() : light);
 #endif
+    if (i % n == 0 && !o.firstrun_from.isEmpty())
+      for (auto *file : {"packs.json", "installed.json"}) QDir(q(client.data())).remove(file);
     if (shown && shown != card) shown->hide();
     shown = shots[i % n].make();
     shown->setAttribute(Qt::WA_DontShowOnScreen);
