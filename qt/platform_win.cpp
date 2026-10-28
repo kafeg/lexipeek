@@ -35,7 +35,8 @@ struct HotkeyFilter : QAbstractNativeEventFilter {
     auto *msg = static_cast<MSG *>(message);
     if (msg->message != WM_HOTKEY) return false;
     auto it = fired().find(static_cast<int>(msg->wParam));
-    if (it != fired().end()) it->second();
+    // A copy: the handler may unregister its own hotkey (Esc closes the card), which destroys the map's one.
+    if (it != fired().end()) std::function<void()>(it->second)();
     return true;
   }
 };
