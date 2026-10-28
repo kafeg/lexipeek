@@ -5,6 +5,9 @@
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QHash>
+#include <QIconEngine>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QPushButton>
 #include <QStyle>
@@ -56,7 +59,9 @@ QString fallback(Glyph g) {
     case Glyph::card: return "▭";
     case Glyph::robot: return "✦";
     case Glyph::keyboard: return "⌨";
-    case Glyph::close: return "✕";
+    case Glyph::close: case Glyph::remove: return "✕";
+    case Glyph::up: return "▴";
+    case Glyph::more: return "⋯";
   }
   return "";
 }
@@ -83,8 +88,6 @@ QPushButton:hover { background: HOVER; }
 QPushButton:pressed { background: SELECTED; }
 QPushButton:disabled { color: SECONDARY; }
 QPushButton:default { background: ACCENT; color: ONACCENT; border: 1px solid ACCENT; }
-QPushButton[tab="true"] { background: transparent; border: none; border-radius: 0; padding: 4px 0 7px 0; color: SECONDARY; }
-QPushButton[tab="true"]:checked { color: TEXT; border-bottom: 3px solid ACCENT; padding-bottom: 4px; }
 QLineEdit, QKeySequenceEdit QLineEdit, QPlainTextEdit, QComboBox {
   background: FIELD; border: 1px solid CONTROL; border-bottom: 1px solid BOTTOM; border-radius: 4px; padding: 4px 8px;
   selection-background-color: ACCENT; selection-color: ONACCENT; }
@@ -178,30 +181,63 @@ QFont icons(int px) {
 
 QString glyph(Glyph g) { return icon_family().isEmpty() ? fallback(g) : QString(QChar(static_cast<char16_t>(g))); }
 
-QIcon icon(Glyph g, int px, QColor color) {
-  if (!color.isValid()) color = theme().text;
-  QPixmap pm(px * 2, px * 2);
-  pm.setDevicePixelRatio(2);
-  pm.fill(Qt::transparent);
-  QPainter p(&pm);
-  // Drawn by the system where it can (Qt leaves the icon font's code points blank), else as text.
-  auto mask = icon_family().isEmpty() ? QImage() : platform::glyph_mask(icon_family(), static_cast<char16_t>(g), px * 2);
+namespace {
+
+// A glyph's picture of px device pixels in a colour: drawn by the system where it can (Qt leaves the icon font's code
+// points blank), else as text.
+QImage glyph_image(Glyph g, int px, QColor color) {
+  static QHash<QPair<int, int>, QImage> masks;
+  auto key = qMakePair(static_cast<int>(g), px);
+  if (!masks.contains(key)) masks[key] = icon_family().isEmpty() ? QImage() : platform::glyph_mask(icon_family(), static_cast<char16_t>(g), px);
+  auto &mask = masks[key];
+  QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
+  out.fill(Qt::transparent);
+  QPainter p(&out);
   if (!mask.isNull()) {
-    QImage tinted(mask.size(), QImage::Format_ARGB32_Premultiplied);
-    tinted.fill(color);
-    QPainter t(&tinted);
-    t.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-    t.drawImage(0, 0, mask);
-    t.end();
-    tinted.setDevicePixelRatio(2);
-    p.drawImage(QPointF(0, 0), tinted);
+    out.fill(color);
+    p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    p.drawImage(0, 0, mask);
   } else {
-    p.setFont(mask.isNull() && !icon_family().isEmpty() ? QApplication::font() : icons(px));
+    auto f = QApplication::font();
+    f.setPixelSize(px);
+    p.setFont(f);
     p.setPen(color);
-    p.drawText(QRect(0, 0, px, px), Qt::AlignCenter, mask.isNull() && !icon_family().isEmpty() ? fallback(g) : glyph(g));
+    p.drawText(out.rect(), Qt::AlignCenter, fallback(g));
   }
-  return QIcon(pm);
+  return out;
 }
+
+// Drawn when shown, in the theme's colours then: a theme change needs no new icons.
+class GlyphEngine : public QIconEngine {
+ public:
+  GlyphEngine(Glyph g, QColor color) : g_(g), color_(color) {}
+  void paint(QPainter *p, const QRect &r, QIcon::Mode mode, QIcon::State) override {
+    auto c = color_.isValid() ? color_ : theme().text;
+    if (mode == QIcon::Disabled) c = theme().secondary, c.setAlphaF(0.5f);
+    qreal dpr = p->device() ? p->device()->devicePixelRatioF() : 1;
+    int side = std::min(r.width(), r.height());
+    auto img = glyph_image(g_, static_cast<int>(side * dpr), c);
+    p->drawImage(QRectF(r.x() + (r.width() - side) / 2.0, r.y() + (r.height() - side) / 2.0, side, side), img);
+  }
+  QPixmap pixmap(const QSize &size, QIcon::Mode mode, QIcon::State state) override { return scaledPixmap(size, mode, state, 1); }
+  QPixmap scaledPixmap(const QSize &size, QIcon::Mode mode, QIcon::State state, qreal scale) override {
+    QPixmap pm(size * scale);
+    pm.setDevicePixelRatio(scale);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    paint(&p, QRect(QPoint(), size), mode, state);
+    return pm;
+  }
+  QIconEngine *clone() const override { return new GlyphEngine(*this); }
+
+ private:
+  Glyph g_;
+  QColor color_;
+};
+
+}  // namespace
+
+QIcon icon(Glyph g, QColor color) { return QIcon(new GlyphEngine(g, color)); }
 
 QFrame *card(QWidget *content) {
   auto *f = new QFrame;
@@ -210,6 +246,23 @@ QFrame *card(QWidget *content) {
   l->setContentsMargins(16, 12, 16, 12);
   l->addWidget(content);
   return f;
+}
+
+QFrame *card(QLayout *content) {
+  auto *w = new QWidget;
+  content->setContentsMargins(0, 0, 0, 0);
+  w->setLayout(content);
+  return card(w);
+}
+
+QToolButton *icon_button(Glyph g, const QString &tip) {
+  auto *b = new QToolButton;
+  b->setIcon(icon(g));
+  b->setIconSize({14, 14});
+  b->setToolTip(tip);
+  b->setProperty("command", true);
+  b->setCursor(Qt::PointingHandCursor);
+  return b;
 }
 
 Toggle::Toggle(QWidget *parent) : QAbstractButton(parent) {
@@ -239,17 +292,37 @@ void Toggle::paintEvent(QPaintEvent *) {
   p.drawEllipse(QRectF(x, (height() - d) / 2, d, d));
 }
 
+Tab::Tab(const QString &text, bool open, QWidget *parent) : QLabel(text, parent), open_(open) {
+  setTextFormat(Qt::PlainText);
+  setCursor(Qt::PointingHandCursor);
+  setContentsMargins(0, 2, 0, 7);
+  auto p = palette();
+  p.setColor(QPalette::WindowText, open ? theme().text : theme().secondary);
+  setPalette(p);
+}
+
+void Tab::mouseReleaseEvent(QMouseEvent *e) {
+  if (e->button() == Qt::LeftButton && rect().contains(e->position().toPoint())) emit clicked();
+}
+
+void Tab::paintEvent(QPaintEvent *e) {
+  QLabel::paintEvent(e);
+  if (!open_) return;
+  QPainter p(this);
+  p.setRenderHint(QPainter::Antialiasing);
+  p.setPen(Qt::NoPen);
+  p.setBrush(theme().accent);
+  qreal w = std::min<qreal>(16, width());
+  p.drawRoundedRect(QRectF((width() - w) / 2, height() - 3, w, 3), 1.5, 1.5);
+}
+
 TabBar::TabBar(const QStringList &tabs, int current, QWidget *parent) : QWidget(parent) {
   auto *l = new QHBoxLayout(this);
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(20);
   for (int i = 0; i < tabs.size(); ++i) {
-    auto *b = new QPushButton(tabs[i]);
-    b->setProperty("tab", true);
-    b->setCheckable(true);
-    b->setChecked(i == current);
-    b->setCursor(Qt::PointingHandCursor);
-    connect(b, &QPushButton::clicked, this, [this, i] { emit picked(i); });
+    auto *b = new Tab(tabs[i], i == current);
+    connect(b, &Tab::clicked, this, [this, i] { emit picked(i); });
     l->addWidget(b);
   }
   l->addStretch();

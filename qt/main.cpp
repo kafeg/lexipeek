@@ -74,7 +74,7 @@ int self_test(const QString &path) {
   check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
   {
     // The system's icon glyphs: the font found, and an icon drawn from it leaves pixels.
-    auto img = fluent::icon(fluent::Glyph::copy, 20).pixmap(40, 40).toImage();
+    auto img = fluent::icon(fluent::Glyph::copy).pixmap(40, 40).toImage();
     int ink = 0;
     for (int y = 0; y < img.height(); ++y)
       for (int x = 0; x < img.width(); ++x) ink += qAlpha(img.pixel(x, y)) > 0;

@@ -5,6 +5,7 @@
 #include <QThreadPool>
 #include <functional>
 #include <map>
+#include <memory>
 #include <mutex>
 #include "lexipeek/app.hpp"
 
@@ -57,12 +58,19 @@ class CardLane {
   void ask(int id, const Card &card, ai::Ask a, const std::string &key, std::function<void(AiState)> done);
 
  private:
-  bool current(int id);
+  // Shared with the pools' work: a request still running at quit outlives the lane.
+  struct State {
+    std::mutex mu;
+    int latest = 0, translating = 0;
+    std::map<int, Card> cards;
+    bool current(int id) {
+      std::lock_guard g(mu);
+      return latest == id;
+    }
+  };
   void stop();
   CoreClient &c_;
-  std::mutex mu_;
-  int latest_ = 0, translating_ = 0;
-  std::map<int, Card> cards_;
+  std::shared_ptr<State> s_ = std::make_shared<State>();
 };
 
 }  // namespace lexipeek::qt

@@ -68,6 +68,9 @@ void activate(QWidget *w);
 // of px × px device pixels; null where there is none (Qt does not draw that font's private-use code points).
 QImage glyph_mask(const QString &family, char16_t code, int px);
 
+// The taskbar is light (its tray icons black); Windows can set it apart from the apps' light or dark.
+bool taskbar_light();
+
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);
 

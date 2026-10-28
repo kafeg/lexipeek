@@ -11,6 +11,7 @@
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
+#include "fluent.hpp"
 #include "ui.hpp"
 
 namespace lexipeek::qt {
@@ -65,12 +66,12 @@ void PacksPane::draw() {
   check->setEnabled(!busy_);
   connect(check, &QPushButton::clicked, this, &PacksPane::refresh);
   top->addWidget(check, 0, Qt::AlignTop);
-  body_->addLayout(top);
+  body_->addWidget(fluent::card(top));
   auto group = [this](const std::string &title, const std::vector<PackLine> &lines) {
     if (lines.empty()) return;
     body_->addSpacing(6);
     body_->addWidget(ui::text(title, 0, false, true));
-    for (auto &l : lines) body_->addWidget(line(l));
+    for (auto &l : lines) body_->addWidget(fluent::card(line(l)));
   };
   group(view_.installed_title, view_.installed);
   group(view_.available_title, view_.available);
@@ -82,7 +83,7 @@ void PacksPane::draw() {
 QWidget *PacksPane::line(const PackLine &l) {
   auto *w = new QWidget;
   auto *row = new QHBoxLayout(w);
-  row->setContentsMargins(0, 2, 0, 2);
+  row->setContentsMargins(0, 0, 0, 0);
   auto *col = new QVBoxLayout;
   col->setSpacing(1);
   col->addWidget(ui::text(l.title));
@@ -96,8 +97,7 @@ QWidget *PacksPane::line(const PackLine &l) {
     row->addWidget(b);
   }
   if (!l.menu.empty()) {
-    auto *b = new QToolButton;
-    b->setText("⋯");
+    auto *b = fluent::icon_button(fluent::Glyph::more, {});
     b->setPopupMode(QToolButton::InstantPopup);
     b->setEnabled(!busy_);
     auto *menu = new QMenu(b);

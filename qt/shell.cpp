@@ -27,12 +27,21 @@ void present(QWidget *w) {
   w->raise();
   w->activateWindow();
 }
+// The menu bar's glyph in the taskbar's colour.
+QIcon tray_icon() {
+  QIcon i;
+  auto colour = platform::taskbar_light() ? "black" : "white";
+  for (int px : {16, 20, 24, 32}) i.addFile(QString(":/icons/tray_%1_%2.png").arg(colour).arg(px));
+  return i;
+}
 }  // namespace
 
 Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
   QApplication::setQuitOnLastWindowClosed(false);
   QApplication::setWindowIcon(QIcon(":/icons/icon_256.png"));
-  tray_.setIcon(QIcon(":/icons/icon_32.png"));
+  tray_.setIcon(tray_icon());
+  // Light or dark mode switches the taskbar too (a custom mode sets it alone: seen at the next switch or launch).
+  connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, this, [this] { tray_.setIcon(tray_icon()); });
   tray_.setToolTip("LexiPeek");
   tray_.setContextMenu(&menu_);
   connect(&menu_, &QMenu::aboutToShow, this, &Shell::fill_menu);

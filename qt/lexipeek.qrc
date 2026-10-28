@@ -4,5 +4,13 @@
     <file>icons/icon_32.png</file>
     <file>icons/icon_64.png</file>
     <file>icons/icon_256.png</file>
+    <file>icons/tray_white_16.png</file>
+    <file>icons/tray_white_20.png</file>
+    <file>icons/tray_white_24.png</file>
+    <file>icons/tray_white_32.png</file>
+    <file>icons/tray_black_16.png</file>
+    <file>icons/tray_black_20.png</file>
+    <file>icons/tray_black_24.png</file>
+    <file>icons/tray_black_32.png</file>
   </qresource>
 </RCC>

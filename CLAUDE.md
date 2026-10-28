@@ -154,7 +154,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   by default on Windows; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   runs CardNav's steps, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
-  done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets). OS parts only in `platform.hpp`
+  done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets; `clear` deletes later: a redraw may come
+  from a widget's own signal), `fluent` (the Windows 11 look: palettes, one style sheet, the system's icon glyphs drawn
+  by GDI, toggle, settings card, tabs). OS parts only in `platform.hpp`
   (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key; `platform_none.cpp` elsewhere).
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
@@ -164,7 +166,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   launch, screenshots); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
   UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
-  (rsvg-convert) → `Assets.xcassets` (PNGs committed). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
+  (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs committed; the tray's glyph white and black from `MenuBarIcon.svg`). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 

@@ -136,7 +136,6 @@ void MainWindow::show_page(int page) { side_->setCurrentRow(page); }
 void MainWindow::changeEvent(QEvent *e) {
   QWidget::changeEvent(e);
   if (e->type() != QEvent::ApplicationPaletteChange) return;
-  icons();
   if (pages_->currentIndex() == 1) draw_notes();
   if (pages_->currentIndex() == 2) draw_help();
 }

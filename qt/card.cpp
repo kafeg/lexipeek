@@ -37,7 +37,7 @@ void CardModel::reset() {
 }
 
 void CardModel::lookup(const std::string &text, const std::string &lang, const std::string &answer) {
-  run(nav.look(text, source, false, lang, answer));
+  run(nav.look(q(text).trimmed().toStdString(), source, false, lang, answer));
 }
 void CardModel::open(const std::string &word) { run(nav.open(word)); }
 void CardModel::relookup(const std::string &lang, const std::string &answer) { run(nav.relookup(lang, answer)); }
@@ -237,7 +237,7 @@ QToolButton *menu_button(const QString &text, const QFont &f) {
 // An icon button of the command bar: the system's glyph (in a colour: ☆ saved, the pin on), its tooltip.
 QToolButton *command(fluent::Glyph g, const QString &tip, std::function<void()> click, QColor color = {}) {
   auto *b = new QToolButton;
-  b->setIcon(fluent::icon(g, 16, color));
+  b->setIcon(fluent::icon(g, color));
   b->setIconSize(QSize(16, 16));
   b->setToolTip(tip);
   b->setProperty("command", true);
@@ -298,7 +298,8 @@ void CardWidget::rebuild() {
   if (!(embedded_ && v_.style == HeaderStyle::passage)) tl->addWidget(header(v_));
   if (v_.tabs) tl->addWidget(tabs(v_));
   // Wrapped labels: the height their lines need at the card's width (a layout's size hint does not know it).
-  if (!embedded_) top->setFixedHeight(std::max(tl->totalHeightForWidth(width()), tl->sizeHint().height()));
+  // (The size hint wraps them narrower: taller, a gap under the title.)
+  if (!embedded_) top->setFixedHeight(tl->hasHeightForWidth() ? tl->totalHeightForWidth(width()) : tl->sizeHint().height());
 
   auto *body = new QWidget;
   auto *bl = new QVBoxLayout(body);
@@ -391,13 +392,12 @@ bool CardWidget::eventFilter(QObject *o, QEvent *e) {
   return QWidget::eventFilter(o, e);
 }
 
-// Text tabs with a line under the open one (the pop-up card's).
+// The card's tabs (the open one bold), a smaller size when they would not fit.
 QWidget *CardWidget::tabs(const CardView &v) {
   auto *w = new QWidget;
   auto *l = new QHBoxLayout(w);
   l->setContentsMargins(0, 0, 0, 0);
   l->setSpacing(12);
-  auto pal = QApplication::palette();
   // The tabs in one row: a smaller size when they would not fit the card.
   int room = (embedded_ ? std::max(width(), 300) : (v.width > 0 ? v.width : 400)) - 28, size = -1;
   for (; size > -4; --size) {
@@ -406,11 +406,10 @@ QWidget *CardWidget::tabs(const CardView &v) {
     if (need <= room) break;
   }
   for (auto &t : v.tab_items) {
-    bool on = t.tab == v.tab;
     auto tab = t.tab;
-    auto *b = link(q(t.title), font(size, on), [this, tab] { m_.select(tab); }, on ? pal.color(QPalette::WindowText) : QColor(Qt::gray));
-    b->setStyleSheet(on ? "QLabel { border-bottom: 2px solid " + pal.color(QPalette::Highlight).name() + "; padding-bottom: 3px; }"
-                        : "QLabel { border-bottom: 2px solid transparent; padding-bottom: 3px; }");
+    auto *b = new fluent::Tab(q(t.title), t.tab == v.tab);
+    b->setFont(font(size, t.tab == v.tab));
+    connect(b, &fluent::Tab::clicked, this, [this, tab] { m_.select(tab); });
     l->addWidget(b);
   }
   l->addStretch();

@@ -167,8 +167,6 @@ void SettingsWindow::refresh() { draw(); }
 void SettingsWindow::changeEvent(QEvent *e) {
   QWidget::changeEvent(e);
   if (e->type() != QEvent::ApplicationPaletteChange) return;
-  const fluent::Glyph glyphs[] = {fluent::Glyph::settings, fluent::Glyph::globe, fluent::Glyph::card, fluent::Glyph::robot};
-  for (int i = 0; i < 4; ++i) nav_->item(i)->setIcon(fluent::icon(glyphs[i]));
   if (packs_) static_cast<PacksPane *>(packs_)->draw();
   if (dicts_) static_cast<DictsPane *>(dicts_)->draw();
   draw();
@@ -323,6 +321,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
         auto h = hotkey_of(e->keySequence());
         if (!h) return draw();
         auto s = app::settings(dir);
+        // The other hotkey's keys: kept as they were, the row says why.
+        if (*h == (input ? s.lookup : s.input)) return (input ? sh_.input_error : sh_.lookup_error) = t("hk_conflict").toStdString(), draw();
         (input ? s.input : s.lookup) = *h;
         after(app::save(dir, s));
       });
@@ -399,15 +399,19 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->addWidget(e, 1);
       if (r.kind == K::model && r.on) {
         auto *choose = new QPushButton(t("model_choose"));
-        connect(choose, &QPushButton::clicked, this, [this, key, dir] {
+        connect(choose, &QPushButton::clicked, this, [this, key, dir, choose] {
+          // The provider's list over the network: off the window's thread.
+          choose->setEnabled(false);
           auto k = platform::secret(app::ai_provider(dir));
-          auto m = app::ai_models(dir, k);
-          if (!m.error.empty()) return after(m.error);
-          QStringList names;
-          for (auto &x : app::model_titles(m.list)) names << q(x);
-          bool ok = false;
-          auto picked = QInputDialog::getItem(this, t("model_choose"), {}, names, 0, false, &ok);
-          if (ok) after(app::set_text(dir, key, m.list[names.indexOf(picked)].id));
+          sh_.client.run<app::AiModels>(sh_.client.ai, [dir, k] { return app::ai_models(dir, k); }, [this, key, dir](app::AiModels m) {
+            if (!m.error.empty()) return after(m.error);
+            QStringList names;
+            for (auto &x : app::model_titles(m.list)) names << q(x);
+            bool ok = false;
+            auto picked = QInputDialog::getItem(this, t("model_choose"), {}, names, 0, false, &ok);
+            if (ok) after(app::set_text(dir, key, m.list[names.indexOf(picked)].id));
+            else draw();
+          }, this);
         });
         l->addWidget(choose);
       }

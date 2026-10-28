@@ -13,6 +13,7 @@ namespace lexipeek {
 struct Hotkey {
   std::string key = "D";  // a letter or a digit
   bool option = true, command = false, control = false, shift = false;
+  bool operator==(const Hotkey &) const = default;
 };
 
 // Other (own) dictionaries, as InkPeek's Prefs: their order with the packs', which are off, folders read in place.

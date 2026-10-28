@@ -13,6 +13,7 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include "fluent.hpp"
 #include "ui.hpp"
 
 namespace lexipeek::qt {
@@ -21,11 +22,8 @@ namespace {
 
 QScrollArea *scrolled(QWidget *inner) { return ui::scroll(inner); }
 
-QToolButton *small(const QString &text, const QString &tip, bool enabled, std::function<void()> click) {
-  auto *b = new QToolButton;
-  b->setText(text);
-  b->setToolTip(tip);
-  b->setAutoRaise(true);
+QToolButton *small(fluent::Glyph g, const QString &tip, bool enabled, std::function<void()> click) {
+  auto *b = fluent::icon_button(g, tip);
   b->setEnabled(enabled);
   QObject::connect(b, &QToolButton::clicked, std::move(click));
   return b;
@@ -112,17 +110,17 @@ void DictsPane::draw() {
     col->addWidget(detail);
     row->addLayout(col, 1);
     auto id = r.id;
-    row->addWidget(small("▲", t("up"), i > 0, [this, dir, id] {
+    row->addWidget(small(fluent::Glyph::up, t("up"), i > 0, [this, dir, id] {
       app::move_dict(dir, id, -1);
       changed(false);
     }));
-    row->addWidget(small("▼", t("down"), i + 1 < v.rows.size(), [this, dir, id] {
+    row->addWidget(small(fluent::Glyph::chevron, t("down"), i + 1 < v.rows.size(), [this, dir, id] {
       app::move_dict(dir, id, 1);
       changed(false);
     }));
     if (r.removable) {
       auto title_text = r.title;
-      row->addWidget(small("✕", t("delete"), true, [this, dir, id, title_text] {
+      row->addWidget(small(fluent::Glyph::remove, t("delete"), true, [this, dir, id, title_text] {
         QMessageBox box(QMessageBox::Warning, t("delete_q", title_text), t("delete_d"), QMessageBox::NoButton, this);
         auto *del = box.addButton(t("delete"), QMessageBox::DestructiveRole);
         box.addButton(t("cancel"), QMessageBox::RejectRole);
@@ -132,7 +130,7 @@ void DictsPane::draw() {
         changed(true);
       }));
     }
-    body_->addLayout(row);
+    body_->addWidget(fluent::card(row));
   }
   if (!own) body_->addWidget(ui::text(v.empty, 0, true));
   body_->addWidget(ui::text(v.note, -1.5, true));
@@ -153,7 +151,7 @@ void DictsPane::draw() {
         changed(true);
       });
       row->addWidget(remove);
-      body_->addLayout(row);
+      body_->addWidget(fluent::card(row));
     }
   }
   body_->addStretch();
@@ -193,6 +191,8 @@ void DictsPane::dropEvent(QDropEvent *e) {
 CatalogDialog::CatalogDialog(CoreClient &client, QWidget *parent) : QDialog(parent), c_(client) {
   setWindowTitle(t("lang_own"));
   resize(520, 520);
+  // Closed while downloading: the download stops too.
+  connect(this, &QDialog::finished, this, [this] { dl_.cancel(); });
   auto *l = new QVBoxLayout(this);
   filter_edit_ = new QLineEdit;
   connect(filter_edit_, &QLineEdit::textChanged, this, [this](const QString &s) {
@@ -290,7 +290,7 @@ void CatalogDialog::draw() {
       if (QMessageBox::question(this, q(title), q(about)) == QMessageBox::Yes) CatalogDialog::get(item, title);
     });
     row->addWidget(get);
-    body_->addLayout(row);
+    body_->addWidget(fluent::card(row));
   }
   setWindowTitle(t("lang_own") + (v.info.empty() ? "" : "  ·  " + q(v.info)));
 }

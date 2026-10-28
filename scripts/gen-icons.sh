@@ -1,5 +1,5 @@
 #!/bin/sh
-# The app icon and the menu-bar glyph from mac/Icon/*.svg into the asset catalog and qt/icons (needs rsvg-convert: brew install librsvg).
+# The app icon and the menu-bar glyph from mac/Icon/*.svg into the asset catalog and qt/icons (the tray's glyph from the same SVG; needs rsvg-convert: brew install librsvg).
 set -eu
 cd "$(dirname "$0")/../mac"
 set_dir=Sources/LexiPeek/Assets.xcassets/AppIcon.appiconset
@@ -20,6 +20,10 @@ cat > Sources/LexiPeek/Assets.xcassets/MenuBarIcon.imageset/Contents.json <<'J'
 J
 # The Qt shell's window and tray icons.
 for s in 16 32 64 256; do cp "$set_dir/icon_$s.png" ../qt/icons/; done
+# The tray's glyph (the menu bar's): white for a dark taskbar, black for a light one; 100–200 % scaling.
+for c in white black; do
+  for s in 16 20 24 32; do sed "s/#000000/$c/g" Icon/MenuBarIcon.svg | rsvg-convert -w $s -h $s -o "../qt/icons/tray_${c}_$s.png"; done
+done
 # Windows: the same PNGs packed into one .ico (PNG entries, Vista and later).
 python3 -I - ../qt/icons/lexipeek.ico ../qt/icons/icon_16.png ../qt/icons/icon_32.png ../qt/icons/icon_64.png ../qt/icons/icon_256.png <<'PY'
 import struct, sys

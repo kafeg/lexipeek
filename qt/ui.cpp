@@ -42,7 +42,8 @@ QLabel *link(const QString &s, std::function<void()> click) {
 void clear(QLayout *l) {
   while (auto *item = l->takeAt(0)) {
     if (auto *inner = item->layout()) clear(inner);
-    delete item->widget();
+    // Later: the widget may be the one whose signal is redrawing.
+    if (auto *w = item->widget()) w->hide(), w->deleteLater();
     delete item;
   }
 }

@@ -540,6 +540,11 @@ void activate(QWidget *w) {
   w->activateWindow();
 }
 
+bool taskbar_light() {
+  QSettings s("HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", QSettings::NativeFormat);
+  return s.value("SystemUsesLightTheme", 0).toInt() != 0;
+}
+
 QImage glyph_mask(const QString &family, char16_t code, int px) {
   BITMAPINFO bi{};
   bi.bmiHeader.biSize = sizeof bi.bmiHeader;

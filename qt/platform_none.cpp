@@ -37,6 +37,7 @@ void activate(QWidget *w) {
   w->activateWindow();
 }
 QImage glyph_mask(const QString &, char16_t, int) { return {}; }
+bool taskbar_light() { return false; }
 void round(QWidget *) {}
 
 }  // namespace lexipeek::qt::platform

@@ -36,16 +36,11 @@ void CoreClient::reload() {
   });
 }
 
-bool CardLane::current(int id) {
-  std::lock_guard g(mu_);
-  return latest_ == id;
-}
-
 void CardLane::stop() {
   bool running = false;
   {
-    std::lock_guard g(mu_);
-    running = translating_ != 0;
+    std::lock_guard g(s_->mu);
+    running = s_->translating != 0;
   }
   if (running) c_.engine.cancel();
 }
@@ -54,63 +49,71 @@ int CardLane::lookup(const std::string &text, Source source, const std::string &
                      std::function<void(int, Card)> done) {
   int id = 0;
   {
-    std::lock_guard g(mu_);
-    id = ++latest_;
-    cards_.clear();
+    std::lock_guard g(s_->mu);
+    id = ++s_->latest;
+    s_->cards.clear();
   }
   stop();
   auto e = c_.engine;
+  auto s = s_;
   c_.run<Card>(
       c_.lookups,
-      [this, e, id, text, source, lang, answer] {
-        if (!current(id)) return Card{};
+      [s, e, id, text, source, lang, answer] {
+        if (!s->current(id)) return Card{};
         auto card = e.lookup_as(text, source, lang, answer);
-        std::lock_guard g(mu_);
-        cards_[id] = card;
+        std::lock_guard g(s->mu);
+        s->cards[id] = card;
         return card;
       },
-      [this, id, done](Card card) {
-        if (current(id) && card.kind != Card::Kind::empty) done(id, card);
+      [s, id, done](Card card) {
+        if (s->current(id) && card.kind != Card::Kind::empty) done(id, card);
       });
   return id;
 }
 
 int CardLane::restore(const Card &card) {
-  std::lock_guard g(mu_);
-  ++latest_;
-  cards_ = {{latest_, card}};
-  return latest_;
+  std::lock_guard g(s_->mu);
+  ++s_->latest;
+  s_->cards = {{s_->latest, card}};
+  return s_->latest;
 }
 
 void CardLane::translate(int id, Method m, std::function<void(Translation)> done) {
   stop();
   auto e = c_.engine;
+  auto s = s_;
   c_.run<Translation>(
       c_.worker,
-      [this, e, id, m] {
+      [s, e, id, m] {
         Card card;
         {
-          std::lock_guard g(mu_);
-          if (latest_ != id || !cards_.contains(id)) return Translation{"", "", "", "stale"};
-          card = cards_[id];
-          translating_ = id;
+          std::lock_guard g(s->mu);
+          if (s->latest != id || !s->cards.contains(id)) return Translation{"", "", "", "stale"};
+          card = s->cards[id];
+          s->translating = id;
         }
         auto t = e.translate(card, m);
-        std::lock_guard g(mu_);
-        if (translating_ == id) translating_ = 0;
+        std::lock_guard g(s->mu);
+        if (s->translating == id) s->translating = 0;
         return t;
       },
-      [this, id, done](Translation t) {
-        if (current(id)) done(t);
+      [s, id, done](Translation t) {
+        if (s->current(id)) done(t);
       });
 }
 
 void CardLane::ask(int id, const Card &card, ai::Ask a, const std::string &key, std::function<void(AiState)> done) {
   auto e = c_.engine;
+  auto s = s_;
   c_.run<AiState>(
-      c_.ai, [e, card, a, key] { return e.ask(card, a, key); },
-      [this, id, done](AiState st) {
-        if (current(id)) done(st);
+      c_.ai,
+      [s, e, id, card, a, key] {
+        // A newer card by now: no request (an AI answer costs).
+        if (!s->current(id)) return AiState{};
+        return e.ask(card, a, key);
+      },
+      [s, id, done](AiState st) {
+        if (s->current(id)) done(st);
       });
 }
 
