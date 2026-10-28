@@ -13,6 +13,9 @@
 #include <cstdlib>
 #include "card.hpp"
 #include "first_run.hpp"
+#include "fluent.hpp"
+#include <QImage>
+#include <QPainter>
 #include "main_window.hpp"
 #include "platform.hpp"
 #include "settings_window.hpp"
@@ -69,6 +72,20 @@ int self_test(const QString &path) {
   platform::register_scheme();
   QSettings scheme("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek\\shell\\open\\command", QSettings::NativeFormat);
   check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
+  {
+    // The system's icon glyphs: the font found, and a glyph drawn in it leaves pixels.
+    QImage img(32, 32, QImage::Format_ARGB32);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    p.setFont(fluent::icons(20));
+    p.setPen(Qt::black);
+    p.drawText(img.rect(), Qt::AlignCenter, fluent::glyph(fluent::Glyph::copy));
+    p.end();
+    int ink = 0;
+    for (int y = 0; y < 32; ++y)
+      for (int x = 0; x < 32; ++x) ink += qAlpha(img.pixel(x, y)) > 0;
+    check(!fluent::icon_font().isEmpty() && ink > 20, "icons: " + fluent::icon_font() + ", a glyph's pixels " + QString::number(ink));
+  }
   out << "info front app: " << q(platform::front_app()) << ", selection: " << (platform::selection() ? "some" : "none") << "\n";
   out << "info data dir: " << q(app::data_dir()) << ", version " << q(version()) << ", cpu " << q(cpu_arch());
   for (auto &x : cpu_features()) out << " " << q(x);

@@ -167,6 +167,8 @@ void force(std::optional<bool> on) {
   apply();
 }
 
+QString icon_font() { return icon_family(); }
+
 QFont icons(int px) {
   QFont f(icon_family().isEmpty() ? QApplication::font().family() : icon_family());
   f.setPixelSize(px);

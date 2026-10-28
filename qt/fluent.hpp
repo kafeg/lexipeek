@@ -25,6 +25,7 @@ QColor accent();
 QColor secondary();  // secondary text
 // The glyph's font at a pixel size (falls back to the text font where Windows' icon fonts are missing).
 QFont icons(int px);
+QString icon_font();  // the family in use, "" when the system has neither
 QString glyph(Glyph g);
 QIcon icon(Glyph g, int px = 16);
 
