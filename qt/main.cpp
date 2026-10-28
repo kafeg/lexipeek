@@ -3,6 +3,7 @@
 #include <QElapsedTimer>
 #include <QFile>
 #include <QSettings>
+#include <QThread>
 #include <QTextStream>
 #include <QLocale>
 #include <QStyle>
@@ -104,12 +105,20 @@ int main(int argc, char **argv) {
     return snapshots(app, client, {out, opt("--cases"), opt("--ai-fixtures"), opt("--firstrun-from"), !args.contains("--no-settings"),
                                    opt("--suffix")});
   if (auto i = args.indexOf("--self-test"); i > 0 && i + 1 < args.size()) return self_test(args[i + 1]);
+  // --probe-selection <file>: what UI Automation sees at the focus, after 3 s (time to focus the app to look at).
+  if (auto i = args.indexOf("--probe-selection"); i > 0 && i + 1 < args.size()) {
+    QThread::sleep(3);
+    QFile f(args[i + 1]);
+    if (f.open(QIODevice::WriteOnly)) f.write(QByteArray::fromStdString(platform::probe_selection() + "front app: " + platform::front_app() + "\n"));
+    return 0;
+  }
   // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
   if (platform::hand_over(args.mid(1))) return 0;
   Shell shell(client);
   platform::receive([&shell](const QStringList &a) { shell.handle(a); });
   platform::register_scheme();
   if (app::first_run_at_launch(data, true)) shell.open_first_run();
-  else if (args.size() > 1) shell.handle(args.mid(1));
+  else if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
+    shell.handle(args.mid(1));
   return app.exec();
 }

@@ -157,6 +157,59 @@ std::string hotkey_label(const Hotkey &h) {
   return s + h.key;
 }
 
+std::string probe_selection() {
+  std::string out;
+  auto hr = [&](const char *what, HRESULT h) { out += std::string(what) + " hr=0x" + QString::number(static_cast<uint>(h), 16).toStdString() + "\n"; };
+  auto bstr = [](BSTR b) {
+    std::string s = b ? utf8(b, static_cast<int>(SysStringLen(b))) : "";
+    SysFreeString(b);
+    return s;
+  };
+  CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+  IUIAutomation *uia = nullptr;
+  HRESULT h = CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, __uuidof(IUIAutomation), reinterpret_cast<void **>(&uia));
+  hr("CoCreateInstance", h);
+  if (!uia) return out;
+  IUIAutomationElement *el = nullptr;
+  hr("GetFocusedElement", uia->GetFocusedElement(&el));
+  for (int depth = 0; el && depth < 4; ++depth) {
+    BSTR name = nullptr, cls = nullptr, fw = nullptr;
+    CONTROLTYPEID type = 0;
+    el->get_CurrentName(&name), el->get_CurrentClassName(&cls), el->get_CurrentFrameworkId(&fw), el->get_CurrentControlType(&type);
+    out += "element[" + std::to_string(depth) + "] class=" + bstr(cls) + " type=" + std::to_string(type) + " fw=" + bstr(fw) +
+           " name=" + bstr(name).substr(0, 60) + "\n";
+    IUIAutomationTextPattern *tp = nullptr;
+    h = el->GetCurrentPatternAs(UIA_TextPatternId, __uuidof(IUIAutomationTextPattern), reinterpret_cast<void **>(&tp));
+    hr("  TextPattern", h);
+    if (tp) {
+      IUIAutomationTextRangeArray *ranges = nullptr;
+      hr("  GetSelection", tp->GetSelection(&ranges));
+      int n = 0;
+      if (ranges) ranges->get_Length(&n);
+      out += "  ranges=" + std::to_string(n) + "\n";
+      IUIAutomationTextRange *r = nullptr;
+      if (n > 0 && SUCCEEDED(ranges->GetElement(0, &r)) && r) {
+        BSTR text = nullptr;
+        hr("  GetText", r->GetText(200, &text));
+        out += "  text=" + bstr(text) + "\n";
+        r->Release();
+      }
+      if (ranges) ranges->Release();
+      tp->Release();
+    }
+    IUIAutomationTreeWalker *walker = nullptr;
+    uia->get_ControlViewWalker(&walker);
+    IUIAutomationElement *parent = nullptr;
+    if (walker) walker->GetParentElement(el, &parent), walker->Release();
+    el->Release();
+    el = parent;
+  }
+  if (el) el->Release();
+  uia->Release();
+  CoUninitialize();
+  return out;
+}
+
 std::optional<Selected> selection() {
   auto f = std::async(std::launch::async, read_selection);
   if (f.wait_for(std::chrono::milliseconds(1500)) != std::future_status::ready) {

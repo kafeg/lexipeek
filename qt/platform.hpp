@@ -24,6 +24,8 @@ struct Selected {
 };
 // The focused app's selected text (Windows: UI Automation, never the clipboard); nullopt when none or unreadable.
 std::optional<Selected> selection();
+// What UI Automation sees at the focus now (the element, its patterns, the selection's text): a diagnostic.
+std::string probe_selection();
 // The focused app's program ("chrome.exe"): Settings → General's apps where the hotkey does nothing.
 std::string front_app();
 // The mouse's left or right button is down now (anywhere on the screen).

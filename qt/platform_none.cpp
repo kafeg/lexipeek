@@ -16,6 +16,7 @@ std::string hotkey_label(const Hotkey &h) {
   return s + h.key;
 }
 std::optional<Selected> selection() { return std::nullopt; }
+std::string probe_selection() { return ""; }
 std::string front_app() { return ""; }
 bool mouse_down() { return false; }
 void watch_input(std::function<void(Input)>) {}
