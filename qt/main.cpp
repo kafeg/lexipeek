@@ -222,8 +222,8 @@ int self_test(const QString &path) {
 }  // namespace
 
 int main(int argc, char **argv) {
-  for (int i = 1; i < argc; ++i)
 #ifndef _WIN32
+  for (int i = 1; i < argc; ++i)
     if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
 #endif
   QApplication app(argc, argv);
@@ -234,8 +234,8 @@ int main(int argc, char **argv) {
   std::string data;
   if (auto i = args.indexOf("--data"); i > 0 && i + 1 < args.size()) data = args[i + 1].toStdString();
   else if (auto *env = std::getenv("LEXIPEEK_DATA")) data = env;
-  set_ui_platform("windows");
-  if (auto run = platform::cli_runner()) ai::set_cli_runner(run);  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
+  set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
+  if (auto run = platform::cli_runner()) ai::set_cli_runner(run);
   app::set_language(data, QLocale::system().name().left(2).toStdString());
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   if (auto i = args.indexOf("--snapshots"); i > 0 && i + 1 < args.size()) return snapshots(app, client, args[i + 1]);
