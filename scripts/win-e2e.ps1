@@ -84,10 +84,10 @@ Check (-not ((AppTexts $app) -match 'Haus')) 'Esc closes the card'
 ClickIn $pad
 Keys '%a'
 Start-Sleep 2
-Keys 'Tür~'
+Keys 'Tag~'
 Start-Sleep 4
 Shot '4-typed'
-Check ((AppTexts $app) -match 'T.r') 'the input hotkey: a card to type in, Return looks it up'
+Check ((AppTexts $app) -match 'Tag') 'the input hotkey: a card to type in, Return looks it up'
 Keys '{ESC}'
 
 Start-Process 'lexipeek://lookup?text=Stra%C3%9Fe'
