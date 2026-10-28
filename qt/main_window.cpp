@@ -74,10 +74,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   pages_->addWidget(lookup_page());
   pages_->addWidget(notes_page());
   help_ = new QWidget;
-  auto *hs = new QScrollArea;
-  hs->setWidget(help_);
-  hs->setWidgetResizable(true);
-  hs->setFrameShape(QFrame::NoFrame);
+  auto *hs = ui::scroll(help_);
   pages_->addWidget(hs);
   row->addWidget(pages_, 1);
 

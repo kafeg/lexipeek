@@ -17,6 +17,7 @@
 #include "first_run.hpp"
 #include "main_window.hpp"
 #include "settings_window.hpp"
+#include "ui.hpp"
 
 namespace lexipeek::qt {
 
@@ -254,6 +255,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
     bool is_dark = i >= n;
 #ifdef _WIN32
     QGuiApplication::styleHints()->setColorScheme(is_dark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
+    ui::follow_scheme();
 #else
     QApplication::setPalette(is_dark ? dark() : light);
 #endif

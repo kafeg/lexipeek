@@ -16,14 +16,11 @@
 namespace lexipeek::qt {
 
 PacksPane::PacksPane(CoreClient &client) : c_(client) {
-  auto *scroll = new QScrollArea;
   auto *inner = new QWidget;
   body_ = new QVBoxLayout(inner);
   body_->setContentsMargins(20, 12, 20, 16);
   body_->setSpacing(10);
-  scroll->setWidget(inner);
-  scroll->setWidgetResizable(true);
-  scroll->setFrameShape(QFrame::NoFrame);
+  auto *scroll = ui::scroll(inner);
   auto *l = new QVBoxLayout(this);
   l->setContentsMargins(0, 0, 0, 0);
   l->addWidget(scroll);

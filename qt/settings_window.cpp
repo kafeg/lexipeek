@@ -241,11 +241,8 @@ void SettingsWindow::draw() {
     rl->addWidget(e);
   }
   rl->addStretch();
-  auto *scroll = new QScrollArea;
+  auto *scroll = ui::scroll(rows);
   scroll->setObjectName("rows");
-  scroll->setWidget(rows);
-  scroll->setWidgetResizable(true);
-  scroll->setFrameShape(QFrame::NoFrame);
   target->addWidget(scroll, 1);
   ui::keep_scroll(scroll, scrolled);
 }

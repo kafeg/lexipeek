@@ -19,13 +19,7 @@ namespace lexipeek::qt {
 
 namespace {
 
-QScrollArea *scrolled(QWidget *inner) {
-  auto *s = new QScrollArea;
-  s->setWidget(inner);
-  s->setWidgetResizable(true);
-  s->setFrameShape(QFrame::NoFrame);
-  return s;
-}
+QScrollArea *scrolled(QWidget *inner) { return ui::scroll(inner); }
 
 QToolButton *small(const QString &text, const QString &tip, bool enabled, std::function<void()> click) {
   auto *b = new QToolButton;
