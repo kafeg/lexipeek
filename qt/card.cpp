@@ -276,7 +276,7 @@ void CardWidget::rebuild() {
   if (!(embedded_ && v_.style == HeaderStyle::passage)) tl->addWidget(header(v_));
   if (v_.tabs) tl->addWidget(tabs(v_));
   // Wrapped labels: the height their lines need at the card's width (a layout's size hint does not know it).
-  if (!embedded_) top->setFixedHeight(tl->totalHeightForWidth(width()));
+  if (!embedded_) top->setFixedHeight(std::max(tl->totalHeightForWidth(width()), tl->sizeHint().height()));
 
   auto *body = new QWidget;
   auto *bl = new QVBoxLayout(body);
@@ -481,7 +481,9 @@ QWidget *CardWidget::bar(const CardView &v) {
   l->setSpacing(9);
   auto f = font(-2);
   if (!v.back.empty()) {
-    auto *b = link(QFontMetrics(f).elidedText(q(v.back), Qt::ElideRight, 180), f, [this] { m_.back(); });
+    // Cut with "…" to leave the row's other buttons their room.
+    int room = v.entry_toggle.empty() ? 180 : 130;
+    auto *b = link(QFontMetrics(f).elidedText(q(v.back), Qt::ElideRight, room), f, [this] { m_.back(); });
     b->setToolTip(t("card_back"));
     l->addWidget(b);
   }
