@@ -102,6 +102,41 @@ Check ($second.HasExited) 'a second launch hands over and quits'
 Shot '6-window'
 Check ((AppTexts $app) -match 'Help') 'the second launch opens the LexiPeek window'
 
+# The icon at a new selection (Card → Opening): on for this run, a drag over a word with the mouse, the icon by the
+# cursor, a click on it opens the card.
+Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
+$settings = Join-Path $Data 'settings.json'
+$kept = Get-Content $settings -Raw
+$s = $kept | ConvertFrom-Json
+$s | Add-Member -Force selection_icon $true
+$s | ConvertTo-Json -Depth 20 | Set-Content $settings -Encoding UTF8
+$app = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
+Start-Sleep 4
+ClickIn $pad
+$r = New-Object Win+Rect
+[void][Win]::GetWindowRect($pad.MainWindowHandle, [ref]$r)
+# The first word of the text: from just left of it to its end, in the editor's first line.
+$x0 = $r.L + 12; $y = $r.T + 60
+[void][Win]::SetCursorPos($x0, $y); [Win]::mouse_event(2, 0, 0, 0, 0)
+foreach ($dx in 5, 15, 25, 35) { [void][Win]::SetCursorPos($x0 + $dx, $y); Start-Sleep -Milliseconds 60 }
+[Win]::mouse_event(4, 0, 0, 0, 0)
+Start-Sleep 2
+Shot '7-icon'
+$icon = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,
+  (New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::ProcessIdProperty), $app.Id)) |
+  Where-Object { $_.Current.BoundingRectangle.Width -lt 60 -and $_.Current.BoundingRectangle.Width -gt 0 }
+Check ($icon -ne $null) 'the icon appears by a new selection'
+if ($icon) {
+  $b = $icon[0].Current.BoundingRectangle
+  [void][Win]::SetCursorPos([int]($b.X + $b.Width / 2), [int]($b.Y + $b.Height / 2))
+  [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0)
+  Start-Sleep 4
+  Shot '8-icon-card'
+  Check ((AppTexts $app) -match 'Haus') 'a click on the icon opens the card'
+  Keys '{ESC}'
+}
+Set-Content $settings $kept -Encoding UTF8 -NoNewline
+
 Stop-Process $pad -Force
 Stop-Process $app -Force
 Remove-Item $file
