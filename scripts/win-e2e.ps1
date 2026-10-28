@@ -30,6 +30,12 @@ function AppTexts($proc) {
 }
 function Keys($k) { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Milliseconds 300 }
 
+# The OS parts first (in a desktop session the Credential Manager and hotkeys work, unlike over SSH).
+$selfTest = Join-Path $Out 'self-test.txt'
+Start-Process $Exe -ArgumentList '--self-test', $selfTest -Wait
+Get-Content $selfTest
+$script:failed += @(Get-Content $selfTest | Where-Object { $_ -like 'FAIL*' }).Count
+
 Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
 $app = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
 Start-Sleep 4
