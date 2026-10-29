@@ -19,7 +19,7 @@ enum class Source { hotkey, input, service, url, extension, cli };
 struct Request {
   std::string text;
   Source source = Source::input;
-  std::string answer;  // the answer language ("ru"); "" = the settings' one
+  std::string answer = "";  // the answer language ("ru"); "" = the settings' one (a default: designated initializers may leave it out)
   std::string lang = "";  // the text's language picked in the card ("" = guessed)
 };
 
