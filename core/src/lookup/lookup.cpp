@@ -205,6 +205,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
 
 Card Core::lookup(const Request &r) {
   std::lock_guard g(impl_->mu);
+  auto scan = impl_->lib->hold();
   Card c;
   c.source = r.source;
   c.prefs = impl_->o.card;

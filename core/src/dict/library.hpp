@@ -61,6 +61,20 @@ class Library {
   ~Library();
 
   void configure(Own own);
+  // While one is held (a look-up), the folders are scanned once: found() gives that scan again.
+  class Hold {
+   public:
+    explicit Hold(Library &l) : l_(l) { ++l_.held_; }
+    Hold(const Hold &) = delete;
+    Hold &operator=(const Hold &) = delete;
+    ~Hold() {
+      if (--l_.held_ == 0) l_.scanned_.reset();
+    }
+
+   private:
+    Library &l_;
+  };
+  Hold hold() { return Hold(*this); }
   // Every dictionary on disk (scanned again when a folder changed), in the person's order; the others after them, the
   // packs first, by name.
   std::vector<StarDict *> found();
@@ -86,6 +100,8 @@ class Library {
   Own own_;
   std::string stamp_;
   std::vector<std::unique_ptr<StarDict>> dicts_;
+  int held_ = 0;
+  std::optional<std::vector<StarDict *>> scanned_;
 };
 
 }  // namespace lexipeek::dict

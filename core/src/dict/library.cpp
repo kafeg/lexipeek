@@ -102,6 +102,7 @@ Library::~Library() = default;
 void Library::configure(Own own) { own_ = std::move(own); }
 
 std::vector<StarDict *> Library::found() {
+  if (held_ > 0 && scanned_) return *scanned_;
   std::vector<std::pair<fs::path, bool>> files;
   std::set<fs::path> seen;
   auto add = [&](const fs::path &root, bool pack) {
@@ -142,6 +143,7 @@ std::vector<StarDict *> Library::found() {
     if (a->pack() != b->pack()) return a->pack();
     return a->name() < b->name();
   });
+  if (held_ > 0) scanned_ = out;
   return out;
 }
 
