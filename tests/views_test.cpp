@@ -598,6 +598,7 @@ TEST_CASE("app: hotkey labels, lexipeek:// links, menu lines, Notes' file names"
   CHECK(app::hotkey_label(h) == "Ctrl+Alt+D");
   set_ui_language("de");
   CHECK(app::hotkey_label(h) == "Strg+Alt+D");
+  CHECK(app::hotkey_label(Hotkey{"D", false, true, false, true}) == "Win+Umschalt+D");
   set_ui_language("en");
   set_ui_platform("mac");
   auto l = app::link("lexipeek://lookup?text=Tr%C3%A4umen%20gehen");
