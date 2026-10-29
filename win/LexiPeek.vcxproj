@@ -97,13 +97,21 @@
     </ClCompile>
     <ClInclude Include="card_stub.hpp" />
     <ClInclude Include="core_client.hpp" />
+    <ClInclude Include="dicts_pane.hpp" />
+    <ClInclude Include="packs_pane.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="settings_ui.hpp" />
+    <ClInclude Include="settings_window.hpp" />
     <ClInclude Include="shell.hpp" />
     <ClInclude Include="snapshots.hpp" />
     <ClInclude Include="tray.hpp" />
     <ClInclude Include="ui.hpp" />
     <ClCompile Include="card_stub.cpp" />
     <ClCompile Include="core_client.cpp" />
+    <ClCompile Include="dicts_pane.cpp" />
+    <ClCompile Include="packs_pane.cpp" />
+    <ClCompile Include="settings_ui.cpp" />
+    <ClCompile Include="settings_window.cpp" />
     <ClCompile Include="shell.cpp" />
     <ClCompile Include="snapshots.cpp" />
     <ClCompile Include="tray.cpp" />

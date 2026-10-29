@@ -5,6 +5,7 @@
 #include "MainWindow.xaml.h"
 #include "card_stub.hpp"
 #include "core_client.hpp"
+#include "settings_window.hpp"
 #include "tray.hpp"
 
 namespace lexipeek::win {
@@ -49,6 +50,8 @@ class Shell {
   MenuHost menu;
   winrt::LexiPeek::MainWindow main{nullptr};
   xaml::Window settings{nullptr}, about{nullptr}, first{nullptr};
+  SettingsWindow *settings_ui = nullptr;  // made once, hidden when closed
+  AboutWindow *about_ui = nullptr;
   std::optional<xaml::ElementTheme> forced_theme;  // light or dark whatever the settings say
   bool force_warnings = false;                     // ⚠ lines as if no pack and a hotkey taken
 
@@ -67,6 +70,7 @@ class Shell {
   bool reading_open_ = false;
   bool pair_ = true;
   bool keys_ = true;  // both hotkeys registered
+  std::string lookup_error_, input_error_;  // a hotkey taken: Settings says so on its row
   bool low_ = false;  // memory was low at the last check
   Settings s_;
 };

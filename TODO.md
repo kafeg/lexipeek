@@ -12,8 +12,11 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 2. The card: the pop-up (borderless, no focus, at the selection, Mica/acrylic, its keys), the card to type in, the icon at
    the selection (`watch_input`); `CardSession` polled; the snapshot cases of `scripts/snapshot-cases.sh`.
 3. The LexiPeek window: Look up (an embedded card), Words · Phrases · History (`notes_view`), Help; the no-pack banner.
-4. Settings (sections in a `NavigationView`, setting cards from the core's rows, Packs, Other dictionaries, AI with the
-   key in the Credential Manager) and About.
+4. Done: Settings as Windows 11's (sections in a `NavigationView`, sub-tabs in a `SelectorBar`, the core's rows as setting
+   cards, Packs, Other dictionaries and the catalog, AI with the key in the Credential Manager, hotkeys recorded in a
+   dialog, the prompt editor and "Choose…" as `ContentDialog`s) and About; closing hides them (downloads go on). Open:
+   Read aloud's section once the voice model runs on Windows; an own dictionary's `.dict` stays on disk when it is deleted
+   while the engine has it open (as in `qt/`).
 5. The first run; every snapshot case; then CI and releases switch to it (below) and `qt/` is Linux only.
 - CI, when phase 5 lands: ci.yml's Windows job configures with `-DLEXIPEEK_QT=OFF`, builds and tests the core as now,
   then `scripts\build-win.cmd build-win` for the shell (Ninja, its own dir; one `build-win.cmd build-qt qt` job while the

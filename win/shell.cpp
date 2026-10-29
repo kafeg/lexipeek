@@ -111,6 +111,8 @@ void Shell::apply() {
   c_.configure();
   update_tray();
   if (main) self(main)->refresh(theme());
+  if (settings_ui) settings_ui->refresh(theme());
+  if (about_ui) about_ui->refresh(theme());
 }
 
 void Shell::register_hotkeys() {
@@ -118,6 +120,8 @@ void Shell::register_hotkeys() {
   bool a = os::register_hotkey(translate_key, s_.lookup, [this] { translate_selection(); });
   bool b = os::register_hotkey(input_key, s_.input, [this] { type_text(); });
   keys_ = a && b;
+  lookup_error_ = a ? "" : app::text("hk_taken"), input_error_ = b ? "" : app::text("hk_taken");
+  if (settings_ui) settings_ui->hotkey_errors(lookup_error_, input_error_);
 }
 
 // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -192,8 +196,30 @@ xaml::Window Shell::placeholder(xaml::Window &slot, const char *title, wchar_t g
   return slot;
 }
 
-void Shell::open_settings(int, int) { placeholder(settings, "settings_more", 0xE713, 4); }
-void Shell::open_about() { placeholder(about, "menu_about", 0xE946, 4); }
+// section -1: as it was left.
+void Shell::open_settings(int section, int tab) {
+  if (!settings_ui) {
+    settings_ui = new SettingsWindow(c_, theme());
+    settings_ui->changed = [this] { apply(); };
+    settings_ui->open_first_run = [this] { open_first_run(); };
+    // Recording a hotkey: ours off, or pressing them would fire them instead.
+    settings_ui->recording = [this](bool on) {
+      if (!on) return register_hotkeys();
+      os::unregister_hotkey(translate_key), os::unregister_hotkey(input_key);
+    };
+    settings = settings_ui->window;
+  }
+  settings_ui->hotkey_errors(lookup_error_, input_error_);
+  if (section >= 0) settings_ui->select(static_cast<SettingsSection>(section), tab);
+  settings_ui->refresh(theme());
+  present(settings);
+}
+
+void Shell::open_about() {
+  if (!about_ui) about_ui = new AboutWindow(c_, theme()), about = about_ui->window;
+  about_ui->refresh(theme());
+  present(about);
+}
 // The first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
 void Shell::open_first_run() { placeholder(first, "fr_window", 0xE774, 5); }
 
