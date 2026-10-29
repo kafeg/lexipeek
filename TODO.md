@@ -8,7 +8,7 @@ Done and tried on Windows 10 in a signed-in session: every window in the Fluent 
 (Ctrl+Alt+D / Ctrl+Alt+A), the selection (Notepad, WordPad, Edge, Chrome), the icon at the selection, `lexipeek://`
 links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version, the
 per-user install and uninstall.
-- Firefox: not tried yet (its first-run screen); Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
+- Office, Explorer, terminals; DPI scaling on two screens; Windows 11 (Notepad, WordPad, Edge, Chrome, Firefox pass).
 - Signing the Windows exe (a certificate); a release build in CI with the exe as an asset.
 - llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
   (`cpu_by_arch`) do not apply; the method's card says where it runs.
@@ -16,8 +16,8 @@ per-user install and uninstall.
 - Into the core, once for both shells (now in Swift and in Qt): the hotkey's decision
   (ignored app, the same selection closes, nothing read → typing), the tray / menu bar menu's items, the settings
   writes done by hand (method picked in the card, first run done, ignored apps), the snapshot driver, light Markdown.
-- Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); Notes'
-  backup / restore / TSV on the window's thread; downloads share the AI pool.
+- Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); downloads
+  share the AI pool.
 - From the review: the path rule (`path_of`) in stardict, store, translator, dicts;
   packs.json parsed once per look-up; the answer language default ("ru") and a daily update check as InkPeek's.
 

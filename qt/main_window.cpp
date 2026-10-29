@@ -234,7 +234,10 @@ void MainWindow::draw_notes() {
     tsv->setToolTip(t("tsv_d"));
     connect(tsv, &QPushButton::clicked, this, [this] {
       auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::notes_file(tab_))));
-      if (!f.isEmpty()) said_->setText(q(c_.engine.export_tsv(tab_, f.toStdString())));
+      if (f.isEmpty()) return;
+      auto e = c_.engine;
+      c_.run<std::string>(c_.worker, [e, tab = tab_, f] { return e.export_tsv(tab, f.toStdString()); },
+                          [this](std::string said) { if (said_) said_->setText(q(said)); }, this);
     });
     bar->addWidget(tsv);
   }
@@ -272,14 +275,20 @@ void MainWindow::draw_notes() {
   auto *out = new QPushButton(t("export_btn"));
   connect(out, &QPushButton::clicked, this, [this] {
     auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::backup_file())));
-    if (!f.isEmpty()) said_->setText(q(c_.engine.backup(f.toStdString())));
+    if (f.isEmpty()) return;
+    auto e = c_.engine;
+    c_.run<std::string>(c_.worker, [e, f] { return e.backup(f.toStdString()); }, [this](std::string said) { if (said_) said_->setText(q(said)); }, this);
   });
   auto *in = new QPushButton(t("import_btn"));
   connect(in, &QPushButton::clicked, this, [this] {
     auto f = QFileDialog::getOpenFileName(this, {}, QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
     if (f.isEmpty()) return;
-    said_->setText(q(c_.engine.restore(f.toStdString())));
-    emit notes_bus().changed();
+    // Off the window's thread: a big backup takes a while.
+    auto e = c_.engine;
+    c_.run<std::string>(c_.worker, [e, f] { return e.restore(f.toStdString()); }, [this](std::string said) {
+      emit notes_bus().changed();
+      if (said_) said_->setText(q(said));
+    }, this);
   });
   backup->addWidget(out);
   backup->addWidget(in);
