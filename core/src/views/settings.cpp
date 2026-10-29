@@ -111,8 +111,10 @@ SettingRow study_row(const Settings &s, const SettingsState &st) {
   all.insert(all.end(), st.installed_pairs.begin(), st.installed_pairs.end());
   std::string about = tr("study_d");
   if (study_offered(s.answer, all).empty()) about = tr("study_none", {language_name(s.answer)});
+  std::string missing;  // one line for all: "No pack en → es, fr yet: get it in Packs"
   for (auto &x : study_offered(s.answer, st.pairs))
-    if (std::find(codes.begin(), codes.end(), x) == codes.end()) about += " " + tr("study_no_pack", {s.answer + " → " + x});
+    if (std::find(codes.begin(), codes.end(), x) == codes.end()) missing += (missing.empty() ? "" : ", ") + x;
+  if (!missing.empty()) about += " " + tr("study_no_pack", {s.answer + " → " + missing});
   std::vector<std::string> names{tr("mt_off_t")};
   for (auto &x : codes) names.push_back(language_name(x));
   auto i = s.study.find(s.answer);
