@@ -161,6 +161,17 @@ std::string norm_key(std::string_view s) {
   return lower(edge.replace(no_soft_hyphens(nfc(s)), ""));
 }
 
+std::string plain_spaces(std::string_view s) {
+  std::string out;
+  each(s, [&](utf8proc_int32_t c) {
+    auto cat = utf8proc_category(c);
+    if (cat == UTF8PROC_CATEGORY_ZS) out += ' ';
+    else if (cat == UTF8PROC_CATEGORY_ZL || cat == UTF8PROC_CATEGORY_ZP) out += '\n';
+    else put(out, c);
+  });
+  return out;
+}
+
 std::string clean_query(std::string_view s) {
   static const Regex edge("^[\\p{P}\\p{S}\\s]+|[\\p{P}\\p{S}\\s]+$");
   return edge.replace(spaces().replace(no_soft_hyphens(s), " "), "");

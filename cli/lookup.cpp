@@ -24,7 +24,8 @@ const Register lookup{{"lookup", "[--to ru] [--translate] [--full] [--time] [--r
                            std::cout << "lookup: " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count() / 10 << " ms (warm)\n";
                          }
                          if (c.kind == Card::Kind::empty) return std::cerr << "nothing to look up\n", 1;
-                         std::cout << "text: " << c.text << "\nlang: " << (c.lang.empty() ? "?" : c.lang)
+                         static const char *kinds[] = {"empty", "word", "phrase", "passage"};
+                         std::cout << "text: " << c.text << "\nkind: " << kinds[static_cast<int>(c.kind)] << "\nlang: " << (c.lang.empty() ? "?" : c.lang)
                                    << (c.other.empty() ? "" : " (no pack: " + c.other + ")") << " → " << c.answer << "\n";
                          if (!c.header.empty()) std::cout << "header: " << c.header << "\n";
                          if (!c.base.empty()) std::cout << "base: " << c.base << "\n";

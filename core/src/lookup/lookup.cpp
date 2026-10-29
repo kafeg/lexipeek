@@ -208,7 +208,7 @@ Card Core::lookup(const Request &r) {
             a.prefetch, ai::method_title(a), ai::provider(a.provider)->key};
   }
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
-  auto raw = mt::trim_space(r.text);
+  auto raw = mt::trim_space(text::plain_spaces(r.text));
   if (raw.empty()) return c;
   c.kind = kind_of(raw);
   c.text = c.kind == Card::Kind::word ? text::clean_query(raw) : text::clean_phrase(raw);

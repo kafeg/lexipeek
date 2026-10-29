@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Selection.log.info("launched; Accessibility trusted: \(Selection.trusted)")
+        if SelectionTest.dir != nil { return SelectionTest.start() }  // as invisible as the snapshots
         // Snapshot mode is invisible: never activated (an accessory app), no menu-bar item, no hotkeys, windows off screen.
         if Snapshot.dir != nil {
             Snapshot.start { [weak self] in self?.application(NSApp, open: [$0]) }

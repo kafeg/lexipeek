@@ -1,5 +1,7 @@
 import AppKit
 
+SelectionTest.respawnDisclaimed()
+
 L.apply()
 let app = NSApplication.shared
 let delegate = AppDelegate()

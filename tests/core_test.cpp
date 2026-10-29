@@ -152,6 +152,8 @@ TEST_CASE("core: an empty data dir gives a card without methods") {
   auto c = core.lookup(Request{.text = "Das Haus"});
   CHECK(c.kind == Card::Kind::phrase);
   CHECK(c.text == "Das Haus");
+  CHECK(core.lookup(Request{.text = "das\u00a0Haus"}).kind == Card::Kind::phrase);  // a web page's &nbsp;
+  CHECK(core.lookup(Request{.text = "das\u00a0Haus"}).text == "das Haus");
   CHECK(c.answer == "ru");
   CHECK(!c.method);
   CHECK(!core.translate(c).ok());
@@ -286,4 +288,10 @@ TEST_CASE("packs: an AI model's CPU needs per architecture (cpu_by_arch), cpu al
 TEST_CASE("text: a phrase's lines stay lines, blank ones and spaces around them become one break") {
   CHECK(text::clean_phrase("  Own the power\r\n\n  Crypto,   stocks  ") == "Own the power\nCrypto, stocks");
   CHECK(text::clean_phrase("a\tb") == "a b");
+}
+
+TEST_CASE("text: a web page's no-break and other Unicode spaces are spaces, its separators line breaks") {
+  CHECK(text::plain_spaces("10\u00a0Euro f\u00fcr das\u202fHaus\u3000x") == "10 Euro f\u00fcr das Haus x");
+  CHECK(text::plain_spaces("a\u2028b\u2029c") == "a\nb\nc");
+  CHECK(text::plain_spaces("Wör\u00adter 👍") == "Wör\u00adter 👍");
 }

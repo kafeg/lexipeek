@@ -32,6 +32,7 @@ enum Selection {
     struct Result {
         var text: String
         var bounds: CGRect?  // the selection on screen, Cocoa coordinates
+        var way = "plain"  // how it was read: markers+paragraphs, markers or plain (the selection test writes it)
     }
 
     static let log = Logger(subsystem: "io.github.kafeg.lexipeek", category: "selection")
@@ -80,6 +81,11 @@ enum Selection {
         // A busy app answers within a second or not at all (AX's own wait is 6 s, on the main thread).
         AXUIElementSetMessagingTimeout(appEl, 1)
         guard let el = element(appEl, kAXFocusedUIElementAttribute) else { return nil }
+        return read(element: el)
+    }
+
+    // The selection of one element (the focused one; the selection test passes its web view's).
+    static func read(element el: AXUIElement) -> Result? {
         AXUIElementSetMessagingTimeout(el, 1)  // the timeout is per element: the queries go to this one
         return selected(el)
     }
@@ -88,8 +94,7 @@ enum Selection {
         let wide = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(wide, 1)
         guard let el = element(wide, kAXFocusedUIElementAttribute) else { return nil }
-        AXUIElementSetMessagingTimeout(el, 1)
-        return selected(el)
+        return read(element: el)
     }
 
     // A web view's selection by its text markers first (as VoiceOver reads it: a line break between blocks, where its
@@ -103,9 +108,10 @@ enum Selection {
         if AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let range,
            AXUIElementCopyParameterizedAttributeValue(el, "AXStringForTextMarkerRange" as CFString, range, &str) == .success,
            let text = str as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let lines = paragraphs(el, range) ?? text
+            let split = paragraphs(el, range)
+            let lines = split ?? text
             if plain == nil || compact(plain!).isEmpty || compact(lines) == compact(plain!) {
-                return Result(text: lines, bounds: bounds(el))
+                return Result(text: lines, bounds: bounds(el), way: split == nil ? "markers" : "markers+paragraphs")
             }
         }
         guard let text = plain, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }

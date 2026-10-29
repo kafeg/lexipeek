@@ -39,6 +39,9 @@ std::string lower(std::string_view s);
 std::string nfc(std::string_view s);
 // InkPeek's normKey: NFC, soft hyphens out, trimmed, lower case.
 std::string norm_key(std::string_view s);
+// Unicode spaces (no-break, thin, ideographic…) as plain spaces, line and paragraph separators as line breaks: web
+// pages' &nbsp; would join words.
+std::string plain_spaces(std::string_view s);
 // InkPeek's cleanQuery: soft hyphens out, spaces collapsed, punctuation, symbols and spaces at the edges out.
 std::string clean_query(std::string_view s);
 // InkPeek's cleanPhrase: like clean_query, but ¿¡ at the start and .!?… at the end stay.

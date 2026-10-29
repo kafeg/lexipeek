@@ -44,6 +44,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
   the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
+- **Selection check: `scripts/selection-test.sh`** (after `make app`, ~10 s, as invisible) — `tests/selection/<name>.html` selected in an off-screen
+  WKWebView, read by `Selection.read(element:)` (`LEXIPEEK_SELECTION_TEST`, `SelectionTest.swift`; the range: `data-sel`, `<body data-from/data-to>`, `data-end-next`), compared with `<name>.expected`; PASS/FAIL table, way read, diffs.
 - Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
   catalog [filter] | get <url>` (`<data>/dicts-own/`, settings.json's `dicts`).
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`,
