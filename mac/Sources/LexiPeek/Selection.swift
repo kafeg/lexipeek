@@ -94,7 +94,7 @@ enum Selection {
 
     // A web view's selection by its text markers first (as VoiceOver reads it: a line break between blocks, where its
     // selected text runs "money" and "Crypto" of two headings together), else the element's selected text. The markers'
-    // text must be the selected text but for white space: a triple click in Electron ends them inside the next block.
+    // text must be the selected text but for spaces and bullets: a triple click in Electron ends them inside the next block.
     private static func selected(_ el: AXUIElement) -> Result? {
         var value: CFTypeRef?
         let plain = AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success ? value as? String : nil
@@ -112,7 +112,8 @@ enum Selection {
         return Result(text: text, bounds: bounds(el))
     }
 
-    private static func compact(_ s: String) -> String { String(s.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) }) }
+    // Letters and digits only: list bullets ("•") and spaces may be in one text and not in the other.
+    private static func compact(_ s: String) -> String { String(s.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }) }
 
     // A web view's selection paragraph by paragraph, joined by line breaks (Chromium and Electron give its text with none
     // between blocks: "Что сделал:• Очистка…"); nil when it is one paragraph or the app cannot say.

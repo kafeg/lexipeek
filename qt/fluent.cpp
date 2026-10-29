@@ -115,7 +115,7 @@ QFrame#card { background: LAYER; border: 1px solid STROKE; border-radius: 6px; }
 QListWidget#recents { background: transparent; border: none; outline: 0; }
 QListWidget#recents::item { padding: 3px 6px; border-radius: 4px; }
 QListWidget#recents::item:hover, QListWidget#recents::item:selected { background: HOVER; color: TEXT; }
-QListWidget#nav { background: transparent; border: none; outline: 0; }
+QListWidget#nav { background: transparent; border: none; outline: 0; font-size: NAVpt; }
 QListWidget#nav::item { padding: 8px 10px; margin: 1px 0; border-radius: 4px; border-left: 3px solid transparent; }
 QListWidget#nav::item:hover { background: HOVER; }
 QListWidget#nav::item:selected { background: SELECTED; color: TEXT; border-left: 3px solid ACCENT; }
@@ -135,6 +135,7 @@ QCheckBox::indicator, QRadioButton::indicator { width: 18px; height: 18px; }
   s.replace("BOTTOM", t.bottom.name()).replace("ONACCENT", t.on_accent.name()).replace("ACCENT", t.accent.name());
   s.replace("HOVER", t.hover.name()).replace("SELECTED", t.selected.name()).replace("WINDOW", t.window.name());
   s.replace("CHEVRON", chevron_file(t));
+  s.replace("NAV", QString::number(QApplication::font().pointSizeF() + 1.5));  // Windows 11 Settings' list: 14 px
   return s;
 }
 
@@ -149,6 +150,9 @@ void apply() {
   static bool connected = false;
   if (!connected) QObject::connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, [] { apply(); }), connected = true;
   if (QApplication::style()->name() != "fusion") QApplication::setStyle(QStyleFactory::create("fusion"));
+  // Windows 11's own text face where it is (Windows 10: Segoe UI, as the system gives it).
+  if (auto f = QApplication::font(); QFontDatabase::hasFamily("Segoe UI Variable Text") && f.family() != "Segoe UI Variable Text")
+    f.setFamily("Segoe UI Variable Text"), QApplication::setFont(f);
   auto &t = theme();
   QPalette p;
   p.setColor(QPalette::Window, t.window);

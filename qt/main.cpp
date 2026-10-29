@@ -93,7 +93,7 @@ int self_test(const QString &path) {
 
 }  // namespace
 
-int main(int argc, char **argv) {
+int run(int argc, char **argv) {
 #ifndef _WIN32
   for (int i = 1; i < argc; ++i)
     if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
@@ -166,5 +166,9 @@ int main(int argc, char **argv) {
       shell.handle(args.mid(1));
     code = app.exec();
   }
-  app::leave(code);  // the tray icon gone with the shell; a translation still running is not waited for
+  return code;  // the tray icon gone with the shell
 }
+
+// Every way out without static destructors: a translation still running is not waited for, and llama.cpp's Metal
+// device asserts at exit while a model it kept is alive.
+int main(int argc, char **argv) { app::leave(run(argc, argv)); }

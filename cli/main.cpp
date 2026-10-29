@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include "command.hpp"
+#include "lexipeek/app.hpp"
 #include "lexipeek/packs.hpp"
 #ifdef _WIN32
 #include <windows.h>
@@ -58,5 +59,6 @@ int main(int argc, char **argv) {
   }
   if (!c) return usage(0);
   a.data = a.has("--data") ? std::filesystem::path(a.opt("--data")) : lexipeek::default_data_dir();
-  return c->run(a);
+  // Without static destructors: llama.cpp's Metal device asserts at exit while a model it kept is alive.
+  lexipeek::app::leave(c->run(a));
 }
