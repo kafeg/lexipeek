@@ -5,13 +5,13 @@ rem   WinUI: the core and the OS layer (platform\) by CMake, the shell by MSBuil
 rem   <dir>\win\LexiPeek\ (LexiPeek.exe, the Windows App SDK's DLLs, .pri, .xbf, the locale folders' .mui), without what a
 rem   run never needs: *.pdb *.lib *.exp *.winmd, WebView2 (not used), the SDK's push-notification proxy and restart agent.
 rem   Qt: CMake with -DLEXIPEEK_QT=ON -> <dir>\qt\LexiPeek.exe (one static exe; Qt by vcpkg, its first build is long).
-rem Needs Visual Studio 2022 (Build Tools: C++ x64, Windows SDK), CMake, Ninja, Git; NuGet is fetched when it is not on PATH.
+rem Needs Visual Studio 2022 or later (or its Build Tools: C++ x64, Windows SDK), CMake, Ninja, Git; NuGet is fetched when it is not on PATH.
 setlocal
 set "SRC=%~dp0.."
 set "OUT=%~1"
 if "%OUT%"=="" set "OUT=%SRC%\build-win"
 where cl >nul 2>nul || for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat" >nul
-where cl >nul 2>nul || (echo no MSVC: install Visual Studio 2022 or its Build Tools & exit /b 1)
+where cl >nul 2>nul || (echo no MSVC: install Visual Studio 2022 or later, or its Build Tools & exit /b 1)
 if /i "%~2"=="qt" (
   cmake -S "%SRC%" -B "%OUT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLEXIPEEK_QT=ON || exit /b 1
   cmake --build "%OUT%" --target lexipeek-qt || exit /b 1

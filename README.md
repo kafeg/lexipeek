@@ -64,7 +64,7 @@ make test     # the core and its tests (CMake + Ninja; the first build compiles 
 make install  # macOS: the app into /Applications
 ```
 
-On Windows (Visual Studio 2022 or its Build Tools with C++ and the Windows SDK, CMake, Ninja, Git): `scripts\build-win.cmd`
+On Windows (Visual Studio 2022 or later, or its Build Tools, with C++ and the Windows SDK, CMake, Ninja, Git): `scripts\build-win.cmd`
 — the app's folder in `build-win\win\LexiPeek\` (`LexiPeek.exe` and the Windows App SDK's runtime). `scripts\build-win.cmd
 build-qt qt` builds the Qt shell instead (`build-qt\qt\LexiPeek.exe`, Qt statically linked; build against your own Qt to relink).
 
