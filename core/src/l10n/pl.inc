@@ -345,6 +345,8 @@
 {"delete_d", "Jego pliki zostaną usunięte."},
 {"loading_lists", "Wczytywanie list…"},
 {"hk_taken", "Zajęty przez inną aplikację"},
+{"hk_taken_t", "Skrót jest zajęty przez inną aplikację"},
+{"menu_hotkeys", "Zmień skróty…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Shift"},

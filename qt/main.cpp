@@ -144,6 +144,7 @@ int main(int argc, char **argv) {
   }
   // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
   if (!tool && platform::hand_over(args.mid(1))) return 0;
+  if (platform::installed_here()) QFile::remove(QCoreApplication::applicationDirPath() + "/LexiPeek.old.exe");  // left by an update
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   auto opt = [&](const char *name) {
     auto i = args.indexOf(name);

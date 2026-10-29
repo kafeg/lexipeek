@@ -341,6 +341,8 @@
 {"delete_d", "Seine Dateien werden gelöscht."},
 {"loading_lists", "Listen werden geladen…"},
 {"hk_taken", "Von einer anderen App belegt"},
+{"hk_taken_t", "Ein Tastenkürzel gehört schon einer anderen App"},
+{"menu_hotkeys", "Tastenkürzel ändern…"},
 {"key_ctrl", "Strg"},
 {"key_alt", "Alt"},
 {"key_shift", "Umschalt"},

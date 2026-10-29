@@ -341,6 +341,8 @@
 {"delete_d", "Its files are deleted."},
 {"loading_lists", "Loading lists…"},
 {"hk_taken", "Taken by another app"},
+{"hk_taken_t", "A hotkey is taken by another app"},
+{"menu_hotkeys", "Change the Hotkeys…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Shift"},

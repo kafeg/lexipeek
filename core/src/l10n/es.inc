@@ -341,6 +341,8 @@
 {"delete_d", "Sus archivos se eliminan."},
 {"loading_lists", "Cargando listas…"},
 {"hk_taken", "Ocupado por otra app"},
+{"hk_taken_t", "Otra app usa un atajo"},
+{"menu_hotkeys", "Cambiar los atajos…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Mayús"},

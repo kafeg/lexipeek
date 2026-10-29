@@ -341,6 +341,8 @@
 {"delete_d", "Ses fichiers sont supprimés."},
 {"loading_lists", "Chargement des listes…"},
 {"hk_taken", "Pris par une autre app"},
+{"hk_taken_t", "Un raccourci est pris par une autre app"},
+{"menu_hotkeys", "Changer les raccourcis…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Maj"},

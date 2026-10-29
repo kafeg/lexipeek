@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var pressure: DispatchSourceMemoryPressure?
     private var trustTimer: Timer?
     private let icon = SelectionIcon()
+    private var keysOK = true  // both hotkeys registered
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Selection.log.info("launched; Accessibility trusted: \(Selection.trusted)")
@@ -125,6 +126,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settings.hotkeyErrors = [:]
         if !ok1 { settings.hotkeyErrors["translate"] = L.t("hk_taken") }
         if !ok2 { settings.hotkeyErrors["input"] = L.t("hk_taken") }
+        keysOK = ok1 && ok2
+        updateItem()
     }
 
     // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -301,8 +304,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // The menu-bar icon; ⚠ while the hotkey cannot work (Accessibility off, no language pack), its tooltip why.
     private func updateItem() {
         let a = Access.shared
-        let why = !a.trusted ? L.t("access_off_t") : !a.hasPair ? L.t("nopack_t") : "LexiPeek"
-        let image = a.fine ? NSImage(named: "MenuBarIcon") : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        let why = !a.trusted ? L.t("access_off_t") : !a.hasPair ? L.t("nopack_t") : !keysOK ? L.t("hk_taken_t") : "LexiPeek"
+        let image = a.fine && keysOK ? NSImage(named: "MenuBarIcon") : NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
         image?.isTemplate = true
         image?.accessibilityDescription = why
         item?.button?.image = image
@@ -310,6 +313,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func setUp() { openFirstRun() }
+
+    @objc private func changeHotkeys() {
+        NotificationCenter.default.post(name: .openPane, object: (lexipeek.SettingsSection.general, 1))
+    }
 
     @objc private func askAccess() { Access.ask() }
 
@@ -321,6 +328,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
             menu.addItem(a)
             let why = NSMenuItem(title: L.t("access_off_t"), action: nil, keyEquivalent: "")
+            why.isEnabled = false
+            menu.addItem(why)
+            menu.addItem(.separator())
+        }
+        if !keysOK {
+            let k = NSMenuItem(title: L.t("menu_hotkeys"), action: #selector(changeHotkeys), keyEquivalent: "")
+            k.target = self
+            k.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: nil)
+            menu.addItem(k)
+            let why = NSMenuItem(title: L.t("hk_taken_t"), action: nil, keyEquivalent: "")
             why.isEnabled = false
             menu.addItem(why)
             menu.addItem(.separator())

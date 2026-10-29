@@ -341,6 +341,8 @@
 {"delete_d", "Os seus ficheiros são apagados."},
 {"loading_lists", "A carregar listas…"},
 {"hk_taken", "Usado por outra app"},
+{"hk_taken_t", "Um atalho está a ser usado por outra app"},
+{"menu_hotkeys", "Mudar os atalhos…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Shift"},

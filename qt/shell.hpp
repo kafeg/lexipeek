@@ -47,6 +47,7 @@ class Shell : public QObject {
   std::string reading_app_;
   bool reading_open_ = false;
   bool pair_ = true;
+  bool keys_ = true;  // both hotkeys registered
   bool low_ = false;  // memory was low at the last check
   Settings s_;
 };

@@ -341,6 +341,8 @@
 {"delete_d", "I suoi file vengono eliminati."},
 {"loading_lists", "Caricamento elenchi…"},
 {"hk_taken", "Occupata da un'altra app"},
+{"hk_taken_t", "Una scorciatoia è usata da un'altra app"},
+{"menu_hotkeys", "Cambia le scorciatoie…"},
 {"key_ctrl", "Ctrl"},
 {"key_alt", "Alt"},
 {"key_shift", "Maiusc"},

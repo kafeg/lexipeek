@@ -86,6 +86,7 @@ void Shell::apply() {
 void Shell::register_hotkeys() {
   bool a = platform::register_hotkey(translate_key, s_.lookup, [this] { translate_selection(); });
   bool b = platform::register_hotkey(input_key, s_.input, [this] { type_text(); });
+  keys_ = a && b;
   if (settings_) settings_->hotkey_errors(a ? "" : t("hk_taken").toStdString(), b ? "" : t("hk_taken").toStdString());
   if (main_) main_->lookup_key = app::hotkey_label(s_.lookup), main_->input_key = app::hotkey_label(s_.input);
 }
@@ -115,8 +116,8 @@ void Shell::selection_read() {
 
 void Shell::update_tray() {
   pair_ = app::has_pair(c_.data());
-  tray_.setIcon(tray_icon(!pair_));
-  tray_.setToolTip(pair_ ? "LexiPeek" : "LexiPeek — " + t("nopack_t"));
+  tray_.setIcon(tray_icon(!pair_ || !keys_));
+  tray_.setToolTip(!pair_ ? "LexiPeek — " + t("nopack_t") : !keys_ ? "LexiPeek — " + t("hk_taken_t") : QString("LexiPeek"));
   if (main_) main_->refresh();
 }
 
@@ -187,6 +188,11 @@ void Shell::fill_menu() {
   if (!pair_) {
     menu_.addAction(fluent::icon(fluent::Glyph::warning), t("menu_setup"), this, &Shell::open_first_run);
     menu_.addAction(t("nopack_t"))->setEnabled(false);
+    menu_.addSeparator();
+  }
+  if (!keys_) {
+    menu_.addAction(fluent::icon(fluent::Glyph::warning), t("menu_hotkeys"), this, [this] { open_settings(static_cast<int>(SettingsSection::general), 1); });
+    menu_.addAction(t("hk_taken_t"))->setEnabled(false);
     menu_.addSeparator();
   }
   menu_.addAction(t("menu_open"), this, [this] { open_main(); });
