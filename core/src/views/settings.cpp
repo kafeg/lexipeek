@@ -35,7 +35,9 @@ const std::vector<std::array<std::string, 3>> licenses{
     {"Wiktionary", "lic_wiktionary", "https://creativecommons.org/licenses/by-sa/4.0/"},
     {"Mozilla", "lic_mozilla", "https://www.mozilla.org/MPL/2.0/"},
     {"OPUS-MT", "lic_opus", "https://creativecommons.org/licenses/by/4.0/"},
-    {"Hy-MT2", "lic_hymt", "https://www.apache.org/licenses/LICENSE-2.0"}};
+    {"Hy-MT2", "lic_hymt", "https://www.apache.org/licenses/LICENSE-2.0"},
+    {"fastText lid.176", "lic_langid", "https://creativecommons.org/licenses/by-sa/3.0/"},
+    {"LexiPeek", "lic_third", "https://github.com/kafeg/lexipeek/blob/main/THIRD_PARTY_NOTICES.txt"}};
 
 template <class T>
 int index_of(const std::vector<T> &xs, const T &x) {

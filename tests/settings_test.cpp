@@ -242,7 +242,7 @@ TEST_CASE("settings: General — System and Hotkeys tabs; the icon on Card → O
   CHECK(std::count_if(a.begin(), a.end(), [](auto &r) { return r.key == "license"; }) == 0);
   CHECK(about_tabs() == std::vector<std::string>{"About", "Licenses"});
   auto l = about_rows(st, 1);
-  CHECK(std::count_if(l.begin(), l.end(), [](auto &r) { return r.key == "license"; }) == 4);
+  CHECK(std::count_if(l.begin(), l.end(), [](auto &r) { return r.key == "license"; }) == 6);
   st.checking = true;
   a = about_rows(st);
   CHECK(!in("updates")->enabled);

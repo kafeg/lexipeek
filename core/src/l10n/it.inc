@@ -281,6 +281,8 @@
 {"lic_mozilla", "Modelli di traduzione veloce · MPL-2.0"},
 {"lic_opus", "Modelli di traduzione diretta · CC BY 4.0"},
 {"lic_hymt", "Modello di traduzione IA · Apache-2.0"},
+{"lic_langid", "Modello di rilevamento della lingua · CC BY-SA 3.0"},
+{"lic_third", "I motori e le librerie dell'app (Qt su Windows: LGPLv3) e le loro licenze"},
 {"packs_installed.one", "{n} coppia di lingue installata"},
 {"packs_installed.other", "{n} coppie di lingue installate"},
 {"packs_none", "Nessuna coppia di lingue installata"},
