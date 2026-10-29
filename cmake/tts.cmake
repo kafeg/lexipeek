@@ -49,6 +49,10 @@ if(LEXIPEEK_TTS OR LEXIPEEK_TTS_LIBRARY)
   set_target_properties(qwentts PROPERTIES IMPORTED_LOCATION ${QWENTTS_LIB} IMPORTED_IMPLIB ${QWENTTS_DIR}/qwen.lib
                         INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/engines/qwentts/src)
   add_dependencies(qwentts qwentts_build)
+  # The library is not there yet when a fresh build configures: CMake would not add its folder to the programs' rpath.
+  if(APPLE)
+    list(APPEND CMAKE_BUILD_RPATH ${QWENTTS_DIR})
+  endif()
 endif()
 
 # The voices in the app (core/src/speech/voices/<lang>-<female|male>.{spk,rvq,txt}) as one C++ table: kilobytes each.
