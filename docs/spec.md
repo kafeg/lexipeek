@@ -17,7 +17,8 @@ Service) instead of Android's intents, without what is e-ink only (black and whi
   The default is Direct · OPUS-MT (unlike InkPeek's Fast: a desktop has the memory, ~1.2 GB, and its quality is
   better); a pair's download brings it, removing a pair frees it; where no OPUS-MT model covers a pair or the machine
   cannot run it, the card uses Fast · Mozilla.
-- Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256.
+- Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256 (M9's voice model: a
+  pinned Hugging Face file, by sha256).
 
 ## Not yet
 Linux, sync — see Milestones. No browser extension: the hotkey and the icon at the selection work in browsers too.
@@ -25,7 +26,7 @@ Linux, sync — see Milestones. No browser extension: the hotkey and the icon at
 ## Principles
 - The core works offline and without AI. AI is an optional, marked tab, asked only on the person's action.
 - No guessing heuristics in data: forms, genders, lemmas come only from the packs.
-- One heavy model in memory; it is unloaded when idle.
+- One heavy model in memory; it is unloaded when idle (the voice model of M9 may stay beside it).
 - No telemetry, no accounts. Network: the pack list, downloads, the update check, AI when it is on.
 
 ## Platform
@@ -323,10 +324,52 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   WinUI build copies its folder —, single instance), behaviour unchanged. Built by phases (`TODO.md`). Windows 10 1809 and later; the look is Windows 11's. Snapshots: a window rendered to PNG
   in a signed-in session (`--snapshots`, the same cases). Releases: a zip of the folder (the exe offers to install
   itself, as now). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
+- **M9 Read aloud** (the owner's decision after a study of SprachAnker's: no system voices, no Piper; only Qwen3-TTS
+  Base 1.7B, which clones a native speaker's voice from a short clip and its exact text — single words come out right,
+  where the built-in speakers babble after them). Off by default; one ▶ in the card.
+  **Engine:** qwentts.cpp (`engines/qwentts`, a pinned commit: it has no tags) on its own ggml fork, built as its own
+  shared library (`libqwentts.dylib` in the app's Frameworks, `qwentts.dll` beside the exe) that exports only its C ABI
+  (`qt_*`): its ggml stays inside it — llama.cpp's ggml is another copy, the two cannot be linked into one binary. Not a
+  separate program (as SprachAnker's `tts-server`): the core would start processes and talk over a local port (OS calls,
+  a listening socket); the library gives the same separation, a reading cancelled within a frame (~80 ms), the voices as
+  latents in memory, and unloading is freeing its context. Metal on macOS, Vulkan on Windows (the system's
+  `vulkan-1.dll`, else the CPU); "On the GPU" off: the CPU. Built in CI: macOS with the app, Windows with Vulkan; Linux
+  not yet. **The model** (Apache-2.0) is the one exception to "everything from InkPeek's packs" (InkPeek will never read
+  aloud): `qwen-talker-1.7b-base-Q8_0.gguf` (2.08 GB) and its codec `qwen-tokenizer-12hz-Q8_0.gguf` (0.29 GB) from
+  Hugging Face's `Serveurperso/Qwen3-TTS-GGUF` at a pinned commit, each checked by its sha256 (as SprachAnker), into
+  `<data>/tts/`, downloaded only from Settings → Read aloud (resumed, progress), removable there.
+  **Voices:** in the app (kilobytes; no recording ships): per language the packs answer in (de, en, ru, fr, es, it, pl,
+  pt) one female and one male native speaker — a clip of 5–12 s pre-encoded by qwentts.cpp (`qwen-codec --talker`) into
+  its speaker embedding (`.spk`) and codec codes (`.rvq`), with its exact text: M-AILABS (LibriVox readings, its free
+  licence), pt from LibriVox (public domain); each in THIRD_PARTY_NOTICES.txt, each checked on 20 single words (the word
+  and nothing after it). One switch Female · Male for every language; the voice is the text's language's. **A voice from
+  a recording** ("Voice from a recording…": a WAV and what it says, its language): encoded on this computer into
+  `<data>/voices/` (latents and text; the WAV is not kept), listed first for its language and used for it while on;
+  SprachAnker's word voice on this computer (its `models/word-voices/<lang>.json` and WAV) is offered the same way. Such
+  a voice is never shipped or synced (a course's recording is someone's voice).
+  **What ▶ reads** (the core decides, `card_view`'s `read`: text and language; the shells only play): a text in another
+  language than the answer — the text itself in its language; a text in the answer language with a language you learn —
+  on Translate the translation into it (once there), on Dictionary the first translated word, and each translated
+  word's row has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
+  **Card:** ▶ in the bottom row on the right (before copy), ■ while it reads (a press stops); ⌘. (Windows Ctrl+.) the
+  same. The first ▶ loads the model: "Loading the voice model…" under the rows until the reading starts; a failure is a
+  line with Settings → Read aloud. Read aloud off or no model: ▶ is still there, a press says what to do (the line and
+  its button).
+  **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for Settings →
+  General's model time after its last reading, then is freed (it is not the one heavy translation model: they may be in
+  memory together); the menu's "In memory" names it. Each reading has a length limit by its text (SprachAnker's
+  `maxTokens`: twice the time to say it slowly, plus 2 s: a word that runs on stops after seconds), a fixed seed (the
+  same text and voice give the same audio), and is kept as a WAV in `<data>/readings/` by the hash of model, voice,
+  language and text: the same reading is never made twice (the newest 2,000 kept).
+  **Settings → Read aloud** (a toolbar section of its own): Read aloud on / off; the model (its size, the memory it
+  needs, downloaded or Download with progress, Remove); On the GPU; Voice: Female · Male; own voices (language, what it
+  says; on / off, ✕) and "Voice from a recording…". Shells: macOS plays the WAV (AVAudioPlayer); Windows after M8's
+  card; the Qt shell (Linux) none.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
   sync folder (InkPeek too) · Linux (the Qt shell; an AppImage first).
 
 ## License
-MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0).
+MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0); the
+voice model Qwen3-TTS Apache-2.0, qwentts.cpp MIT, the voices' clips their sources' (THIRD_PARTY_NOTICES.txt).
