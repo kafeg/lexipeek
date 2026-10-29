@@ -215,12 +215,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mainWindow?.present()
     }
 
-    // The window on a page, off screen: <name>.png, then <name>.done (look: a text looked up there).
+    // The window on a page, off screen: <name>.png, <name>-end.png when it scrolls, then <name>.done (look: a text looked
+    // up there).
     private func snapshotMain(_ page: MainPage, _ name: String, look: String?) {
         openMain(page)
         if let look { main.look(look) }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
             Snapshot.write(self.mainWindow?.contentView?.superview, "\(name).png")
+            Snapshot.writeEnd(self.mainWindow?.contentView?.superview, "\(name)-end.png")
             Snapshot.mark("\(name).done")
         }
     }
