@@ -34,7 +34,9 @@ the selected text); the first run asks for it and explains why. While it is off 
 build is a new app to it), every place says so: the menu-bar icon is ⚠ (its tooltip why), the menu's first item opens
 System Settings → Accessibility, the Settings window and the LexiPeek window show a banner with "Open System
 Settings…", and the lookup hotkey's card (to type in) has a line with the same link. Checked every second; all of it
-goes the moment it is on.
+goes the moment it is on. The same ⚠ (menu bar and tray, both OSes) when no language pack is installed ("Set Up a
+Language Pack…" first in the menu, a banner in the windows, the card's "Open Settings → Packs") and when another app
+has taken a hotkey ("Change the Hotkeys…").
 
 ## Stack
 One C++ core with all the logic; a thin native shell per OS that only draws what the core gives it.
