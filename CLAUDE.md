@@ -224,6 +224,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   signed-in desktop (over SSH it fails at start); `--self-test <file>` (OS checks), `--snapshots <dir>` (RenderTargetBitmap
   of each case, light and dark: XAML's own rendering; screen captures of WinUI windows can be blank on a VM's basic display
   adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe` (all but the icon at the selection, phase 2).
+  Settings and About: `settings_window` (+ `packs_pane`, `dicts_pane` with the catalog window, `settings_ui`: setting cards,
+  dialogs, pickers) draw the core's rows; made once, their X hides them (downloads go on), a close by code makes them again.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs and .ico committed; the tray's glyph white and black from `MenuBarIcon.svg`; `win/LexiPeek.rc` takes the .ico files). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
