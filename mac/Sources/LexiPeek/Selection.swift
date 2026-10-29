@@ -91,20 +91,26 @@ enum Selection {
     }
 
     // A web view's selection by its text markers first (as VoiceOver reads it: a line break between blocks, where its
-    // selected text runs "money" and "Crypto" of two headings together), else the element's selected text.
+    // selected text runs "money" and "Crypto" of two headings together), else the element's selected text. The markers'
+    // text must be the selected text but for white space: a triple click in Electron ends them inside the next block.
     private static func selected(_ el: AXUIElement) -> Result? {
+        var value: CFTypeRef?
+        let plain = AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success ? value as? String : nil
         var range: CFTypeRef?
         var str: CFTypeRef?
         if AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let range,
            AXUIElementCopyParameterizedAttributeValue(el, "AXStringForTextMarkerRange" as CFString, range, &str) == .success,
            let text = str as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Result(text: paragraphs(el, range) ?? text, bounds: bounds(el))
+            let lines = paragraphs(el, range) ?? text
+            if plain == nil || compact(plain!).isEmpty || compact(lines) == compact(plain!) {
+                return Result(text: lines, bounds: bounds(el))
+            }
         }
-        var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success,
-              let text = value as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        guard let text = plain, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return Result(text: text, bounds: bounds(el))
     }
+
+    private static func compact(_ s: String) -> String { String(s.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) }) }
 
     // A web view's selection paragraph by paragraph, joined by line breaks (Chromium and Electron give its text with none
     // between blocks: "Что сделал:• Очистка…"); nil when it is one paragraph or the app cannot say.
