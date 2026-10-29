@@ -47,7 +47,8 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `core/include/lexipeek/` | the facade the shells call: plain structs, enums, `std::string`, `std::vector`, `std::optional`, errors as values — importable by Swift's C++ interop and used as is by C++ shells. No C API |
 | engines | git submodules, the same pinned commits as InkPeek: Bergamot (RTranslator fork), PCRE2, fastText, llama.cpp (Metal on macOS) |
 | `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX only; the clipboard is never touched), Service, URL scheme, Accessibility, memory pressure |
-| `qt/` | (M6) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
+| `win/` | (M8) Windows: WinUI 3 (Windows App SDK, C++/WinRT, unpackaged, self-contained) — the system's own controls, the core called directly; platform parts: `RegisterHotKey`, UI Automation, Credential Manager |
+| `qt/` | (M6) Linux (and Windows until M8): Qt 6 Widgets in C++ — the core is called directly; the desktop's theme. Platform parts per OS (Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
 | CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account) and the Windows exe on GitHub Releases |
 
@@ -76,7 +77,8 @@ Laid out for every milestone now; a milestone fills a module, it does not reshap
 
 ```
 mac/ (Swift)       menu bar · card · settings · onboarding · server (M7, 127.0.0.1 + token) · platform parts
-qt/  (C++, M6)     the same screens for Windows and Linux · platform parts per OS
+win/ (C++/WinRT, M8) the same screens with Windows 11's own controls · platform parts
+qt/  (C++, M6)     the same screens for Linux · platform parts per OS
 core/ (C++, no UI)
   views    what each screen shows (card, packs list, settings state) — shells only draw it
   lookup   Request{text, source: hotkey | input | service | url | extension} → Card{kind, dictionary, translation, ai?}; the one entry for the card,
@@ -312,6 +314,17 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   `Ai.STUDY` paragraph after the prompt; answers kept under `java_hash(prompt + "\n" + the paragraph with the English
   names joined by " and ")`. An empty list: every card as before, the same AI versions. Help: "Languages you learn"
   under translation.
+- **M8 Native Windows shell** (the owner's decision: Qt's look is not Windows 11's). `win/`: WinUI 3 through the
+  Windows App SDK, C++/WinRT, unpackaged and self-contained (the program and its runtime in one folder; no install of
+  a runtime, no Store). The same screens and steps as `qt/` and `mac/`, drawn by the system's controls: the card (a
+  borderless window that takes no focus, at the selection; Mica/acrylic background, the theme's corners and shadow),
+  the LexiPeek window (`NavigationView`: Look up · Words · Phrases · History · Help; Settings and About at its foot),
+  Settings as Windows Settings draws them (`NavigationView` sections, setting cards: `ToggleSwitch`, `ComboBox`, the
+  core's rows), the first run, About, the tray icon (Shell_NotifyIcon) and its menu (`MenuFlyout`). Platform parts move
+  from `qt/platform_win.cpp` as they are (hotkeys, UI Automation selection, Credential Manager, Run key, per-user
+  install, single instance). Windows 10 1809 and later; the look is Windows 11's. Snapshots: a window rendered to PNG
+  in a signed-in session (`--snapshots`, the same cases). Releases: a zip of the folder (the exe offers to install
+  itself, as now). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
