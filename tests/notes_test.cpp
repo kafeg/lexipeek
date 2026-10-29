@@ -4,6 +4,7 @@
 #include <fstream>
 #include <thread>
 #include "lexipeek/app.hpp"
+#include "lexipeek/session.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/views.hpp"
 
@@ -214,4 +215,46 @@ TEST_CASE("notes: 50 a page, the pager; TSV takes them all") {
   CHECK(notes_view(s, NotesTab::history, "ru", 9).page == 2);
   auto tsv = notes_tsv(s, NotesTab::history, "ru");
   CHECK(std::count(tsv.begin(), tsv.end(), '\n') == 120);
+}
+
+TEST_CASE("app: a card session — a look-up arrives at a poll, ☆, a word opened and ←, a newer look-up wins") {
+  auto d = pack_data("lexipeek-session");
+  {
+    auto e = app::Engine::make(d.string(), app::device(8192, {"asimddp"}, "arm64"));
+    auto s = app::CardSession::make(e);
+    auto settle = [&] {
+      for (int i = 0; i < 500 && (s.busy() || s.looking()); i++) {
+        s.poll();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      s.poll();
+    };
+    s.look("Haus", Source::hotkey, "", "");
+    CHECK(s.looking());
+    settle();
+    REQUIRE(s.has_card());
+    CHECK(s.nav().card().text == "Haus");
+    CHECK(s.notes_changed());  // its history
+    CHECK(!s.notes_changed());
+    s.toggle_saved();
+    CHECK(s.view().saved);
+    CHECK(s.notes_changed());
+    s.open("Baum");
+    settle();
+    CHECK(s.nav().card().text == "Baum");
+    CHECK(s.view().back == "Haus");
+    s.back();
+    settle();
+    CHECK(s.nav().card().text == "Haus");
+    CHECK(s.view().saved);
+    // Two look-ups: the later one's card is shown.
+    s.look("Baum", Source::hotkey, "", "");
+    s.look("Haus", Source::hotkey, "", "");
+    settle();
+    CHECK(s.nav().card().text == "Haus");
+    s.reset();
+    CHECK(s.poll());
+    CHECK(!s.has_card());
+  }
+  wipe(d);
 }

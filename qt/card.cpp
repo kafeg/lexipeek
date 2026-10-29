@@ -20,159 +20,69 @@
 
 namespace lexipeek::qt {
 
-CardModel::CardModel(CoreClient &client) : c_(client), lane_(client) {
+CardModel::CardModel(CoreClient &client) : c_(client), session_(app::CardSession::make(client.engine)) {
+  poll_.setInterval(40);
+  connect(&poll_, &QTimer::timeout, this, [this] {
+    if (session_.poll()) relook();
+    if (session_.notes_changed()) emit notes_bus().changed();
+    if (!session_.busy()) poll_.stop();
+  });
   // Notes may have removed (or another card saved) this card's word: its ★ again.
   connect(&notes_bus(), &NotesBus::changed, this, [this] {
-    if (!nav.has_card()) return;
-    if (bool saved = c_.engine.saved(nav.card()); saved != nav.state.saved) nav.state.saved = saved, relook();
-  });}
+    session_.recheck_saved();
+    if (session_.poll()) relook();
+  });
+}
 
 void CardModel::relook() {
-  look_ = nav.has_card() ? card_view(nav.card(), nav.state) : CardView{};
+  nav = session_.nav();
+  look_ = session_.view();
   emit changed();
 }
 
+void CardModel::acted() {
+  if (session_.poll()) relook();
+  if (session_.notes_changed()) emit notes_bus().changed();
+  if (session_.busy() && !poll_.isActive()) poll_.start();
+}
+
 void CardModel::reset() {
-  request_ = 0;
-  waiting_ = false;
   pinned = false;
   unread.clear();
-  nav.reset();
-  relook();
+  session_.reset();
+  acted();
 }
 
 void CardModel::lookup(const std::string &text, const std::string &lang, const std::string &answer) {
-  run(nav.look(q(text).trimmed().toStdString(), source, false, lang, answer));
+  session_.set_key(key());
+  session_.look(q(text).trimmed().toStdString(), source, lang, answer);
+  acted();
 }
-void CardModel::open(const std::string &word) { run(nav.open(word)); }
-void CardModel::relookup(const std::string &lang, const std::string &answer) { run(nav.relookup(lang, answer)); }
-void CardModel::back() { run(nav.back()); }
-void CardModel::open_section(int entry, const std::string &section) { run(nav.open_section(entry, section, 0)); }
-void CardModel::turn(int by) { run(nav.turn(by)); }
-
-void CardModel::open_entry(int entry) {
-  nav.open_entry(entry);
-  relook();
-}
-
-void CardModel::select(CardTab tab) {
-  nav.select(tab);
-  ask_ai();
-  relook();
-}
-
-void CardModel::next_tab(int by) {
-  nav.next_tab(by);
-  ask_ai();
-  relook();
-}
-
-void CardModel::full_entries() {
-  nav.full_entries();
-  relook();
-}
+void CardModel::open(const std::string &word) { session_.open(word), acted(); }
+void CardModel::relookup(const std::string &lang, const std::string &answer) { session_.relookup(lang, answer), acted(); }
+void CardModel::back() { session_.back(), acted(); }
+void CardModel::open_section(int entry, const std::string &section) { session_.open_section(entry, section), acted(); }
+void CardModel::turn(int by) { session_.turn(by), acted(); }
+void CardModel::open_entry(int entry) { session_.open_entry(entry), acted(); }
+void CardModel::select(CardTab tab) { session_.select(tab), acted(); }
+void CardModel::next_tab(int by) { session_.next_tab(by), acted(); }
+void CardModel::full_entries() { session_.full_entries(), acted(); }
 
 void CardModel::choose(Method m) {
   auto s = app::settings(c_.data());
   app::set_method(s, app::method_id(m));
   app::save(c_.data(), s);
   c_.configure();
-  nav.pick_method(m);
-  translate(m);
+  use(m);
 }
 
-void CardModel::use(Method m) {
-  nav.pick_method(m);
-  translate(m);
-}
-
-void CardModel::choose_ai() {
-  nav.pick_ai();
-  ask_ai();
-  relook();
-}
-
-void CardModel::toggle_saved() {
-  if (!nav.has_card() || !look_.can_save) return;
-  nav.state.saved = c_.engine.toggle_saved(nav.card(), shown_translation(nav.state));
-  relook();
-  emit notes_bus().changed();
-}
+void CardModel::use(Method m) { session_.use(m), acted(); }
+void CardModel::choose_ai() { session_.choose_ai(), acted(); }
+void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
 
 void CardModel::toggle_pin() {
   pinned = !pinned;
   relook();
-}
-
-void CardModel::run(const CardStep &step) {
-  switch (step.kind) {
-    case CardStep::Kind::lookup:
-      waiting_ = true;
-      request_ = lane_.lookup(step.text, step.source, step.lang, step.answer, [this](int id, Card card) {
-        if (id != request_) return;
-        waiting_ = false;
-        nav.arrived(card);
-        if (nav.state.has_method) translate(nav.state.method);
-        ask_ai();
-        relook();
-        emit notes_bus().changed();  // its history
-      });
-      relook();
-      break;
-    case CardStep::Kind::restore:
-      request_ = lane_.restore(nav.card());
-      if (step.translate) translate(nav.state.method);
-      ask_ai();
-      relook();
-      break;
-    case CardStep::Kind::section: {
-      auto id = request_;
-      auto e = c_.engine;
-      auto card = nav.card();
-      waiting_ = true;
-      c_.run<SectionPage>(
-          c_.lookups, [e, card, step] { return e.section(card, step.entry, step.key, step.page); },
-          [this, id](SectionPage p) {
-            if (id != request_) return;
-            waiting_ = false;
-            nav.section_arrived(p);
-            relook();
-          });
-      break;
-    }
-    default:
-      relook();
-  }
-}
-
-void CardModel::translate(Method m) {
-  if (!request_) return;
-  nav.translating(m);
-  auto id = request_;
-  lane_.translate(id, m, [this, id, m](Translation t) {
-    if (id != request_) return;
-    nav.translated(m, t);
-    relook();
-  });
-}
-
-// The AI answers the card shows now (the core says which: only on the person's action), the open one first.
-void CardModel::ask_ai() {
-  if (!nav.has_card() || !request_) return;
-  auto asks = card_asks(nav.card(), nav.state);
-  if (asks.empty()) return;
-  auto id = request_;
-  auto k = key();
-  for (auto a : asks) {
-    AiState asking;
-    asking.asking = true;
-    nav.state = with_answer(nav.state, a, asking);
-    lane_.ask(id, nav.card(), a, k, [this, id, a](AiState st) {
-      if (id != request_) return;
-      nav.state = with_answer(nav.state, a, st);
-      relook();
-    });
-  }
 }
 
 namespace {
@@ -238,6 +148,7 @@ QToolButton *menu_button(const QString &text, const QFont &f) {
   b->setProperty("command", true);
   b->setCursor(Qt::PointingHandCursor);
   b->setPopupMode(QToolButton::InstantPopup);
+  b->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);  // never cut to "d…": the stretch gives way
   return b;
 }
 
@@ -546,7 +457,8 @@ QWidget *CardWidget::bar(const CardView &v) {
     l->addWidget(next);
   }
   l->addStretch();
-  if (!v.copy.empty()) {
+  // A pager's row has no room for copy (and a page of words has nothing to copy).
+  if (!v.copy.empty() && v.pager.empty()) {
     auto text = q(v.copy);
     l->addWidget(command(fluent::Glyph::copy, t("card_copy"), [text] { QApplication::clipboard()->setText(text); }));
   }

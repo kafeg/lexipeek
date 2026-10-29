@@ -4,7 +4,9 @@
 #include <QPointer>
 #include <QWidget>
 #include <functional>
+#include <QTimer>
 #include "core_client.hpp"
+#include "lexipeek/session.hpp"
 
 class QVBoxLayout;
 
@@ -15,12 +17,12 @@ class CardModel : public QObject {
  public:
   explicit CardModel(CoreClient &client);
 
-  CardNav nav;
+  CardNav nav;  // the session's, as of the last poll (read only)
   bool has_card() const { return nav.has_card(); }
   CardView look() const { return look_; }
-  bool looking() const { return request_ != 0 && !nav.has_card(); }
+  bool looking() const { return session_.looking(); }
   std::vector<Seen> recents() const { return c_.engine.recents(app::recents_shown()); }  // under the input field
-  bool busy() const { return nav.busy() || waiting_; }  // a translation, an AI answer, a look-up or a section on its way
+  bool busy() const { return session_.busy(); }  // a translation, an AI answer, a look-up or a section on its way
   bool pinned = false;  // the pop-up card stays open on an outside click
   std::string unread;   // the app whose selection could not be read ("" = none)
   bool input = false;   // the card shows its text field (typing)
@@ -49,14 +51,11 @@ class CardModel : public QObject {
   void changed();
 
  private:
-  void run(const CardStep &step);
-  void translate(Method m);
-  void ask_ai();
+  void acted();  // after an action: draw, and poll while something is on its way
   void relook();
   CoreClient &c_;
-  CardLane lane_;
-  int request_ = 0;
-  bool waiting_ = false;
+  app::CardSession session_;
+  QTimer poll_;
   CardView look_;
 };
 

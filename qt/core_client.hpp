@@ -55,31 +55,4 @@ class CoreClient : public QObject {
   std::string data_;
 };
 
-// One card's requests: a newer one makes its older ones no-ops and stops only its own translation.
-class CardLane {
- public:
-  explicit CardLane(CoreClient &c) : c_(c) {}
-  int lookup(const std::string &text, Source source, const std::string &lang, const std::string &answer,
-             std::function<void(int, Card)> done);
-  int restore(const Card &card);
-  void translate(int id, Method m, std::function<void(Translation)> done);
-  void ask(int id, const Card &card, ai::Ask a, const std::string &key, std::function<void(AiState)> done);
-
- private:
-  // Shared with the pools' work: a request still running at quit outlives the lane.
-  struct State {
-    std::mutex mu;
-    int latest = 0, translating = 0;
-    std::map<int, Card> cards;
-    bool current(int id) {
-      std::lock_guard g(mu);
-      return latest == id;
-    }
-  };
-  void stop();
-  CoreClient &c_;
-  int tag_ = app::Engine::new_tag();  // this card's translations, for cancel
-  std::shared_ptr<State> s_ = std::make_shared<State>();
-};
-
 }  // namespace lexipeek::qt
