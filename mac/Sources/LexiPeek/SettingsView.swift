@@ -701,6 +701,7 @@ private struct ShortcutField: View {
     private func start() {
         recording = true
         conflict = false
+        Hotkeys.shared.suspend()  // else ⌥D / ⌥A pressed here would open a card, not reach the field
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { e in
             if e.keyCode == 0x35 { stop(); return nil }
             var m: UInt32 = 0
@@ -710,13 +711,14 @@ private struct ShortcutField: View {
             if f.contains(.control) { m |= Shortcut.control }
             if f.contains(.shift) { m |= Shortcut.shift }
             guard let s = Shortcut(keyCode: e.keyCode, modifiers: m), s.isValid else { NSSound.beep(); return nil }
+            stop()  // the hotkeys back first: the new one's registration then says whether it is taken
             if s == other { conflict = true } else { shortcut = s }
-            stop()
             return nil
         }
     }
 
     private func stop() {
+        if recording { Hotkeys.shared.resume() }
         recording = false
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil

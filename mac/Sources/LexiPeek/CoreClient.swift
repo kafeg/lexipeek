@@ -3,14 +3,10 @@ import Foundation
 import LexiPeekCore
 import LexiPeekKit
 
-// The core on serial queues for look-ups, translations and indexing and a concurrent one for AI; each card asks through
-// its CardLane.
+// The engine and a serial queue for settings, packs and Notes' files; the cards ask through their own CardSession.
 final class CoreClient {
     let engine: lexipeek.app.Engine
-    fileprivate let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)
-    fileprivate let worker = DispatchQueue(label: "lexipeek.translate", qos: .userInitiated)
-    // AI requests go out together (the open tab's first), each waits on the network.
-    fileprivate let ai = DispatchQueue(label: "lexipeek.ai", qos: .userInitiated, attributes: .concurrent)
+    private let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)
 
     static var dataDir: String { String(lexipeek.app.data_dir()) }
 
@@ -77,8 +73,6 @@ final class CoreClient {
             DispatchQueue.main.async { done(s) }
         }
     }
-
-    // A section of the card's entry (its words' meanings: off the main queue); done on the main queue.
 
     // Memory pressure: free the held model now.
     func memory() -> lexipeek.MemoryView { engine.memory() }
