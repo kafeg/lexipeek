@@ -28,8 +28,9 @@ same project's pop-up dictionary for Android e-ink readers.
 
 ## Install
 
-**macOS** 14 or later, Apple Silicon. Download `LexiPeek.zip` from
-[Releases](https://github.com/kafeg/lexipeek/releases), move LexiPeek to Applications and open it. LexiPeek lives in
+**macOS** 14 or later, Apple Silicon. Download `LexiPeek-macOS.zip` from
+[Releases](https://github.com/kafeg/lexipeek/releases), move LexiPeek to Applications and open it (until it is notarised, macOS blocks the first launch: System Settings →
+Privacy & Security → Open Anyway). LexiPeek lives in
 the menu bar. It reads the selected text through Accessibility (never the clipboard): allow it in System Settings →
 Privacy & Security → Accessibility — the first run shows where.
 

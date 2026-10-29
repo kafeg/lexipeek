@@ -1,0 +1,130 @@
+name: release
+
+# A v* tag: the macOS app (zip) and the Windows program (exe) built, tested and published on GitHub Releases with the
+# third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
+# none yet); without them the builds are ad-hoc / unsigned and the release notes say how to open them.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macos-arm64, os: macos-15 }
+          - { name: windows-x64, os: windows-2025 }
+    runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the version's last part is the commit count
+      - name: Submodules
+        shell: bash
+        run: |
+          git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
+          git submodule update --init --recursive engines/bergamot
+          echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
+          mkdir -p .vcpkg-cache
+      # The same cache as ci.yml's (its key), so a release reuses the ports CI built.
+      - uses: actions/cache/restore@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
+          restore-keys: vcpkg-${{ matrix.name }}-
+      - name: Tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja zstd xcodegen || true
+
+      - name: Check for signing credentials (macOS)
+        if: runner.os == 'macOS'
+        id: creds
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          API_KEY: ${{ secrets.NOTARY_API_KEY }}
+        run: |
+          if [ -n "$CERTIFICATE" ] && [ -n "$API_KEY" ]; then echo "signed=true" >> "$GITHUB_OUTPUT"
+          else echo "signed=false" >> "$GITHUB_OUTPUT"; echo "::notice::No signing secrets: an ad-hoc signed build."; fi
+      - name: Import Developer ID certificate (macOS)
+        if: runner.os == 'macOS' && steps.creds.outputs.signed == 'true'
+        env:
+          CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN=$RUNNER_TEMP/build.keychain
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "$CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 900 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
+      - name: Build and test (macOS)
+        if: runner.os == 'macOS'
+        env:
+          SIGNED: ${{ steps.creds.outputs.signed }}
+        run: |
+          make test
+          if [ "$SIGNED" = "true" ]; then make app SIGN="Developer ID Application"; else make app SIGN=-; fi
+      - name: Notarise and staple (macOS)
+        if: runner.os == 'macOS' && steps.creds.outputs.signed == 'true'
+        env:
+          API_KEY: ${{ secrets.NOTARY_API_KEY }}
+          API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          APP=mac/build/Build/Products/Release/LexiPeek.app
+          codesign --verify --strict --verbose=2 "$APP"
+          echo "$API_KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/notarise.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarise.zip" --key "$RUNNER_TEMP/notary.p8" --key-id "$API_KEY_ID" --issuer "$API_ISSUER_ID" --wait
+          xcrun stapler staple "$APP"
+          rm -f "$RUNNER_TEMP/notary.p8"
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent mac/build/Build/Products/Release/LexiPeek.app dist/LexiPeek-macOS.zip
+
+      - name: Build and test (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel
+          ctest --test-dir build -C Release --output-on-failure
+          mkdir -p dist
+          cp build/qt/Release/LexiPeek.exe dist/LexiPeek.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp THIRD_PARTY_NOTICES.txt dist/
+          ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
+          NOTE=$'macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.\n\nWindows 10/11 (x64): run LexiPeek.exe; it offers to install itself for you. It is not signed yet: on\n"Windows protected your PC" click More info › Run anyway.'
+          gh release create "$GITHUB_REF_NAME" --title "LexiPeek ${GITHUB_REF_NAME#v}" --generate-notes --notes "$NOTE" dist/*

@@ -20,7 +20,7 @@ Service) instead of Android's intents, without what is e-ink only (black and whi
 - Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256.
 
 ## Not yet
-Browser extension, whole-page translation, Linux, sync — see Milestones.
+Linux, sync — see Milestones. No browser extension: the hotkey and the icon at the selection work in browsers too.
 
 ## Principles
 - The core works offline and without AI. AI is an optional, marked tab, asked only on the person's action.
@@ -290,8 +290,10 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   Settings → Apps (Uninstall removes the program, the shortcut, the Run and `lexipeek://` entries; language packs,
   dictionaries and notes stay in the data folder, which the question names); `--install` / `--uninstall --yes` for
   scripts. Signed when there is a certificate.
-- Then: release (signing, notarization, GitHub Releases, update check) · browser
-  extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).
+- Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
+  Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
+  the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
+  sync folder (InkPeek too) · Linux (the Qt shell; an AppImage first).
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0).
