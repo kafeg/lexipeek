@@ -196,15 +196,16 @@ TEST_CASE("l10n: every screen in every language asks only for keys that exist") 
   for (auto &k : missing_texts()) MESSAGE("missing: " << k);
 }
 
-TEST_CASE("l10n: every key the core and the Swift shell ask for by name exists") {
+TEST_CASE("l10n: every key the core and the Swift and WinUI shells ask for by name exists") {
   static const text::Regex core_key("\\btrn?\\(\"([a-z0-9_]*[a-z0-9])\"");
   static const text::Regex swift_key("\\bL\\.t\\(\"([a-z0-9_]*[a-z0-9])\"");
   int found = 0;
-  for (auto &f : files(LEXIPEEK_ROOT "/core/src", ".cpp"))
-    for (auto &m : core_key.all(read(f))) {
-      CHECK_MESSAGE((has_text(m.groups[1]) || has_text(m.groups[1] + ".one")), f.filename().string() << ": " << m.groups[1]);
-      found++;
-    }
+  for (auto &dir : {LEXIPEEK_ROOT "/core/src", LEXIPEEK_ROOT "/win"})
+    for (auto &f : files(dir, ".cpp"))
+      for (auto &m : core_key.all(read(f))) {
+        CHECK_MESSAGE((has_text(m.groups[1]) || has_text(m.groups[1] + ".one")), f.filename().string() << ": " << m.groups[1]);
+        found++;
+      }
   for (auto &f : files(LEXIPEEK_ROOT "/mac/Sources", ".swift"))
     for (auto &m : swift_key.all(read(f))) {
       CHECK_MESSAGE((has_text(m.groups[1]) || has_text(m.groups[1] + ".one")), f.filename().string() << ": " << m.groups[1]);

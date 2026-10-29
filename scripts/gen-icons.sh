@@ -24,8 +24,9 @@ for s in 16 32 64 256; do cp "$set_dir/icon_$s.png" ../qt/icons/; done
 for c in white black; do
   for s in 16 20 24 32; do sed "s/#000000/$c/g" Icon/MenuBarIcon.svg | rsvg-convert -w $s -h $s -o "../qt/icons/tray_${c}_$s.png"; done
 done
-# Windows: the same PNGs packed into one .ico (PNG entries, Vista and later).
-python3 -I - ../qt/icons/lexipeek.ico ../qt/icons/icon_16.png ../qt/icons/icon_32.png ../qt/icons/icon_64.png ../qt/icons/icon_256.png <<'PY'
+# Windows: PNGs packed into one .ico (PNG entries, Vista and later): the app's, and the tray's glyph for each taskbar.
+ico() {
+python3 -I - "$@" <<'PY'
 import struct, sys
 out, files = sys.argv[1], sys.argv[2:]
 pngs = [open(f, "rb").read() for f in files]
@@ -37,3 +38,6 @@ for f, data in zip(files, pngs):
     offset += len(data)
 open(out, "wb").write(head + entries + b"".join(pngs))
 PY
+}
+ico ../qt/icons/lexipeek.ico ../qt/icons/icon_16.png ../qt/icons/icon_32.png ../qt/icons/icon_64.png ../qt/icons/icon_256.png
+for c in white black; do ico "../qt/icons/tray_$c.ico" ../qt/icons/tray_${c}_16.png ../qt/icons/tray_${c}_20.png ../qt/icons/tray_${c}_24.png ../qt/icons/tray_${c}_32.png; done

@@ -5,7 +5,6 @@
 #include <QPushButton>
 #include <QProcess>
 #include <QFile>
-#include <QSettings>
 #include <QThread>
 #include <QTextStream>
 #include <QLocale>
@@ -14,6 +13,7 @@
 #include <QStyleFactory>
 #include <QTimer>
 #include <cstdlib>
+#include <sstream>
 #include "card.hpp"
 #include "first_run.hpp"
 #include "fluent.hpp"
@@ -31,51 +31,19 @@ using namespace lexipeek::qt;
 
 namespace {
 
-// `--self-test <file>`: the OS parts that need no desktop (the Credential Manager, the Run key put back as it was,
-// hotkeys, memory), one line each "ok|FAIL what", into file; the exit code the failures' count.
+// `--self-test <file>`: the OS parts that need no desktop (the shared layer's checks) and the Qt shell's icons, one
+// line each "ok|FAIL what", into file; the exit code the failures' count.
 int self_test(const QString &path) {
   QFile f(path);
   if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) return 1;
+  std::ostringstream lines;
+  int failed = os::self_test(lines);
   QTextStream out(&f);
-  int failed = 0;
+  out << q(lines.str());
   auto check = [&](bool ok, const QString &what) {
     out << (ok ? "ok   " : "FAIL ") << what << "\n";
     failed += !ok;
   };
-  const std::string provider = "self-test";
-  auto said = [](bool ok) { return ok ? QString() : " " + q(platform::last_error()); };
-  bool w = platform::set_secret(provider, "k-123 ключ");
-  check(w, "secret: written" + said(w));
-  check(platform::secret(provider) == "k-123 ключ", "secret: read back as written");
-  bool r = platform::set_secret(provider, "");
-  check(r, "secret: removed" + said(r));
-  check(platform::secret(provider).empty(), "secret: gone");
-  bool again = platform::set_secret(provider, "");
-  check(again, "secret: removing a missing one is fine" + said(again));
-  bool was = platform::login();
-  platform::set_login(!was);
-  check(platform::login() == !was, "login: switched");
-  platform::set_login(was);
-  check(platform::login() == was, "login: back as it was");
-  check(platform::ram_mb() > 512, "ram: " + QString::number(platform::ram_mb()) + " MB");
-  Hotkey h{"Q", true, false, true, true};
-  bool reg = platform::register_hotkey(90, h, [] {});
-  check(reg, "hotkey: Ctrl+Alt+Shift+Q registered" + said(reg));
-  platform::unregister_hotkey(90);
-  check(platform::register_hotkey(90, h, [] {}), "hotkey: registered again after unregistering");
-  platform::unregister_hotkey(90);
-  check(app::hotkey_label(Hotkey{"D", true, false, false, false}) == "Alt+D", "hotkey: label Alt+D");
-  check(!platform::register_hotkey(91, Hotkey{"%", true, false, false, false}, [] {}), "hotkey: a key it cannot take refused");
-  if (auto run = platform::cli_runner()) {
-    ai::CliCall echo{"findstr", {"ein"}, {{"LEXIPEEK_X", "1"}}, "das ist ein Haus\nnichts\n", ""};
-    auto ran = run(echo);
-    check(ran.code == 0 && ran.out.find("das ist ein Haus") != std::string::npos && ran.out.find("nichts") == std::string::npos,
-          "cli: a program with the prompt on stdin (" + QString::number(ran.code) + ")");
-    check(run({"no-such-program-lexipeek", {}, {}, "", ""}).code == 127, "cli: a missing program is 127");
-  }
-  platform::register_scheme();
-  QSettings scheme("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek\\shell\\open\\command", QSettings::NativeFormat);
-  check(scheme.value("Default").toString().contains("LexiPeek.exe"), "lexipeek:// opens " + scheme.value("Default").toString());
   {
     // The system's icon glyphs: the font found, and an icon drawn from it leaves pixels.
     auto img = fluent::icon(fluent::Glyph::copy).pixmap(40, 40).toImage();
@@ -122,7 +90,7 @@ int run(int argc, char **argv) {
   // --install: installed for this user, nothing asked; started by itself from elsewhere (a download): asked.
   auto install = [&] {
     platform::quit_running();  // an older copy running gives way
-    return platform::install(version());
+    return platform::install(version(), false);
   };
   if (args.contains("--install")) {
     auto e = install();
@@ -136,7 +104,7 @@ int run(int argc, char **argv) {
   }
   // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
   if (!tool && platform::hand_over(args.mid(1))) return 0;
-  if (platform::installed_here()) QFile::remove(QCoreApplication::applicationDirPath() + "/LexiPeek.old.exe");  // left by an update
+  platform::remove_old();  // left by an update
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   auto opt = [&](const char *name) {
     auto i = args.indexOf(name);

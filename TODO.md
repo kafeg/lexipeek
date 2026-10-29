@@ -3,6 +3,28 @@
 Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes
 with TSV / Export / Import. Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
 
+## M8 Native Windows shell (`win/`, WinUI 3), by phases
+Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e2e.ps1`) and is committed.
+1. Done: the process (one instance, `lexipeek://`, install / uninstall, `--data`, `--self-test`, `--probe-selection`,
+   `--snapshots`), the OS parts shared with `qt/` (`platform/`), the tray icon and its menu (`MenuFlyout`), hotkeys and the
+   selection read; the card a stand-in, the other windows placeholders saying their phase. `scripts\build-win.cmd` builds
+   it by default (`qt`: the Qt shell).
+2. The card: the pop-up (borderless, no focus, at the selection, Mica/acrylic, its keys), the card to type in, the icon at
+   the selection (`watch_input`); `CardSession` polled; the snapshot cases of `scripts/snapshot-cases.sh`.
+3. The LexiPeek window: Look up (an embedded card), Words · Phrases · History (`notes_view`), Help; the no-pack banner.
+4. Settings (sections in a `NavigationView`, setting cards from the core's rows, Packs, Other dictionaries, AI with the
+   key in the Credential Manager) and About.
+5. The first run; every snapshot case; then CI and releases switch to it (below) and `qt/` is Linux only.
+- CI, when phase 5 lands: ci.yml's Windows job configures with `-DLEXIPEEK_QT=OFF`, builds and tests the core as now,
+  then `scripts\build-win.cmd build-win` for the shell (Ninja, its own dir; one `build-win.cmd build-qt qt` job while the
+  fallback stays); release.yml zips `build-win\win\LexiPeek\` as `LexiPeek-Windows.zip` instead of copying
+  `build/qt/Release/LexiPeek.exe`; then `LEXIPEEK_QT` is off by default on Windows too (CMakeLists.txt) and README's
+  Windows lines change.
+- Open: the tray menu on Windows 11 and by a real click on the icon (tried on Windows 10 with Explorer's messages to the
+  icon's window: items, invoked items, light dismiss, Quit; the icon is in the taskbar); WinUI windows on a VM's
+  basic display adapter come out blank in screen captures (`--snapshots` renders them by XAML instead); the host window is
+  a pixel at the click (a `MenuFlyout` needs a XAML root).
+
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
 (Win+Shift+D / Win+Shift+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`

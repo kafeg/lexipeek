@@ -8,7 +8,8 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 C++20 core with all the logic + a thin native shell per OS. `core/` — no UI, no OS headers; vcpkg: sqlite3,
 nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
 `mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `qt/` (M6) — Qt 6 Widgets for Windows and Linux;
-`win/` — the coming Windows shell, WinUI 3 (C++/WinRT), now a prototype; then `qt/` stays for Linux only.
+`win/` — the Windows shell being built (M8, by phases: `TODO.md`), WinUI 3 (C++/WinRT); then `qt/` stays for Linux (and as
+Windows' fallback build). `platform/` — the OS parts both Windows shells share.
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp. macOS 14+, Apple Silicon only.
 
 ## Build and run
@@ -172,9 +173,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
   done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets; `clear` deletes later: a redraw may come
   from a widget's own signal), `fluent` (the Windows 11 look: palettes, one style sheet, the system's icon glyphs drawn
-  by GDI, toggle, settings card, tabs). OS parts only in `platform.hpp`
-  (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key, the per-user install —
-  `LexiPeek.exe --install` / `--uninstall --yes`; `platform_none.cpp` elsewhere).
+  by GDI, toggle, settings card, tabs). OS parts only in `platform.hpp`: thin Qt adapters (QRect, QStringList, QWidget)
+  over the shared layer below.
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
@@ -184,13 +184,27 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
   Mac: a web view's selection by its text markers, paragraph by paragraph (Chromium / Electron give none between
   blocks); `<data>/ax-probe` makes the lookup hotkey write what each AX way gives into `<data>/ax-probe.txt`.
-- `win/` (prototype): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core →
-  `<dir>/win/lexipeek-core.props` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`, shared with mac) →
-  NuGet `win/packages.config` → MSBuild). Works on VS Build Tools without VS's WindowsXaml targets (the vcxproj runs the XAML
-  passes itself). Needs a signed-in desktop (over SSH it fails at start); `LexiPeek.exe --self-test <dir>` writes its lines and a
-  RenderTargetBitmap PNG, then exits. What ships and why: the top of `win/App.xaml.cpp`.
+- `platform/` (`lexipeek_platform`, `lexipeek/os.hpp`, namespace `lexipeek::os`): the Windows OS parts for both shells, no
+  UI toolkit in its interface (UTF-8 strings, physical pixels, `void *` window handles): hotkeys (RegisterHotKey to a hidden
+  window: WM_HOTKEY and WM_COPYDATA come through any message loop), the selection (UI Automation, else EM_GETSEL), Credential
+  Manager, the Run key, one instance per user (`hand_over` / `receive`: the hidden window titled "LexiPeek receiver", the same
+  wire as before), the per-user install (`install(version, folder)`: the WinUI build copies its folder, Qt its exe),
+  `lexipeek://`, CLI providers, low memory, glyph masks, `self_test` (the OS checks of both shells' `--self-test`). `none.cpp`
+  elsewhere.
+- `win/` (M8): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core and
+  platform → `<dir>/win/lexipeek-core.props` + `version.h` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`,
+  shared with mac) → NuGet `win/packages.config` → MSBuild → what ships trimmed into `<dir>\win\LexiPeek\`);
+  `build-win.cmd [dir] qt` builds the Qt shell instead. Works on VS Build Tools without VS's WindowsXaml targets (the vcxproj
+  runs the XAML passes itself). `App.xaml.cpp` — the process (qt/main.cpp's: arguments, one instance, install question, every
+  way out through `app::leave`), `shell` (tray, its menu, hotkeys, the selection read), `tray` (Shell_NotifyIcon), `MenuHost`
+  (the tray menu: a `MenuFlyout` from a 1-pixel host window at the click), `ui` (texts via `tr`, Mica windows with the content in
+  the title bar, `ask`), small screens as XAML text (`load` + `part`), `card_stub` (until phase 2). A window's slot is let go in
+  its Closed handler: close a copy (`auto w = slot; w.Close()`), never the slot itself (use after free at exit). Needs a
+  signed-in desktop (over SSH it fails at start); `--self-test <file>` (OS checks), `--snapshots <dir>` (RenderTargetBitmap
+  of each case, light and dark: XAML's own rendering; screen captures of WinUI windows can be blank on a VM's basic display
+  adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe` (all but the icon at the selection, phase 2).
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
-  (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs committed; the tray's glyph white and black from `MenuBarIcon.svg`). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
+  (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs and .ico committed; the tray's glyph white and black from `MenuBarIcon.svg`; `win/LexiPeek.rc` takes the .ico files). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 

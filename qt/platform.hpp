@@ -1,86 +1,59 @@
-// What the OS does for the shell (Windows: platform_win.cpp; elsewhere platform_none.cpp, nothing yet).
+// What the OS does for the Qt shell: the shared layer (lexipeek/os.hpp, platform/) with Qt's types where they help.
 #pragma once
 #include <QImage>
 #include <QRect>
 #include <QStringList>
-#include <functional>
-#include <optional>
-#include <string>
-#include "lexipeek/ai.hpp"
-#include "lexipeek/settings.hpp"
+#include "lexipeek/os.hpp"
 
 class QWidget;
 
 namespace lexipeek::qt::platform {
 
-// A system-wide hotkey (the core's Hotkey: option = Alt, control = Ctrl, command = Win); false when another app has it.
-// fire runs on the main thread. A key code (key "Esc") for the card's own keys while it is open.
-bool register_hotkey(int id, const Hotkey &h, std::function<void()> fire);
-void unregister_hotkey(int id);
+using os::cli_runner;
+using os::front_app;
+using os::front_is_mine;
+using os::Input;
+using os::install;
+using os::installed_here;
+using os::installed_program;
+using os::last_error;
+using os::login;
+using os::memory_low;
+using os::mouse_down;
+using os::probe_selection;
+using os::quit_running;
+using os::ram_mb;
+using os::register_hotkey;
+using os::register_scheme;
+using os::remove_old;
+using os::secret;
+using os::set_login;
+using os::set_secret;
+using os::taskbar_light;
+using os::uninstall;
+using os::unregister_hotkey;
+using os::watch_input;
 
 struct Selected {
   std::string text;
   QRect bounds;  // on the screen, logical pixels; empty when unknown
 };
-// The focused app's selected text (Windows: UI Automation, never the clipboard); nullopt when none or unreadable.
-std::optional<Selected> selection();  // any thread; its bounds in physical pixels: logical() on the main thread
+// The focused app's selected text; nullopt when none or unreadable. Any thread; its bounds in physical pixels:
+// logical() on the main thread.
+std::optional<Selected> selection();
 QRect logical(const QRect &px);
-// What UI Automation sees at the focus now (the element, its patterns, the selection's text): a diagnostic.
-std::string probe_selection();
-// The focused app's program ("chrome.exe"): Settings → General's apps where the hotkey does nothing.
-std::string front_app();
-// The mouse's left or right button is down now (anywhere on the screen).
-bool mouse_down();
-// Input anywhere (the icon at a selection): the left button down or up, or another key or the wheel; nullptr stops it.
-enum class Input { down, up, other };
-void watch_input(std::function<void(Input)> on);
-// This process owns the foreground window.
-bool front_is_mine();
-
-// This machine's memory, MB.
-int ram_mb();
-// The system says memory is low now (Windows: its low-memory notification): the held model is freed.
-bool memory_low();
-
-// Opens at login (Windows: the Run key).
-bool login();
-void set_login(bool on);
-
-// The AI key per provider in the OS's store (Windows: Credential Manager); "" none.
-std::string secret(const std::string &provider);
-bool set_secret(const std::string &provider, const std::string &value);  // "" removes it
 
 // One app per user: another one running gets these arguments (true: this launch quits); receive hands them over.
 bool hand_over(const QStringList &args);
 void receive(std::function<void(const QStringList &)> got);
-void quit_running();  // a running one quits (an install or uninstall replaces it); waits for it a few seconds
-
-// Per-user install (Windows): %LOCALAPPDATA%\Programs\LexiPeek, a Start menu shortcut, an entry in Settings → Apps.
-bool installed_here();                        // this copy runs from there (or the OS has no install: true)
-std::string install(const std::string &version);  // copies this program there; "" or the error
-std::string installed_program();              // the installed copy's path
-void uninstall();                             // shortcut, entries (Apps, Run, lexipeek://), the folder once this ends
-
-// lexipeek:// links open this program (Windows: HKCU\Software\Classes, per user).
-void register_scheme();
-
-// How CLI AI providers run here (Windows: a process in a job object, the prompt on stdin); none: the core's POSIX shell.
-std::function<ai::CliRan(const ai::CliCall &)> cli_runner();
-
-// The OS's last error as text ("" none): what a failed call above said.
-std::string last_error();
 
 // Brings a window to the front with the keyboard focus (Windows otherwise only flashes its taskbar button).
 void activate(QWidget *w);
-
-// One glyph of the system's icon font (Segoe Fluent Icons / Segoe MDL2 Assets) drawn by the system, as an alpha mask
-// of px × px device pixels; null where there is none (Qt does not draw that font's private-use code points).
-QImage glyph_mask(const QString &family, char16_t code, int px);
-
-// The taskbar is light (its tray icons black); Windows can set it apart from the apps' light or dark.
-bool taskbar_light();
-
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(QWidget *w);
+
+// One glyph of the system's icon font drawn by the system, as an alpha mask of px × px device pixels; null where there
+// is none (Qt does not draw that font's private-use code points).
+QImage glyph_mask(const QString &family, char16_t code, int px);
 
 }  // namespace lexipeek::qt::platform

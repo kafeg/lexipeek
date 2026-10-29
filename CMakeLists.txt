@@ -14,7 +14,8 @@ endif()
 if(APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "")
 endif()
-# The Qt shell (qt/): Windows now, Linux later; on macOS only to work on it (the Mac app is mac/).
+# The Qt shell (qt/): Linux later, Windows' fallback; on macOS only to work on it (the Mac app is mac/). Windows' own build is
+# the WinUI shell (scripts\build-win.cmd, win/); this stays on there by default until CI and releases move to it (TODO.md).
 if(WIN32)
   option(LEXIPEEK_QT "Build the Qt shell" ON)
 else()
@@ -62,6 +63,7 @@ function(lexipeek_flags target)
 endfunction()
 
 add_subdirectory(core)
+add_subdirectory(platform)
 add_subdirectory(cli)
 if(LEXIPEEK_QT)
   add_subdirectory(qt)

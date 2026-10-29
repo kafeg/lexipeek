@@ -1,18 +1,50 @@
+<!-- The LexiPeek window (qt/main_window, mac MainWindow): Look up · Words · Phrases · History · Help, Settings and About at
+     its foot. Phase 1: the frame; the pages come in phase 3. -->
 <Window x:Class="LexiPeek.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="LexiPeek">
-  <NavigationView x:Name="Nav" IsSettingsVisible="False" IsBackButtonVisible="Collapsed" PaneDisplayMode="Left">
-    <NavigationView.MenuItems>
-      <NavigationViewItem x:Name="LookupItem" Tag="lookup" IsSelected="True">
-        <NavigationViewItem.Icon><SymbolIcon Symbol="Find" /></NavigationViewItem.Icon>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="NotesItem" Tag="notes">
-        <NavigationViewItem.Icon><SymbolIcon Symbol="Bookmarks" /></NavigationViewItem.Icon>
-      </NavigationViewItem>
-    </NavigationView.MenuItems>
-    <ScrollViewer>
-      <StackPanel x:Name="Lines" Padding="24" Spacing="8" />
-    </ScrollViewer>
-  </NavigationView>
+  <Grid x:Name="Root" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="48" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <Grid x:Name="TitleBar" Background="Transparent">
+      <TextBlock Text="LexiPeek" Margin="16,0,0,0" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" />
+    </Grid>
+    <NavigationView x:Name="Nav" Grid.Row="1" IsSettingsVisible="False" IsBackButtonVisible="Collapsed" PaneDisplayMode="Left"
+                    IsPaneToggleButtonVisible="False" OpenPaneLength="240">
+      <NavigationView.MenuItems>
+        <NavigationViewItem x:Name="LookupItem" Tag="lookup" IsSelected="True">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE721;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+        <NavigationViewItem x:Name="WordsItem" Tag="words">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE734;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+        <NavigationViewItem x:Name="PhrasesItem" Tag="phrases">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE90A;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+        <NavigationViewItem x:Name="HistoryItem" Tag="history">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE81C;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+        <NavigationViewItem x:Name="HelpItem" Tag="help">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE897;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+      </NavigationView.MenuItems>
+      <NavigationView.FooterMenuItems>
+        <NavigationViewItem x:Name="SettingsItem" Tag="settings" SelectsOnInvoked="False">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+        <NavigationViewItem x:Name="AboutItem" Tag="about" SelectsOnInvoked="False">
+          <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" /></NavigationViewItem.Icon>
+        </NavigationViewItem>
+      </NavigationView.FooterMenuItems>
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+        <FontIcon x:Name="PageIcon" FontSize="48" Glyph="&#xE721;" />
+        <TextBlock x:Name="PageTitle" HorizontalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <TextBlock HorizontalAlignment="Center" Text="M8 · phase 3" Style="{StaticResource CaptionTextBlockStyle}"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+      </StackPanel>
+    </NavigationView>
+  </Grid>
 </Window>

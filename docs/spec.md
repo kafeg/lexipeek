@@ -320,9 +320,10 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   borderless window that takes no focus, at the selection; Mica/acrylic background, the theme's corners and shadow),
   the LexiPeek window (`NavigationView`: Look up · Words · Phrases · History · Help; Settings and About at its foot),
   Settings as Windows Settings draws them (`NavigationView` sections, setting cards: `ToggleSwitch`, `ComboBox`, the
-  core's rows), the first run, About, the tray icon (Shell_NotifyIcon) and its menu (`MenuFlyout`). Platform parts move
-  from `qt/platform_win.cpp` as they are (hotkeys, UI Automation selection, Credential Manager, Run key, per-user
-  install, single instance). Windows 10 1809 and later; the look is Windows 11's. Snapshots: a window rendered to PNG
+  core's rows), the first run, About, the tray icon (Shell_NotifyIcon) and its menu (`MenuFlyout`, as Windows 11's own
+  tray menus: its look, light and dark, the icon font; a Win32 popup menu stays light in dark mode). Platform parts are
+  shared with `qt/` (`platform/`: hotkeys, UI Automation selection, Credential Manager, Run key, per-user install — the
+  WinUI build copies its folder —, single instance), behaviour unchanged. Built by phases (`TODO.md`). Windows 10 1809 and later; the look is Windows 11's. Snapshots: a window rendered to PNG
   in a signed-in session (`--snapshots`, the same cases). Releases: a zip of the folder (the exe offers to install
   itself, as now). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The Windows shell: WinUI 3 (C++/WinRT), unpackaged and self-contained, over the core built by CMake.
+<!-- The Windows shell: WinUI 3 (C++/WinRT), unpackaged and self-contained, over the core and the shared OS layer (platform/) built by CMake.
      scripts/build-win.cmd: msbuild win\LexiPeek.vcxproj -p:Configuration=Release -p:Platform=x64 -p:LexiPeekBuild=<cmake build dir> -->
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
@@ -74,6 +74,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>windowscodecs.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -94,6 +95,20 @@
     <ClCompile Include="MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
+    <ClInclude Include="card_stub.hpp" />
+    <ClInclude Include="core_client.hpp" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="shell.hpp" />
+    <ClInclude Include="snapshots.hpp" />
+    <ClInclude Include="tray.hpp" />
+    <ClInclude Include="ui.hpp" />
+    <ClCompile Include="card_stub.cpp" />
+    <ClCompile Include="core_client.cpp" />
+    <ClCompile Include="shell.cpp" />
+    <ClCompile Include="snapshots.cpp" />
+    <ClCompile Include="tray.cpp" />
+    <ClCompile Include="ui.cpp" />
+    <ResourceCompile Include="LexiPeek.rc" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <XamlGenerated Include="$(IntDir)XamlTypeInfo.g.cpp;$(IntDir)XamlTypeInfo.Impl.g.cpp;$(IntDir)XamlLibMetadataProvider.g.cpp" />
     <ClCompile Include="@(XamlGenerated)" Condition="!Exists('$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.Cpp.targets')" />
