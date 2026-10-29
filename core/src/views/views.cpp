@@ -227,13 +227,16 @@ CardRow block_row(const Card &c, size_t i) {
   return r;
 }
 
-// Languages you learn (InkPeek's studyBlocks): a block per language under its name — a word: its pack's line (a click:
-// the full entry), the translated words with their own header and frequency (a click: their card); a phrase: word by word.
-std::vector<CardRow> study_rows(const Card &c) {
+// Languages you learn (InkPeek's studyBlocks): a language per page (the pager as full entries') under its name — a word:
+// its pack's line (a click: the full entry), the translated words with their own header and frequency (a click: their
+// card); a phrase: word by word.
+std::vector<CardRow> study_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
-  for (size_t i = 0; i < c.study.size(); i++) {
+  size_t page = static_cast<size_t>(std::clamp(s.entry_page, 0, static_cast<int>(c.study.size()) - 1));
+  for (size_t i = page; i == page; i++) {
     auto &l = c.study[i];
     rows.push_back(block_row(c, i));
+    rows.back().entry = 0;  // alone on its page: no rule
     if (c.kind != Card::Kind::word) {
       if (l.gloss.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
       for (auto &g : l.gloss) rows.push_back(gloss_row(c, g));
@@ -259,7 +262,7 @@ std::vector<CardRow> study_rows(const Card &c) {
 
 std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
-  if (!c.study.empty() && s.section.key.empty() && s.entry_open < 0) return study_rows(c);
+  if (!c.study.empty() && s.section.key.empty() && s.entry_open < 0) return study_rows(c, s);
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
     if (c.entries.empty()) rows.push_back({Style::note, "", tr(c.no_packs ? "card_no_packs" : "card_no_entry"), ""});
@@ -467,6 +470,12 @@ CardView card_view(const Card &c, const CardState &s) {
     int i = page_of(c, s);
     v.pager = digits(i + 1) + " / " + digits(n);
     v.prev = i > 0, v.next = i + 1 < n;
+  }
+  int langs = static_cast<int>(c.study.size());
+  if (dict && langs > 1 && !one && s.section.key.empty()) {
+    int i = std::clamp(s.entry_page, 0, langs - 1);
+    v.pager = digits(i + 1) + " / " + digits(langs);
+    v.prev = i > 0, v.next = i + 1 < langs;
   }
   if (in_section) v.back = tr("card_back_entry");
   else if (one && dict) v.back = tr("card_back_all");

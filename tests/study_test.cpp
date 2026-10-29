@@ -207,20 +207,31 @@ TEST_CASE("study: a word in the answer language — a block per language, the wo
   CHECK(v.subtitle.starts_with("ru → de, en"));
   CHECK(v.rows.front().style == CardRow::Style::block);
   CHECK(v.rows.front().label == "ru → de");
+  // A language per page, turned as full entries' dictionaries.
   CHECK(texts(v) == V{"German", "дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
-                      "das Gebäude (Gebäudes, pl. Gebäude)", "Heim", "English", "дом (дома, pl. дома) — house, home",
-                      "house (pl. houses)", "home"});
+                      "das Gebäude (Gebäudes, pl. Gebäude)", "Heim"});
   CHECK(v.rows[1].open == "entry");
   CHECK(v.rows[2].link == "Haus");
-  CHECK(v.rows[6].entry == 1);
-  // Its line: the full entry alone; ← back to the blocks.
+  CHECK(v.pager == "1 / 2");
+  CHECK(!v.prev);
+  CHECK(v.next);
   CardNav nav;
   nav.look("дом", Source::input);
   nav.arrived(c);
+  nav.turn(1);
+  v = card_view(c, nav.state);
+  CHECK(texts(v) == V{"English", "дом (дома, pl. дома) — house, home", "house (pl. houses)", "home"});
+  CHECK(v.pager == "2 / 2");
+  CHECK(v.prev);
+  nav.turn(1);
+  CHECK(nav.state.entry_page == 1);
+  // Its line: the full entry alone; ← back to that language's page.
   nav.open_entry(1);
   CHECK(card_view(c, nav.state).rows.front().text.find("house, home") != std::string::npos);
+  CHECK(card_view(c, nav.state).pager.empty());
   nav.back();
-  CHECK(card_view(c, nav.state).rows.front().text == "German");
+  CHECK(card_view(c, nav.state).rows.front().text == "English");
+  nav.turn(-1);
   // A word clicked opens its own card.
   auto step = nav.open("Haus");
   CHECK(step.text == "Haus");

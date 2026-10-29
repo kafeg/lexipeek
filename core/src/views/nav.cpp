@@ -68,7 +68,9 @@ CardStep CardNav::turn(int by) {
   if (state.tab != CardTab::dictionary) return {};
   if (p.key.empty()) {
     int to = state.entry_page + by;
-    if (state.full_entry && state.entry_open < 0 && to >= 0 && to < static_cast<int>(card_.entries.size())) state.entry_page = to;
+    // Full entries: a dictionary per page; languages you learn: a language per page.
+    int n = static_cast<int>(card_.study.empty() ? card_.entries.size() : card_.study.size());
+    if ((state.full_entry || !card_.study.empty()) && state.entry_open < 0 && to >= 0 && to < n) state.entry_page = to;
     return {};
   }
   if (p.page + by < 0 || p.page + by >= p.pages) return {};
