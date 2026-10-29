@@ -54,6 +54,7 @@ notes-words|window?page=words
 notes-phrases|window?page=phrases
 notes-history|window?page=history
 window-help|window?page=help
+window-help-ai|window?page=help-ai
 window-empty|window?page=lookup
 window-lookup|window?page=lookup&look=Häusern
 window-passage|window?page=lookup&look=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.

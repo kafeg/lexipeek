@@ -34,13 +34,13 @@ enum Snapshot {
         }
     }
 
-    // lexipeek://window?page=lookup|words|phrases|history[&look=<text>]&snap=<name>: the LexiPeek window on that page
+    // lexipeek://window?page=lookup|words|phrases|history|help|help-ai[&look=<text>]&snap=<name>: the LexiPeek window on that page
     // (look: that text looked up there).
     static func window(_ url: URL) -> (page: MainPage, name: String, look: String?)? {
         guard dir != nil, url.host == "window" else { return nil }
         let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         func v(_ n: String) -> String? { q.first { $0.name == n }?.value }
-        let pages: [String: MainPage] = ["lookup": .lookup, "words": .notes(.words), "phrases": .notes(.phrases), "history": .notes(.history), "help": .help]
+        let pages: [String: MainPage] = ["lookup": .lookup, "words": .notes(.words), "phrases": .notes(.phrases), "history": .notes(.history), "help": .help(0), "help-ai": .help(5)]
         return (pages[v("page") ?? ""] ?? .lookup, v("snap") ?? "window", v("look"))
     }
 

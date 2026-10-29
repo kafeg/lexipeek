@@ -118,7 +118,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
       if (host == "window") {
         auto page = value(query, "page"), look = value(query, "look");
         int p = page == "words" ? MainWindow::words : page == "phrases" ? MainWindow::phrases : page == "history" ? MainWindow::history
-                : page == "help" ? MainWindow::help : MainWindow::lookup;
+                : page == "help" ? MainWindow::help : page == "help-ai" ? MainWindow::help + 5 : MainWindow::lookup;
         shots.push_back({name, [main, p, look] {
                            main->card.reset();
                            if (!look.empty()) main->look(q(look));

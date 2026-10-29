@@ -6,7 +6,7 @@ import SwiftUI
 // The LexiPeek window: Look up (a word, a phrase or a pasted text: its card here) · Notes (Words · Phrases · History);
 // the app is in the Dock while it is open.
 enum MainPage: Hashable {
-    case lookup, notes(lexipeek.NotesTab), help
+    case lookup, notes(lexipeek.NotesTab), help(Int)  // help: a topic
 }
 
 final class MainModel: ObservableObject {
@@ -50,6 +50,10 @@ struct MainView: View {
     @ObservedObject var notes: NotesModel
     @ObservedObject var card: CardModel
     @FocusState private var focused: Bool
+    static let helpIcons = ["play.circle", "rectangle.on.rectangle", "shippingbox", "character.bubble", "books.vertical", "sparkles", "network", "star", "questionmark.circle"]
+    private var helpTopics: [lexipeek.HelpTopic] {
+        Array(lexipeek.help_view(std.string(Prefs.shared.translateKey.label), std.string(Prefs.shared.inputKey.label)))
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -60,7 +64,11 @@ struct MainView: View {
                         Label(i < notes.counts.count ? notes.counts[i] : "", systemImage: ["star", "text.quote", "clock"][i]).tag(MainPage.notes(tab))
                     }
                 }
-                Section { Label(L.t("help_t"), systemImage: "questionmark.circle").tag(MainPage.help) }
+                Section(L.t("help_t")) {
+                    ForEach(Array(helpTopics.enumerated()), id: \.offset) { i, t in
+                        Label(String(t.title), systemImage: Self.helpIcons[min(i, Self.helpIcons.count - 1)]).tag(MainPage.help(i))
+                    }
+                }
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210)
             // Under the list: what is in memory, Settings and About.
@@ -82,7 +90,7 @@ struct MainView: View {
                 switch model.page {
                 case .lookup: lookup
                 case .notes: NotesList(model: notes).onAppear { notes.refresh() }
-                case .help: HelpPane(open: model.openPane)
+                case .help(let i): if helpTopics.indices.contains(i) { HelpPane(topic: helpTopics[i], open: model.openPane).id(i) }
                 }
             }
         }
@@ -121,28 +129,26 @@ struct MainView: View {
     }
 }
 
-// Help: every topic on one page, each with the settings pane it is about.
+// Help: one topic (picked in the sidebar) with the settings pane it is about.
 struct HelpPane: View {
+    let topic: lexipeek.HelpTopic
     var open: (lexipeek.SettingsSection, Int) -> Void
 
     var body: some View {
-        let topics = lexipeek.help_view(std.string(Prefs.shared.translateKey.label), std.string(Prefs.shared.inputKey.label))
         Form {
-            ForEach(Array(topics.enumerated()), id: \.offset) { _, t in
-                Section {
-                    ForEach(Array(t.items.enumerated()), id: \.offset) { _, i in
-                        VStack(alignment: .leading, spacing: 3) {
-                            if !i.title.empty() { Text(String(i.title)).fontWeight(.medium) }
-                            Text(String(i.text)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
-                        .padding(.vertical, 2)
+            Section {
+                ForEach(Array(topic.items.enumerated()), id: \.offset) { _, i in
+                    VStack(alignment: .leading, spacing: 3) {
+                        if !i.title.empty() { Text(String(i.title)).fontWeight(.medium) }
+                        Text(String(i.text)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
-                    if !t.go.empty() {
-                        Button(String(t.go)) { open(t.section, Int(t.tab)) }.buttonStyle(.link)
-                    }
-                } header: {
-                    Text(String(t.title))
+                    .padding(.vertical, 2)
                 }
+                if !topic.go.empty() {
+                    Button(String(topic.go)) { open(topic.section, Int(topic.tab)) }.buttonStyle(.link)
+                }
+            } header: {
+                Text(String(topic.title)).font(.title3).fontWeight(.semibold)
             }
         }
         .formStyle(.grouped)
