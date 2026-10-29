@@ -125,7 +125,7 @@
     <ResourceCompile Include="LexiPeek.rc" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <XamlGenerated Include="$(IntDir)XamlTypeInfo.g.cpp;$(IntDir)XamlTypeInfo.Impl.g.cpp;$(IntDir)XamlLibMetadataProvider.g.cpp" />
-    <ClCompile Include="@(XamlGenerated)" Condition="!Exists('$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.Cpp.targets')" />
+    <ClCompile Include="@(XamlGenerated)" />
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="MainWindow.xaml" />
     <Midl Include="MainWindow.idl">
@@ -142,13 +142,13 @@
   <Import Project="$(Packages)Microsoft.WindowsAppSDK.Foundation.2.6.4\build\native\Microsoft.WindowsAppSDK.Foundation.targets" />
   <Import Project="$(Packages)Microsoft.WindowsAppSDK.WinUI.2.6.4\build\native\Microsoft.WindowsAppSDK.WinUI.targets" />
   <Import Project="$(Packages)Microsoft.Web.WebView2.1.0.3719.77\build\native\Microsoft.Web.WebView2.targets" />
-  <!-- The XAML compiler's place in a C++ build, as Visual Studio's WindowsXaml C++ targets put it (Build Tools have none). -->
-  <PropertyGroup Condition="!Exists('$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.Cpp.targets')">
+  <!-- The XAML compiler's place in a C++ build, as Visual Studio's WindowsXaml C++ targets put it: Build Tools have none, and
+       a full Visual Studio does not import them for this project either. -->
+  <PropertyGroup>
     <BeforeMidlCompileTargets>ResolveReferences;MarkupCompilePass1;$(BeforeMidlCompileTargets)</BeforeMidlCompileTargets>
     <BeforeClCompileTargets>ComputeReferenceCLInput;MarkupCompilePass2;$(BeforeClCompileTargets)</BeforeClCompileTargets>
   </PropertyGroup>
-  <Target Name="CompileXamlGenerated" AfterTargets="CppWinRTComputeXamlGeneratedCompileInputs"
-          Condition="!Exists('$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.Cpp.targets')">
+  <Target Name="CompileXamlGenerated" AfterTargets="CppWinRTComputeXamlGeneratedCompileInputs">
     <ItemGroup>
       <ClCompile Condition="'%(ClCompile.CompilerIteration)'=='XamlGenerated'">
         <CompilerIteration></CompilerIteration>
