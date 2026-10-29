@@ -369,6 +369,10 @@ struct SettingsState {
   double progress = 0;                // 0…1
   std::string download_error;         // the last one failed
   std::vector<LangPair> pairs, installed_pairs;  // the packs list's pairs and those with their dictionary installed (app::settings_page fills them)
+  // Read aloud (app::settings_page fills them): the engine in this build, the model on disk, the voices from a recording
+  // (downloading "speech": the model's download).
+  bool speech_built = false, speech_installed = false;
+  std::vector<speech::Voice> voices;
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -380,10 +384,6 @@ struct SettingRow {
     hotkey,   // a shortcut recorder: key "lookup" / "input"
     apps,     // a list of apps by bundle id: key "ignore_apps"
     button,   // value: the button's label; the shell does what key names ("setup", "access", "order", "updates")
-  // Read aloud (app::settings_page fills them): the engine in this build, the model on disk, the voices from a recording
-  // (downloading "speech": the model's download).
-  bool speech_built = false, speech_installed = false;
-  std::vector<speech::Voice> voices;
     status,   // value: the state ("Allowed"), on: good
     link,     // value: a URL
     text,     // a line to type: value, placeholder (key "ai_url", "ai_command")
