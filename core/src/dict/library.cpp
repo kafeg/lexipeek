@@ -197,6 +197,13 @@ std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::lookup(const std::
   return into.empty() ? out : into;
 }
 
+std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::pack_lookup(const std::string &query, const std::string &book,
+                                                                          const std::string &answer) {
+  auto among = all();
+  std::erase_if(among, [&](StarDict *d) { return !d->pack() || d->book() != book || d->answer() != answer; });
+  return lookup(query, answer, among, book);
+}
+
 std::vector<Head> Library::heads(const std::string &query, const std::string &answer, const std::string &book) {
   std::vector<Head> out;
   std::set<std::string> books;
@@ -294,7 +301,7 @@ int Library::rank(const std::string &word, const std::string &book) {
 
 bool Library::knows(const std::string &book, const std::string &answer, const std::string &word) {
   for (auto *d : all())
-    if (d->book() == book && d->answer() == answer) {
+    if (d->book() == book && (answer.empty() || d->answer() == answer)) {
       try {
         return !d->lookup(word).empty();
       } catch (const std::exception &) {

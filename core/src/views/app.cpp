@@ -62,6 +62,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.dicts = s.dicts;
   o.card = s.card;
   o.ai = s.ai;
+  o.study = s.study;
   o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   return {std::make_shared<Core>(std::move(o))};
@@ -73,6 +74,7 @@ Card Engine::lookup_as(const std::string &text, Source source, const std::string
   return core->lookup({text, source, answer, lang});
 }
 Translation Engine::translate(const Card &card, Method m, int tag) const { return core->translate(card, m, tag); }
+Translation Engine::translate_into(const Card &card, int i, int tag) const { return core->translate_into(card, i, tag); }
 int Engine::new_tag() {
   static std::atomic<int> n{0};
   return ++n;
@@ -124,9 +126,16 @@ void Engine::cancel(int tag) const { core->cancel(tag); }
 
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {
   auto st = state;
-  if (section == SettingsSection::languages && tab == 1 && st.methods.empty()) {
+  if (section == SettingsSection::languages && tab == 1) {
     Packs p(dir(data), "");
-    st.methods = method_infos(p.cached(), p.installed(), st.device);
+    auto m = p.cached();
+    auto installed = p.installed();
+    if (st.methods.empty()) st.methods = method_infos(m, installed, st.device);
+    // Languages you learn: the pairs offered, and those whose dictionary is there.
+    if (st.pairs.empty()) st.pairs = lexipeek::pairs(m);
+    if (st.installed_pairs.empty())
+      for (auto &[id, sha] : installed)
+        if (auto dash = id.find('-', 5); id.starts_with("dict-") && dash != std::string::npos) st.installed_pairs.push_back({id.substr(5, dash - 5), id.substr(dash + 1)});
   }
   return settings_view(section, tab, load_settings(dir(data)), st);
 }

@@ -100,6 +100,7 @@ struct CardState {
   bool saved = false;  // ★: the card's text is in Notes
   bool by_ai = false;  // Translate shows the AI translation (a method picked in the card, or Card → Opening)
   AiState quick, analysis, context;
+  std::vector<Translation> learned;  // the translations into the languages you learn, as they arrive (Card::study's order)
 };
 
 // One line of the card's body.
@@ -231,6 +232,8 @@ class CardNav {
   void pick_ai();
   void translating(Method m);
   void translated(Method m, const Translation &t);
+  // The translation into the n-th language you learn (they come in order).
+  void learned(int n, Method m, const Translation &t);
   void select(CardTab tab) { state.tab = tab; }
   void next_tab(int by);  // ←/→ through the tabs the card shows
   void full_entries() { state.full_entry = true; }  // as Card → Article's full entries (snapshots)
@@ -351,6 +354,14 @@ struct SettingsState {
   std::string downloading;            // the method whose models are being downloaded ("fast", "direct", "llm")
   double progress = 0;                // 0…1
   std::string download_error;         // the last one failed
+  std::vector<LangPair> pairs, installed_pairs;  // the packs list's pairs and those with their dictionary installed (app::settings_page fills them)
+};
+
+// A check box of a `checks` row: a language you learn.
+struct CheckItem {
+  std::string code, title;  // "de", "German"
+  bool on = false, enabled = true;
+  std::string note = "";    // why it is off: "No pack ru → de yet: get it in Packs", "Two at most: untick one first"
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -367,8 +378,9 @@ struct SettingRow {
     text,     // a line to type: value, placeholder (key "ai_url", "ai_command")
     secret,   // the API key: the shell's field and Save (the key never comes here); on: one is kept
     model,    // the model: value (a line to type), placeholder its default; on: "Choose model…" from the provider's list
-    method    // a translation method's card: value its id, on picked, enabled it can run here, detail its needs, ids to
+    method,   // a translation method's card: value its id, on picked, enabled it can run here, detail its needs, ids to
               // download with button's label (progress: being downloaded)
+    checks    // check boxes (checks): a click toggles key + "." + its code ("study.de")
   };
   Kind kind = Kind::heading;
   std::string key = "", title = "", about = "";
@@ -385,6 +397,7 @@ struct SettingRow {
   // A button that opens another pane: its section and tab (go_tab -1: none).
   SettingsSection go_section = SettingsSection::general;
   int go_tab = -1;
+  std::vector<CheckItem> checks = {};
 };
 
 struct SettingsPage {

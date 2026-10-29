@@ -69,6 +69,7 @@ struct Settings {
   std::string ui_lang;                  // the app's language, "" = the system's
   std::string theme;                    // "" as the system, "light", "dark": the card and every window
   AiSettings ai;
+  std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language: "ru" → de, en (two at most)
 };
 
 // Missing or broken file: the defaults.

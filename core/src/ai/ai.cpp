@@ -332,7 +332,24 @@ std::string prompt(Ask a, const AiSettings &s, bool edited) {
   return out + (d.tail.empty() ? "" : "\n" + d.tail);
 }
 
-std::int64_t version(Ask a, const AiSettings &s) { return text::java_hash(prompt(a, s, false)); }
+std::string study_prompt(const std::vector<std::string> &names) {
+  // InkPeek's Ai.STUDY, word for word: the answers' versions depend on it.
+  static const std::string study =
+      "The text is in {lang}, the reader's own language, and the reader learns {study}. Work on the text's "
+      "{study} versions instead of explaining it as a dictionary of {lang}: wherever a key asks for a "
+      "translation, give one into each of {study}, also for a single word, each on its own line after the "
+      "language's name; wherever a key asks about the text's own language (base form, forms, grammar, words, "
+      "examples, idioms), answer about those versions (separable verbs, cases, tenses…). Explanations stay in "
+      "{lang}.";
+  if (names.empty()) return "";
+  std::string list;
+  for (auto &n : names) list += (list.empty() ? "" : " and ") + n;
+  return "\n" + replace_all(study, "{study}", list);
+}
+
+std::int64_t version(Ask a, const AiSettings &s, const std::vector<std::string> &study) {
+  return text::java_hash(prompt(a, s, false) + study_prompt(study));
+}
 
 std::string model(const AiSettings &s) {
   auto i = s.models.find(s.provider);
@@ -405,7 +422,7 @@ Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &reca
               : !q.passage                ? std::string("a short phrase")
                                           : "a passage of about " + std::to_string(q.words) + " words";
   auto text = "The selection is " + what + ".\n" + (q.source.empty() ? "" : "The text is probably " + q.source + ".\n") +
-              replace_all(replace_all(prompt(q.ask, s), "{text}", q.text), "{lang}", q.lang);
+              replace_all(replace_all(prompt(q.ask, s) + study_prompt(q.study), "{text}", q.text), "{lang}", q.lang);
   auto sys = system_text(s, q.lang);
   auto a = p->cli ? cli(s, text, sys, t) : p->id == "anthropic" ? claude(q, s, m, text, sys, recall, t) : openai(q, s, m, text, sys, recall, t);
   if (!a.ok()) return a;
@@ -416,7 +433,7 @@ Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &reca
 }
 
 Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep) {
-  auto ver = version(q.ask, s);
+  auto ver = version(q.ask, s, q.study);
   if (auto saved = store.answer(q.text, q.lang, section(q.ask), ver)) return {Code::ok, *saved, "", true};
   auto a = ask(q, s, recall, t);
   if (a.ok() && keep) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);

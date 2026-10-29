@@ -47,8 +47,11 @@ std::vector<Key> active(Ask a, const AiSettings &s);
 bool module_on(Ask a, const AiSettings &s);
 // The prompt with {text}, {lang} left in: the edited abouts, or the originals (edited false).
 std::string prompt(Ask a, const AiSettings &s, bool edited = true);
-// What an answer is kept under: Java's hashCode of the original prompt (InkPeek's Ask.version).
-std::int64_t version(Ask a, const AiSettings &s);
+// InkPeek's Ai.STUDY paragraph for languages you learn (English names, in order), after "\n"; "" for none.
+std::string study_prompt(const std::vector<std::string> &names);
+// What an answer is kept under: Java's hashCode of the original prompt (InkPeek's Ask.version), with the study paragraph
+// when there is one (InkPeek's Ask.version(study)).
+std::int64_t version(Ask a, const AiSettings &s, const std::vector<std::string> &study = {});
 // The provider's model: the setting, else its default.
 std::string model(const AiSettings &s);
 // "AI · claude-sonnet-5-5" (the Translate method's name).

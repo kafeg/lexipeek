@@ -143,7 +143,17 @@ struct CardSession::Impl {
     translations().add([self, card, m, id, n] {
       Translation t;
       if (!self->current(id) || self->translation != n) t.error = "stale";
-      else t = self->e.translate(card, m, self->tag);
+      else if (!card.study.empty()) {
+        // Languages you learn: one after another, each shown as it comes; the first is the card's translation.
+        for (int i = 0; i < static_cast<int>(card.study.size()); i++) {
+          if (!self->current(id) || self->translation != n) break;
+          auto x = self->e.translate_into(card, i, self->tag);
+          if (i == 0) t = x;
+          self->post([x, m, id, n, i](Impl &s) {
+            if (s.current(id) && s.translation == n) s.nav.learned(i, m, x);
+          });
+        }
+      } else t = self->e.translate(card, m, self->tag);
       self->post([t, m, id, n](Impl &s) {
         if (s.current(id) && s.translation == n) s.nav.translated(m, t);
       });

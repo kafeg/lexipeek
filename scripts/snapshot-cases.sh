@@ -74,9 +74,9 @@ firstrun-done-later|done-later|
 EOF
 }
 
-# AI on (Claude; no key, no network: LEXIPEEK_AI_REPLIES answers from files), a third instance with its own data dir:
-# name | url | the answers (word, phrase) or "error" (the provider says 401). method=ai: AI translation picked in the card;
-# tab=analysis|context: that AI tab clicked.
+# AI on (Claude; no key, no network: LEXIPEEK_AI_REPLIES answers from files), a third instance with its own data dir and
+# languages you learn (Russian → German, English; study-*: a text in Russian): name | url | the answers (word, phrase) or
+# "error" (the provider says 401). method=ai: AI translation picked in the card; tab=analysis|context: that AI tab clicked.
 ai_cases() {
   cat <<EOF
 ai-word-translate|lookup?text=Häusern&method=ai&tab=translate|word
@@ -86,6 +86,10 @@ ai-phrase-translate|lookup?text=Ich mache die Tür zu&method=ai|phrase
 ai-phrase-analysis|lookup?text=Ich mache die Tür zu&tab=analysis|phrase
 ai-phrase-context|lookup?text=Ich mache die Tür zu&tab=context|phrase
 ai-error|lookup?text=Bäume&tab=analysis|error
+study-word|lookup?text=дом&tab=dictionary|word
+study-word-translate|lookup?text=дом&tab=translate|word
+study-phrase|lookup?text=Мы идём домой&tab=translate|phrase
+study-phrase-dictionary|lookup?text=Мы идём домой&tab=dictionary|phrase
 EOF
 }
 
@@ -113,9 +117,10 @@ EOF
 }
 
 # The settings window's shots, written by the app at launch: every section × tab (settings-<section>[-<tab>]); AI's
-# and Card → Opening also with AI on (-on, from the AI instance).
+# and Card → Opening also with AI on (-on, from the AI instance), Translation with languages you learn ticked.
 settings_shots() {
   echo settings-languages-packs settings-languages-translation settings-languages-translation-empty \
+    settings-languages-translation-on \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
     settings-general-system settings-general-keys about

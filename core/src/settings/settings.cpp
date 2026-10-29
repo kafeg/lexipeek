@@ -3,6 +3,7 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/study.hpp"
 #include "text/text.hpp"
 
 namespace lexipeek {
@@ -116,6 +117,10 @@ Settings load_settings(const fs::path &data) {
     s.ui_lang = j.value("ui_lang", s.ui_lang);
     s.theme = j.value("theme", s.theme);
     s.ai = ai(j.value("ai", json()));
+    if (auto st = j.value("study", json::object()); st.is_object())
+      for (auto &[answer, langs] : st.items())
+        if (langs.is_array())
+          if (auto l = study_parse(langs.get<std::vector<std::string>>()); !l.empty()) s.study[answer] = l;
   } catch (const std::exception &) {
     // A field of the wrong type: what was read before it stays (the platform's defaults too).
   }
@@ -151,6 +156,9 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["ui_lang"] = s.ui_lang;
   j["theme"] = s.theme;
   j["ai"] = to_json(s.ai);
+  j["study"] = json::object();
+  for (auto &[answer, langs] : s.study)
+    if (!langs.empty()) j["study"][answer] = langs;
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";

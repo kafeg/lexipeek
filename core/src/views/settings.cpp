@@ -3,6 +3,7 @@
 #include <array>
 #include "lexipeek/ai.hpp"
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/study.hpp"
 #include "lexipeek/views.hpp"
 #include "text/text.hpp"
 
@@ -93,6 +94,26 @@ SettingRow valued(Kind kind, std::string key, std::string title, std::string abo
   return r;
 }
 
+// Languages you learn for the answer language (InkPeek's refreshStudy): a box per language with a pack answer → X, two
+// at most; one whose pack is not installed is off, saying so.
+SettingRow study_row(const Settings &s, const SettingsState &st) {
+  SettingRow r{Kind::checks, "study", tr("study_t", {language_name(s.answer)}), tr("study_d")};
+  auto all = st.pairs;
+  all.insert(all.end(), st.installed_pairs.begin(), st.installed_pairs.end());
+  auto offered = study_offered(s.answer, all);
+  std::stable_sort(offered.begin(), offered.end(), [](auto &a, auto &b) { return language_name(a) < language_name(b); });
+  auto i = s.study.find(s.answer);
+  auto picked = i == s.study.end() ? std::vector<std::string>{} : i->second;
+  if (offered.empty()) r.about = tr("study_none", {language_name(s.answer)});
+  for (auto &x : offered) {
+    bool have = std::find(st.installed_pairs.begin(), st.installed_pairs.end(), LangPair{s.answer, x}) != st.installed_pairs.end();
+    bool on = std::find(picked.begin(), picked.end(), x) != picked.end();
+    bool off = !on && (!have || picked.size() >= study_max);
+    r.checks.push_back({x, language_name(x), on, !off, !have ? tr("study_no_pack", {s.answer + " → " + x}) : off ? tr("study_two") : ""});
+  }
+  return r;
+}
+
 std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) {
   std::vector<SettingRow> rows;
   if (!st.has_pair)
@@ -101,6 +122,7 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   auto codes = answer_codes(s, st);
   for (auto &c : codes) langs.push_back(language_name(c));
   rows.push_back(choice("answer", tr("answer_t"), tr("answer_d"), langs, index_of(codes, s.answer)));
+  rows.push_back(study_row(s, st));
   auto english = toggle("mt_english", tr("mt_english_t"), tr("mt_english_about"), s.mt_english);
   english.enabled = !s.mt_off && (!s.method || *s.method == Method::fast);  // only Fast goes through English
   rows.push_back(english);
@@ -381,6 +403,11 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
           if (on == !k.extra) s.ai.picked.erase(id);
           else s.ai.picked[id] = on;
         }
+  }
+  else if (key.starts_with("study.")) {
+    auto &v = s.study[s.answer];
+    v = study_toggle(v, key.substr(6), on);
+    if (v.empty()) s.study.erase(s.answer);
   }
   else if (key.starts_with("section.")) {
     auto k = key.substr(8);

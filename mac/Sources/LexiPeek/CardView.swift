@@ -234,17 +234,25 @@ struct CardView: View {
             switch look.style {
             case .word:
                 title(look.title, titleFont(look), lines: 2, secondary: false)
-                if !look.subtitle.isEmpty {
-                    Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
+                subtitle(look)
             case .phrase:
                 title(look.title, titleFont(look), lines: 2, secondary: false)
+                subtitle(look)
             default:
                 title(look.title, titleFont(look), lines: 1, secondary: true)
+                subtitle(look)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: look.title) { titleOpen = false }
+    }
+
+    // The small grey lines under the title: the direction (languages you learn), a word's form and facts.
+    @ViewBuilder
+    private func subtitle(_ look: CardLook) -> some View {
+        if !look.subtitle.isEmpty {
+            Text(look.subtitle).font(font(-2)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func titleFont(_ look: CardLook) -> Font {
@@ -329,7 +337,7 @@ struct CardView: View {
             // A dictionary's short line: a click opens its full entry alone.
             Button { model.openEntry(r.entry) } label: {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(r.label).font(font(-2)).foregroundStyle(.secondary)
+                    if !r.label.isEmpty { Text(r.label).font(font(-2)).foregroundStyle(.secondary) }
                     Text(r.text).fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

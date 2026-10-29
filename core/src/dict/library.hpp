@@ -69,12 +69,14 @@ class Library {
   // Hits per dictionary: the packs from book into answer (book "": any) and the other dictionaries; then the other packs
   // into answer; the rest only when none of those knows the word.
   std::vector<std::pair<StarDict *, std::vector<Hit>>> lookup(const std::string &query, const std::string &answer, const std::string &book = "");
+  // Hits in the packs book → answer alone (languages you learn).
+  std::vector<std::pair<StarDict *, std::vector<Hit>>> pack_lookup(const std::string &query, const std::string &book, const std::string &answer);
   // The word's header, one per book language, book's first.
   std::vector<Head> heads(const std::string &query, const std::string &answer, const std::string &book = "");
   std::vector<GlossLine> gloss(const std::string &text, const std::string &answer, size_t limit = 60, const std::string &book = "");
   std::vector<std::pair<SeparableFind, std::optional<Head>>> separable(const std::string &text, const std::string &answer);
   int rank(const std::string &word, const std::string &book);
-  // Whether the dictionary of book → answer knows the word (its forms too).
+  // Whether the dictionary of book → answer (answer "": the first from book) knows the word (its forms too).
   bool knows(const std::string &book, const std::string &answer, const std::string &word);
 
  private:

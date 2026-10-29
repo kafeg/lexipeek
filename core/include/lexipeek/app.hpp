@@ -48,6 +48,8 @@ struct Engine {
   Card lookup_as(const std::string &text, Source source, const std::string &lang, const std::string &answer) const;
   // tag: the card's (new_tag()): cancel(tag) stops its translation and no other card's.
   Translation translate(const Card &card, Method m, int tag = 0) const;
+  // Into card.study[i], a language you learn.
+  Translation translate_into(const Card &card, int i, int tag = 0) const;
   SectionPage section(const Card &card, int entry, const std::string &key, int page) const;
   std::vector<Seen> recents(int n) const;
   // ☆ in the card → whether it is saved now.

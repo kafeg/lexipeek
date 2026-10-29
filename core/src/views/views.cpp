@@ -5,6 +5,7 @@
 #include <map>
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/study.hpp"
 #include "text/text.hpp"
 
 namespace lexipeek {
@@ -129,7 +130,8 @@ MemoryView memory_view(const Translator::Memory &m) {
 
 CardTab first_tab(const Card &c) {
   if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
-  bool words = !c.gloss.empty() || !c.separable.empty();
+  bool words = !c.gloss.empty() || !c.separable.empty() ||
+               std::any_of(c.study.begin(), c.study.end(), [](const Learned &l) { return !l.gloss.empty(); });
   if (c.kind != Card::Kind::phrase) return CardTab::translate;
   // Card → Opening: an AI tab asks at once (the person chose so); one that is off falls back to the translation.
   auto &o = c.prefs.phrase_open;
@@ -143,9 +145,11 @@ CardTab first_tab(const Card &c) {
 CardState first_state(const Card &c) {
   CardState s;
   s.tab = first_tab(c);
-  s.full_entry = c.kind == Card::Kind::word && c.prefs.full;
+  s.full_entry = c.kind == Card::Kind::word && c.prefs.full && c.study.empty();  // languages you learn: their blocks
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
+  for (auto &l : c.study)
+    if (l.has_method && !s.has_method) s.has_method = true, s.method = l.method;
   s.saved = c.saved;
   // Offline translation off (InkPeek's "off"): Translate is the AI translation, when AI is on.
   s.by_ai = c.ai.translate && (c.mt_off || (c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai" && !c.ai.no_key));
@@ -206,8 +210,48 @@ std::vector<CardRow> section_page(const SectionPage &p) {
 // The full entries' dictionary shown (kept inside the card's).
 int page_of(const Card &c, const CardState &s) { return std::clamp(s.entry_page, 0, std::max(0, static_cast<int>(c.entries.size()) - 1)); }
 
+// A word of a phrase (InkPeek's word by word): a form names itself first; a click opens its base form.
+CardRow gloss_row(const Card &c, const Gloss &g) {
+  auto line = g.header.empty() || !c.prefs.grammar ? g.base : g.header;
+  bool known = !g.header.empty() || !g.meaning.empty();
+  auto label = !known ? g.word : text::lower(g.base) == text::lower(g.word) ? line : g.word + ": " + line;
+  CardRow r{Style::gloss, label, g.meaning.empty() ? "" : "— " + g.meaning, ""};
+  r.link = g.base.empty() ? g.word : g.base;
+  return r;
+}
+
+// Languages you learn (InkPeek's studyBlocks): a block per language under its name — a word: its pack's line (a click:
+// the full entry), the translated words with their own header and frequency (a click: their card); a phrase: word by word.
+std::vector<CardRow> study_rows(const Card &c) {
+  std::vector<CardRow> rows;
+  for (auto &l : c.study) {
+    rows.push_back({Style::heading, "", language_name(l.lang), ""});
+    if (c.kind != Card::Kind::word) {
+      if (l.gloss.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
+      for (auto &g : l.gloss) rows.push_back(gloss_row(c, g));
+      continue;
+    }
+    if (l.entry < 0 || l.entry >= static_cast<int>(c.entries.size())) {
+      rows.push_back({Style::note, "", tr("card_no_entry"), ""});
+      continue;
+    }
+    CardRow e{Style::entry, "", c.entries[static_cast<size_t>(l.entry)].line, ""};
+    e.copy = e.text, e.open = "entry", e.entry = l.entry;
+    rows.push_back(e);
+    for (auto &w : l.words) {
+      auto f = frequency(w.rank);
+      CardRow r{Style::gloss, w.header.empty() || !c.prefs.grammar ? w.base : w.header, f.empty() ? "" : "· " + f, ""};
+      r.link = w.base;
+      rows.push_back(r);
+    }
+  }
+  if (c.kind != Card::Kind::word && c.more > 0) rows.push_back({Style::note, "", trn("card_more", c.more), ""});
+  return rows;
+}
+
 std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
+  if (!c.study.empty() && s.section.key.empty() && s.entry_open < 0) return study_rows(c);
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
     if (c.entries.empty()) rows.push_back({Style::note, "", tr(c.no_packs ? "card_no_packs" : "card_no_entry"), ""});
@@ -257,13 +301,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
     r.link = g.base;
     rows.push_back(r);
   }
-  for (auto &g : c.gloss) {
-    bool known = !g.header.empty() || !g.meaning.empty();
-    auto label = !known ? g.word : text::lower(g.base) == text::lower(g.word) ? line(g) : g.word + ": " + line(g);
-    CardRow r{Style::gloss, label, g.meaning.empty() ? "" : "— " + g.meaning, ""};
-    r.link = g.base.empty() ? g.word : g.base;
-    rows.push_back(r);
-  }
+  for (auto &g : c.gloss) rows.push_back(gloss_row(c, g));
   if (c.more > 0) rows.push_back({Style::note, "", trn("card_more", c.more), ""});
   return rows;
 }
@@ -308,6 +346,23 @@ std::vector<CardRow> ai_rows(ai::Ask a, const AiState &st, bool word) {
 std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   if (s.by_ai && c.ai.translate) return ai_rows(ai::Ask::quick, s.quick, c.kind == Card::Kind::word);
   auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
+  if (!c.study.empty()) {
+    if (c.mt_off) return note(tr("card_mt_off"));
+    // Languages you learn: the translation into each under its name, as they arrive.
+    std::vector<CardRow> rows;
+    for (size_t i = 0; i < c.study.size(); i++) {
+      auto &l = c.study[i];
+      rows.push_back({Style::heading, "", language_name(l.lang), ""});
+      if (!l.has_method) rows.push_back({Style::note, "", l.reason.empty() ? tr("mt_none") : l.reason, ""});
+      else if (i < s.learned.size() && !s.learned[i].ok()) rows.push_back({Style::error, "", s.learned[i].error, ""});
+      else if (i < s.learned.size()) {
+        CardRow r{Style::text, "", s.learned[i].text, ""};
+        r.copy = r.text;
+        rows.push_back(r);
+      } else if (s.translating) rows.push_back({Style::progress, "", tr("mt_working"), ""});
+    }
+    return rows;
+  }
   if (!c.lang.empty() && c.lang == c.answer) return note(tr("card_already", {name(c.answer, c.answer_name)}));
   if (c.no_packs) return note(tr("card_no_packs"));
   if (c.lang.empty())
@@ -350,11 +405,18 @@ CardView card_view(const Card &c, const CardState &s) {
   // Codes only: "de → ru"; "ru" when the text is in the answer language; "fr → ru" for a language without a pack.
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang : c.lang + " → " + c.answer;
   else if (!c.other.empty()) v.badge = c.other + " → " + c.answer;
-  if (c.books.size() > 1 || c.answers.size() > 1) {
+  // Languages you learn: the direction under the title and as the badge, passive (InkPeek's "ru → de, en").
+  std::vector<std::string> learned;
+  for (auto &l : c.study) learned.push_back(l.lang);
+  if (!learned.empty()) {
+    v.badge = study_direction(c.answer, learned);
+    v.subtitle = v.badge + (v.subtitle.empty() ? "" : "\n" + v.subtitle);
+  } else if (c.books.size() > 1 || c.answers.size() > 1) {
     for (auto &b : c.books) v.books.push_back({b, language_name(b), b == c.lang});
     for (auto &a : c.answers) v.answers.push_back({a, language_name(a), a == c.answer});
   }
-  if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty()) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
+  bool study_words = std::any_of(c.study.begin(), c.study.end(), [](const Learned &l) { return !l.gloss.empty(); });
+  if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty() || study_words) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
   v.tab_items.push_back({CardTab::translate, tr("tab_translate")});
   if (c.ai.analysis) v.tab_items.push_back({CardTab::analysis, tr("a_analysis") + " · " + tr("tab_ai")});
   if (c.ai.context) v.tab_items.push_back({CardTab::context, tr("a_context") + " · " + tr("tab_ai")});

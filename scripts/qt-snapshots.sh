@@ -51,14 +51,14 @@ run --data "$TMP/empty" --snapshots "$TMP/empty-out" --cases "$TMP/firstrun" --f
 mv "$TMP"/empty-out/firstrun-*.png "$OUT/all/"
 mv "$TMP"/empty-out/settings-languages-translation-empty*.png "$OUT/all/"
 
-# AI on (Claude; no key, no network: answers from files): its cards and its settings (-on).
-data "$TMP/aidata" 's["ai"] = {"provider": "anthropic"}'
+# AI on (Claude; no key, no network: answers from files), languages you learn: its cards and its settings (-on).
+data "$TMP/aidata" 's["ai"] = {"provider": "anthropic"}; s["study"] = {"ru": ["de", "en"]}'
 ai_fixtures "$TMP/fixtures"
 mkdir "$TMP/ai"
 ai_cases >"$TMP/ai_cases"
 LEXIPEEK_AI_REPLIES="$TMP/ai" run --data "$TMP/aidata" --snapshots "$TMP/ai-out" --cases "$TMP/ai_cases" --ai-fixtures "$TMP/fixtures" --suffix -on
-mv "$TMP"/ai-out/ai-*.png "$OUT/all/"
-for s in settings-ai-connection settings-ai-modules settings-card-opening; do mv "$TMP"/ai-out/"$s"-on*.png "$OUT/all/" 2>/dev/null || true; done
+mv "$TMP"/ai-out/ai-*.png "$TMP"/ai-out/study-*.png "$OUT/all/"
+for s in settings-ai-connection settings-ai-modules settings-card-opening settings-languages-translation; do mv "$TMP"/ai-out/"$s"-on*.png "$OUT/all/" 2>/dev/null || true; done
 
 # One page, the Mac script's order, light and dark side by side.
 {

@@ -84,6 +84,11 @@ void CardNav::pick_ai() { state.by_ai = true; }
 
 void CardNav::translating(Method m) {
   state.has_method = true, state.method = m, state.translating = true;
+  state.learned.clear();
+}
+
+void CardNav::learned(int n, Method m, const Translation &t) {
+  if (state.has_method && state.method == m && n == static_cast<int>(state.learned.size())) state.learned.push_back(t);
 }
 
 void CardNav::translated(Method m, const Translation &t) {

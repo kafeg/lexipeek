@@ -50,7 +50,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - AI without a network or a key (tests, snapshots, the CLI): `LEXIPEEK_AI_REPLIES=<dir>` — `<dir>/<quick|analysis|context>.json`
   is the model's answer for every provider, `<dir>/status` (e.g. `401`) fails every request, `<dir>/models.json` the list.
   Snapshots: a third instance with AI on (Claude) and fixtures (`ai-*` cards: AI translation, Analysis, Context, an
-  error; `settings-ai-*-on`, `settings-card-opening-on`); `&tab=analysis|context`, `&method=ai` in a case's URL.
+  error; `settings-ai-*-on`, `settings-card-opening-on`); `&tab=analysis|context`, `&method=ai` in a case's URL. The
+  same instance learns German and English for Russian (`study-*` cards, `settings-languages-translation-on`).
 
 ## Code layout and gotchas
 - `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`, `core.hpp`, `views.hpp`, `app.hpp`);
@@ -104,6 +105,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   ask now: the open one first, the others with prefetch), `with_answer`, row style `markdown`; Settings → AI rows
   (`text`, `secret`, `model` kinds, `edit` = a prompt id for ✎), `prompt_editor` / `settings_prompts`, dynamic
   Card → Opening choices. The key never reaches the core's settings: the shell passes it per call.
+- Languages you learn (spec M7, InkPeek's milestone 21): settings.json `study` (per answer language, two at most;
+  `lexipeek/study.hpp`, `views/study.cpp`: InkPeek's `Study`), `Core::lookup` fills `Card::study` (`Learned`: the pack
+  answer → X's entry index, translated words, a phrase's gloss, the method) only for a text in the answer language;
+  `card_view` draws blocks, `CardState::learned` the translations (`Core::translate_into`, the session one after
+  another); AI: `ai::study_prompt` + `version(a, s, study)` (InkPeek's `Ai.STUDY`; `study_test` checks its numbers);
+  Settings row kind `checks` (`study.<code>` toggles). Empty list: the old paths.
 - `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
   progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle

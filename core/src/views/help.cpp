@@ -26,7 +26,8 @@ std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &i
                    SettingsSection::languages, 0, tabs(SettingsSection::languages, 0)));
   out.push_back(go({tr("mt_t"),
                     {item("mt_fast_t", tr("hm_fast")), item("mt_direct_t", tr("hm_opus")), item("mt_llm_t", tr("hm_llm")),
-                     item("mt_off_t", tr("hm_off")), item("mt_english_t", tr("mt_english_about")), item("help_lid_t", tr("help_lid"))}},
+                     item("mt_off_t", tr("hm_off")), item("mt_english_t", tr("mt_english_about")), item("help_lid_t", tr("help_lid")),
+                     item("study_help_t", tr("study_help"))}},
                    SettingsSection::languages, 1, tabs(SettingsSection::languages, 1)));
   out.push_back(go({tr("own_title"),
                     {item("help_other_t", tr("help_other")), item("help_formats_t", tr("help_formats")),

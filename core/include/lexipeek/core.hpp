@@ -1,6 +1,7 @@
 // The one entry for every shell: a request → the card (dictionary first, at once), then its translation (slow).
 #pragma once
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -57,6 +58,7 @@ struct Entry {
 struct Gloss {
   std::string word, base, meaning;
   std::string header = "";  // the base form's header: "der Hund (Hundes, мн. Hunde)", "" when unknown
+  int rank = 0;             // the base form's rank in its language's frequency list (0: not in it)
 };
 
 // A section of an entry opened in the card (InkPeek's DictionaryPage.section): words with their first meaning from the
@@ -85,6 +87,17 @@ struct CardAi {
   std::string method;      // "AI · claude-sonnet-5-5"
   bool key = false;        // its provider needs an API key
   bool no_key = false;     // and the shell has none: AI is offered, never opened by itself
+};
+
+// A language you learn the card shows its text in (InkPeek's Study): its pack's entry, the translated words, the method.
+struct Learned {
+  std::string lang;              // "de"
+  int entry = -1;                // the pack answer → lang's entry in Card::entries (-1: the word is not in it)
+  std::vector<Gloss> words = {};  // a word's translated words: base opens it, header and rank from the pack lang → answer
+  std::vector<Gloss> gloss = {};  // a phrase word by word through that pack
+  bool has_method = false;
+  Method method = Method::fast;  // the translation answer → lang
+  std::string reason = "";       // why there is none
 };
 
 struct Card {
@@ -118,6 +131,7 @@ struct Card {
   std::vector<std::string> books = {}, answers = {};
   bool mt_off = false;  // offline translation is off: Translate is AI only
   bool no_packs = false;  // no language pack installed: the card says so and opens Settings → Packs
+  std::vector<Learned> study = {};  // the text is in the answer language: shown in the languages you learn (none: as before)
 };
 
 
@@ -142,6 +156,7 @@ struct CoreOptions {
   DictSettings dicts;            // the own dictionaries: folders, off, order
   CardPrefs card;                // copied into every card
   AiSettings ai;                 // the AI layer
+  std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language
   std::filesystem::path ai_replies;  // answers from files instead of a provider (snapshots, tests): ai/ai.hpp file_transport
 };
 
@@ -162,6 +177,8 @@ class Core {
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   // Fast through English: the English is kept as the text's translation into English (InkPeek's), shown when asked.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt, int tag = 0);
+  // The text into card.study[i] (a language you learn) with its method; kept as InkPeek's (lang that language).
+  Translation translate_into(const Card &card, int i, int tag = 0);
   // Blocking, only on the person's action: the card's text's AI answer, the saved one when there is (offline); key: the
   // provider's API key, from the shell (never kept here).
   ai::Answer ask(const Card &card, ai::Ask a, const std::string &key);
