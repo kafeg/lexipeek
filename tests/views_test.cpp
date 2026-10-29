@@ -630,3 +630,16 @@ TEST_CASE("views: a phrase set to open on AI opens offline when the provider's k
   c.ai.no_key = true;
   CHECK(!first_state(c).by_ai);
 }
+
+TEST_CASE("rich text as spans: an AI answer's light Markdown, an article's HTML") {
+  CHECK(markdown_spans("**Häusern** — dat. pl. of *das Haus*\n• a") ==
+        std::vector<Span>{{"Häusern", true, false}, {" — dat. pl. of ", false, false}, {"das Haus", false, true}, {"\n• a", false, false}});
+  CHECK(markdown_spans("5 * 3") == std::vector<Span>{{"5 * 3", false, false}});
+  CHECK(markdown_spans("*a\nb*") == std::vector<Span>{{"*a\nb*", false, false}});
+  CHECK(markdown_spans("").empty());
+  CHECK(html_spans("<b>Haus</b> <i>n</i><br>1. house &amp; home<ol><li>one</li><li>two</li></ol>") ==
+        std::vector<Span>{{"Haus", true, false}, {" ", false, false}, {"n", false, true}, {"\n1. house & home\n1. one\n2. two", false, false}});
+  CHECK(html_spans("<ul><li>a</li><li>b</li></ul>c") == std::vector<Span>{{"• a\n• b\nc", false, false}});
+  CHECK(html_spans("<p>a</p><p>b</p>") == std::vector<Span>{{"a\nb", false, false}});
+  CHECK(html_spans("plain") == std::vector<Span>{{"plain", false, false}});
+}

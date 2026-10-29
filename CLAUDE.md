@@ -218,11 +218,17 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   runs the XAML passes itself). `App.xaml.cpp` — the process (qt/main.cpp's: arguments, one instance, install question, every
   way out through `app::leave`), `shell` (tray, its menu, hotkeys, the selection read), `tray` (Shell_NotifyIcon), `MenuHost`
   (the tray menu: a `MenuFlyout` from a 1-pixel host window at the click), `ui` (texts via `tr`, Mica windows with the content in
-  the title bar, `ask`), small screens as XAML text (`load` + `part`), `card_stub` (until phase 2). A window's slot is let go in
+  the title bar, `ask`), small screens as XAML text (`load` + `part`), `card` (`CardModel` polls its `CardSession`, `CardWidget` draws `CardView`:
+  tabs in a `SelectorBar`, rows as `TextBlock`s of runs and hyperlinks — the core's `markdown_spans` / `html_spans` —, the
+  bottom row's icon buttons and `DropDownButton`s; `embedded` for the LexiPeek window), `popup` (the pop-up card: a framed
+  window without a title bar — DWM's corners and shadow —, `WS_EX_NOACTIVATE` unless typing, acrylic kept active, Esc and
+  Ctrl+P as hotkeys only while open and not pinned, an outside click by polling the mouse, a drag on its background),
+  `selection_icon` (`os::watch_input`; a context menu's frame, subclassed: XAML windows have a minimum size). A window's slot is let go in
   its Closed handler: close a copy (`auto w = slot; w.Close()`), never the slot itself (use after free at exit). Needs a
-  signed-in desktop (over SSH it fails at start); `--self-test <file>` (OS checks), `--snapshots <dir>` (RenderTargetBitmap
-  of each case, light and dark: XAML's own rendering; screen captures of WinUI windows can be blank on a VM's basic display
-  adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe` (all but the icon at the selection, phase 2).
+  signed-in desktop (over SSH it fails at start); `--self-test <file>` (OS checks), `--snapshots <dir> [--cases <file>]
+  [--ai-fixtures <dir>]` (RenderTargetBitmap of each case, light and dark: XAML's own rendering; the card cases of
+  `scripts/snapshot-cases.sh` as `<name>-light|dark[-end].png`, what failed in `failed.txt`; screen captures of WinUI windows can be blank on a VM's basic display
+  adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe`.
   Settings and About: `settings_window` (+ `packs_pane`, `dicts_pane` with the catalog window, `settings_ui`: setting cards,
   dialogs, pickers) draw the core's rows; made once, their X hides them (downloads go on), a close by code makes them again.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`

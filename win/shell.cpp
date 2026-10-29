@@ -81,8 +81,12 @@ void MenuHost::close() {
   window_ = nullptr;
 }
 
-Shell::Shell(CoreClient &client, bool live) : c_(client), live_(live) {
+Shell::Shell(CoreClient &client, bool live) : card(client), icon(client), c_(client), live_(live) {
   card.theme = [this] { return theme(); };
+  card.live = live;
+  card.model.key = [this] { return os::secret(app::ai_provider(c_.data())); };
+  card.card.open_pane = [this](int section, int tab) { open_settings(section, tab); };
+  icon.open = [this](const os::Selected &s) { card.show(s.text, Source::hotkey, s.bounds, false); };
   tray_.activated = [this] { open_main(); };
   tray_.menu = [this](POINT p) { show_menu(p); };
   // Light or dark switched: the taskbar's glyph follows.
@@ -108,6 +112,8 @@ void Shell::apply() {
   app::set_language(c_.data(), os::ui_language());
   s_ = app::settings(c_.data());
   register_hotkeys();
+  card.pin_moved = s_.pin_moved;
+  if (live_) icon.set_enabled(s_.selection_icon, s_.ignore_apps);
   c_.configure();
   update_tray();
   if (main) self(main)->refresh(theme());
@@ -148,7 +154,7 @@ void Shell::selection_read(std::optional<os::Selected> s) {
   // Nothing read: say which app, type meanwhile.
   card.show(std::nullopt, Source::input, {}, true);
   if (!reading_app_.empty()) {
-    card.unread = reading_app_;
+    card.model.unread = reading_app_;
     card.redraw();
   }
 }
@@ -300,7 +306,7 @@ void Shell::quit(int code) {
   health_.Stop();
   menu.close();
   card.close();
-  for (auto w : {card.window, settings, about, first, main.try_as<xaml::Window>()})
+  for (auto w : {card.window, icon.window, settings, about, first, main.try_as<xaml::Window>()})
     if (w) w.Close();
   tray_.remove();  // gone at once, not when Explorer next looks
   winrt::LexiPeek::implementation::App::quit(code);

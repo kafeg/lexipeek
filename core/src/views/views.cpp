@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <ctime>
 #include <map>
+#include <utility>
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/study.hpp"
@@ -521,6 +522,84 @@ CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer) {
 std::string shown_translation(const CardState &s) {
   if (s.by_ai) return s.quick.ok ? ai::brief(s.quick.json) : "";
   return s.translated && s.translation.ok() ? s.translation.text : "";
+}
+
+namespace {
+void add_span(std::vector<Span> &out, std::string text, bool bold, bool italic) {
+  if (text.empty()) return;
+  if (!out.empty() && out.back().bold == bold && out.back().italic == italic) out.back().text += text;
+  else out.push_back({std::move(text), bold, italic});
+}
+}  // namespace
+
+std::vector<Span> markdown_spans(const std::string &md) {
+  std::vector<Span> out;
+  size_t line = 0;
+  while (line <= md.size()) {
+    auto end = md.find('\n', line);
+    if (end == std::string::npos) end = md.size();
+    std::string_view l(md.data() + line, end - line);
+    size_t at = 0;
+    while (at < l.size()) {
+      auto star = l.find('*', at);
+      if (star == std::string_view::npos) break;
+      bool two = l.substr(star, 2) == "**";
+      auto close = l.find(two ? "**" : "*", star + (two ? 2 : 1) + 1);
+      if (close == std::string_view::npos) {
+        add_span(out, std::string(l.substr(at, star + 1 - at)), false, false);
+        at = star + 1;
+        continue;
+      }
+      add_span(out, std::string(l.substr(at, star - at)), false, false);
+      auto inner = l.substr(star + (two ? 2 : 1), close - star - (two ? 2 : 1));
+      add_span(out, std::string(inner), two, !two);
+      at = close + (two ? 2 : 1);
+    }
+    add_span(out, std::string(l.substr(at)), false, false);
+    if (end < md.size()) add_span(out, "\n", false, false);
+    line = end + 1;
+  }
+  return out;
+}
+
+std::vector<Span> html_spans(const std::string &html) {
+  std::vector<Span> out;
+  int bold = 0, italic = 0;
+  std::vector<int> lists;  // the open lists: a numbered one's next number, 0 for bullets
+  std::string text;
+  auto flush = [&] { add_span(out, text::unescape(std::exchange(text, "")), bold > 0, italic > 0); };
+  auto newline = [&] {
+    flush();
+    bool empty = out.empty() || (!out.back().text.empty() && out.back().text.back() == '\n');
+    if (!empty) add_span(out, "\n", bold > 0, italic > 0);
+  };
+  size_t at = 0;
+  while (at < html.size()) {
+    auto lt = html.find('<', at);
+    text += html.substr(at, lt == std::string::npos ? std::string::npos : lt - at);
+    if (lt == std::string::npos) break;
+    auto gt = html.find('>', lt);
+    if (gt == std::string::npos) break;
+    auto tag = text::lower(html.substr(lt + 1, gt - lt - 1));
+    bool close = !tag.empty() && tag[0] == '/';
+    auto name = tag.substr(close, tag.find_first_of(" /\t\n", close) - close);
+    at = gt + 1;
+    if (name == "b" || name == "strong") flush(), bold += close ? -1 : 1;
+    else if (name == "i" || name == "em") flush(), italic += close ? -1 : 1;
+    else if (name == "li" && !close) {
+      newline();
+      auto mark = lists.empty() || lists.back() == 0 ? std::string("• ") : std::to_string(lists.back()++) + ". ";
+      add_span(out, mark, bold > 0, italic > 0);
+    } else if (name == "br" || name == "p" || name == "div" || name == "li" || name == "tr" || name == "ol" || name == "ul") {
+      newline();
+      if (name == "ol" || name == "ul") close ? (lists.empty() ? void() : lists.pop_back()) : lists.push_back(name == "ol");
+    }
+    bold = std::max(bold, 0), italic = std::max(italic, 0);
+  }
+  flush();
+  while (!out.empty() && out.back().text == "\n") out.pop_back();
+  if (!out.empty() && out.back().text.ends_with('\n')) out.back().text.pop_back();
+  return out;
 }
 
 std::string size_text(std::int64_t bytes) {

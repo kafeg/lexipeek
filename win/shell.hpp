@@ -3,8 +3,9 @@
 #include <atomic>
 #include <optional>
 #include "MainWindow.xaml.h"
-#include "card_stub.hpp"
 #include "core_client.hpp"
+#include "popup.hpp"
+#include "selection_icon.hpp"
 #include "settings_window.hpp"
 #include "tray.hpp"
 
@@ -46,7 +47,8 @@ class Shell {
   xaml::ElementTheme theme() const;
 
   // What snapshots draw (win/snapshots.cpp).
-  CardStub card;
+  CardPopup card;
+  SelectionIcon icon;
   MenuHost menu;
   winrt::LexiPeek::MainWindow main{nullptr};
   xaml::Window settings{nullptr}, about{nullptr}, first{nullptr};

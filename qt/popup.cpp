@@ -53,8 +53,9 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
   connect(&outside_, &QTimer::timeout, this, [this] {
     bool down = platform::mouse_down();
     auto card_rect = frameGeometry().adjusted(shadow, shadow, -shadow, -shadow);
-    if (down && !was_down_ && !model.pinned && !card_rect.contains(QCursor::pos())) close_card();
+    bool outside = down && !was_down_ && !model.pinned && !card_rect.contains(QCursor::pos());
     was_down_ = down;
+    if (outside) return close_card();  // not keys() after it: Esc would stay taken
     keys(!model.pinned);
   });
 }

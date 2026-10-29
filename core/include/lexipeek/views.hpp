@@ -206,6 +206,18 @@ AiState card_answer(const CardState &s, ai::Ask a);
 CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer);
 // What ☆ saves as the line: the translation shown (the AI's brief one when by AI), "" when none.
 std::string shown_translation(const CardState &s);
+
+// A run of a row's rich text for a shell without an HTML view (WinUI): bold, italic; "\n" breaks the line.
+struct Span {
+  std::string text;
+  bool bold = false, italic = false;
+  bool operator==(const Span &) const = default;
+};
+// A markdown row's light Markdown (**bold**, *italic* on one line), as the Qt and Mac cards draw it.
+std::vector<Span> markdown_spans(const std::string &md);
+// An entry row's article HTML: <b>/<strong>, <i>/<em>, line breaks at <br>, <p>, <div>, <tr>, list items numbered or
+// bulleted; other tags dropped.
+std::vector<Span> html_spans(const std::string &html);
 // The frequency band of a word's rank (InkPeek's Facts): "among the 1,000 most frequent words" (1,000 / 5,000 / 20,000), "".
 std::string frequency(int rank);
 

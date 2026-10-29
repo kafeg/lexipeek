@@ -9,8 +9,13 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
    `--snapshots`), the OS parts shared with `qt/` (`platform/`), the tray icon and its menu (`MenuFlyout`), hotkeys and the
    selection read; the card a stand-in, the other windows placeholders saying their phase. `scripts\build-win.cmd` builds
    it by default (`qt`: the Qt shell).
-2. The card: the pop-up (borderless, no focus, at the selection, Mica/acrylic, its keys), the card to type in, the icon at
-   the selection (`watch_input`); `CardSession` polled; the snapshot cases of `scripts/snapshot-cases.sh`.
+2. Done: the card (`card`: every row style, header cut and whole, tabs, links, sections and pagers, the bottom row with its
+   menus, copy, ☆, the pin, fix buttons to Settings' panes, the field with recents), the pop-up (`popup`: borderless, no
+   focus unless typing, at the selection inside the screen, its height kept while loading, acrylic, Esc / Ctrl+P while
+   open, ←/→ Ctrl+S Backspace, outside click, drag and pin), the icon at the selection; `--snapshots --cases` draws the card
+   cases (not `noaccess`: the Mac's Accessibility). Open: Mica / acrylic, corners and shadow seen only on Windows 10 (a
+   VM: acrylic falls back to its colour); the card's ▶ once Read aloud runs on Windows; an own dictionary in a junction
+   (`mklink /J`) is not found by the core.
 3. The LexiPeek window: Look up (an embedded card), Words · Phrases · History (`notes_view`), Help; the no-pack banner.
 4. Done: Settings as Windows 11's (sections in a `NavigationView`, sub-tabs in a `SelectorBar`, the core's rows as setting
    cards, Packs, Other dictionaries and the catalog, AI with the key in the Credential Manager, hotkeys recorded in a

@@ -2,6 +2,9 @@
 #include "snapshots.hpp"
 #include <wincodec.h>
 #include <filesystem>
+#include <fstream>
+#include <map>
+#include <optional>
 #include <memory>
 #include <vector>
 #include "ui.hpp"
@@ -61,7 +64,10 @@ struct Case {
   std::string name;
   std::function<void(Shell &)> show, hide;
   std::function<xaml::UIElement(Shell &)> drawn;  // what is rendered
-  std::function<bool(Shell &)> end = nullptr;     // scrolled to its end: true when it scrolls (<name>-end too)
+  std::function<bool(Shell &)> quiet = [](Shell &) { return true; };   // drawn for good (nothing on its way)
+  std::function<bool(Shell &)> step = [](Shell &) { return false; };   // once quiet: what is still asked done (true), or final
+  std::function<bool(Shell &)> end = nullptr;  // scrolled to its end: true when it scrolls (<name>-end too)
+  int wait = 1500;  // ms at least: drawn, animations over
 };
 
 // Settings' page by a snapshot name, settings-<section>[-<tab>] (snapshot-cases.sh's settings_shots), or about[-licenses];
@@ -86,12 +92,15 @@ Case pane_case(const std::string &name) {
     for (size_t i = 0; i < tabs.size(); ++i)
       if (name.starts_with(base + "-" + tabs[i])) tab = static_cast<int>(i);
   }
-  return {name, [sec, tab](Shell &s) { s.open_settings(static_cast<int>(sec), tab); }, [hide](Shell &s) { hide(s.settings); },
-          [](Shell &s) { return content(s.settings); }, [](Shell &s) {
-            s.settings_ui->scroll_to_end();
-            return s.settings_ui->scrolls();
-          }};
+  Case c{name, [sec, tab](Shell &s) { s.open_settings(static_cast<int>(sec), tab); }, [hide](Shell &s) { hide(s.settings); },
+         [](Shell &s) { return content(s.settings); }};
+  c.end = [](Shell &s) {
+    s.settings_ui->scroll_to_end();
+    return s.settings_ui->scrolls();
+  };
+  return c;
 }
+
 
 // Where the tray's menu opens: the taskbar's corner of the main screen (the icon itself may be in the overflow).
 POINT tray_corner() {
@@ -101,14 +110,112 @@ POINT tray_corner() {
   return {mi.rcWork.right - 120, mi.rcWork.bottom - 4};
 }
 
-std::vector<Case> cases() {
+std::filesystem::path path(const std::string &s) { return std::filesystem::path(winrt::to_hstring(s).c_str()); }
+
+// A card case's asks (the Mac app's Snapshot.Request), done in its order once the card is quiet.
+struct Request {
+  std::optional<CardTab> tab;
+  bool full = false, save = false, back = false, page = false, ai = false, whole = false;
+  std::optional<std::string> open, section, answer;
+  std::optional<int> entry;
+  std::optional<Method> method;
+  bool first = true;
+};
+
+// The fixture answers for a case into the replies dir ("error": every request fails with 401).
+void answers(const std::string &fixtures, const std::string &kind) {
+  wchar_t env[MAX_PATH]{};
+  if (fixtures.empty() || kind.empty() || !GetEnvironmentVariableW(L"LEXIPEEK_AI_REPLIES", env, MAX_PATH)) return;
+  std::filesystem::path replies(env);
+  std::error_code e;
+  for (auto &f : std::filesystem::directory_iterator(replies, e)) std::filesystem::remove(f.path(), e);
+  if (kind == "error") return void(std::ofstream(replies / "status") << "401");
+  for (auto &f : std::filesystem::directory_iterator(path(fixtures) / path(kind), e))
+    if (f.path().extension() == ".json") std::filesystem::copy_file(f.path(), replies / f.path().filename(), e);
+}
+
+// A line of scripts/snapshot-cases.sh's cases: name|url[|kind], the url not percent-encoded ("#" and "+" are text).
+std::optional<Case> card_case(const std::string &line, const std::string &fixtures) {
+  auto bar = line.find('|');
+  if (bar == std::string::npos || bar == 0) return std::nullopt;
+  auto name = line.substr(0, bar), rest = line.substr(bar + 1);
+  auto bar2 = rest.find('|');
+  auto url = rest.substr(0, bar2), kind = bar2 == std::string::npos ? "" : rest.substr(bar2 + 1);
+  auto q = url.find('?');
+  auto host = url.substr(0, q);
+  // The window and the first run: phases 3, 5; noaccess: the Mac's Accessibility (Windows asks for none).
+  if (host != "lookup" && host != "input" && host != "unread") return std::nullopt;
+  std::map<std::string, std::string> f;
+  for (size_t at = q == std::string::npos ? url.size() : q + 1; at < url.size();) {
+    auto amp = url.find('&', at);
+    auto kv = url.substr(at, amp == std::string::npos ? std::string::npos : amp - at);
+    auto eq = kv.find('=');
+    f[kv.substr(0, eq)] = eq == std::string::npos ? "" : kv.substr(eq + 1);
+    at = amp == std::string::npos ? url.size() : amp + 1;
+  }
+  Request r;
+  if (auto t = f["tab"]; !t.empty())
+    r.tab = t == "dictionary" ? CardTab::dictionary : t == "analysis" ? CardTab::analysis : t == "context" ? CardTab::context : CardTab::translate;
+  r.full = f["full"] == "1", r.save = f["save"] == "1", r.back = f["back"] == "1", r.page = f["page"] == "1", r.whole = f["whole"] == "1";
+  if (!f["open"].empty()) r.open = f["open"];
+  if (!f["section"].empty()) r.section = f["section"];
+  if (!f["answer"].empty()) r.answer = f["answer"];
+  if (!f["entry"].empty()) r.entry = std::stoi(f["entry"]);
+  auto m = f["method"];
+  r.ai = m == "ai";
+  if (m == "fast") r.method = Method::fast;
+  if (m == "direct") r.method = Method::direct;
+  if (m == "llm") r.method = Method::llm;
+  auto text = f["text"];
+  for (size_t at; (at = text.find("\\n")) != std::string::npos;) text.replace(at, 2, "\n");  // a line break
+  bool pin = f["pin"] == "1";
+  auto req = std::make_shared<Request>(r);
+  Case c{name,
+         [host, text, kind, fixtures, req, r, pin](Shell &s) {
+           *req = r;  // each pass asks again
+           answers(fixtures, kind);
+           s.card.show(host == "lookup" ? std::optional<std::string>(text) : std::nullopt, Source::input, {600, 300, 120, 24}, false);
+           if (host == "unread") s.card.model.unread = "Example", s.card.redraw();
+           if (pin) s.card.model.toggle_pin();
+         },
+         [](Shell &s) { s.card.close(); },
+         [](Shell &s) { return s.card.card.root(); }};
+  c.wait = 300;
+  c.end = [](Shell &s) { return s.card.card.scroll_to_end(); };
+  c.quiet = [host](Shell &s) { return host != "lookup" || (s.card.model.has_card() && !s.card.model.busy()); };
+  c.step = [req](Shell &s) {
+    auto &r = *req;
+    auto &model = s.card.model;
+    if (!model.has_card()) return false;
+    if (r.first) {
+      r.first = false;
+      if (r.method && model.nav.state.has_method) return model.use(*r.method), true;
+      if (r.ai && model.nav.card().ai.translate) return model.choose_ai(), true;
+    }
+    if (model.look().tabs) {
+      if (r.tab && model.nav.state.tab != *r.tab) return model.select(*r.tab), true;
+      if (r.open) return model.open(*std::exchange(r.open, std::nullopt)), true;
+      if (r.full && !model.nav.state.full_entry && !model.nav.card().entries.empty()) return model.full_entries(), true;
+      if (r.section) return model.open_section(0, *std::exchange(r.section, std::nullopt)), true;
+      if (r.entry) return model.open_entry(*std::exchange(r.entry, std::nullopt)), true;
+      if (r.page && model.nav.state.section.page == 0 && !model.nav.state.section.key.empty()) return r.page = false, model.turn(1), true;
+      if (r.back) return r.back = false, model.back(), true;
+      if (r.answer) return model.relookup("", *std::exchange(r.answer, std::nullopt)), true;
+    }
+    if (r.save && !model.nav.state.saved) return r.save = false, model.toggle_saved(), true;
+    if (r.whole) return r.whole = false, s.card.card.show_whole(true), true;
+    return false;
+  };
+  return c;
+}
+
+std::vector<Case> cases(const std::string &file, const std::string &fixtures) {
   // A copy closes it: its Closed handler lets go of the slot.
   auto close = [](xaml::Window w) {
     if (w) w.Close();
   };
   auto asked = std::make_shared<xaml::Window>(nullptr);
   auto menu = [](Shell &s) { return s.menu.shown(); };
-  auto card = [](Shell &s) { return content(s.card.window); };
   std::vector<Case> all{
       {"menu", [](Shell &s) { s.show_menu(tray_corner()); }, [](Shell &s) { s.menu.hide(); }, menu},
       {"menu-warnings",
@@ -121,15 +228,6 @@ std::vector<Case> cases() {
          s.force_warnings = false;
        },
        menu},
-      {"card", [](Shell &s) { s.card.show("das Haus", Source::hotkey, {600, 300, 120, 24}, false); }, [](Shell &s) { s.card.close(); }, card},
-      {"card-input",
-       [](Shell &s) {
-         s.card.show(std::nullopt, Source::input, {600, 300, 120, 24}, true);
-         s.card.unread = "notepad.exe";
-         s.card.redraw();
-       },
-       [](Shell &s) { s.card.close(); },
-       card},
       {"main", [](Shell &s) { s.open_main(); }, [close](Shell &s) { close(s.main.try_as<xaml::Window>()); },
        [](Shell &s) { return s.main ? s.main.Content() : nullptr; }},
       {"firstrun", [](Shell &s) { s.open_first_run(); }, [close](Shell &s) { close(s.first); }, [](Shell &s) { return content(s.first); }},
@@ -150,6 +248,11 @@ std::vector<Case> cases() {
   }
   all.push_back(pane_case("about"));
   all.push_back(pane_case("about-licenses"));
+  std::ifstream in(path(file), std::ios::binary);
+  for (std::string line; std::getline(in, line);) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    if (auto c = card_case(line, fixtures)) all.push_back(*c);
+  }
   return all;
 }
 
@@ -157,36 +260,58 @@ struct Run {
   Shell &shell;
   std::filesystem::path dir;
   std::function<void(int)> done;
-  std::vector<Case> all = cases();
+  std::vector<Case> all;
   size_t step = 0;
-  int failed = 0;
+  int failed = 0, settled = 0;
+  ULONGLONG since = 0;
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer poll{nullptr};
   std::vector<winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer> timers;  // kept: one may still be in its Tick
+
+  Case &now() { return all[step % all.size()]; }
+  bool dark() const { return step >= all.size(); }
+  std::filesystem::path file(const char *end = "") { return dir / path(now().name + (dark() ? "-dark" : "-light") + end + ".png"); }
 
   void next() {
     if (step == all.size() * 2) return done(failed);
-    auto &c = all[step % all.size()];
-    bool dark = step >= all.size();
-    shell.forced_theme = dark ? xaml::ElementTheme::Dark : xaml::ElementTheme::Light;
-    c.show(shell);
-    // Drawn, animations over: then its picture.
-    after(1500, [this, &c, dark] {
-      auto file = dir / (c.name + (dark ? "-dark.png" : "-light.png"));
-      render(c.drawn(shell), file, dark, [this, &c, dark](bool ok) {
-        failed += !ok;
-        auto finish = [this, &c] {
-          c.hide(shell);
+    shell.forced_theme = dark() ? xaml::ElementTheme::Dark : xaml::ElementTheme::Light;
+    now().show(shell);
+    settled = 0;
+    since = GetTickCount64();
+    poll.Start();
+  }
+
+  // Quiet (or 90 s gone: a failure) and settled for a few ticks: the next ask, else its picture (and the body's end).
+  void tick() {
+    auto &c = now();
+    bool quiet = c.quiet(shell), late = GetTickCount64() - since > 90000;
+    if (!quiet && !late) return;
+    if (++settled < 4 || GetTickCount64() - since < static_cast<ULONGLONG>(c.wait)) return;
+    if (quiet && c.step(shell)) return void(settled = 0);
+    poll.Stop();
+    if (!quiet) fail("not quiet");
+    render(c.drawn(shell), file(), dark(), [this](bool ok) {
+      if (!ok) fail("not rendered");
+      auto &c = now();
+      bool card = c.end && c.end(shell);
+      after(card ? 500 : 0, [this, card] {
+        auto finish = [this] {
+          now().hide(shell);
           ++step;
           after(500, [this] { next(); });
         };
-        if (!c.end || !c.end(shell)) return finish();
-        after(500, [this, &c, dark, finish] {
-          render(c.drawn(shell), dir / (c.name + (dark ? "-dark-end.png" : "-light-end.png")), dark, [this, finish](bool ok) {
-            failed += !ok;
-            finish();
-          });
+        if (!card) return finish();
+        render(now().drawn(shell), file("-end"), dark(), [this, finish](bool ok) {
+          if (!ok) fail("end not rendered");
+          finish();
         });
       });
     });
+  }
+
+  // Which case failed and how: <dir>/failed.txt.
+  void fail(const char *why) {
+    ++failed;
+    std::ofstream(dir / "failed.txt", std::ios::app) << now().name << (dark() ? " dark: " : " light: ") << why << "\n";
   }
 
   void after(int ms, std::function<void()> f) {
@@ -201,10 +326,16 @@ struct Run {
 
 }  // namespace
 
-void snapshots(Shell &shell, const std::string &dir, std::function<void(int)> done) {
-  std::filesystem::path out(winrt::to_hstring(dir).c_str());
+void snapshots(Shell &shell, const std::string &dir, const std::string &cases_file, const std::string &fixtures, std::function<void(int)> done) {
+  std::filesystem::path out = path(dir);
   std::filesystem::create_directories(out);
-  auto *run = new Run{shell, out, std::move(done)};  // lives until the process leaves
+  // AI answers from files: any key will do (the provider would want one).
+  wchar_t env[MAX_PATH]{};
+  if (GetEnvironmentVariableW(L"LEXIPEEK_AI_REPLIES", env, MAX_PATH)) shell.card.model.key = [] { return std::string("snapshot"); };
+  auto *run = new Run{shell, out, std::move(done), cases(cases_file, fixtures)};  // lives until the process leaves
+  run->poll = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
+  run->poll.Interval(std::chrono::milliseconds(100));
+  run->poll.Tick([run](auto &&, auto &&) { run->tick(); });
   run->next();
 }
 
