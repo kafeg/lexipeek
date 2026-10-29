@@ -301,7 +301,9 @@ TEST_CASE("ai: the tabs' Markdown under the app's headings; the reply's JSON ins
   CHECK(ai::json_object(ai::strip_thinking("<think>{\"no\":1}</think>Here: {\"a\": 1} done")) == R"({"a":1})");
   CHECK(ai::json_object("no braces").empty());
   // Fenced, with raw line breaks inside a string (and an escaped quote): read anyway.
-  CHECK(ai::json_object("```json\n{\"grammar\": \"- a\n- \\\"b\\\"\tc\"}\n```") == R"({"grammar":"- a\n- \"b\"\tc"})");
+  std::string fenced = "```json\n{\"grammar\": \"- a\n- \\\"b\\\"\tc\"}\n```";
+  std::string read = R"({"grammar":"- a\n- \"b\"\tc"})";  // MSVC: no raw string inside a macro
+  CHECK(ai::json_object(fenced) == read);
 }
 
 TEST_CASE("ai: the model list — chat models only, prices, free ones; a filter") {
