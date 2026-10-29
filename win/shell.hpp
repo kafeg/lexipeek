@@ -4,6 +4,7 @@
 #include <optional>
 #include "MainWindow.xaml.h"
 #include "core_client.hpp"
+#include "first_run.hpp"
 #include "popup.hpp"
 #include "selection_icon.hpp"
 #include "settings_window.hpp"
@@ -38,13 +39,14 @@ class Shell {
   void open_main();
   void open_settings(int section, int tab);
   void open_about();
-  void open_first_run();
+  void open_first_run(bool fetch = true);  // fetch: the packs list when there is none (not in snapshots)
   void apply();  // settings.json changed: hotkeys, theme, the core
   // A launch's arguments (this one's or a second launch's): a lexipeek:// link, else the LexiPeek window.
   void handle(const std::vector<std::string> &args);
   void show_menu(POINT at);  // the tray's menu at a screen point (physical pixels)
   void quit(int code = 0);  // every window closed, the tray icon gone, then the app ends
   xaml::ElementTheme theme() const;
+  CoreClient &client() { return c_; }
 
   // What snapshots draw (win/snapshots.cpp).
   CardPopup card;
@@ -54,6 +56,7 @@ class Shell {
   xaml::Window settings{nullptr}, about{nullptr}, first{nullptr};
   SettingsWindow *settings_ui = nullptr;  // made once, hidden when closed
   AboutWindow *about_ui = nullptr;
+  FirstRunWindow *first_ui = nullptr;
   std::optional<xaml::ElementTheme> forced_theme;  // light or dark whatever the settings say
   bool force_warnings = false;                     // ⚠ lines as if no pack and a hotkey taken
 
@@ -62,7 +65,6 @@ class Shell {
   void register_hotkeys();
   void update_tray();
   void selection_read(std::optional<os::Selected> s);
-  xaml::Window placeholder(xaml::Window &slot, const char *title, wchar_t glyph, int phase);
   CoreClient &c_;
   bool live_;
   Tray tray_;

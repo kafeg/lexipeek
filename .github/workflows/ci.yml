@@ -5,9 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer push to the same branch stops the run before it.
+# A newer push to the same branch stops the run before it (a run by hand is its own group: it has the Qt job).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
         include:
           - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
           - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
-          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_TTS_LIBRARY=ON" }
+          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_TTS_LIBRARY=ON -DLEXIPEEK_QT=OFF" }
           - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
     runs-on: ${{ matrix.os }}
     env:
@@ -55,11 +55,12 @@ jobs:
       - name: Models
         if: matrix.models != ''
         run: scripts/fetch-models.sh models ${{ matrix.models }} && echo "LEXIPEEK_MODELS=$PWD/models" >> "$GITHUB_ENV"
+      # Windows: MSVC's environment, so the core builds by Ninja into the dir the WinUI shell's build reuses.
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
       - name: Configure
         shell: bash
-        run: |
-          gen=""; [ "$RUNNER_OS" != Windows ] && gen="-G Ninja"
-          cmake -S . -B build $gen -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
       - uses: actions/cache/save@v4
         if: steps.vcpkg.outputs.cache-hit != 'true'
         with:
@@ -69,6 +70,21 @@ jobs:
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - name: Test
         run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure
+      - uses: actions/cache@v4
+        if: runner.os == 'Windows'
+        with:
+          path: build/packages
+          key: nuget-${{ hashFiles('win/packages.config') }}
+      - name: WinUI shell (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: scripts\build-win.cmd build
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: LexiPeek-Windows
+          path: build/win/LexiPeek
+          retention-days: 7
       - name: Backtrace
         if: failure() && runner.os == 'Linux'
         run: |
@@ -82,3 +98,29 @@ jobs:
           $cli --data models langid "Das Haus am Ende der Straße ist alt."
           $cli --data models translate --from de --to en "Das Haus am Ende der Straße ist alt."
           if [ -d models/opus ]; then $cli --data models translate --from de --to ru --method direct "Das Haus ist alt. Der Garten ist klein."; fi
+
+  # Windows' fallback shell (qt/), only in a run by hand: gh workflow run ci.yml
+  windows-qt:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-2025
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules
+        shell: bash
+        run: |
+          git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
+          git submodule update --init --recursive engines/bergamot
+          echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
+          mkdir -p .vcpkg-cache
+      - uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-windows-x64-qt-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
+          restore-keys: |
+            vcpkg-windows-x64-qt-
+            vcpkg-windows-x64-
+      - name: Qt shell
+        shell: cmd
+        run: scripts\build-win.cmd build-qt qt

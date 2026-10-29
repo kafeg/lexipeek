@@ -57,16 +57,6 @@ wchar_t glyph(const std::string &key) {
 
 xaml::FrameworkElement root(const xaml::Window &w) { return w.Content().as<xaml::FrameworkElement>(); }
 
-void retheme(const xaml::Window &w, xaml::ElementTheme t, const winrt::hstring &title) {
-  using winrt::Microsoft::UI::Windowing::TitleBarTheme;
-  root(w).RequestedTheme(t);
-  w.AppWindow().TitleBar().PreferredTheme(t == xaml::ElementTheme::Light ? TitleBarTheme::Light
-                                          : t == xaml::ElementTheme::Dark ? TitleBarTheme::Dark
-                                                                          : TitleBarTheme::UseDefaultAppMode);
-  w.Title(title);
-  part<controls::TextBlock>(root(w), L"Title").Text(title);
-}
-
 // Closed by its title bar: hidden (a download or a check goes on), shown again as it was.
 void hide_on_close(const xaml::Window &w) {
   w.AppWindow().Closing([](winrt::Microsoft::UI::Windowing::AppWindow const &aw, winrt::Microsoft::UI::Windowing::AppWindowClosingEventArgs const &e) {
@@ -710,27 +700,8 @@ AboutWindow::AboutWindow(CoreClient &client, xaml::ElementTheme theme) : sh_(cli
     if (bar.SelectedItem() && bar.Items().IndexOf(bar.SelectedItem(), i)) tab_ = static_cast<int>(i);
     draw();
   });
-  // The app's icon from its resources, at the screen's scale.
   window = win::window(app::text("menu_about"), content, 560, 700, theme);
-  int px = static_cast<int>(64 * GetDpiForWindow(hwnd(window)) / 96.0);
-  if (auto icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP), IMAGE_ICON, px, px, 0))) {
-    BITMAPINFO bi{};
-    bi.bmiHeader = {sizeof(BITMAPINFOHEADER), px, -px, 1, 32, BI_RGB};
-    void *bits = nullptr;
-    HDC dc = CreateCompatibleDC(nullptr);
-    if (HBITMAP bmp = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0)) {
-      auto old = SelectObject(dc, bmp);
-      DrawIconEx(dc, 0, 0, icon, px, px, 0, nullptr, DI_NORMAL);
-      SelectObject(dc, old);
-      xaml::Media::Imaging::WriteableBitmap wb(px, px);
-      memcpy(wb.PixelBuffer().data(), bits, static_cast<size_t>(px) * px * 4);
-      wb.Invalidate();
-      part<controls::Image>(content, L"Logo").Source(wb);
-      DeleteObject(bmp);
-    }
-    DeleteDC(dc);
-    DestroyIcon(icon);
-  }
+  part<controls::Image>(content, L"Logo").Source(app_icon(static_cast<int>(64 * GetDpiForWindow(hwnd(window)) / 96.0)));
   hide_on_close(window);
   refresh(theme);
 }

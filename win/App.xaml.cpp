@@ -4,7 +4,8 @@
 // WinUI needs a signed-in desktop: over SSH it fails at start (E_ACCESSDENIED); run it there by a scheduled task with an
 // interactive token, as scripts/win-e2e.ps1. Over SSH only --install, --uninstall --yes, --self-test, --probe-selection work.
 // Arguments: --data <dir> (else LEXIPEEK_DATA, else the default), lexipeek://… links, --install, --uninstall [--yes],
-// --self-test <file> (the OS parts, no window), --probe-selection <file>, --snapshots <dir> [--cases <file>] [--ai-fixtures <dir>] (win/snapshots.hpp).
+// --self-test <file> (the OS parts, no window), --probe-selection <file>, --snapshots <dir> [--cases <file>] [--ai-fixtures <dir>] [--firstrun-from <dir>]
+// (win/snapshots.hpp).
 #include "pch.h"
 #include "App.xaml.h"
 #include <algorithm>
@@ -60,7 +61,7 @@ void run() {
   client = new win::CoreClient(data, app::device(os::ram_mb(), cpu_features(), cpu_arch()));
   if (auto dir = opt("--snapshots"); !dir.empty()) {
     shell = new win::Shell(*client, false);
-    return win::snapshots(*shell, dir, opt("--cases"), opt("--ai-fixtures"), [](int failed) { shell->quit(failed); });
+    return win::snapshots(*shell, dir, opt("--cases"), opt("--ai-fixtures"), opt("--firstrun-from"), [](int failed) { shell->quit(failed); });
   }
   shell = new win::Shell(*client, true);
   os::receive([](const std::vector<std::string> &a) {

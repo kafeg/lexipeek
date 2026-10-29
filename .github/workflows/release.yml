@@ -2,8 +2,8 @@ name: release
 # The title names the tag for a push and for a run by hand: scripts/release.sh finds its run by it.
 run-name: Release ${{ inputs.tag || github.ref_name }}
 
-# A v* tag: the macOS app (zip) and the Windows program (exe) built, tested and published on GitHub Releases with the
-# third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
+# A v* tag: the macOS app (zip) and the Windows app (a zip of its folder: WinUI 3, self-contained) built, tested and
+# published on GitHub Releases with the third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
 # none yet); without them the builds are ad-hoc / unsigned and the release notes say how to open them.
 on:
   push:
@@ -109,15 +109,23 @@ jobs:
           mkdir -p dist
           ditto -c -k --sequesterRsrc --keepParent mac/build/Build/Products/Release/LexiPeek.app dist/LexiPeek-macOS.zip
 
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
       - name: Build and test (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release --parallel
-          ctest --test-dir build -C Release --output-on-failure
-          mkdir -p dist
-          cp build/qt/Release/LexiPeek.exe dist/LexiPeek.exe
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLEXIPEEK_QT=OFF
+          cmake --build build --parallel
+          ctest --test-dir build --output-on-failure
+      # The WinUI shell into build\win\LexiPeek\, zipped as that folder (LexiPeek\LexiPeek.exe and its runtime).
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          call scripts\build-win.cmd build || exit /b 1
+          mkdir dist
+          %SystemRoot%\System32\tar.exe -a -c -f dist\LexiPeek-Windows.zip -C build\win LexiPeek
 
       - uses: actions/upload-artifact@v4
         with:
@@ -143,5 +151,5 @@ jobs:
         run: |
           cp THIRD_PARTY_NOTICES.txt dist/
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
-          NOTE=$'macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.\n\nWindows 10/11 (x64): run LexiPeek.exe; it offers to install itself for you. It is not signed yet: on\n"Windows protected your PC" click More info › Run anyway.'
+          NOTE=$'macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.\n\nWindows 10/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
           gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

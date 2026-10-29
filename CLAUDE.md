@@ -158,7 +158,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Engines build as C++17 (`cmake/engines.cmake`), our code as C++20. Linux: OpenBLAS `dynamic-arch` (a cached
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
 - CI (`.github/workflows/ci.yml`): macOS arm64, Linux x64, Windows x64, Linux ASan + UBSan; models from the packs
-  release on macOS and Linux (cached), none on Windows.
+  release on macOS and Linux (cached), none on Windows. Windows: MSVC's environment (`ilammy/msvc-dev-cmd`), the core by
+  Ninja with `-DLEXIPEEK_QT=OFF` into `build`, then `scripts\build-win.cmd build` (the WinUI shell over that dir, NuGet
+  packages cached; the folder as the `LexiPeek-Windows` artifact); the Qt shell on Windows only in a run by hand
+  (`gh workflow run ci.yml`: job `windows-qt`).
 - `mac/`: `cmake/apple_bundle.cmake` walks `lexipeek_core`'s link closure and `libtool`s it into
   `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
@@ -231,6 +234,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe`.
   Settings and About: `settings_window` (+ `packs_pane`, `dicts_pane` with the catalog window, `settings_ui`: setting cards,
   dialogs, pickers) draw the core's rows; made once, their X hides them (downloads go on), a close by code makes them again.
+  `first_run` (qt/first_run's steps as Windows' setup pages: no Accessibility step) is made once too; Done or its X finish it.
+  Its snapshots: `firstrun?step=…` lines (`snapshot-cases.sh`'s `firstrun_cases` without `access` / `done-later`) on an empty
+  data dir with `--firstrun-from <a data dir>` (its packs.json / installed.json copied in as the step needs).
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs and .ico committed; the tray's glyph white and black from `MenuBarIcon.svg`; `win/LexiPeek.rc` takes the .ico files). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
@@ -239,7 +245,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 ## Release
 `scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## 0.1` section
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
-(macOS zip ad-hoc signed, Windows exe, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
+(macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
 `cmake/version.cmake` and `qt/lexipeek.rc.in`, a new CHANGELOG section.
 

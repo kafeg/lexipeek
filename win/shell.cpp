@@ -119,6 +119,7 @@ void Shell::apply() {
   if (main) self(main)->refresh(theme());
   if (settings_ui) settings_ui->refresh(theme());
   if (about_ui) about_ui->refresh(theme());
+  if (first_ui) first_ui->refresh(theme());
 }
 
 void Shell::register_hotkeys() {
@@ -183,25 +184,6 @@ void Shell::open_main() {
   present(main);
 }
 
-// A window phase 1 has no screen for yet: its title and which phase of M8 draws it.
-xaml::Window Shell::placeholder(xaml::Window &slot, const char *title, wchar_t glyph, int phase) {
-  if (!slot) {
-    auto content = load(LR"(<StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" Padding="0,0,0,48">
-  <FontIcon x:Name="Icon" FontSize="48"/>
-  <TextBlock x:Name="Title" HorizontalAlignment="Center" Style="{StaticResource SubtitleTextBlockStyle}"/>
-  <TextBlock x:Name="Phase" HorizontalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-</StackPanel>)");
-    part<controls::FontIcon>(content, L"Icon").Glyph(winrt::hstring(std::wstring(1, glyph)));
-    part<controls::TextBlock>(content, L"Title").Text(tr(title));
-    part<controls::TextBlock>(content, L"Phase").Text(L"M8 · phase " + winrt::to_hstring(phase));
-    slot = window(app::text(title), content, 760, 520, theme());
-    slot.Closed([&slot](auto &&, auto &&) { slot = nullptr; });
-  }
-  slot.Content().as<xaml::FrameworkElement>().RequestedTheme(theme());
-  present(slot);
-  return slot;
-}
-
 // section -1: as it was left.
 void Shell::open_settings(int section, int tab) {
   if (!settings_ui) {
@@ -232,7 +214,18 @@ void Shell::open_about() {
   present(about);
 }
 // The first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
-void Shell::open_first_run() { placeholder(first, "fr_window", 0xE774, 5); }
+void Shell::open_first_run(bool fetch) {
+  if (!first_ui) {
+    first_ui = new FirstRunWindow(c_, theme()), first = first_ui->window;
+    first_ui->finished = [this] { apply(); };
+    first.Closed([this](auto &&, auto &&) { first = nullptr, first_ui = nullptr; });
+  }
+  first_ui->state.hotkey = app::hotkey_label(s_.lookup);
+  first_ui->state.input = app::hotkey_label(s_.input);
+  first_ui->refresh(theme());
+  present(first);
+  if (fetch) first_ui->start();
+}
 
 // lexipeek://lookup?text=… (the card with it) and lexipeek://input (the card to type in); a launch without one opens the window.
 void Shell::handle(const std::vector<std::string> &args) {

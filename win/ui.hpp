@@ -31,6 +31,10 @@ xaml::Window window(const std::string &title, const xaml::UIElement &content, in
 void present(const xaml::Window &w);
 // The window's height fits its content (once it is laid out).
 void fit_height(const xaml::Window &w);
+// A window made by window(): its theme (the title bar's too) and title.
+void retheme(const xaml::Window &w, xaml::ElementTheme theme, const winrt::hstring &title);
+// The app's icon at px × px (premultiplied BGRA, as XAML's bitmaps take it).
+xaml::Media::Imaging::WriteableBitmap app_icon(int px);
 
 // A question as Windows 11's dialogs ask it: title, detail, the accent button (yes) and the other (no; "" none).
 // done(true) for yes; closing it is no.

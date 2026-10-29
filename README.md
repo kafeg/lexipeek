@@ -35,10 +35,10 @@ Privacy & Security → Open Anyway). LexiPeek lives in
 the menu bar. It reads the selected text through Accessibility (never the clipboard): allow it in System Settings →
 Privacy & Security → Accessibility — the first run shows where.
 
-**Windows** 10 or 11, 64-bit. Download `LexiPeek.exe` from [Releases](https://github.com/kafeg/lexipeek/releases) and
-run it: it offers to install itself for you (no administrator rights; the Start menu; removed in Settings → Apps) or
-to just run. Until the exe is signed, Windows may warn that it is from an unknown publisher: "More info" → "Run
-anyway". LexiPeek lives in the tray (^ on the taskbar).
+**Windows** 10 or 11, 64-bit. Download `LexiPeek-Windows.zip` from [Releases](https://github.com/kafeg/lexipeek/releases),
+unzip it and run `LexiPeek.exe` in the `LexiPeek` folder: it offers to install itself for you (no administrator rights;
+the Start menu; removed in Settings → Apps) or to just run from there. Until it is signed, Windows may warn that it is
+from an unknown publisher: "More info" → "Run anyway". LexiPeek lives in the tray (^ on the taskbar).
 
 **First run:** pick the language you read and the one to translate into; the pair downloads once (about 60–240 MB)
 and works offline from then on. More pairs: Settings → Languages → Packs.
@@ -55,7 +55,7 @@ delete that folder to remove them and the packs.
 
 ## Build
 
-C++20 core with all the logic and a thin native shell per OS (SwiftUI on macOS, Qt Widgets on Windows); see
+C++20 core with all the logic and a thin native shell per OS (SwiftUI on macOS, WinUI 3 on Windows); see
 [CLAUDE.md](CLAUDE.md) for the layout and [docs/spec.md](docs/spec.md) for the design.
 
 ```sh
@@ -64,8 +64,9 @@ make test     # the core and its tests (CMake + Ninja; the first build compiles 
 make install  # macOS: the app into /Applications
 ```
 
-On Windows: `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release` in a Visual Studio x64 prompt, then
-`cmake --build build` — `build\qt\LexiPeek.exe` (Qt statically linked; build against your own Qt to relink).
+On Windows (Visual Studio 2022 or its Build Tools with C++ and the Windows SDK, CMake, Ninja, Git): `scripts\build-win.cmd`
+— the app's folder in `build-win\win\LexiPeek\` (`LexiPeek.exe` and the Windows App SDK's runtime). `scripts\build-win.cmd
+build-qt qt` builds the Qt shell instead (`build-qt\qt\LexiPeek.exe`, Qt statically linked; build against your own Qt to relink).
 
 ## License
 

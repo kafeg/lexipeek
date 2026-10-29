@@ -91,6 +91,40 @@ void fit_height(const xaml::Window &w) {
   });
 }
 
+void retheme(const xaml::Window &w, xaml::ElementTheme t, const winrt::hstring &title) {
+  using winrt::Microsoft::UI::Windowing::TitleBarTheme;
+  w.Content().as<xaml::FrameworkElement>().RequestedTheme(t);
+  w.AppWindow().TitleBar().PreferredTheme(t == xaml::ElementTheme::Light ? TitleBarTheme::Light
+                                          : t == xaml::ElementTheme::Dark ? TitleBarTheme::Dark
+                                                                          : TitleBarTheme::UseDefaultAppMode);
+  w.Title(title);
+  part<controls::TextBlock>(w.Content().as<xaml::FrameworkElement>(), L"Title").Text(title);
+}
+
+// The app's icon at px × px (premultiplied BGRA, as XAML's bitmaps take it).
+xaml::Media::Imaging::WriteableBitmap app_icon(int px) {
+  xaml::Media::Imaging::WriteableBitmap bitmap(px, px);
+  BITMAPINFO bi{};
+  bi.bmiHeader.biSize = sizeof bi.bmiHeader;
+  bi.bmiHeader.biWidth = px, bi.bmiHeader.biHeight = -px, bi.bmiHeader.biPlanes = 1, bi.bmiHeader.biBitCount = 32;
+  void *bits = nullptr;
+  HDC dc = CreateCompatibleDC(nullptr);
+  HBITMAP dib = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+  auto icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP), IMAGE_ICON, px, px, 0));
+  if (dib && icon) {
+    auto old = SelectObject(dc, dib);
+    DrawIconEx(dc, 0, 0, icon, px, px, 0, nullptr, DI_NORMAL);
+    GdiFlush();
+    memcpy(bitmap.PixelBuffer().data(), bits, static_cast<size_t>(px) * px * 4);
+    SelectObject(dc, old);
+  }
+  if (icon) DestroyIcon(icon);
+  if (dib) DeleteObject(dib);
+  DeleteDC(dc);
+  bitmap.Invalidate();
+  return bitmap;
+}
+
 xaml::Window ask(const std::string &title, const std::string &detail, const std::string &yes, const std::string &no, xaml::ElementTheme t,
                  std::function<void(bool)> done) {
   auto content = load(LR"(<Grid>

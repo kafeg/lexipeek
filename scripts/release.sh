@@ -2,7 +2,7 @@
 # A release, the same way every time: scripts/release.sh [--pre]
 #   checks (main, clean, pushed, tests, a CHANGELOG.md section for the version), dates that section if "unreleased",
 #   tags v<VERSION>.<commits>, waits for release.yml, checks the published files (checksums, the Mac app's version,
-#   the Windows exe); --pre marks the release a pre-release. macOS (BSD sed, shasum).
+#   the Windows zip); --pre marks the release a pre-release. macOS (BSD sed, shasum).
 #   Run again after a failure: a tag already on HEAD is kept and its build is found or started again.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -46,12 +46,17 @@ gh run watch "$run" --exit-status --interval 60 >/dev/null || die "the build fai
 [ "${1:-}" = "--pre" ] && gh release edit "$TAG" --prerelease >/dev/null
 dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
 gh release download "$TAG" -D "$dir"
-for f in LexiPeek-macOS.zip LexiPeek.exe THIRD_PARTY_NOTICES.txt SHA256SUMS.txt; do [ -s "$dir/$f" ] || die "$f missing"; done
+for f in LexiPeek-macOS.zip LexiPeek-Windows.zip THIRD_PARTY_NOTICES.txt SHA256SUMS.txt; do [ -s "$dir/$f" ] || die "$f missing"; done
 (cd "$dir" && shasum -a 256 -c SHA256SUMS.txt >/dev/null) || die "checksum mismatch"
 ditto -x -k "$dir/LexiPeek-macOS.zip" "$dir/mac"
 got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVersionString)
 [ "v$got" = "$TAG" ] || die "the Mac app says $got, not ${TAG#v}"
 codesign --verify --deep --strict "$dir/mac/LexiPeek.app" || die "the Mac app's signature does not verify"
-[ "$(head -c 2 "$dir/LexiPeek.exe")" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
+# The Windows zip: the LexiPeek folder with the program and the Windows App SDK's runtime beside it.
+names=$(unzip -Z1 "$dir/LexiPeek-Windows.zip")
+for f in LexiPeek.exe Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll resources.pri; do
+  grep -qx "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
+done
+[ "$(unzip -p "$dir/LexiPeek-Windows.zip" LexiPeek/LexiPeek.exe | head -c 2)" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
 [ "${1:-}" = "--pre" ] || [ "$(gh api "repos/$REPO/releases/latest" -q .tag_name)" = "$TAG" ] || die "$TAG is not the latest release"
 echo "released $TAG: https://github.com/$REPO/releases/tag/$TAG"

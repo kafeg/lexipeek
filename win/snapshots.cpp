@@ -134,8 +134,33 @@ void answers(const std::string &fixtures, const std::string &kind) {
     if (f.path().extension() == ".json") std::filesystem::copy_file(f.path(), replies / f.path().filename(), e);
 }
 
+// A first-run step on an empty data dir (firstrun?step=…): packs.json / installed.json of `from` copied in as the step needs.
+Case firstrun_case(const std::string &name, const std::string &step, const std::string &from) {
+  return {name,
+          [step, from](Shell &s) {
+            auto dir = path(s.client().data().empty() ? app::data_dir() : s.client().data());
+            std::error_code e;
+            for (auto *f : {"packs.json", "installed.json"}) std::filesystem::remove(dir / f, e);
+            auto copy = [&](const char *f) { std::filesystem::copy_file(path(from) / f, dir / f, std::filesystem::copy_options::overwrite_existing, e); };
+            if (!from.empty() && (step == "pair" || step == "download" || step == "error" || step == "done")) copy("packs.json");
+            if (!from.empty() && step == "done") copy("installed.json");
+            s.open_first_run(false);
+            auto &st = s.first_ui->state;
+            st.list_error.clear(), st.error.clear(), st.downloading = false, st.done = st.total = 0;
+            st.fetching = step == "list";
+            if (step == "list-error") st.list_error = "Could not resolve host: github.com";
+            if (step == "download") st.downloading = true, st.done = 27'000'000, st.total = 68'000'000;
+            if (step == "error") st.error = "Could not connect to server";
+            s.first_ui->refresh(s.theme());
+          },
+          [](Shell &s) {
+            if (s.first) s.first.AppWindow().Hide();
+          },
+          [](Shell &s) { return content(s.first); }};
+}
+
 // A line of scripts/snapshot-cases.sh's cases: name|url[|kind], the url not percent-encoded ("#" and "+" are text).
-std::optional<Case> card_case(const std::string &line, const std::string &fixtures) {
+std::optional<Case> card_case(const std::string &line, const std::string &fixtures, const std::string &firstrun_from) {
   auto bar = line.find('|');
   if (bar == std::string::npos || bar == 0) return std::nullopt;
   auto name = line.substr(0, bar), rest = line.substr(bar + 1);
@@ -143,8 +168,8 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
   auto url = rest.substr(0, bar2), kind = bar2 == std::string::npos ? "" : rest.substr(bar2 + 1);
   auto q = url.find('?');
   auto host = url.substr(0, q);
-  // The window and the first run: phases 3, 5; noaccess: the Mac's Accessibility (Windows asks for none).
-  if (host != "lookup" && host != "input" && host != "unread") return std::nullopt;
+  // The window: phase 3; noaccess: the Mac's Accessibility (Windows asks for none).
+  if (host != "lookup" && host != "input" && host != "unread" && host != "firstrun") return std::nullopt;
   std::map<std::string, std::string> f;
   for (size_t at = q == std::string::npos ? url.size() : q + 1; at < url.size();) {
     auto amp = url.find('&', at);
@@ -153,6 +178,7 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
     f[kv.substr(0, eq)] = eq == std::string::npos ? "" : kv.substr(eq + 1);
     at = amp == std::string::npos ? url.size() : amp + 1;
   }
+  if (host == "firstrun") return firstrun_case(name, f["step"], firstrun_from);
   Request r;
   if (auto t = f["tab"]; !t.empty())
     r.tab = t == "dictionary" ? CardTab::dictionary : t == "analysis" ? CardTab::analysis : t == "context" ? CardTab::context : CardTab::translate;
@@ -209,7 +235,7 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
   return c;
 }
 
-std::vector<Case> cases(const std::string &file, const std::string &fixtures) {
+std::vector<Case> cases(const std::string &file, const std::string &fixtures, const std::string &firstrun_from) {
   // A copy closes it: its Closed handler lets go of the slot.
   auto close = [](xaml::Window w) {
     if (w) w.Close();
@@ -230,7 +256,6 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures) {
        menu},
       {"main", [](Shell &s) { s.open_main(); }, [close](Shell &s) { close(s.main.try_as<xaml::Window>()); },
        [](Shell &s) { return s.main ? s.main.Content() : nullptr; }},
-      {"firstrun", [](Shell &s) { s.open_first_run(); }, [close](Shell &s) { close(s.first); }, [](Shell &s) { return content(s.first); }},
       {"install",
        [asked](Shell &s) {
          *asked = ask(app::text("inst_q_t"), app::text("inst_q_d"), app::text("inst_btn"), app::text("inst_run"), s.theme(), [](bool) {});
@@ -251,7 +276,7 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures) {
   std::ifstream in(path(file), std::ios::binary);
   for (std::string line; std::getline(in, line);) {
     if (!line.empty() && line.back() == '\r') line.pop_back();
-    if (auto c = card_case(line, fixtures)) all.push_back(*c);
+    if (auto c = card_case(line, fixtures, firstrun_from)) all.push_back(*c);
   }
   return all;
 }
@@ -326,13 +351,14 @@ struct Run {
 
 }  // namespace
 
-void snapshots(Shell &shell, const std::string &dir, const std::string &cases_file, const std::string &fixtures, std::function<void(int)> done) {
+void snapshots(Shell &shell, const std::string &dir, const std::string &cases_file, const std::string &fixtures, const std::string &firstrun_from,
+               std::function<void(int)> done) {
   std::filesystem::path out = path(dir);
   std::filesystem::create_directories(out);
   // AI answers from files: any key will do (the provider would want one).
   wchar_t env[MAX_PATH]{};
   if (GetEnvironmentVariableW(L"LEXIPEEK_AI_REPLIES", env, MAX_PATH)) shell.card.model.key = [] { return std::string("snapshot"); };
-  auto *run = new Run{shell, out, std::move(done), cases(cases_file, fixtures)};  // lives until the process leaves
+  auto *run = new Run{shell, out, std::move(done), cases(cases_file, fixtures, firstrun_from)};  // lives until the process leaves
   run->poll = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
   run->poll.Interval(std::chrono::milliseconds(100));
   run->poll.Tick([run](auto &&, auto &&) { run->tick(); });

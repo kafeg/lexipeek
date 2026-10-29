@@ -22,12 +22,11 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
    dialog, the prompt editor and "Choose…" as `ContentDialog`s) and About; closing hides them (downloads go on). Open:
    Read aloud's section once the voice model runs on Windows; an own dictionary's `.dict` stays on disk when it is deleted
    while the engine has it open (as in `qt/`).
-5. The first run; every snapshot case; then CI and releases switch to it (below) and `qt/` is Linux only.
-- CI, when phase 5 lands: ci.yml's Windows job configures with `-DLEXIPEEK_QT=OFF`, builds and tests the core as now,
-  then `scripts\build-win.cmd build-win` for the shell (Ninja, its own dir; one `build-win.cmd build-qt qt` job while the
-  fallback stays); release.yml zips `build-win\win\LexiPeek\` as `LexiPeek-Windows.zip` instead of copying
-  `build/qt/Release/LexiPeek.exe`; then `LEXIPEEK_QT` is off by default on Windows too (CMakeLists.txt) and README's
-  Windows lines change.
+5. Done: the first run (`first_run`: qt/first_run's steps as Windows' setup pages, its `firstrun-*` snapshots); CI's Windows
+   job builds the core by Ninja with `-DLEXIPEEK_QT=OFF`, then the WinUI shell (`build-win.cmd build`, the folder as an
+   artifact; the Qt shell only in a run by hand); release.yml ships `LexiPeek-Windows.zip` (the folder), release.sh checks
+   it. Open: THIRD_PARTY_NOTICES.txt still names Qt for the Windows app and not the Windows App SDK (MIT) and C++/WinRT
+   it ships now.
 - Open: the tray menu on Windows 11 and by a real click on the icon (tried on Windows 10 with Explorer's messages to the
   icon's window: items, invoked items, light dismiss, Quit; the icon is in the taskbar); WinUI windows on a VM's
   basic display adapter come out blank in screen captures (`--snapshots` renders them by XAML instead); the host window is

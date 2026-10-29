@@ -51,7 +51,7 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `win/` | (M8) Windows: WinUI 3 (Windows App SDK, C++/WinRT, unpackaged, self-contained) — the system's own controls, the core called directly; platform parts: `RegisterHotKey`, UI Automation, Credential Manager |
 | `qt/` | (M6) Linux (and Windows until M8): Qt 6 Widgets in C++ — the core is called directly; the desktop's theme. Platform parts per OS (Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
-| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account) and the Windows exe on GitHub Releases |
+| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account) and the Windows app (its folder zipped) on GitHub Releases |
 
 Why native shells: the look must be the system's on every OS; on macOS almost everything is native anyway (panel,
 material, Service, Accessibility), and SwiftUI settings look as in panerail. The rule (as panerail's `PaneRailKit`):

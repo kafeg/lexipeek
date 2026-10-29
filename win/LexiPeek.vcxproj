@@ -98,6 +98,7 @@
     <ClInclude Include="card.hpp" />
     <ClInclude Include="core_client.hpp" />
     <ClInclude Include="dicts_pane.hpp" />
+    <ClInclude Include="first_run.hpp" />
     <ClInclude Include="packs_pane.hpp" />
     <ClInclude Include="popup.hpp" />
     <ClInclude Include="resource.h" />
@@ -111,6 +112,7 @@
     <ClCompile Include="card.cpp" />
     <ClCompile Include="core_client.cpp" />
     <ClCompile Include="dicts_pane.cpp" />
+    <ClCompile Include="first_run.cpp" />
     <ClCompile Include="packs_pane.cpp" />
     <ClCompile Include="popup.cpp" />
     <ClCompile Include="selection_icon.cpp" />
