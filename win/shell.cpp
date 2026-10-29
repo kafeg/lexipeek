@@ -81,7 +81,8 @@ void MenuHost::close() {
   window_ = nullptr;
 }
 
-Shell::Shell(CoreClient &client, bool live) : card(client), icon(client), c_(client), live_(live) {
+Shell::Shell(CoreClient &client, bool live) : card(client), icon(client), main_keep(client), c_(client), live_(live) {
+  main_keep.card.key = [this] { return os::secret(app::ai_provider(c_.data())); };
   card.theme = [this] { return theme(); };
   card.live = live;
   card.model.key = [this] { return os::secret(app::ai_provider(c_.data())); };
@@ -176,8 +177,10 @@ void Shell::type_text() {
 void Shell::open_main() {
   if (!main) {
     main = winrt::make<winrt::LexiPeek::implementation::MainWindow>();
-    self(main)->open_settings = [this] { open_settings(-1, 0); };
+    self(main)->open_pane = [this](int section, int tab) { open_settings(section, tab); };
     self(main)->open_about = [this] { open_about(); };
+    self(main)->open_first_run = [this] { open_first_run(); };
+    self(main)->start(main_keep);
     main.Closed([this](auto &&, auto &&) { main = nullptr; });
   }
   self(main)->refresh(theme());

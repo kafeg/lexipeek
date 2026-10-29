@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include "ui.hpp"
+#include "MainWindow.xaml.h"
 
 namespace lexipeek::win {
 
@@ -159,6 +160,35 @@ Case firstrun_case(const std::string &name, const std::string &step, const std::
           [](Shell &s) { return content(s.first); }};
 }
 
+// The LexiPeek window: window?page=lookup|words|phrases|history|help[&look=…] (the notes after the cards that fill them).
+Case window_case(const std::string &name, const std::string &url) {
+  auto field = [&url](const std::string &key) {
+    auto at = url.find(key + "=");
+    if (at == std::string::npos) return std::string();
+    at += key.size() + 1;
+    return url.substr(at, url.find('&', at) == std::string::npos ? std::string::npos : url.find('&', at) - at);
+  };
+  using W = winrt::LexiPeek::implementation::MainWindow;
+  auto page = field("page"), look = field("look");
+  int p = page == "words" ? W::words : page == "phrases" ? W::phrases : page == "history" ? W::history : page == "help" ? W::help : W::lookup;
+  auto self = [](Shell &s) { return winrt::get_self<W>(s.main); };
+  Case c{name,
+         [self, p, look](Shell &s) {
+           s.main_keep.card.reset();
+           s.main_keep.query.clear();
+           s.open_main();
+           self(s)->show_page(p);
+           if (!look.empty()) self(s)->look(look);
+         },
+         [](Shell &s) {
+           if (auto w = s.main.try_as<xaml::Window>()) w.Close();
+         },
+         [](Shell &s) { return s.main ? s.main.Content() : nullptr; }};
+  c.quiet = [look](Shell &s) { return look.empty() || (s.main_keep.card.has_card() && !s.main_keep.card.busy()); };
+  c.end = [self](Shell &s) { return s.main && self(s)->scroll_to_end(); };
+  return c;
+}
+
 // A line of scripts/snapshot-cases.sh's cases: name|url[|kind], the url not percent-encoded ("#" and "+" are text).
 std::optional<Case> card_case(const std::string &line, const std::string &fixtures, const std::string &firstrun_from) {
   auto bar = line.find('|');
@@ -168,7 +198,7 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
   auto url = rest.substr(0, bar2), kind = bar2 == std::string::npos ? "" : rest.substr(bar2 + 1);
   auto q = url.find('?');
   auto host = url.substr(0, q);
-  // The window: phase 3; noaccess: the Mac's Accessibility (Windows asks for none).
+  // noaccess: the Mac's Accessibility (Windows asks for none).
   if (host != "lookup" && host != "input" && host != "unread" && host != "firstrun") return std::nullopt;
   std::map<std::string, std::string> f;
   for (size_t at = q == std::string::npos ? url.size() : q + 1; at < url.size();) {
@@ -254,8 +284,6 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures, co
          s.force_warnings = false;
        },
        menu},
-      {"main", [](Shell &s) { s.open_main(); }, [close](Shell &s) { close(s.main.try_as<xaml::Window>()); },
-       [](Shell &s) { return s.main ? s.main.Content() : nullptr; }},
       {"install",
        [asked](Shell &s) {
          *asked = ask(app::text("inst_q_t"), app::text("inst_q_d"), app::text("inst_btn"), app::text("inst_run"), s.theme(), [](bool) {});
@@ -276,7 +304,8 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures, co
   std::ifstream in(path(file), std::ios::binary);
   for (std::string line; std::getline(in, line);) {
     if (!line.empty() && line.back() == '\r') line.pop_back();
-    if (auto c = card_case(line, fixtures, firstrun_from)) all.push_back(*c);
+    if (line.find("|window?") != std::string::npos) all.push_back(window_case(line.substr(0, line.find('|')), line.substr(line.find('?') + 1)));
+    else if (auto c = card_case(line, fixtures, firstrun_from)) all.push_back(*c);
   }
   return all;
 }
@@ -357,7 +386,7 @@ void snapshots(Shell &shell, const std::string &dir, const std::string &cases_fi
   std::filesystem::create_directories(out);
   // AI answers from files: any key will do (the provider would want one).
   wchar_t env[MAX_PATH]{};
-  if (GetEnvironmentVariableW(L"LEXIPEEK_AI_REPLIES", env, MAX_PATH)) shell.card.model.key = [] { return std::string("snapshot"); };
+  if (GetEnvironmentVariableW(L"LEXIPEEK_AI_REPLIES", env, MAX_PATH)) shell.card.model.key = shell.main_keep.card.key = [] { return std::string("snapshot"); };
   auto *run = new Run{shell, out, std::move(done), cases(cases_file, fixtures, firstrun_from)};  // lives until the process leaves
   run->poll = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
   run->poll.Interval(std::chrono::milliseconds(100));

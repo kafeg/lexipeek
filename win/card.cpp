@@ -60,10 +60,16 @@ CardModel::~CardModel() {
 void CardModel::relook() {
   nav = session_.nav();
   look_ = session_.view();
-  auto all = changed;
-  for (auto &f : all)
-    if (f) f();
+  auto all = changed_;  // a listener may forget itself
+  for (auto &[id, f] : all)
+    if (changed_.contains(id)) f();
 }
+
+int CardModel::listen(std::function<void()> f) {
+  changed_[next_] = std::move(f);
+  return next_++;
+}
+void CardModel::forget(int id) { changed_.erase(id); }
 
 void CardModel::acted() {
   if (session_.poll()) relook();
@@ -227,16 +233,22 @@ CardWidget::CardWidget(CardModel &model, bool embedded) : m_(model), embedded_(e
   root_.IsTabStop(true);  // the card's own keys once its field is gone
   root_.UseSystemFocusVisuals(false);
   // Drawn again once the event that changed it is over (a click's handler may be the one that changed it).
-  m_.changed.push_back([this] {
+  listening_ = m_.listen([this] {
     if (pending_) return;
     pending_ = true;
-    winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().TryEnqueue([this] {
+    winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().TryEnqueue([this, alive = alive_] {
+      if (!*alive) return;
       pending_ = false;
       rebuild();
     });
   });
   root_.ActualThemeChanged([this](auto &&, auto &&) { rebuild(); });
   rebuild();
+}
+
+CardWidget::~CardWidget() {
+  *alive_ = false;
+  m_.forget(listening_);
 }
 
 double CardWidget::px(int delta) const { return (v_.text > 0 ? v_.text : 13) + 1 + delta; }  // 13 pt on the Mac: Windows' 14 px Body
@@ -253,7 +265,9 @@ bool CardWidget::scroll_to_end() {
 
 void CardWidget::show_whole(bool on) {
   whole_ = on;
-  winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().TryEnqueue([this] { rebuild(); });
+  winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().TryEnqueue([this, alive = alive_] {
+    if (*alive) rebuild();
+  });
 }
 
 void CardWidget::rebuild() {

@@ -53,6 +53,7 @@ class Shell {
   SelectionIcon icon;
   MenuHost menu;
   winrt::LexiPeek::MainWindow main{nullptr};
+  MainKeep main_keep;  // the window's card and query (the window is made again after a close)
   xaml::Window settings{nullptr}, about{nullptr}, first{nullptr};
   SettingsWindow *settings_ui = nullptr;  // made once, hidden when closed
   AboutWindow *about_ui = nullptr;

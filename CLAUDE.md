@@ -232,6 +232,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   [--ai-fixtures <dir>]` (RenderTargetBitmap of each case, light and dark: XAML's own rendering; the card cases of
   `scripts/snapshot-cases.sh` as `<name>-light|dark[-end].png`, what failed in `failed.txt`; screen captures of WinUI windows can be blank on a VM's basic display
   adapter), `scripts/win-e2e.ps1 -Exe <dir>\win\LexiPeek\LexiPeek.exe`.
+  The LexiPeek window: `MainWindow.xaml*` (its pages in the XAML, drawn by code); made again after each close, so what
+  outlives it — the card's `CardModel` and the query — is the shell's `MainKeep` (a `CardModel`'s listeners and a
+  `CardWidget` forget each other when the widget goes).
   Settings and About: `settings_window` (+ `packs_pane`, `dicts_pane` with the catalog window, `settings_ui`: setting cards,
   dialogs, pickers) draw the core's rows; made once, their X hides them (downloads go on), a close by code makes them again.
   `first_run` (qt/first_run's steps as Windows' setup pages: no Accessibility step) is made once too; Done or its X finish it.

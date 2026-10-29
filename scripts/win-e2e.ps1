@@ -1,6 +1,7 @@
 # The Windows app end to end, in a signed-in desktop session (not over SSH: no desktop there): LexiPeek.exe started on
 # a data dir with packs, a word selected in Notepad, Win+Shift+D, the card read by UI Automation, Esc, the input
-# hotkey, a lexipeek:// link, a second launch; a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
+# hotkey, a lexipeek:// link, a second launch opening the LexiPeek window (a look-up there, History, its TSV export to a
+# temp file, F1 Help, closed); a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-e2e.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
 param([Parameter(Mandatory)] [string]$Exe, [Parameter(Mandatory)] [string]$Data, [Parameter(Mandatory)] [string]$Out)
 $ErrorActionPreference = 'Stop'
@@ -109,6 +110,53 @@ Start-Sleep 3
 Check ($second.HasExited) 'a second launch hands over and quits'
 Shot '6-window'
 Check ((AppTexts $app) -match 'Help') 'the second launch opens the LexiPeek window'
+
+# The LexiPeek window (UI Automation): a look-up, History, its TSV, F1 → Help, closed (the app stays in the tray).
+$ae = [System.Windows.Automation.AutomationElement]
+function MainWin($proc) {
+  $cond = New-Object System.Windows.Automation.PropertyCondition $ae::ProcessIdProperty, $proc.Id
+  $ae::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $cond) | Where-Object { $_.Current.Name -eq 'LexiPeek' } | Select-Object -First 1
+}
+function Find($root, $prop, $value) {
+  $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition $prop, $value))
+}
+$main = MainWin $app
+Check ($main -ne $null) 'the LexiPeek window is found'
+if ($main) {
+  $query = Find $main $ae::AutomationIdProperty 'Query'
+  $query.SetFocus()
+  Keys 'Haus~'
+  Start-Sleep 4
+  Shot '6a-lookup'
+  Check ((AppTexts $app) -match 'Haus') 'the window looks up the query'
+  $hist = $main.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+    Where-Object { $_.Current.Name -match '^History' -and $_.Current.ControlType.ProgrammaticName -eq 'ControlType.ListItem' } | Select-Object -First 1
+  if ($hist) { $hist.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select() }
+  Start-Sleep 2
+  Shot '6b-history'
+  $rows = Find $main $ae::AutomationIdProperty 'Rows'
+  Check ($rows -ne $null -and (Find $rows $ae::NameProperty 'Haus') -ne $null) 'History lists the look-up'
+  $tsv = Join-Path $env:TEMP 'lexipeek-e2e-history.tsv'
+  Remove-Item $tsv -ErrorAction SilentlyContinue
+  # A real click: Invoke would wait for the modal save dialog.
+  $b = (Find $main $ae::AutomationIdProperty 'Tsv').Current.BoundingRectangle
+  [void][Win]::SetCursorPos([int]($b.X + $b.Width / 2), [int]($b.Y + $b.Height / 2))
+  [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0)
+  Start-Sleep 3
+  [System.Windows.Forms.SendKeys]::SendWait($tsv); Start-Sleep -Milliseconds 300
+  Keys '~'
+  Start-Sleep 3
+  Check ((Test-Path $tsv) -and ((Get-Content $tsv -Raw) -match 'Haus')) 'History exported as TSV'
+  Remove-Item $tsv -ErrorAction SilentlyContinue
+  $main.SetFocus()
+  Keys '{F1}'
+  Start-Sleep 2
+  Shot '6c-help'
+  Check ((AppTexts $app) -match 'Open ') 'F1 opens Help with its links to Settings'
+  $main.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+  Start-Sleep 2
+  Check ((-not $app.HasExited) -and (MainWin $app) -eq $null) 'the window closes, the app stays'
+}
 
 # The icon at a new selection (Card → Opening): on for this run, a drag over a word with the mouse, the icon by the
 # cursor, a click on it opens the card.

@@ -3,6 +3,7 @@
 #pragma once
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 #include "core_client.hpp"
@@ -42,7 +43,9 @@ class CardModel {
   Source source = Source::input;
   // The AI key for a request ("" none): the Credential Manager's.
   std::function<std::string()> key = [] { return std::string(); };
-  std::vector<std::function<void()>> changed;  // drawn again
+  // Drawn again: each listener (a widget, the window) until it forgets (the model may outlive them).
+  int listen(std::function<void()> f);
+  void forget(int id);
 
   void reset();
   void lookup(const std::string &text, const std::string &lang = "", const std::string &answer = "");
@@ -69,7 +72,8 @@ class CardModel {
   app::CardSession session_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer poll_{nullptr};
   CardView look_;
-  int notes_ = -1;
+  int notes_ = -1, next_ = 0;
+  std::map<int, std::function<void()>> changed_;
 };
 
 class CardWidget {
@@ -77,6 +81,7 @@ class CardWidget {
   // embedded: in the LexiPeek window (its width, the bar after the text, no pin).
   CardWidget(CardModel &model, bool embedded = false);
   CardWidget(const CardWidget &) = delete;
+  ~CardWidget();
   xaml::FrameworkElement root() const { return root_; }
   void rebuild();
   void show_whole(bool on);  // a cut title whole (a click on it)
@@ -106,6 +111,8 @@ class CardWidget {
   std::string typed_, place_;
   double limit_ = 450;
   bool whole_ = false, cut_ = false, pending_ = false;
+  int listening_ = -1;
+  std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);  // a redraw queued after it is gone does nothing
   CardView v_;
 };
 
