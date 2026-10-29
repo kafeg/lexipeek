@@ -433,8 +433,8 @@ CardView card_view(const Card &c, const CardState &s) {
   bool study_words = std::any_of(c.study.begin(), c.study.end(), [](const Learned &l) { return !l.gloss.empty(); });
   if (c.kind == Card::Kind::word || !c.gloss.empty() || !c.separable.empty() || study_words) v.tab_items.push_back({CardTab::dictionary, tr("tab_dictionary")});
   v.tab_items.push_back({CardTab::translate, tr("tab_translate")});
-  if (c.ai.analysis) v.tab_items.push_back({CardTab::analysis, tr("a_analysis") + " · " + tr("tab_ai")});
-  if (c.ai.context) v.tab_items.push_back({CardTab::context, tr("a_context") + " · " + tr("tab_ai")});
+  if (c.ai.analysis) v.tab_items.push_back({CardTab::analysis, tr("a_analysis") + " " + tr("tab_ai")});
+  if (c.ai.context) v.tab_items.push_back({CardTab::context, tr("a_context") + " " + tr("tab_ai")});
   v.tabs = v.tab_items.size() > 1;
   v.tab = CardTab::translate;
   for (auto &t : v.tab_items)

@@ -1,11 +1,13 @@
 // The AI layer through a fake transport: InkPeek's prompts and versions, requests per provider, errors, the cache, views.
 #include <doctest/doctest.h>
 #include "temp.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "ai/ai.hpp"
 #include "lexipeek/app.hpp"
+#include "lexipeek/core.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
 
@@ -340,7 +342,7 @@ TEST_CASE("ai views: the card's AI tabs, asked only when opened; AI translation 
   c.ai = {true, true, true, true, "AI · claude-sonnet-5-5"};
   v = card_view(c, st);
   REQUIRE(v.tab_items.size() == 4);
-  CHECK(v.tab_items[2].title == "Analysis · AI");
+  CHECK(v.tab_items[2].title == "Analysis AI");
   CHECK(v.tab_items[3].tab == CardTab::context);
   CHECK(card_asks(c, st).empty());  // Translate offline: nothing asked
   REQUIRE(v.methods.size() == 2);
@@ -451,7 +453,7 @@ TEST_CASE("ai settings: Connection by provider, Modules with ✎, prompts edited
   CHECK(app::settings(d.string()).ai.picked == std::map<std::string, bool>{{"analysis.related", true}});
   // Card → Opening offers the AI choices now.
   auto open = app::settings_page(d.string(), SettingsSection::card, 0, st).rows.at(0);
-  CHECK(open.choices == std::vector<std::string>{"Translation, offline", "Translation, AI", "Dictionary, word by word", "Analysis · AI", "Context · AI"});
+  CHECK(open.choices == std::vector<std::string>{"Translation, offline", "Translation, AI", "Dictionary, word by word", "Analysis AI", "Context AI"});
   app::choose(d.string(), "phrase_open", 3, st);
   CHECK(app::settings(d.string()).card.phrase_open == "analysis");
 
@@ -502,5 +504,34 @@ TEST_CASE("ai core: the card offers what is on; Core::ask answers from the provi
   auto off = core.lookup({"Häusern", Source::input, ""});
   CHECK(!off.ai.translate);
   CHECK(!off.ai.analysis);
+  wipe(d);
+}
+
+TEST_CASE("ai: a module with nothing ticked has no tab (the look-up's card, AI → Modules)") {
+  set_ui_language("en");
+  auto d = std::filesystem::temp_directory_path() / "lexipeek-ai-modules";
+  wipe(d);
+  std::filesystem::create_directories(d);
+  auto tabs = [&](const std::map<std::string, bool> &picked) {
+    CoreOptions o;
+    o.data = d;
+    o.ai.provider = "anthropic";
+    o.ai.picked = picked;
+    Core core(o);
+    std::vector<std::string> out;
+    for (auto &t : card_view(core.lookup({"Haus", Source::cli}), {}).tab_items) out.push_back(t.title);
+    return out;
+  };
+  auto all = tabs({});
+  CHECK(std::find(all.begin(), all.end(), "Analysis AI") != all.end());
+  CHECK(std::find(all.begin(), all.end(), "Context AI") != all.end());
+  std::map<std::string, bool> off;
+  for (auto &k : ai::keys(ai::Ask::analysis)) off["analysis." + k.name] = false;
+  auto no_analysis = tabs(off);
+  CHECK(std::find(no_analysis.begin(), no_analysis.end(), "Analysis AI") == no_analysis.end());
+  CHECK(std::find(no_analysis.begin(), no_analysis.end(), "Context AI") != no_analysis.end());
+  for (auto &k : ai::keys(ai::Ask::context)) off["context." + k.name] = false;
+  auto none = tabs(off);
+  CHECK(std::find(none.begin(), none.end(), "Context AI") == none.end());
   wipe(d);
 }
