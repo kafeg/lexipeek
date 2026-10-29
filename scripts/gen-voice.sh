@@ -11,7 +11,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 mkdir "$tmp/tts"
 for f in "$data"/tts/*.gguf; do ln -s "$(cd "$(dirname "$f")" && pwd)/${f##*/}" "$tmp/tts/"; done
-build/cli/lexipeek-cli --data "$tmp" voices --no-home add "$wav" --lang "${id%%-*}" "$said" >/dev/null
+build/cli/lexipeek-cli --data "$tmp" voices add "$wav" --lang "${id%%-*}" "$said" >/dev/null
 out=core/src/speech/voices
 for ext in spk rvq; do cp "$tmp"/voices/*.$ext "$out/$id.$ext"; done
 printf '%s\n' "$said" >"$out/$id.txt"

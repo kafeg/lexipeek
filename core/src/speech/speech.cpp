@@ -202,33 +202,15 @@ std::vector<Voice> app_voices() {
   return out;
 }
 
-std::vector<Voice> own_voices(const fs::path &data, const fs::path &home) {
+std::vector<Voice> own_voices(const fs::path &data) {
   std::vector<Voice> out, own;
   std::error_code ec;
-  // SprachAnker's word voices on this computer: <home>/SprachAnker/models/word-voices/<lang>.json and <lang>-<id>.wav.
-  auto sa = home / "SprachAnker" / "models" / "word-voices";
-  for (auto &lang : languages()) {
-    if (home.empty()) break;
-    try {
-      auto j = json::parse(read_file(sa / (lang + ".json")));
-      std::string id = j.value("id", ""), said = j.value("text", "");
-      auto wav = sa / (lang + "-" + id + ".wav");
-      if (id.empty() || said.empty() || !std::all_of(id.begin(), id.end(), [](char c) { return std::isalnum(static_cast<unsigned char>(c)); }) || !fs::exists(wav, ec)) continue;
-      Voice v{"sprachanker-" + lang + "-" + id, lang, said, "sprachanker"};
-      auto mine = data / "voices" / (v.id + ".spk");
-      if (fs::exists(mine, ec)) v = with_codes(v, read_file(mine), read_file(data / "voices" / (v.id + ".rvq")));
-      v.wav = wav;
-      out.push_back(v);
-    } catch (const std::exception &) {
-    }
-  }
   for (auto &f : fs::directory_iterator(data / "voices", ec)) {
     auto p = f.path();
     if (p.extension() != ".json") continue;
     try {
       auto j = json::parse(read_file(p));
       auto id = text::utf8_of(p.stem());
-      if (id.starts_with("sprachanker-")) continue;
       auto stem = p.parent_path() / p.stem();
       own.push_back(with_codes({id, j.value("lang", ""), j.value("text", ""), "own"}, read_file(fs::path(stem) += ".spk"),
                                read_file(fs::path(stem) += ".rvq")));

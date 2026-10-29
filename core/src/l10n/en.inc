@@ -170,7 +170,6 @@
 {"read_male", "Male"},
 {"read_own_t", "Voices from a recording"},
 {"read_own_d", "Used for their language instead of the app's while on; kept only on this computer."},
-{"read_own_sa", "SprachAnker's word voice on this computer"},
 {"read_own_rec", "From a recording"},
 {"read_own_remove", "Remove this voice"},
 {"read_add_t", "Voice from a recording…"},

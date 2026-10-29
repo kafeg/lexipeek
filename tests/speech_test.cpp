@@ -114,7 +114,7 @@ TEST_CASE("read aloud: the card says the model is loading, and what failed with 
   CHECK(v.fix_section == SettingsSection::speech);
 }
 
-TEST_CASE("read aloud: a reading's length by its text (SprachAnker's maxTokens), the engine's limit at most") {
+TEST_CASE("read aloud: a reading's length by its text, the engine's limit at most") {
   CHECK(max_tokens("Haus") == 33);                         // 12.5 × (2 + 2 × 4 × 0.08)
   CHECK(max_tokens("42") == 48);                           // digits are said as words
   CHECK(max_tokens("Häuser") == max_tokens("Hauser"));     // letters, not bytes
@@ -153,34 +153,27 @@ TEST_CASE("read aloud: WAV in (PCM, any rate, stereo → mono 24 kHz) and out") 
   CHECK(!read_wav("not a wav").error.empty());
 }
 
-TEST_CASE("read aloud: voices — own and SprachAnker's of this computer first for their language, else the app's") {
-  auto d = temp("lexipeek-voices"), home = temp("lexipeek-home");
-  put(home / "SprachAnker/models/word-voices/de.json", R"({"id": "abc123", "text": "Wir stellen die Kisten."})");
-  put(home / "SprachAnker/models/word-voices/de-abc123.wav", wav_bytes(std::vector<float>(24000, 0), 24000));
+TEST_CASE("read aloud: voices — an own one first for its language, else the app's") {
+  auto d = temp("lexipeek-voices");
   put(d / "voices/f00d.json", R"({"lang": "en", "text": "A clip of mine."})");
   put(d / "voices/f00d.spk", std::string(2048 * 4, '\0'));
   put(d / "voices/f00d.rvq", pack_codes(std::vector<std::int32_t>(codebooks * 10, 7)));
-  auto own = own_voices(d, home);
-  REQUIRE(own.size() == 2);
-  CHECK(own[0].id == "sprachanker-de-abc123");
-  CHECK(own[0].source == "sprachanker");
-  CHECK(own[0].spk.empty());  // encoded on its first reading
-  CHECK(own[0].wav == home / "SprachAnker/models/word-voices/de-abc123.wav");
-  CHECK(own[1].id == "f00d");
-  CHECK(own[1].frames == 10);
-  CHECK(own[1].spk.size() == 2048);
+  auto own = own_voices(d);
+  REQUIRE(own.size() == 1);
+  CHECK(own[0].id == "f00d");
+  CHECK(own[0].source == "own");
+  CHECK(own[0].frames == 10);
+  CHECK(own[0].spk.size() == 2048);
   SpeechSettings s;
-  CHECK(voice_for(own, s, "de").id == "sprachanker-de-abc123");
   CHECK(voice_for(own, s, "en").id == "f00d");
-  s.off = {"sprachanker-de-abc123", "f00d"};
+  s.off = {"f00d"};
   if (!app_voices().empty()) {
     CHECK(voice_for(own, s, "de").id == "de-female");
     s.male = true;
     CHECK(voice_for(own, s, "en").id == "en-male");
   }
   CHECK(voice_for(own, s, "ja").id.empty());
-  CHECK(own_voices(d, {}).size() == 1);
-  wipe(d), wipe(home);
+  wipe(d);
 }
 
 TEST_CASE("read aloud: every language has a female and a male voice in the app, each with its clip's text" * doctest::skip(true)) {
@@ -200,7 +193,7 @@ TEST_CASE("read aloud: every language has a female and a male voice in the app, 
 
 TEST_CASE("read aloud: a reading kept is played again without the model; off and no model say what to do") {
   auto d = temp("lexipeek-readings");
-  Speaker sp(d, {});
+  Speaker sp(d);
   auto wait = [&](int t) {
     for (int i = 0; i < 500; i++) {
       auto st = sp.state();
@@ -262,12 +255,12 @@ TEST_CASE("read aloud: Settings → Read aloud's rows and their changes, kept in
   CHECK(p.rows[1].button == "Download");
   CHECK(p.rows[1].detail.find("about 3.5 GB of memory") != std::string::npos);
   st.speech_installed = true;
-  st.voices = {{"sprachanker-de-abc", "de", "Wir stellen die Kisten.", "sprachanker"}, {"f00d", "en", "Mine.", "own"}};
+  st.voices = {{"beef", "de", "Wir stellen die Kisten.", "own"}, {"f00d", "en", "Mine.", "own"}};
   p = settings_view(SettingsSection::speech, 0, s, st);
   keys.clear();
   for (auto &r : p.rows) keys.push_back(r.key);
   CHECK(keys == std::vector<std::string>{"speech_on", "speech_model", "speech_remove", "speech_gpu", "speech_keep", "speech_voice", "",
-                                         "voice.sprachanker-de-abc", "voice.f00d", "voice_remove.f00d", "speech_add"});
+                                         "voice.beef", "voice_remove.beef", "voice.f00d", "voice_remove.f00d", "speech_add"});
   CHECK(p.rows[1].button.empty());
   CHECK(p.rows[7].title == "German · “Wir stellen die Kisten.”");
   st.downloading = "speech", st.progress = 0.5;

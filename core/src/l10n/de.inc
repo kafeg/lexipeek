@@ -170,7 +170,6 @@
 {"read_male", "Männlich"},
 {"read_own_t", "Stimmen aus einer Aufnahme"},
 {"read_own_d", "Lesen ihre Sprache statt der Stimme der App, solange sie an sind; nur auf diesem Computer gespeichert."},
-{"read_own_sa", "SprachAnkers Wortstimme auf diesem Computer"},
 {"read_own_rec", "Aus einer Aufnahme"},
 {"read_own_remove", "Diese Stimme entfernen"},
 {"read_add_t", "Stimme aus einer Aufnahme…"},

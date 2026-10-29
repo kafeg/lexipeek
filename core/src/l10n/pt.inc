@@ -170,7 +170,6 @@
 {"read_male", "Masculina"},
 {"read_own_t", "Vozes de uma gravação"},
 {"read_own_d", "Leem o seu idioma em vez da voz da app enquanto ligadas; guardadas só neste computador."},
-{"read_own_sa", "A voz de palavras do SprachAnker neste computador"},
 {"read_own_rec", "De uma gravação"},
 {"read_own_remove", "Remover esta voz"},
 {"read_add_t", "Voz de uma gravação…"},

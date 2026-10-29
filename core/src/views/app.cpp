@@ -17,11 +17,6 @@ namespace lexipeek::app {
 
 namespace {
 std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : text::path_of(data); }
-std::filesystem::path home_dir() {
-  auto *h = std::getenv("HOME");
-  if (!h) h = std::getenv("USERPROFILE");
-  return h ? text::path_of(h) : std::filesystem::path();
-}
 }  // namespace
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
@@ -90,7 +85,6 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   o.card.read = s.speech.on;
-  o.home = home_dir();
   auto core = std::make_shared<Core>(std::move(o));
   core->speaker().configure(s.speech);
   return {core};
@@ -171,7 +165,7 @@ SettingsPage settings_page(const std::string &data, SettingsSection section, int
   }
   if (section == SettingsSection::speech) {
     st.speech_built = speech::built(), st.speech_installed = speech::model_installed(dir(data));
-    for (auto v : speech::own_voices(dir(data), home_dir())) st.voices.push_back({v.id, v.lang, v.text, v.source});
+    for (auto v : speech::own_voices(dir(data))) st.voices.push_back({v.id, v.lang, v.text, v.source});
   }
   return settings_view(section, tab, load_settings(dir(data)), st);
 }

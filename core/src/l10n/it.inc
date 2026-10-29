@@ -170,7 +170,6 @@
 {"read_male", "Maschile"},
 {"read_own_t", "Voci da una registrazione"},
 {"read_own_d", "Leggono la loro lingua al posto della voce dell'app finché sono attive; tenute solo su questo computer."},
-{"read_own_sa", "La voce delle parole di SprachAnker su questo computer"},
 {"read_own_rec", "Da una registrazione"},
 {"read_own_remove", "Rimuovi questa voce"},
 {"read_add_t", "Voce da una registrazione…"},

@@ -30,7 +30,7 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 
 ## M9 Read aloud (spec M9)
 Done on macOS: the engine (qwentts.cpp as `libqwen.dylib`), the model's download, the voices in the app, voices from a
-recording and SprachAnker's, ▶ in the card by context (⌘.), Settings → Read aloud, kept readings, snapshots.
+recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept readings, snapshots.
 - Windows, after M8's card (`win/card*`) is committed: `LEXIPEEK_TTS` on for Windows — `qwen.dll` beside the exe, linked
   through `win/lexipeek-core.props` (link_closure skips shared libraries now: add its import library) and delay-loaded,
   its Vulkan delay-loaded as llama's (`cmake/vulkan_win.cpp`: no driver, the CPU); the card's ▶ / ■ and Ctrl+. in

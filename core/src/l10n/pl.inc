@@ -172,7 +172,6 @@
 {"read_male", "Męski"},
 {"read_own_t", "Głosy z nagrania"},
 {"read_own_d", "Czytają swój język zamiast głosu aplikacji, gdy są włączone; przechowywane tylko na tym komputerze."},
-{"read_own_sa", "Głos słów SprachAnker na tym komputerze"},
 {"read_own_rec", "Z nagrania"},
 {"read_own_remove", "Usuń ten głos"},
 {"read_add_t", "Głos z nagrania…"},

@@ -111,7 +111,7 @@ bool built() {
 }
 
 struct Speaker::Impl {
-  fs::path data, home;
+  fs::path data;
   mt::ModelHost host;
   mutable std::mutex mu;
   std::condition_variable cv;
@@ -156,7 +156,7 @@ struct Speaker::Impl {
     }
     if (!st.on) return set(ticket, Phase::failed, "", tr("read_off"), true);
     if (!built()) return set(ticket, Phase::failed, "", tr("read_not_built"));
-    auto own = own_voices(data, home);
+    auto own = own_voices(data);
     auto v = voice_for(own, st, r.lang);
     if (v.id.empty()) return set(ticket, Phase::failed, "", tr("read_no_voice", {language_name(r.lang)}), true);
     auto file = reading_file(data, v, r);
@@ -171,12 +171,6 @@ struct Speaker::Impl {
         set(ticket, Phase::making);
 #ifdef LEXIPEEK_TTS
         auto *q = static_cast<Model &>(held).q;
-        if (v.spk.empty() && !v.wav.empty()) {  // SprachAnker's recording: encoded once, kept with the own voices
-          auto a = read_wav(read_file(v.wav));
-          if (!a.error.empty()) throw std::runtime_error(a.error);
-          if (auto e = encode(q, a.samples, v); !e.empty()) throw std::runtime_error(e);
-          save_voice(data, v);
-        }
         std::function<bool()> stale = [&] { return wanted != ticket; };
         auto lang = model_language(r.lang);
         qt_tts_params p;
@@ -223,8 +217,8 @@ struct Speaker::Impl {
   }
 };
 
-Speaker::Speaker(fs::path data, fs::path home) : impl_(std::make_unique<Impl>()) {
-  impl_->data = std::move(data), impl_->home = std::move(home);
+Speaker::Speaker(fs::path data) : impl_(std::make_unique<Impl>()) {
+  impl_->data = std::move(data);
   impl_->worker = std::thread([i = impl_.get()] { i->run(); });
 }
 

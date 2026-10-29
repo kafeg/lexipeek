@@ -355,7 +355,7 @@ std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) 
   for (auto &v : st.voices) {
     bool on = std::find(sp.off.begin(), sp.off.end(), v.id) == sp.off.end();
     auto title = language_name(v.lang) + " · “" + v.text + "”";
-    rows.push_back(toggle("voice." + v.id, title, tr(v.source == "sprachanker" ? "read_own_sa" : "read_own_rec"), on));
+    rows.push_back(toggle("voice." + v.id, title, tr("read_own_rec"), on));
     if (v.source == "own") rows.push_back(valued(Kind::button, "voice_remove." + v.id, tr("read_own_remove"), title, tr("remove")));
   }
   rows.push_back(valued(Kind::button, "speech_add", tr("read_add_t"), tr("read_add_d"), tr("read_add_btn")));

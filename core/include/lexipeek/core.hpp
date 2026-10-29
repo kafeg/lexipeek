@@ -162,7 +162,6 @@ struct CoreOptions {
   CardPrefs card;                // copied into every card
   AiSettings ai;                 // the AI layer
   std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language
-  std::filesystem::path home;  // the person's home folder: SprachAnker's voices of this computer ("" none)
   std::filesystem::path ai_replies;  // answers from files instead of a provider (snapshots, tests): ai/ai.hpp file_transport
 };
 

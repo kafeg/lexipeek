@@ -17,11 +17,6 @@ namespace {
 namespace fs = std::filesystem;
 using namespace speech;
 
-fs::path home() {
-  auto *h = std::getenv("HOME");
-  return h ? fs::path(h) : fs::path();
-}
-
 SpeechSettings settings(const Args &a) {
   SpeechSettings s;
   s.on = true;
@@ -53,9 +48,9 @@ double seconds(const std::string &wav) {
   return static_cast<double>(read_wav(b).samples.size()) / 24000.0;
 }
 
-const Register say{{"say", "[--lang de] [--voice female|male] [--cpu] [--out FILE] [--no-home] TEXT...   (a reading: its WAV and timings)",
-                    {"--cpu", "--no-home"}, [](const Args &a) {
-                      Speaker sp(a.data, a.has("--no-home") ? fs::path() : home());
+const Register say{{"say", "[--lang de] [--voice female|male] [--cpu] [--out FILE] TEXT...   (a reading: its WAV and timings)",
+                    {"--cpu"}, [](const Args &a) {
+                      Speaker sp(a.data);
                       sp.configure(settings(a));
                       double ms, load;
                       auto st = said(sp, {a.text(), a.opt("--lang", "de")}, ms, load);
@@ -66,9 +61,9 @@ const Register say{{"say", "[--lang de] [--voice female|male] [--cpu] [--out FIL
                     }}};
 
 // Each word and sentence twice: first made, then kept. One per line from stdin.
-const Register say_bench{{"say-bench", "[--lang de] [--voice female|male] [--cpu] [--no-home]   (lines from stdin: load, each reading, its audio)",
-                          {"--cpu", "--no-home"}, [](const Args &a) {
-                            Speaker sp(a.data, a.has("--no-home") ? fs::path() : home());
+const Register say_bench{{"say-bench", "[--lang de] [--voice female|male] [--cpu] (lines from stdin: load, each reading, its audio)",
+                          {"--cpu"}, [](const Args &a) {
+                            Speaker sp(a.data);
                             sp.configure(settings(a));
                             std::string line;
                             std::cout << "| text | made ms | audio s | kept ms |\n|---|---|---|---|\n";
@@ -86,20 +81,19 @@ const Register say_bench{{"say-bench", "[--lang de] [--voice female|male] [--cpu
                             return 0;
                           }}};
 
-const Register voices{{"voices", "[add WAV --lang de TEXT... | remove ID] [--no-home]   (the voices: the app's, own, SprachAnker's)", {"--no-home"},
+const Register voices{{"voices", "[add WAV --lang de TEXT... | remove ID]   (the voices: the app's and own)", {},
                        [](const Args &a) {
-                         auto h = a.has("--no-home") ? fs::path() : home();
                          if (!a.rest.empty() && a.rest[0] == "add" && a.rest.size() >= 3) {
-                           Speaker sp(a.data, h);
+                           Speaker sp(a.data);
                            sp.configure(settings(a));
                            std::string said;
                            for (size_t i = 2; i < a.rest.size(); i++) said += (said.empty() ? "" : " ") + a.rest[i];
                            auto e = sp.add_voice(a.rest[1], said, a.opt("--lang", "de"));
                            if (!e.empty()) return std::cerr << "error: " << e << "\n", 1;
                          } else if (!a.rest.empty() && a.rest[0] == "remove" && a.rest.size() == 2) {
-                           Speaker(a.data, h).remove_voice(a.rest[1]);
+                           Speaker(a.data).remove_voice(a.rest[1]);
                          }
-                         for (auto &v : own_voices(a.data, h)) std::cout << std::format("{}\t{}\t{}\t{} frames\t{}\n", v.id, v.lang, v.source, v.frames, v.text);
+                         for (auto &v : own_voices(a.data)) std::cout << std::format("{}\t{}\t{}\t{} frames\t{}\n", v.id, v.lang, v.source, v.frames, v.text);
                          for (auto &v : app_voices()) std::cout << std::format("{}\t{}\t{}\t{} frames\t{}\n", v.id, v.lang, v.source, v.frames, v.text);
                          return 0;
                        }}};

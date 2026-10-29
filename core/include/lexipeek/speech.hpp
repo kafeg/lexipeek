@@ -39,27 +39,26 @@ bool built();
 const std::vector<std::string> &languages();
 bool speaks(const std::string &lang);
 std::string model_language(const std::string &lang);
-// The most codec frames a reading of text may take (SprachAnker's maxTokens): twice the time to say it slowly, 2 s more.
+// The most codec frames a reading of text may take: twice the time to say it slowly, 2 s more.
 int max_tokens(const std::string &text);
 
 // A voice: its speaker embedding, its clip's codec codes ([16, frames], row-major) and what the clip says.
 struct Voice {
-  std::string id = "";  // "de-female", an own voice's hash, "sprachanker-de-<id>"
+  std::string id = "";  // "de-female", an own voice's hash
   std::string lang = "";
   std::string text = "";
-  std::string source = "";  // "app", "own", "sprachanker"
+  std::string source = "";  // "app", "own"
   std::vector<float> spk = {};
   std::vector<std::int32_t> codes = {};
   int frames = 0;
-  std::filesystem::path wav = {};  // SprachAnker's recording, encoded on its first reading
 };
 constexpr int codebooks = 16, code_bits = 11;
 // .rvq: codes packed code_bits each, LSB first, no header.
 std::vector<std::int32_t> unpack_codes(const std::string &bytes);
 std::string pack_codes(const std::vector<std::int32_t> &codes);
-// The voices in the app; own and SprachAnker's of this computer (home: its home folder; SprachAnker's first).
+// The voices in the app; the person's own (from a recording).
 std::vector<Voice> app_voices();
-std::vector<Voice> own_voices(const std::filesystem::path &data, const std::filesystem::path &home);
+std::vector<Voice> own_voices(const std::filesystem::path &data);
 // The voice a language is read in: its first own voice that is on, else the app's female or male one; none: id "".
 Voice voice_for(const std::vector<Voice> &own, const SpeechSettings &s, const std::string &lang);
 
@@ -91,7 +90,7 @@ struct Reading {
 // cancels the one being made.
 class Speaker {
  public:
-  Speaker(std::filesystem::path data, std::filesystem::path home);
+  explicit Speaker(std::filesystem::path data);
   ~Speaker();
   Speaker(const Speaker &) = delete;
   Speaker &operator=(const Speaker &) = delete;
