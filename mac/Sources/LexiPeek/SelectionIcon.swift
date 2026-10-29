@@ -60,8 +60,8 @@ final class SelectionIcon {
 
     private func mouseUp(_ e: NSEvent) {
         let at = NSEvent.mouseLocation
-        // A drag that started on our own window (moving the card) is not a selection in another app.
-        if NSApp.windows.contains(where: { $0.isVisible && $0.frame.contains(downAt) }) { return }
+        // A drag on a window of ours (moving the card) is not a selection in another app; checked at both ends (the card moved by a drag: the system takes its mouse-down, so downAt is an old one).
+        if NSApp.windows.contains(where: { $0.isVisible && ($0.frame.contains(downAt) || $0.frame.contains(at)) }) { return }
         let dragged = hypot(at.x - downAt.x, at.y - downAt.y) > 6
         guard dragged || e.clickCount >= 2 else { return }
         let app = NSWorkspace.shared.frontmostApplication

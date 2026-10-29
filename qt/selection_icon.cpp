@@ -51,7 +51,13 @@ void SelectionIcon::input(platform::Input i) {
   bool twice = now - last_up_ < QGuiApplication::styleHints()->mouseDoubleClickInterval();
   last_up_ = now;
   bool dragged = (at - down_at_).manhattanLength() > 6;
-  if (!(dragged || twice) || platform::front_is_mine() || geometry().contains(at)) return;
+  // A drag on a window of ours (moving the card) is not a selection in another app.
+  auto ours = [](QPoint p) {
+    for (auto *w : QApplication::topLevelWidgets())
+      if (w->isVisible() && w->frameGeometry().contains(p)) return true;
+    return false;
+  };
+  if (!(dragged || twice) || platform::front_is_mine() || ours(at) || ours(down_at_)) return;
   auto app = platform::front_app();
   if (std::find(off_apps_.begin(), off_apps_.end(), app) != off_apps_.end()) return;
   up_at_ = at;

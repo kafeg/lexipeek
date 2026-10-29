@@ -89,20 +89,20 @@ enum Selection {
         return selected(el)
     }
 
-    // The element's selected text, else (web views) the text of its selected text markers.
+    // A web view's selection by its text markers first (as VoiceOver reads it: a line break between blocks, where its
+    // selected text runs "money" and "Crypto" of two headings together), else the element's selected text.
     private static func selected(_ el: AXUIElement) -> Result? {
-        var value: CFTypeRef?
-        if AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success,
-           let text = value as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        var range: CFTypeRef?
+        var str: CFTypeRef?
+        if AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let range,
+           AXUIElementCopyParameterizedAttributeValue(el, "AXStringForTextMarkerRange" as CFString, range, &str) == .success,
+           let text = str as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return Result(text: text, bounds: bounds(el))
         }
-        var range: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let range
-        else { return nil }
-        var str: CFTypeRef?
-        guard AXUIElementCopyParameterizedAttributeValue(el, "AXStringForTextMarkerRange" as CFString, range, &str) == .success,
-              let text = str as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return Result(text: text, bounds: nil)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success,
+              let text = value as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return Result(text: text, bounds: bounds(el))
     }
 
     private static func element(_ from: AXUIElement, _ attr: String) -> AXUIElement? {
