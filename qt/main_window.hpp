@@ -1,4 +1,4 @@
-// The LexiPeek window (mac MainWindow): Look up (its own card) · Words · Phrases · History (Notes) · Help's topics.
+// The LexiPeek window (mac MainWindow): Look up (its own card) · Words · Phrases · History (Notes) · Help.
 #pragma once
 #include <QVBoxLayout>
 #include <QWidget>
@@ -15,7 +15,7 @@ namespace lexipeek::qt {
 class MainWindow : public QWidget {
   Q_OBJECT
  public:
-  enum Page { lookup, words, phrases, history, help_head, help };  // help + i: Help's topic i
+  enum Page { lookup, words, phrases, history, help };
   explicit MainWindow(CoreClient &client);
   CardModel card;
   void show_page(int page);
@@ -48,7 +48,7 @@ class MainWindow : public QWidget {
   QWidget *notes_ = nullptr, *help_ = nullptr;
   QVBoxLayout *banner_ = nullptr;  // ⚠ while no language pack is installed
   NotesTab tab_ = NotesTab::words;
-  int page_ = 0, topic_ = 0;
+  int page_ = 0;
 };
 
 }  // namespace lexipeek::qt

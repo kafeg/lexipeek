@@ -1,5 +1,4 @@
 #include "main_window.hpp"
-#include <algorithm>
 #include <QDate>
 #include <QEvent>
 #include <QFileDialog>
@@ -50,10 +49,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   side_ = new QListWidget;
   side_->setObjectName("nav");
   side_->setIconSize(QSize(16, 16));
-  side_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  side_->setTextElideMode(Qt::ElideRight);
-  for (int i = 0; i < help; ++i) side_->addItem("");
-  side_->item(help_head)->setFlags(Qt::NoItemFlags);  // "Help" over its topics (added by refresh)
+  for (int i = 0; i < 5; ++i) side_->addItem("");
   sl->addWidget(side_, 1);
   memory_ = ui::text(QString(), -1.5, true);
   memory_->setContentsMargins(12, 0, 0, 4);
@@ -88,8 +84,8 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
 
   connect(side_, &QListWidget::currentRowChanged, this, [this](int r) {
     if (r == lookup) pages_->setCurrentIndex(0);
-    else if (r >= help) topic_ = r - help, draw_help(), pages_->setCurrentIndex(2);
-    else if (r >= words && r <= history) tab_ = static_cast<NotesTab>(r - words), page_ = 0, draw_notes(), pages_->setCurrentIndex(1);
+    else if (r == help) draw_help(), pages_->setCurrentIndex(2);
+    else if (r >= 0) tab_ = static_cast<NotesTab>(r - words), page_ = 0, draw_notes(), pages_->setCurrentIndex(1);
   });
   // What is in memory, while the window shows (not the whole Notes list: its place and selection stay).
   auto *timer = new QTimer(this);
@@ -97,7 +93,7 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
     if (isVisible()) memory_->setText(q(c_.engine.memory().text));
   });
   timer->start(15000);
-  resize(960, 720);
+  resize(900, 600);
   side_->setCurrentRow(0);
   icons();
   refresh();
@@ -174,11 +170,8 @@ void MainWindow::look(const QString &text) {
 }
 
 void MainWindow::icons() {
-  const fluent::Glyph glyphs[] = {fluent::Glyph::search, fluent::Glyph::star, fluent::Glyph::comment, fluent::Glyph::history};
-  for (int i = 0; i < 4; ++i) side_->item(i)->setIcon(fluent::icon(glyphs[i]));
-  using G = fluent::Glyph;
-  const G topics[] = {G::info, G::card, G::globe, G::comment, G::search, G::robot, G::globe, G::star};
-  for (int i = help; i < side_->count(); ++i) side_->item(i)->setIcon(fluent::icon(i - help < 8 ? topics[i - help] : G::help));
+  const fluent::Glyph glyphs[] = {fluent::Glyph::search, fluent::Glyph::star, fluent::Glyph::comment, fluent::Glyph::history, fluent::Glyph::help};
+  for (int i = 0; i < 5; ++i) side_->item(i)->setIcon(fluent::icon(glyphs[i]));
   foot_->item(0)->setIcon(fluent::icon(fluent::Glyph::settings));
   foot_->item(1)->setIcon(fluent::icon(fluent::Glyph::info));
 }
@@ -191,14 +184,7 @@ void MainWindow::refresh() {
   page_ = v.page;  // the core keeps it inside the pages (after a removal)
   for (int i = 0; i < 3 && i < static_cast<int>(v.tabs.size()); ++i) side_->item(words + i)->setText(q(v.tabs[i]));
   side_->item(lookup)->setText(t("win_lookup"));
-  side_->item(help_head)->setText(t("help_t"));
-  auto topics = help_view(lookup_key, input_key);
-  bool added = false;
-  for (int i = 0; i < static_cast<int>(topics.size()); ++i) {
-    if (side_->count() <= help + i) side_->addItem(""), added = true;
-    side_->item(help + i)->setText(q(topics[static_cast<size_t>(i)].title));
-  }
-  if (added) icons();
+  side_->item(help)->setText(t("help_t"));
   auto m = c_.engine.memory();
   memory_->setText(q(m.text));
   ui::clear(banner_);
@@ -327,38 +313,37 @@ void MainWindow::draw_notes() {
   l->addWidget(said_);
 }
 
-// The topic picked in the sidebar, with the settings pane it is about.
+// Every topic on one page, each with the settings pane it is about.
 void MainWindow::draw_help() {
   delete help_->layout();
   for (auto *c : help_->findChildren<QWidget *>(Qt::FindDirectChildrenOnly)) delete c;
   auto *l = new QVBoxLayout(help_);
   l->setContentsMargins(20, 16, 20, 16);
   l->setSpacing(6);
-  auto topics = help_view(lookup_key, input_key);
-  if (topics.empty()) return;
-  auto &topic = topics[static_cast<size_t>(std::clamp(topic_, 0, static_cast<int>(topics.size()) - 1))];
-  auto *title = new QLabel(q(topic.title));
-  auto f = title->font();
-  f.setBold(true);
-  f.setPointSizeF(f.pointSizeF() + 3);
-  title->setFont(f);
-  l->addWidget(title);
-  for (auto &i : topic.items) {
-    l->addSpacing(6);
-    if (!i.title.empty()) {
-      auto *it = new QLabel(q(i.title));
-      auto bf = it->font();
-      bf.setWeight(QFont::DemiBold);
-      it->setFont(bf);
-      l->addWidget(it);
+  for (auto &topic : help_view(lookup_key, input_key)) {
+    auto *title = new QLabel(q(topic.title));
+    auto f = title->font();
+    f.setBold(true);
+    f.setPointSizeF(f.pointSizeF() + 1);
+    title->setFont(f);
+    l->addSpacing(8);
+    l->addWidget(title);
+    for (auto &i : topic.items) {
+      if (!i.title.empty()) {
+        auto *it = new QLabel(q(i.title));
+        auto bf = it->font();
+        bf.setWeight(QFont::Medium);
+        it->setFont(bf);
+        l->addWidget(it);
+      }
+      l->addWidget(ui::text(q(i.text), 0, true));
     }
-    l->addWidget(ui::text(q(i.text), 0, true));
-  }
-  if (!topic.go.empty()) {
-    auto s = static_cast<int>(topic.section);
-    auto tab = topic.tab;
-    l->addSpacing(6);
-    l->addWidget(ui::link(q(topic.go), [this, s, tab] { emit openSettings(s, tab); }), 0, Qt::AlignLeft);
+    if (!topic.go.empty()) {
+      auto s = static_cast<int>(topic.section);
+      auto tab = topic.tab;
+      auto *go = ui::link(q(topic.go), [this, s, tab] { emit openSettings(s, tab); });
+      l->addWidget(go, 0, Qt::AlignLeft);
+    }
   }
   l->addStretch();
 }

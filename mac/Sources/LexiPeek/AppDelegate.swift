@@ -185,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showMain() { openMain(nil) }
 
-    @objc private func showHelp() { openMain(.help(0)) }
+    @objc private func showHelp() { openMain(.help) }
 
     // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
     private func openMain(_ page: MainPage?) {
