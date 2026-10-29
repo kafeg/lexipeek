@@ -158,12 +158,15 @@ struct NotesList: View {
         }
     }
 
+    // A list's or a passage's lines run on in a one-line row (cut at its first line break, it said only "Einkaufsliste:…").
+    private static func oneLine(_ s: String) -> String { s.split(whereSeparator: \.isNewline).joined(separator: " ") }
+
     private func row(_ r: NotesLook.Row) -> some View {
         HStack(spacing: 8) {
             Button { model.open(r.text) } label: {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(r.text).lineLimit(1).truncationMode(.tail)
-                    Text(r.line).font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                    Text(Self.oneLine(r.text)).lineLimit(1).truncationMode(.tail)
+                    Text(Self.oneLine(r.line)).font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
