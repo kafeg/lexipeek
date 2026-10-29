@@ -68,6 +68,8 @@ if(LEXIPEEK_QT)
 endif()
 if(APPLE)
   include(cmake/apple_bundle.cmake)
+elseif(WIN32)
+  include(cmake/win_shell.cmake)
 endif()
 
 enable_testing()

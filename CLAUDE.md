@@ -7,7 +7,8 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 ## Stack
 C++20 core with all the logic + a thin native shell per OS. `core/` — no UI, no OS headers; vcpkg: sqlite3,
 nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
-`mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `qt/` (M6) — Qt 6 Widgets for Windows and Linux.
+`mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `qt/` (M6) — Qt 6 Widgets for Windows and Linux;
+`win/` — the coming Windows shell, WinUI 3 (C++/WinRT), now a prototype; then `qt/` stays for Linux only.
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp. macOS 14+, Apple Silicon only.
 
 ## Build and run
@@ -181,6 +182,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
   Mac: a web view's selection by its text markers, paragraph by paragraph (Chromium / Electron give none between
   blocks); `<data>/ax-probe` makes the lookup hotkey write what each AX way gives into `<data>/ax-probe.txt`.
+- `win/` (prototype): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core →
+  `<dir>/win/lexipeek-core.props` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`, shared with mac) →
+  NuGet `win/packages.config` → MSBuild). Works on VS Build Tools without VS's WindowsXaml targets (the vcxproj runs the XAML
+  passes itself). Needs a signed-in desktop (over SSH it fails at start); `LexiPeek.exe --self-test <dir>` writes its lines and a
+  RenderTargetBitmap PNG, then exits. What ships and why: the top of `win/App.xaml.cpp`.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs committed; the tray's glyph white and black from `MenuBarIcon.svg`). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
