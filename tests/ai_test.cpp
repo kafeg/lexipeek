@@ -2,6 +2,8 @@
 #include <doctest/doctest.h>
 #include "temp.hpp"
 #include <algorithm>
+#include <chrono>
+#include <thread>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -9,6 +11,7 @@
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/session.hpp"
 #include "lexipeek/views.hpp"
 
 using namespace lexipeek;
@@ -221,14 +224,15 @@ TEST_CASE("ai: CLI providers — claude -p and codex exec as one shell line (the
   REQUIRE(a.ok());
   REQUIRE(f.commands.size() == 1);
   auto &c = f.commands[0];
-  CHECK(c.find("'claude' -p --output-format json '") != std::string::npos);
+  CHECK(c.find("'claude' -p --output-format json --setting-sources '' --strict-mcp-config --tools '' --effort low") != std::string::npos);
   CHECK(c.find("MAX_THINKING_TOKENS=0") != std::string::npos);
   CHECK(c.find("«it'\\''s»") != std::string::npos);  // a quote inside the prompt
-  CHECK(c.find("--model") == std::string::npos);
+  CHECK(c.find("--model sonnet") != std::string::npos);  // no model picked: Sonnet
   CHECK(c.find("sk-test") == std::string::npos);
   auto &call = f.calls_cli[0];
   CHECK(call.program == "claude");
-  CHECK(call.args == std::vector<std::string>{"-p", "--output-format", "json"});
+  CHECK(call.args == std::vector<std::string>{"-p", "--output-format", "json", "--setting-sources", "", "--strict-mcp-config", "--tools", "",
+                                              "--effort", "low", "--no-session-persistence", "--model", "sonnet"});
   CHECK(call.stdin_arg.empty());
   CHECK(call.prompt.find("«it's»") != std::string::npos);
 
@@ -296,6 +300,8 @@ TEST_CASE("ai: the tabs' Markdown under the app's headings; the reply's JSON ins
   CHECK(ai::render(ai::Ask::quick, R"({"translation":"Я закрываю дверь."})", false) == "Я закрываю дверь.");
   CHECK(ai::json_object(ai::strip_thinking("<think>{\"no\":1}</think>Here: {\"a\": 1} done")) == R"({"a":1})");
   CHECK(ai::json_object("no braces").empty());
+  // Fenced, with raw line breaks inside a string (and an escaped quote): read anyway.
+  CHECK(ai::json_object("```json\n{\"grammar\": \"- a\n- \\\"b\\\"\tc\"}\n```") == R"({"grammar":"- a\n- \"b\"\tc"})");
 }
 
 TEST_CASE("ai: the model list — chat models only, prices, free ones; a filter") {
@@ -533,5 +539,42 @@ TEST_CASE("ai: a module with nothing ticked has no tab (the look-up's card, AI �
   for (auto &k : ai::keys(ai::Ask::context)) off["context." + k.name] = false;
   auto none = tabs(off);
   CHECK(std::find(none.begin(), none.end(), "Context AI") == none.end());
+  wipe(d);
+}
+
+TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysis is on its way — each in its own tab") {
+  set_ui_language("en");
+  auto d = std::filesystem::temp_directory_path() / "lexipeek-ai-race";
+  wipe(d);
+  std::filesystem::create_directories(d);
+  {
+    std::ofstream(d / "settings.json") << R"({"ai": {"provider": "claude-cli", "prefetch": true, "translate": true}})";
+  }
+  ai::set_cli_runner([](const ai::CliCall &c) {
+    bool analysis = c.prompt.find("grammar") != std::string::npos || c.stdin_arg.find("grammar") != std::string::npos;
+    std::this_thread::sleep_for(std::chrono::milliseconds(analysis ? 600 : 50));
+    nlohmann::json body = analysis ? nlohmann::json{{"grammar", "ANALYSIS"}, {"words", nlohmann::json::array()}}
+                                   : nlohmann::json{{"explanation", "CONTEXT"}, {"examples", nlohmann::json::array()}};
+    return ai::CliRan{0, nlohmann::json{{"type", "result"}, {"is_error", false}, {"result", body.dump()}}.dump(), ""};
+  });
+  auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
+  auto s = app::CardSession::make(e);
+  s.look("Haus", Source::input);
+  auto settle = [&](int ms) {
+    for (int i = 0; i < ms / 10; i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    s.poll();
+  };
+  settle(300);
+  REQUIRE(s.has_card());
+  s.select(CardTab::analysis);
+  settle(100);
+  s.select(CardTab::context);
+  settle(1500);
+  auto st = s.nav().state;
+  CHECK(!st.analysis.asking);
+  CHECK(st.analysis.json.find("ANALYSIS") != std::string::npos);
+  CHECK(st.context.json.find("CONTEXT") != std::string::npos);
+  CHECK(!s.busy());
+  ai::set_cli_runner(nullptr);
   wipe(d);
 }

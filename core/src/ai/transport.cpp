@@ -1,5 +1,6 @@
 // How the AI requests leave: libcurl, a shell for the CLI providers, or files (snapshots, tests).
 #include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -22,10 +23,6 @@ std::string read(const fs::path &p) {
 #ifdef _WIN32
 FILE *open_pipe(const std::string &c) { return _popen(c.c_str(), "r"); }
 int close_pipe(FILE *f) { return _pclose(f); }
-#else
-FILE *open_pipe(const std::string &c) { return popen(c.c_str(), "r"); }
-// pclose gives a wait status: the exit code is its second byte.
-int close_pipe(FILE *f) { return (pclose(f) >> 8) & 0xff; }
 #endif
 
 std::function<CliRan(const CliCall &)> &runner() {
@@ -33,30 +30,41 @@ std::function<CliRan(const CliCall &)> &runner() {
   return r;
 }
 
-// The command's stdout; its stderr into a temp file read after it ends. A program that hangs is stopped after
-// cli_timeout seconds (exit 143: SIGTERM). A shell's own runner instead when it set one (Windows).
+// The command's stdout and stderr into temp files read after it ends (a helper it leaves running may hold an
+// inherited pipe long after: Claude Code's does); then its process group is stopped. A program that hangs is stopped
+// after cli_timeout seconds (exit 143: SIGTERM). A shell's own runner instead when it set one (Windows).
 Ran run(const CliCall &call) {
   if (runner()) return runner()(call);
   Ran r;
   std::random_device rd;
-  auto err = fs::temp_directory_path() / ("lexipeek-ai-" + std::to_string(rd()) + ".err");
+  auto name = "lexipeek-ai-" + std::to_string(rd());
+  auto err = fs::temp_directory_path() / (name + ".err"), out = fs::temp_directory_path() / (name + ".out");
   auto command = shell_line(call);
 #ifdef _WIN32
   auto line = "{ " + command + "; } 2>" + shell_quote(err.string());
 #else
-  // set -m: the command is a process group of its own, stopped whole (its programs hold the pipe); the watcher writes
-  // nowhere, so the pipe ends when the command does.
-  auto line = "exec 2>/dev/null; set -m; { " + command + "; } 2>" + shell_quote(err.string()) + " & p=$!; ( sleep " +
-              std::to_string(cli_timeout) + "; kill -TERM -$p ) >/dev/null 2>&1 & w=$!; wait $p; s=$?; kill $w; exit $s";
+  // set -m: the command is a process group of its own, stopped whole (at the timeout, and after it ends: helpers it left).
+  auto line = "exec 2>/dev/null </dev/null; set -m; { " + command + "; } >" + shell_quote(out.string()) + " 2>" +
+              shell_quote(err.string()) + " & p=$!; ( sleep " + std::to_string(cli_timeout) +
+              "; kill -TERM -$p ) >/dev/null 2>&1 & w=$!; wait $p; s=$?; kill -TERM -$w; kill -TERM -$p; exit $s";
 #endif
+#ifdef _WIN32
   auto *f = open_pipe(line);
   if (!f) return r.err = "cannot start a shell", r;
   char buf[4096];
   for (size_t n; (n = std::fread(buf, 1, sizeof buf, f)) > 0;) r.out.append(buf, n);
   r.code = close_pipe(f);
+#else
+  // No pipe: a pipe of another request running at the same time would be inherited by this one's watcher (popen's
+  // pipes are not close-on-exec) and hold that request until the watcher ends.
+  int st = std::system(line.c_str());
+  r.code = st == -1 ? -1 : (st >> 8) & 0xff;  // a wait status: the exit code is its second byte
+  r.out = read(out);
+#endif
   r.err = read(err);
   std::error_code ec;
   fs::remove(err, ec);
+  fs::remove(out, ec);
   return r;
 }
 

@@ -369,11 +369,29 @@ std::string strip_thinking(const std::string &s) {
   return think.replace(s, "");
 }
 
+// A model's line breaks and tabs left raw inside strings (invalid JSON, frequent with little reasoning) escaped.
+static std::string escape_raw(const std::string &s) {
+  std::string out;
+  bool in = false, esc = false;
+  for (char c : s) {
+    if (in && !esc && (c == '\n' || c == '\r' || c == '\t')) {
+      out += c == '\n' ? "\\n" : c == '\r' ? "\\r" : "\\t";
+      continue;
+    }
+    if (c == '"' && !esc) in = !in;
+    esc = in && !esc && c == '\\';
+    out += c;
+  }
+  return out;
+}
+
 std::string json_object(const std::string &s) {
   auto a = s.find('{');
   auto b = s.rfind('}');
   if (a == std::string::npos || b == std::string::npos || b <= a) return "";
-  auto j = json::parse(s.substr(a, b - a + 1), nullptr, false);
+  auto body = s.substr(a, b - a + 1);
+  auto j = json::parse(body, nullptr, false);
+  if (j.is_discarded()) j = json::parse(escape_raw(body), nullptr, false);
   return j.is_object() ? j.dump() : "";
 }
 
@@ -390,9 +408,11 @@ CliCall cli_command(const AiSettings &s, const std::string &system, const std::s
     c.stdin_arg = "-";
     return c;
   }
+  // A quick one-shot: none of the person's Claude Code setup (hooks, MCP servers, tools, saved sessions), the least
+  // effort, Sonnet unless a model is picked (Claude Code's default may be a slower one).
   c.env = {{"MAX_THINKING_TOKENS", "0"}};
-  c.args = {"-p", "--output-format", "json"};
-  if (!m.empty()) c.args.insert(c.args.end(), {"--model", m});
+  c.args = {"-p", "--output-format", "json", "--setting-sources", "", "--strict-mcp-config", "--tools", "",
+            "--effort", "low", "--no-session-persistence", "--model", m.empty() ? "sonnet" : m};
   return c;
 }
 
