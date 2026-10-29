@@ -380,26 +380,47 @@ std::vector<Hit> StarDict::lookup(const std::string &query) {
 }
 
 std::optional<Related> StarDict::related(const std::string &word) {
-  fs::path rel = base_.string() + ".rel";
-  std::ifstream f(rel, std::ios::binary);
-  if (!f) return std::nullopt;
-  f.seekg(0, std::ios::end);
-  auto len = static_cast<uint64_t>(f.tellg());
+  std::lock_guard g(rel_mu_);
+  if (!rel_tried_) {
+    rel_tried_ = true;
+    auto rel = base_;
+    rel += ".rel";
+    rel_.open(rel, std::ios::binary);
+    if (rel_) rel_.seekg(0, std::ios::end), rel_len_ = static_cast<uint64_t>(rel_.tellg());
+  }
+  if (!rel_.is_open() || rel_len_ == 0) return std::nullopt;
+  auto &f = rel_;
+  auto len = rel_len_;
+  std::string buf;
+  auto block = [&](uint64_t at) {
+    f.clear();
+    f.seekg(static_cast<std::streamoff>(at));
+    buf.resize(4096);
+    f.read(buf.data(), static_cast<std::streamsize>(buf.size()));
+    buf.resize(static_cast<size_t>(f.gcount()));
+    return !buf.empty();
+  };
   // The first whole line starting at or after at: (its start, its text).
   auto line_at = [&](uint64_t at) -> std::optional<std::pair<uint64_t, std::string>> {
-    f.clear();
     uint64_t start = at;
     if (at > 0) {
-      f.seekg(static_cast<std::streamoff>(at - 1));
-      for (char c; f.get(c) && c != '\n';) {}
-      if (!f) return std::nullopt;
-      start = static_cast<uint64_t>(f.tellg());
-    } else {
-      f.seekg(0);
+      for (uint64_t p = at - 1;; p += buf.size()) {
+        if (!block(p)) return std::nullopt;
+        if (auto i = buf.find('\n'); i != std::string::npos) {
+          start = p + i + 1;
+          break;
+        }
+      }
     }
     if (start >= len) return std::nullopt;
     std::string l;
-    std::getline(f, l);
+    for (uint64_t p = start; block(p); p += buf.size()) {
+      if (auto i = buf.find('\n'); i != std::string::npos) {
+        l.append(buf, 0, i);
+        break;
+      }
+      l += buf;
+    }
     return std::make_pair(start, l);
   };
   auto cmp = [&](const std::string &l) {

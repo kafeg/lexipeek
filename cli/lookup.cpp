@@ -15,13 +15,20 @@ const Register lookup{{"lookup", "[--to ru] [--translate] [--full] [--time] [--r
                          o.data = a.data;
                          o.answer = a.opt("--to", "ru");
                          if (a.has("--ram")) o.device = Device{std::stoi(a.opt("--ram")), {"asimddp"}};
+                         auto ms = [](std::chrono::steady_clock::time_point t) {
+                           return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count();
+                         };
+                         auto t0 = std::chrono::steady_clock::now();
                          Core core(o);
+                         auto open = ms(t0);
                          auto text = a.text();
+                         auto t1 = std::chrono::steady_clock::now();
                          auto c = core.lookup({text, Source::cli, o.answer});
+                         auto first = ms(t1);
                          if (a.has("--time")) {
                            auto t = std::chrono::steady_clock::now();
                            for (int i = 0; i < 10; i++) core.lookup({text, Source::cli, o.answer});
-                           std::cout << "lookup: " << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t).count() / 10 << " ms (warm)\n";
+                           std::cout << std::format("lookup: open {:.0f} ms, first {:.0f} ms, warm {:.1f} ms\n", open, first, ms(t) / 10);
                          }
                          if (c.kind == Card::Kind::empty) return std::cerr << "nothing to look up\n", 1;
                          static const char *kinds[] = {"empty", "word", "phrase", "passage"};

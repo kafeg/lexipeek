@@ -71,6 +71,11 @@ class StarDict {
   size_t count_ = 0, blob_ = 0;
   struct Data;
   std::unique_ptr<Data> data_;
+  // The .rel file, kept open (a passage asks it for every word): read by blocks, not by characters.
+  std::mutex rel_mu_;
+  std::ifstream rel_;
+  uint64_t rel_len_ = 0;
+  bool rel_tried_ = false;
 };
 
 // Every .ifo under root.

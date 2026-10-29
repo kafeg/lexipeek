@@ -57,6 +57,17 @@ per-user install and uninstall.
 - OPUS-MT on an 8 GB Mac: its working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.
 - Translations of the UI not reviewed by native speakers; low-level errors (libcurl, libarchive) stay English.
 
+## Speed (macOS, M2 Pro; `lexipeek-cli lookup --time`, `bench --text`)
+- Look-up, warm: word 7 ms, phrase 25 ms, 100-word passage ~250 ms (a third of it the separable verbs' `.rel`
+  searches, ~15 % `Library::all()` per word). A process's first look-up 0.5–0.9 s (indexes read whole: the app does it
+  at launch, `prepare()`).
+- 100 words, model loaded: Fast 0.24 s, Direct 6.0 s (one Marian thread: the slow one), AI model 2.6 s. Loading:
+  Fast 0.1 s, Direct 0.13 s, Hy-MT2 0.2–0.7 s.
+- Memory, MB (loaded / translating / peak RSS): Fast 102 / 428 / 872, Direct 252 / 1161 / 2326, Hy-MT2 199 / 223 / 282
+  (+ its Metal buffers).
+- AI by `claude -p` (quick, a word): ~9 s; again from the store.
+- Open: Direct on long passages (more threads or a worker pool), a passage's gloss (`Library::all()` cached).
+
 ## Kept as InkPeek, by decision
 - Unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language when no dictionary knows a word:
   detecting "not a language" would misfire on real text.
