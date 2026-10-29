@@ -97,6 +97,7 @@ struct Learned {
   std::vector<Gloss> gloss = {};  // a phrase word by word through that pack
   bool has_method = false;
   Method method = Method::fast;  // the translation answer → lang
+  std::vector<Method> can = {};  // the methods it has (a method picked in the card: used where it can be)
   std::string reason = "";       // why there is none
 };
 
@@ -177,8 +178,9 @@ class Core {
   // Slow: the card's text with a method (default: card.method); kept in the store, so it comes back at once.
   // Fast through English: the English is kept as the text's translation into English (InkPeek's), shown when asked.
   Translation translate(const Card &card, std::optional<Method> m = std::nullopt, int tag = 0);
-  // The text into card.study[i] (a language you learn) with its method; kept as InkPeek's (lang that language).
-  Translation translate_into(const Card &card, int i, int tag = 0);
+  // The text into card.study[i] (a language you learn) with m where it has it, else its own method; kept as InkPeek's
+  // (lang that language).
+  Translation translate_into(const Card &card, int i, std::optional<Method> m = std::nullopt, int tag = 0);
   // Blocking, only on the person's action: the card's text's AI answer, the saved one when there is (offline); key: the
   // provider's API key, from the shell (never kept here).
   ai::Answer ask(const Card &card, ai::Ask a, const std::string &key);

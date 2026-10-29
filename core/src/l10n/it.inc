@@ -546,7 +546,7 @@
 {"help_open", "Apri {1}"},
 {"net_offline", "Nessuna rete: controlla la connessione."},
 {"net_unreachable", "Il server non risponde: controlla la rete o la VPN e riprova."},
-{"mt_ask_ai", "Traduci con l'IA…"},
+{"mt_ask_ai", "Traduci con l'IA"},
 {"ai_title_on", "Le tab IA nella scheda e la traduzione IA: IA → Moduli. Disattivata: tutto funziona offline."},
 {"no_apps", "Ancora nessuna app."},
 {"ai_open_settings", "Apri Impostazioni → IA"},

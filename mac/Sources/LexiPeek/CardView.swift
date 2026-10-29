@@ -363,6 +363,11 @@ struct CardView: View {
             }
         case .heading:
             Text(r.text).bold().textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+        case .block:
+            VStack(alignment: .leading, spacing: 8) {
+                if r.entry > 0 { Divider().padding(.top, 6) }
+                (Text(r.text).font(font(2, .semibold)) + Text("  " + r.label).font(font(-2)).foregroundColor(.secondary))
+            }
         case .sense:
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(r.label).foregroundStyle(.secondary).monospacedDigit().frame(minWidth: 18, alignment: .trailing)

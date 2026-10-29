@@ -6,6 +6,7 @@
 #include <QHBoxLayout>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QFrame>
 #include <QLabel>
 #include <QTextLayout>
 #include <QLineEdit>
@@ -383,6 +384,24 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
       return l;
     }
     case S::heading: return label(q(r.text), font(0, true));
+    case S::block: {
+      auto *w = new QWidget;
+      auto *l = new QVBoxLayout(w);
+      l->setContentsMargins(0, r.entry > 0 ? 6 : 0, 0, 0);
+      l->setSpacing(8);
+      if (r.entry > 0) {
+        auto *rule = new QFrame;
+        rule->setFrameShape(QFrame::HLine);
+        rule->setFrameShadow(QFrame::Plain);
+        ui::grey(rule);
+        l->addWidget(rule);
+      }
+      auto f = font(2, true);
+      l->addWidget(label(q(r.text).toHtmlEscaped() + "&nbsp;&nbsp;<span style='color: gray; font-size: " + QString::number(font(-2).pointSizeF()) +
+                             "pt; font-weight: normal'>" + q(r.label).toHtmlEscaped() + "</span>",
+                         f, true));
+      return w;
+    }
     case S::sense: return label("<span style='color: gray'>" + q(r.label) + "</span>&nbsp;&nbsp;" + q(r.text).toHtmlEscaped(), font(), true);
     case S::example: {
       auto *l = label(q(r.text), font(-1));

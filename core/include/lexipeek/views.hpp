@@ -117,7 +117,8 @@ struct CardRow {
     example,   // an example under a sense, indented: "◆ Ich gehe nach Hause — Я иду домой."
     section,   // a section under an article: label its preview (two lines at most), text its caption ("Related words · 133 ›")
     english,   // Mozilla's English in between, smaller, selectable, under the translation
-    markdown   // an AI answer's paragraph: light Markdown (**bold**, *italic*), "• " lists, selectable
+    markdown,  // an AI answer's paragraph: light Markdown (**bold**, *italic*), "• " lists, selectable
+    block      // a language you learn: text its name, larger, label its direction ("ru → de"); entry its index (> 0: a rule above)
   };
   Style style = Style::note;
   std::string label, text, html;

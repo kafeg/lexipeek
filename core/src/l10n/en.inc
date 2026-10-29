@@ -546,7 +546,7 @@
 {"help_open", "Open {1}"},
 {"net_offline", "No network: check the connection."},
 {"net_unreachable", "The server does not answer: check the network or the VPN, then try again."},
-{"mt_ask_ai", "Translate with AI…"},
+{"mt_ask_ai", "Translate with AI"},
 {"ai_title_on", "Its tabs in the card and AI translation: AI → Modules. Off: everything works offline."},
 {"no_apps", "No apps yet."},
 {"ai_open_settings", "Open Settings → AI"},

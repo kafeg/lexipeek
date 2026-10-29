@@ -546,7 +546,7 @@
 {"help_open", "{1} öffnen"},
 {"net_offline", "Keine Internetverbindung: Verbindung prüfen."},
 {"net_unreachable", "Der Server antwortet nicht: Netz oder VPN prüfen und erneut versuchen."},
-{"mt_ask_ai", "Mit KI übersetzen…"},
+{"mt_ask_ai", "Mit KI übersetzen"},
 {"ai_title_on", "Die KI-Tabs der Karte und die KI-Übersetzung: KI → Module. Aus: alles läuft offline."},
 {"no_apps", "Noch keine Apps."},
 {"ai_open_settings", "Einstellungen → KI öffnen"},

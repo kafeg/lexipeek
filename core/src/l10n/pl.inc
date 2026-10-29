@@ -550,7 +550,7 @@
 {"help_open", "Otwórz {1}"},
 {"net_offline", "Brak sieci: sprawdź połączenie."},
 {"net_unreachable", "Serwer nie odpowiada: sprawdź sieć lub VPN i spróbuj ponownie."},
-{"mt_ask_ai", "Przetłumacz przez AI…"},
+{"mt_ask_ai", "Przetłumacz przez AI"},
 {"ai_title_on", "Zakładki AI na karcie i tłumaczenie AI: AI → Moduły. Wyłączone: wszystko działa offline."},
 {"no_apps", "Na razie brak aplikacji."},
 {"ai_open_settings", "Otwórz Ustawienia → AI"},

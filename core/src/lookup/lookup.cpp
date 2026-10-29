@@ -341,6 +341,14 @@ Card Core::lookup(const Request &r) {
       auto [ms, pick] = impl_->methods(c.answer, l.lang);
       l.has_method = pick.has_value(), l.method = pick.value_or(Method::fast);
       if (!pick) l.reason = ms.front().reason;
+      for (auto &m : ms)
+        if (m.available) l.can.push_back(m.method);
+      // The card's method menu: the first language's methods, available when any language has it.
+      if (c.methods.empty()) c.methods = ms;
+      else
+        for (auto &m : c.methods)
+          for (auto &o : ms)
+            if (o.method == m.method && o.available) m.available = true, m.reason.clear();
     }
   if (c.lang.empty() || c.lang == c.answer || c.mt_off) return c;
   std::tie(c.methods, c.method) = impl_->methods(c.lang, c.answer);
@@ -354,11 +362,12 @@ Translation Core::translate(const Card &card, std::optional<Method> m, int tag) 
   return impl_->run(card, card.lang, card.answer, *method, tag);
 }
 
-Translation Core::translate_into(const Card &card, int i, int tag) {
+Translation Core::translate_into(const Card &card, int i, std::optional<Method> m, int tag) {
   if (i < 0 || i >= static_cast<int>(card.study.size())) return {"", "", "", tr("mt_none")};
   auto &l = card.study[static_cast<size_t>(i)];
   if (!l.has_method) return {"", "", "", l.reason.empty() ? tr("mt_none") : l.reason};
-  return impl_->run(card, card.answer, l.lang, l.method, tag);
+  bool has = m && std::find(l.can.begin(), l.can.end(), *m) != l.can.end();
+  return impl_->run(card, card.answer, l.lang, has ? *m : l.method, tag);
 }
 
 ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {

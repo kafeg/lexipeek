@@ -546,7 +546,7 @@
 {"help_open", "Abrir {1}"},
 {"net_offline", "Sem rede: verifique a ligação."},
 {"net_unreachable", "O servidor não responde: verifique a rede ou a VPN e tente de novo."},
-{"mt_ask_ai", "Traduzir com IA…"},
+{"mt_ask_ai", "Traduzir com IA"},
 {"ai_title_on", "Os separadores de IA do cartão e a tradução com IA: IA → Módulos. Desligado: tudo funciona offline."},
 {"no_apps", "Ainda não há apps."},
 {"ai_open_settings", "Abrir Definições → IA"},

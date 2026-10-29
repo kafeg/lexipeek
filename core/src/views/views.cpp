@@ -220,12 +220,20 @@ CardRow gloss_row(const Card &c, const Gloss &g) {
   return r;
 }
 
+// A language you learn's block title: "German  ru → de".
+CardRow block_row(const Card &c, size_t i) {
+  CardRow r{Style::block, c.answer + " → " + c.study[i].lang, language_name(c.study[i].lang), ""};
+  r.entry = static_cast<int>(i);
+  return r;
+}
+
 // Languages you learn (InkPeek's studyBlocks): a block per language under its name — a word: its pack's line (a click:
 // the full entry), the translated words with their own header and frequency (a click: their card); a phrase: word by word.
 std::vector<CardRow> study_rows(const Card &c) {
   std::vector<CardRow> rows;
-  for (auto &l : c.study) {
-    rows.push_back({Style::heading, "", language_name(l.lang), ""});
+  for (size_t i = 0; i < c.study.size(); i++) {
+    auto &l = c.study[i];
+    rows.push_back(block_row(c, i));
     if (c.kind != Card::Kind::word) {
       if (l.gloss.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
       for (auto &g : l.gloss) rows.push_back(gloss_row(c, g));
@@ -352,7 +360,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
     std::vector<CardRow> rows;
     for (size_t i = 0; i < c.study.size(); i++) {
       auto &l = c.study[i];
-      rows.push_back({Style::heading, "", language_name(l.lang), ""});
+      rows.push_back(block_row(c, i));
       if (!l.has_method) rows.push_back({Style::note, "", l.reason.empty() ? tr("mt_none") : l.reason, ""});
       else if (i < s.learned.size() && !s.learned[i].ok()) rows.push_back({Style::error, "", s.learned[i].error, ""});
       else if (i < s.learned.size()) {

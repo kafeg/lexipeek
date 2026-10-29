@@ -61,7 +61,8 @@ CoreOptions options(const fs::path &d, std::vector<std::string> study) {
 
 std::vector<std::string> texts(const CardView &v) {
   std::vector<std::string> out;
-  for (auto &r : v.rows) out.push_back(r.label.empty() ? r.text : r.label + (r.text.empty() ? "" : " " + r.text));
+  for (auto &r : v.rows)
+    out.push_back(r.label.empty() || r.style == CardRow::Style::block ? r.text : r.label + (r.text.empty() ? "" : " " + r.text));
   return out;
 }
 
@@ -204,6 +205,8 @@ TEST_CASE("study: a word in the answer language — a block per language, the wo
   CHECK(v.books.empty());
   CHECK(v.answers.empty());  // passive: no menu
   CHECK(v.subtitle.starts_with("ru → de, en"));
+  CHECK(v.rows.front().style == CardRow::Style::block);
+  CHECK(v.rows.front().label == "ru → de");
   CHECK(texts(v) == V{"German", "дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
                       "das Gebäude (Gebäudes, pl. Gebäude)", "Heim", "English", "дом (дома, pl. дома) — house, home",
                       "house (pl. houses)", "home"});
@@ -261,6 +264,10 @@ TEST_CASE("study: a phrase — word by word per language, the translations as th
   auto v = card_view(c, nav.state);
   CHECK(texts(v) == V{"English", "big house", "German", "Translating…"});
   CHECK(v.copy == "big house");
+  // The method menu: the offline methods, not AI alone; its title the method in use.
+  CHECK(v.menu);
+  CHECK(v.methods.size() == 3);
+  CHECK(v.menu_title == "Fast · Mozilla");
   nav.learned(1, nav.state.method, {"", "", "", "failed"});
   nav.translated(nav.state.method, {"big house", "", "", ""});
   CHECK(texts(card_view(c, nav.state)) == V{"English", "big house", "German", "failed"});

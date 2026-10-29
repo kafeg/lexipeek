@@ -546,7 +546,7 @@
 {"help_open", "Abrir {1}"},
 {"net_offline", "Sin red: comprueba la conexión."},
 {"net_unreachable", "El servidor no responde: comprueba la red o la VPN e inténtalo de nuevo."},
-{"mt_ask_ai", "Traducir con IA…"},
+{"mt_ask_ai", "Traducir con IA"},
 {"ai_title_on", "Las pestañas de IA de la tarjeta y la traducción con IA: IA → Módulos. Desactivado: todo funciona sin conexión."},
 {"no_apps", "Aún no hay apps."},
 {"ai_open_settings", "Abrir Ajustes → IA"},

@@ -74,7 +74,7 @@ Card Engine::lookup_as(const std::string &text, Source source, const std::string
   return core->lookup({text, source, answer, lang});
 }
 Translation Engine::translate(const Card &card, Method m, int tag) const { return core->translate(card, m, tag); }
-Translation Engine::translate_into(const Card &card, int i, int tag) const { return core->translate_into(card, i, tag); }
+Translation Engine::translate_into(const Card &card, int i, Method m, int tag) const { return core->translate_into(card, i, m, tag); }
 int Engine::new_tag() {
   static std::atomic<int> n{0};
   return ++n;

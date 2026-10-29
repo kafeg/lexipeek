@@ -546,7 +546,7 @@
 {"help_open", "Ouvrir {1}"},
 {"net_offline", "Pas de réseau : vérifiez la connexion."},
 {"net_unreachable", "Le serveur ne répond pas : vérifiez le réseau ou le VPN, puis réessayez."},
-{"mt_ask_ai", "Traduire par l'IA…"},
+{"mt_ask_ai", "Traduire par l'IA"},
 {"ai_title_on", "Les onglets IA de la carte et la traduction IA : IA → Modules. Désactivé : tout fonctionne hors ligne."},
 {"no_apps", "Aucune app pour l'instant."},
 {"ai_open_settings", "Ouvrir Réglages → IA"},
