@@ -137,9 +137,7 @@ void FirstRunWindow::changeEvent(QEvent *e) {
 
 void FirstRunWindow::closeEvent(QCloseEvent *e) {
   dl_.cancel();
-  auto s = app::settings(c_.data());
-  s.first_run = true;
-  app::save(c_.data(), s);
+  app::finish_first_run(c_.data());
   emit finished();
   QWidget::closeEvent(e);
 }
@@ -162,9 +160,7 @@ void FirstRunWindow::install() {
   if (state.downloading || look_.book.empty()) return;
   auto dir = c_.data();
   auto answer = look_.answer, book = look_.book;
-  auto s = app::settings(dir);
-  s.answer = answer;
-  app::save(dir, s);
+  app::set_answer(dir, answer);
   c_.configure();
   state.answer = answer, state.book = book;
   auto ids = app::missing_ids(dir, book, answer);

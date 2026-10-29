@@ -583,6 +583,14 @@ TEST_CASE("views: no language pack — the card says so and opens Settings → P
   CHECK(v.fix == "Open Settings → Packs");  // a pack from French is not installed
 }
 
+TEST_CASE("app: the lookup hotkey's step") {
+  CHECK(app::hotkey_step(false, true, "Haus", "") == app::HotkeyStep::show);
+  CHECK(app::hotkey_step(true, true, "Baum", "Haus") == app::HotkeyStep::show);  // another selection: its card at once
+  CHECK(app::hotkey_step(true, true, "Haus", "Haus") == app::HotkeyStep::close);
+  CHECK(app::hotkey_step(true, false, "", "Haus") == app::HotkeyStep::close);
+  CHECK(app::hotkey_step(false, false, "", "") == app::HotkeyStep::type);
+}
+
 TEST_CASE("app: hotkey labels, lexipeek:// links, menu lines, Notes' file names") {
   Hotkey h{"D", true, false, true, false};
   CHECK(app::hotkey_label(h) == "⌃⌥D");

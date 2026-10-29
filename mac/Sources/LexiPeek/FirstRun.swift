@@ -124,7 +124,7 @@ final class FirstRunModel: ObservableObject {
 
     // The window closed or Done: it does not open by itself again unless no pair is installed.
     func finish() {
-        Prefs.shared.firstRun = true
+        Prefs.shared.reload(String(lexipeek.app.finish_first_run(std.string())))
         close?()
     }
 
@@ -146,7 +146,7 @@ final class FirstRunModel: ObservableObject {
         guard !downloader.busy else { return }
         let answer = look.answer, book = look.book
         guard !book.isEmpty else { return }
-        Prefs.shared.answer = answer
+        Prefs.shared.reload(String(lexipeek.app.set_answer(std.string(), std.string(answer))))
         state.answer = std.string(answer)
         state.book = std.string(book)
         let ids = lexipeek.app.missing_ids(std.string(), std.string(book), std.string(answer))

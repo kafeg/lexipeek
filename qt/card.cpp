@@ -69,9 +69,7 @@ void CardModel::next_tab(int by) { session_.set_key(key()), session_.next_tab(by
 void CardModel::full_entries() { session_.full_entries(), acted(); }
 
 void CardModel::choose(Method m) {
-  auto s = app::settings(c_.data());
-  app::set_method(s, app::method_id(m));
-  app::save(c_.data(), s);
+  app::pick_method(c_.data(), m);
   c_.configure();
   use(m);
 }

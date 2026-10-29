@@ -138,6 +138,14 @@ std::string toggle(const std::string &data, const std::string &key, bool on) {
   return update_settings(dir(data), [&](Settings &s) { settings_toggle(s, key, on); });
 }
 
+std::string pick_method(const std::string &data, Method m) {
+  return update_settings(dir(data), [&](Settings &s) { s.mt_off = false, s.method = m; });
+}
+std::string finish_first_run(const std::string &data) { return update_settings(dir(data), [](Settings &s) { s.first_run = true; }); }
+std::string set_answer(const std::string &data, const std::string &code) {
+  return update_settings(dir(data), [&](Settings &s) { s.answer = code; });
+}
+
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state) {
   return update_settings(dir(data), [&](Settings &s) { settings_choose(s, key, index, state); });
 }
@@ -324,6 +332,11 @@ Imported download_dict(const std::string &data, const CatalogList &list, int ite
   *dl.total = it.size;
   return lexipeek::download_dict(
       dir(data), it, [&](std::int64_t done, std::int64_t total) { *dl.done = done, *dl.total = total; }, [&] { return dl.stop->load(); });
+}
+
+HotkeyStep hotkey_step(bool card_open, bool read, const std::string &text, const std::string &shown) {
+  if (card_open && (!read || text == shown)) return HotkeyStep::close;
+  return read ? HotkeyStep::show : HotkeyStep::type;
 }
 
 std::string hotkey_label(const Hotkey &h) {

@@ -209,7 +209,7 @@ final class CardModel: ObservableObject {
 
     // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
     func choose(_ m: lexipeek.Method) {
-        Prefs.shared.method = String(lexipeek.app.method_id(m))
+        Prefs.shared.reload(String(lexipeek.app.pick_method(std.string(), m)))
         use(m)
     }
 

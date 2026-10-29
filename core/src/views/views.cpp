@@ -37,7 +37,8 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
     for (auto kind : {"opus", "llm"})
       if (auto c = covering(m, kind, pr.from, pr.to)) r.extras.push_back(part(*c));
     // The default method's model (OPUS-MT) comes with a pair's download.
-    if (auto c = covering(m, "opus", pr.from, pr.to); c && !installed.contains(c->id)) r.missing += c->size;
+    if (auto c = covering(m, "opus", pr.from, pr.to); c && !installed.contains(c->id) && (!device || cannot(*c, *device).empty()))
+      r.missing += c->size;
     rows.push_back(r);
   }
   auto rank = [](const std::string &l) { return l == "full" ? 0 : l == "basic" ? 1 : l == "experimental" ? 2 : 3; };

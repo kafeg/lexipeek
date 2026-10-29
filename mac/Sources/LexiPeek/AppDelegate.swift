@@ -138,10 +138,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let open = card.isVisible
         Task { @MainActor in
             let s = await Selection.read(app: app)
-            if open && (s == nil || s?.text == card.shown) { card.close(); return }
-            if let s {
-                card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false)
-            } else {
+            switch lexipeek.app.hotkey_step(open, s != nil, std.string(s?.text ?? ""), std.string(card.shown)) {
+            case .close: card.close()
+            case .show: if let s { card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
+            default:
                 // Nothing read: say which app, type meanwhile.
                 card.show(text: nil, source: .input, bounds: nil, focus: true)
                 if !Selection.trusted { model.noAccess = true }
@@ -222,7 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             firstRun.close = { [weak w] in w?.close() }
             NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
                 self?.firstRun.stop()
-                self?.prefs.firstRun = true
+                self?.prefs.reload(String(lexipeek.app.finish_first_run(std.string())))
             }
             firstRunWindow = w
         }

@@ -77,6 +77,11 @@ struct Engine {
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
 std::string toggle(const std::string &data, const std::string &key, bool on);
+// One setting each, written under settings.json's lock: the method picked in a card, the first run done, the first
+// pair's answer language; "" or the error.
+std::string pick_method(const std::string &data, Method m);
+std::string finish_first_run(const std::string &data);
+std::string set_answer(const std::string &data, const std::string &code);
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
 
 // Settings → AI. The provider's id ("" = off; the shell keeps its key under it) and whether it needs a key.
@@ -107,6 +112,11 @@ std::string refresh(const std::string &data);
 
 // The first-run window (views.hpp): by the data dir's packs list and installed parts.
 FirstRunView first_run(const std::string &data, const FirstRunState &s);
+
+// The lookup hotkey, once the selection was read (read: some text): close the open card (none read, or the same text
+// again), show the text's card, or a card to type in (nothing read, no card open).
+enum class HotkeyStep { close, show, type };
+HotkeyStep hotkey_step(bool card_open, bool read, const std::string &text, const std::string &shown);
 
 // A hotkey as this OS writes it: "⌥D" on macOS, "Ctrl+Alt+D" (the keys' names in the app's language) on Windows.
 std::string hotkey_label(const Hotkey &h);

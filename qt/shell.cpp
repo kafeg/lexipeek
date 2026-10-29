@@ -104,8 +104,9 @@ void Shell::translate_selection() {
 void Shell::selection_read() {
   auto s = reading_.result();
   if (s) s->bounds = platform::logical(s->bounds);
-  if (reading_open_ && (!s || s->text == popup_.shown)) return popup_.close_card();
-  if (s) return popup_.show_card(s->text, Source::hotkey, s->bounds, false);
+  auto step = app::hotkey_step(reading_open_, s.has_value(), s ? s->text : "", popup_.shown);
+  if (step == app::HotkeyStep::close) return popup_.close_card();
+  if (step == app::HotkeyStep::show) return popup_.show_card(s->text, Source::hotkey, s->bounds, false);
   // Nothing read: say which app, type meanwhile.
   popup_.show_card(std::nullopt, Source::input, {}, true);
   if (!reading_app_.empty()) {
