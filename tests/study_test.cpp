@@ -200,7 +200,7 @@ TEST_CASE("study: a word in the answer language — a block per language, the wo
   auto s = first_state(c);
   CHECK(s.tab == CardTab::dictionary);
   auto v = card_view(c, s);
-  CHECK(v.badge == "ru → de, en");
+  CHECK(v.badge.empty());
   CHECK(v.books.empty());
   CHECK(v.answers.empty());  // passive: no menu
   CHECK(v.subtitle.starts_with("ru → de, en"));

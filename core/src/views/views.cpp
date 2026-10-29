@@ -405,12 +405,13 @@ CardView card_view(const Card &c, const CardState &s) {
   // Codes only: "de → ru"; "ru" when the text is in the answer language; "fr → ru" for a language without a pack.
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang : c.lang + " → " + c.answer;
   else if (!c.other.empty()) v.badge = c.other + " → " + c.answer;
-  // Languages you learn: the direction under the title and as the badge, passive (InkPeek's "ru → de, en").
+  // Languages you learn: the direction only under the title, passive (InkPeek's "ru → de, en"), no badge.
   std::vector<std::string> learned;
   for (auto &l : c.study) learned.push_back(l.lang);
   if (!learned.empty()) {
-    v.badge = study_direction(c.answer, learned);
-    v.subtitle = v.badge + (v.subtitle.empty() ? "" : "\n" + v.subtitle);
+    v.badge.clear();
+    auto dir = study_direction(c.answer, learned);
+    v.subtitle = dir + (v.subtitle.empty() ? "" : "\n" + v.subtitle);
   } else if (c.books.size() > 1 || c.answers.size() > 1) {
     for (auto &b : c.books) v.books.push_back({b, language_name(b), b == c.lang});
     for (auto &a : c.answers) v.answers.push_back({a, language_name(a), a == c.answer});

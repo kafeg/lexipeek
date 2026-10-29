@@ -300,7 +300,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   row kind `checks` (each: code, title, on, enabled, note), toggled as `study.<code>`.
   **When:** the ticked languages whose pack answer → X is installed (in their order; none left — off), and the text is
   in the answer language (language id with the answer language as one more candidate: fastText, else the packs from
-  it that know more of the words). **Card:** a passive direction "ru → de, en" under the title and as the badge (no
+  it that know more of the words). **Card:** a passive direction "ru → de, en" under the title, no badge (no
   menu). **Dictionary** — a word: a block per language, its name on top: the line of the pack answer → X (a click: its
   full entry alone, ← back), then up to 5 translated words of that line's meaning (notes in brackets dropped, each once:
   InkPeek's `Study.words`), each with its own header and frequency band from the pack X → answer ("das Haus (Hauses,
