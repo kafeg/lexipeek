@@ -77,7 +77,7 @@ final class FirstRunModel: ObservableObject {
 
     // While the window is open: Accessibility watched, the packs list fetched when there is none.
     func start() {
-        guard Snapshot.dir == nil else { return }
+        guard Snapshot.dir == nil, timers.isEmpty else { return }  // opened again while open: one watch
         timers.append(Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, self.state.trusted != Selection.trusted else { return }
             self.state.trusted = Selection.trusted
