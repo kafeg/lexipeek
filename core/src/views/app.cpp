@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/speech.hpp"
 #include "ai/ai.hpp"
 #include "packs/http.hpp"
 #include "text/text.hpp"
@@ -16,6 +17,11 @@ namespace lexipeek::app {
 
 namespace {
 std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : text::path_of(data); }
+std::filesystem::path home_dir() {
+  auto *h = std::getenv("HOME");
+  if (!h) h = std::getenv("USERPROFILE");
+  return h ? text::path_of(h) : std::filesystem::path();
+}
 }  // namespace
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
@@ -83,7 +89,11 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.study = s.study;
   o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
-  return {std::make_shared<Core>(std::move(o))};
+  o.card.read = s.speech.on;
+  o.home = home_dir();
+  auto core = std::make_shared<Core>(std::move(o));
+  core->speaker().configure(s.speech);
+  return {core};
 }
 
 void Engine::configure(const std::string &data) const { core->configure(load_settings(dir(data))); }
@@ -158,6 +168,10 @@ SettingsPage settings_page(const std::string &data, SettingsSection section, int
     Packs p(dir(data), "");
     if (st.methods.empty()) st.methods = method_infos(p.cached(), p.installed(), st.device);
     st = with_pairs(data, st);
+  }
+  if (section == SettingsSection::speech) {
+    st.speech_built = speech::built(), st.speech_installed = speech::model_installed(dir(data));
+    for (auto v : speech::own_voices(dir(data), home_dir())) st.voices.push_back({v.id, v.lang, v.text, v.source});
   }
   return settings_view(section, tab, load_settings(dir(data)), st);
 }
@@ -257,6 +271,21 @@ bool has_pair(const std::string &data) {
 bool first_run_at_launch(const std::string &data, bool trusted) {
   return lexipeek::first_run_at_launch(has_pair(data), trusted, load_settings(dir(data)).first_run);
 }
+
+Status download_speech(const std::string &data, const Download &dl) {
+  *dl.total = speech::model_bytes();
+  return speech::download_model(dir(data), [&](std::int64_t done, std::int64_t) { *dl.done = done; }, [&] { return dl.stop->load(); });
+}
+
+void Engine::remove_speech() const {
+  core->speaker().release();
+  speech::remove_model(core->data());
+}
+std::string Engine::add_voice(const std::string &wav, const std::string &text, const std::string &lang) const {
+  return core->speaker().add_voice(wav, text, lang);
+}
+void Engine::remove_voice(const std::string &id) const { core->speaker().remove_voice(id); }
+std::vector<std::string> speech_languages() { return speech::languages(); }
 
 Status install(const std::string &data, const std::vector<std::string> &ids, const Download &dl) {
   Packs p(dir(data));

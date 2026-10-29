@@ -25,6 +25,7 @@ const std::vector<std::pair<std::string, std::string>> fonts{{"", "ui_lang_syste
 const std::vector<int> heights{30, 45, 60, 75};
 const std::vector<std::pair<std::string, std::string>> theme_names{{"", "theme_system"}, {"light", "theme_light"}, {"dark", "theme_dark"}};
 const std::vector<int> keeps_min{1, 5, 15, 60, 0};
+const std::vector<int> speech_keeps{1, 3, 5, 15, 60, 0};
 // Each UI language by its own name.
 const std::vector<std::pair<std::string, std::string>> ui_langs{{"", ""},         {"en", "English"},  {"ru", "Русский"},   {"de", "Deutsch"},
                                                                 {"fr", "Français"}, {"es", "Español"}, {"it", "Italiano"}, {"pt", "Português"},
@@ -37,6 +38,7 @@ const std::vector<std::array<std::string, 3>> licenses{
     {"Mozilla", "lic_mozilla", "https://www.mozilla.org/MPL/2.0/"},
     {"OPUS-MT", "lic_opus", "https://creativecommons.org/licenses/by/4.0/"},
     {"Hy-MT2", "lic_hymt", "https://www.apache.org/licenses/LICENSE-2.0"},
+    {"Qwen3-TTS", "lic_qwen", "https://www.apache.org/licenses/LICENSE-2.0"},
     {"fastText lid.176", "lic_langid", "https://creativecommons.org/licenses/by-sa/3.0/"},
     {"LexiPeek", "lic_third", "https://github.com/kafeg/lexipeek/blob/main/THIRD_PARTY_NOTICES.txt"}};
 
@@ -327,9 +329,40 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int 
   return rows;
 }
 
+// Read aloud (spec M9): on / off, the voice model (its download), the GPU, Female · Male, the voices from a recording.
+std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) {
+  auto &sp = s.speech;
+  std::vector<SettingRow> rows{toggle("speech_on", tr("read_on_t"), tr("read_on_d"), sp.on)};
+  SettingRow m{Kind::method, "speech_model", tr("read_model_t"), tr("read_model_d")};
+  m.value = "speech", m.on = st.speech_installed, m.enabled = st.speech_built;
+  m.detail = !st.speech_built ? tr("read_not_built")
+                              : tr("read_model_need", {size_text(speech::model_bytes()), decimal(speech::model_memory_mb / 1000.0)}) + " · " +
+                                    tr(st.speech_installed ? "read_model_have" : "read_model_missing");
+  if (!st.download_error.empty() && st.downloading.empty()) m.detail += " · " + st.download_error;
+  if (st.downloading == "speech") m.progress = st.progress;
+  else if (!st.speech_installed && st.speech_built) m.button = tr("download");
+  rows.push_back(m);
+  if (st.speech_installed)
+    rows.push_back(valued(Kind::button, "speech_remove", tr("read_remove_t"), tr("read_remove_d", {size_text(speech::model_bytes())}), tr("remove")));
+  rows.push_back(toggle("speech_gpu", tr("read_gpu_t"), tr("read_gpu_d"), sp.gpu));
+  std::vector<std::string> keeps;
+  for (auto k : speech_keeps) keeps.push_back(k == 0 ? tr("keep_forever") : k == 60 ? tr("keep_hour") : tr("keep_min", {digits(k)}));
+  rows.push_back(choice("speech_keep", tr("keep_t"), tr("read_keep_d"), keeps, index_of(speech_keeps, sp.keep)));
+  rows.push_back(choice("speech_voice", tr("read_voice_t"), tr("read_voice_d"), names({"read_female", "read_male"}), sp.male ? 1 : 0));
+  rows.push_back(heading(tr("read_own_t"), tr("read_own_d")));
+  for (auto &v : st.voices) {
+    bool on = std::find(sp.off.begin(), sp.off.end(), v.id) == sp.off.end();
+    auto title = language_name(v.lang) + " · “" + v.text + "”";
+    rows.push_back(toggle("voice." + v.id, title, tr(v.source == "sprachanker" ? "read_own_sa" : "read_own_rec"), on));
+    if (v.source == "own") rows.push_back(valued(Kind::button, "voice_remove." + v.id, tr("read_own_remove"), title, tr("remove")));
+  }
+  rows.push_back(valued(Kind::button, "speech_add", tr("read_add_t"), tr("read_add_d"), tr("read_add_btn")));
+  return rows;
+}
+
 }  // namespace
 
-std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_ai", "sec_general"}); }
+std::vector<std::string> settings_sections() { return names({"tab_dicts", "tab_card", "tab_ai", "sec_general", "read_section"}); }
 
 std::vector<std::string> settings_tab_keys(SettingsSection section) {
   switch (section) {
@@ -337,6 +370,7 @@ std::vector<std::string> settings_tab_keys(SettingsSection section) {
     case SettingsSection::card: return {"opening", "article", "appearance"};
     case SettingsSection::ai: return {"connection", "modules"};
     case SettingsSection::general: return {"system", "keys"};
+    case SettingsSection::speech: return {};
   }
   return {};
 }
@@ -347,6 +381,7 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
     case SettingsSection::general: return names({"system_t", "hotkeys_t"});
+    case SettingsSection::speech: return {};
   }
   return {};
 }
@@ -387,6 +422,7 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
       break;
     case SettingsSection::ai: p.rows = p.tab == 0 ? connection(s, st) : modules(s); break;
     case SettingsSection::general: p.rows = general(s, st, p.tab); break;
+    case SettingsSection::speech: p.rows = speech_rows(s, st); break;
   }
   return p;
 }
@@ -400,6 +436,13 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
   else if (key == "open_at_login") s.open_at_login = on;
   else if (key == "ai_translate") s.ai.translate = on;
   else if (key == "ai_prefetch") s.ai.prefetch = on;
+  else if (key == "speech_on") s.speech.on = on;
+  else if (key == "speech_gpu") s.speech.gpu = on;
+  else if (key.starts_with("voice.")) {
+    auto &off = s.speech.off;
+    off.erase(std::remove(off.begin(), off.end(), key.substr(6)), off.end());
+    if (!on) off.push_back(key.substr(6));
+  }
   else if (key.starts_with("ai_key.")) {
     // An answer key off or on: kept only when it differs from its default (an extra one is off).
     auto id = key.substr(7);
@@ -450,6 +493,8 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
   else if (key == "theme") s.theme = at(theme_names).first;
   else if (key == "keep_model") s.keep_model = at(keeps_min);
+  else if (key == "speech_voice") s.speech.male = i == 1;
+  else if (key == "speech_keep") s.speech.keep = at(speech_keeps);
 }
 
 void settings_text(Settings &s, const std::string &key, const std::string &value) {

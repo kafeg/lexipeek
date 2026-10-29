@@ -15,6 +15,10 @@
 
 namespace lexipeek {
 
+namespace speech {
+class Speaker;
+}
+
 enum class Source { hotkey, input, service, url, extension, cli };
 
 struct Request {
@@ -158,6 +162,7 @@ struct CoreOptions {
   CardPrefs card;                // copied into every card
   AiSettings ai;                 // the AI layer
   std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language
+  std::filesystem::path home;  // the person's home folder: SprachAnker's voices of this computer ("" none)
   std::filesystem::path ai_replies;  // answers from files instead of a provider (snapshots, tests): ai/ai.hpp file_transport
 };
 
@@ -201,6 +206,7 @@ class Core {
   // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.
   void reload();
   Translator &translator();
+  speech::Speaker &speaker();  // Read aloud (M9)
   std::filesystem::path data() const;
 
  private:

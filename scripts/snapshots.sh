@@ -48,7 +48,8 @@ cases >"$TMP/cases"
 firstrun_cases >"$TMP/firstrun"
 ai_cases >"$TMP/ai_cases"
 ai_fixtures "$TMP/fixtures"
-# The AI instance's data dir: the same packs, AI on with Claude's default model, Russian → German, English learned.
+# The AI instance's data dir: the same packs, AI on with Claude's default model, Russian → German, English learned, Read
+# aloud on (its ▶; no voice model needed to draw it).
 mkdir "$TMP/aidata"
 for f in "$TMP/data"/*; do
   case "${f##*/}" in settings.json) ;; *) ln -s "$(readlink "$f")" "$TMP/aidata/" ;; esac
@@ -57,6 +58,7 @@ python3 -c 'import json, sys
 s = json.load(open(sys.argv[1]))
 s["ai"] = {"provider": "anthropic"}
 s["study"] = {"ru": ["de", "en"]}
+s["speech"] = {"on": True}
 json.dump(s, open(sys.argv[2], "w"))' "$TMP/data/settings.json" "$TMP/aidata/settings.json"
 fail=0
 for look in light dark; do
@@ -97,7 +99,7 @@ for look in light dark; do
     "$APP/Contents/MacOS/LexiPeek" >"$ai/app.log" 2>&1 &
   pid=$!
   wait_for "$ai/settings.done" 60 || { echo "$look: AI settings timed out" >&2; fail=1; }
-  for s in settings-ai-connection settings-ai-modules settings-card-opening settings-languages-translation; do
+  for s in settings-ai-connection settings-ai-modules settings-card-opening settings-languages-translation settings-read; do
     mv "$ai/$s.png" "$dir/$s-on.png" 2>/dev/null || true
     [ ! -e "$ai/$s-end.png" ] || mv "$ai/$s-end.png" "$dir/$s-on-end.png"
   done

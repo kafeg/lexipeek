@@ -17,7 +17,7 @@ final class CardHostingView<Content: View>: NSHostingView<Content> {
 
 // Shows the card at the selection or the cursor, keeps its top edge and its height while it is open.
 final class CardController {
-    private static let escapeKey: UInt32 = 100, pinKey: UInt32 = 101
+    private static let escapeKey: UInt32 = 100, pinKey: UInt32 = 101, readKey: UInt32 = 102
 
     let model: CardModel
     private let panel: CardPanel
@@ -136,9 +136,11 @@ final class CardController {
         if on {
             Hotkeys.shared.register(Self.escapeKey, code: 0x35, modifiers: 0) { [weak self] in self?.close() }
             Hotkeys.shared.register(Self.pinKey, code: 0x23, modifiers: Shortcut.cmd) { [weak self] in self?.model.pinned.toggle() }
+            Hotkeys.shared.register(Self.readKey, code: 0x2F, modifiers: Shortcut.cmd) { [weak self] in self?.model.read() }
         } else {
             Hotkeys.shared.unregister(Self.escapeKey)
             Hotkeys.shared.unregister(Self.pinKey)
+            Hotkeys.shared.unregister(Self.readKey)
         }
     }
 
@@ -157,6 +159,10 @@ final class CardController {
         guard model.card != nil else { return e }
         if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
             model.toggleSaved()
+            return nil
+        }
+        if e.keyCode == 0x2F && mods == .command && !keysOn {
+            model.read()
             return nil
         }
         guard !(panel.firstResponder is NSTextView) else { return e }

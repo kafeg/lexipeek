@@ -552,7 +552,7 @@ TEST_CASE("core: prepare() goes one dictionary at a time and stops when the libr
 
 TEST_CASE("help: topics in the app's language, each with its items; a pane to open where there is one") {
   auto h = help_view("⌥D", "⌥A");
-  REQUIRE(h.size() == 8);
+  REQUIRE(h.size() == 9);
   CHECK(h[0].title == "Getting started");
   CHECK(h[0].items[1].text.find("⌥D") != std::string::npos);
   CHECK(h[0].go.empty());

@@ -19,7 +19,7 @@ jobs:
         include:
           - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
           - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
-          - { name: windows-x64, os: windows-2025, models: "" }
+          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_TTS_LIBRARY=ON" }
           - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
     runs-on: ${{ matrix.os }}
     env:
@@ -32,6 +32,7 @@ jobs:
         run: |
           git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
           git submodule update --init --recursive engines/bergamot
+          [ "$RUNNER_OS" = Linux ] || git submodule update --init --recursive --depth 1 engines/qwentts || git submodule update --init --recursive engines/qwentts
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
       - uses: actions/cache/restore@v4

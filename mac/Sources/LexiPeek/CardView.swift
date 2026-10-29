@@ -76,7 +76,7 @@ struct CardView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
-                            ForEach(look.rows.indices, id: \.self) { row(look.rows[$0]) }
+                            ForEach(look.rows.indices, id: \.self) { i in readable(look.rows[i], i) }
                             if !look.fix.isEmpty {
                                 Button(look.fix) { NotificationCenter.default.post(name: .openPane, object: look.fixPane) }
                                     .controlSize(.small)
@@ -320,6 +320,11 @@ struct CardView: View {
                 }
             }
             Spacer(minLength: 4)
+            if look.read {
+                Button { model.read() } label: { Image(systemName: look.reading ? "stop.fill" : "play.fill") }
+                    .buttonStyle(.borderless)
+                    .help(look.readHelp)
+            }
             if !look.copy.isEmpty { copyButton(look.copy) }
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
             if look.canSave {
@@ -338,6 +343,22 @@ struct CardView: View {
         .padding(.vertical, 7)
         .background(embedded ? Color.clear : Color.primary.opacity(0.04))
         .overlay(alignment: .top) { if !embedded { Divider() } }
+    }
+
+    // A row with its own ▶ (a translated word of a language you learn) at its end.
+    @ViewBuilder
+    private func readable(_ r: CardLook.Row, _ i: Int) -> some View {
+        if r.read {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                row(r)
+                Button { model.read(i) } label: { Image(systemName: r.reading ? "stop.fill" : "play.fill").font(font(-3)) }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.secondary)
+                    .help(L.t(r.reading ? "read_stop" : "read_help"))
+            }
+        } else {
+            row(r)
+        }
     }
 
     @ViewBuilder

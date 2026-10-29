@@ -328,7 +328,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   Base 1.7B, which clones a native speaker's voice from a short clip and its exact text — single words come out right,
   where the built-in speakers babble after them). Off by default; one ▶ in the card.
   **Engine:** qwentts.cpp (`engines/qwentts`, a pinned commit: it has no tags) on its own ggml fork, built as its own
-  shared library (`libqwentts.dylib` in the app's Frameworks, `qwentts.dll` beside the exe) that exports only its C ABI
+  shared library (`libqwen.dylib` in the app's Frameworks, `qwen.dll` beside the exe) that exports only its C ABI
   (`qt_*`): its ggml stays inside it — llama.cpp's ggml is another copy, the two cannot be linked into one binary. Not a
   separate program (as SprachAnker's `tts-server`): the core would start processes and talk over a local port (OS calls,
   a listening socket); the library gives the same separation, a reading cancelled within a frame (~80 ms), the voices as
@@ -353,16 +353,17 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   word's row has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
   **Card:** ▶ in the bottom row on the right (before copy), ■ while it reads (a press stops); ⌘. (Windows Ctrl+.) the
   same. The first ▶ loads the model: "Loading the voice model…" under the rows until the reading starts; a failure is a
-  line with Settings → Read aloud. Read aloud off or no model: ▶ is still there, a press says what to do (the line and
-  its button).
-  **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for Settings →
-  General's model time after its last reading, then is freed (it is not the one heavy translation model: they may be in
-  memory together); the menu's "In memory" names it. Each reading has a length limit by its text (SprachAnker's
+  line with Settings → Read aloud. Read aloud off (the default): no ▶; on without the model: a press says what to do
+  (the line and its button).
+  **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for its own time
+  after its last reading (Settings → Read aloud: 1, 3, 5, 15 min, 1 h, until quit; 3 min by default — it holds ~3.5 GB
+  and is used now and then; a reload takes ~15 s), then is freed; it is not the one heavy translation model: they may
+  be in memory together. Each reading has a length limit by its text (SprachAnker's
   `maxTokens`: twice the time to say it slowly, plus 2 s: a word that runs on stops after seconds), a fixed seed (the
   same text and voice give the same audio), and is kept as a WAV in `<data>/readings/` by the hash of model, voice,
   language and text: the same reading is never made twice (the newest 2,000 kept).
   **Settings → Read aloud** (a toolbar section of its own): Read aloud on / off; the model (its size, the memory it
-  needs, downloaded or Download with progress, Remove); On the GPU; Voice: Female · Male; own voices (language, what it
+  needs, downloaded or Download with progress, Remove); On the GPU; how long it stays in memory; Voice: Female · Male; own voices (language, what it
   says; on / off, ✕) and "Voice from a recording…". Shells: macOS plays the WAV (AVAudioPlayer); Windows after M8's
   card; the Qt shell (Linux) none.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a

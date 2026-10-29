@@ -19,7 +19,7 @@ XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDat
 
 deps:
 	git submodule update --init vcpkg tests/inkpeek engines/fasttext engines/llama engines/pcre2
-	git submodule update --init --recursive engines/bergamot
+	git submodule update --init --recursive engines/bergamot engines/qwentts
 
 build:
 	cmake -S . -B $(BUILD) $(GEN) -DCMAKE_BUILD_TYPE=$(TYPE) $(CMAKE_ARGS)

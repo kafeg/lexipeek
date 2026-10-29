@@ -1,4 +1,5 @@
 #include "lexipeek/session.hpp"
+#include "lexipeek/speech.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -68,6 +69,9 @@ struct CardSession::Impl {
   bool section_waiting = false;
   std::atomic<int> translation{0};  // the translation asked last (another method makes an earlier one stale)
   CardNav before;                   // the card before a look-up (text that cleans to nothing brings it back)
+  int read_ticket = 0;              // the Speaker's reading of this card (0: none)
+  bool playing = false;             // handed to the shell to play
+  std::string play;
   // From the workers: what to apply on the UI thread at the next poll.
   std::mutex mu;
   std::vector<std::function<void(Impl &)>> inbox;
@@ -78,8 +82,30 @@ struct CardSession::Impl {
   }
   bool current(int id) const { return request == id; }
 
+  void stop_reading() {
+    if (read_ticket && !playing && e.core->speaker().state().ticket == read_ticket) e.core->speaker().stop();
+    read_ticket = 0, playing = false, play.clear();
+    nav.state.reading = {}, nav.state.read_loading = false;
+    dirty = true;
+  }
+
+  // The Speaker's state of this card's reading into the card.
+  void follow_reading() {
+    if (!read_ticket || playing) return;
+    auto st = e.core->speaker().state();
+    auto &cs = nav.state;
+    if (st.ticket != read_ticket || st.phase == speech::Phase::idle) return void((read_ticket = 0, cs.reading = {}, cs.read_loading = false, dirty = true));
+    if (bool loading = st.phase == speech::Phase::loading; loading != cs.read_loading) cs.read_loading = loading, dirty = true;
+    if (st.phase == speech::Phase::ready) play = st.wav, playing = true, cs.read_loading = false, dirty = true;
+    if (st.phase == speech::Phase::failed) {
+      cs.reading = {}, cs.read_loading = false, cs.read_error = st.error, cs.read_fix = st.fix;
+      read_ticket = 0, dirty = true;
+    }
+  }
+
   void run(const CardStep &step, const std::shared_ptr<Impl> &self) {
     dirty = true;
+    if (step.kind == CardStep::Kind::lookup) stop_reading();
     switch (step.kind) {
       case CardStep::Kind::lookup: {
         e.cancel(tag);  // its own translation gives way
@@ -277,8 +303,33 @@ void CardSession::cancel() {
     if (card_answer(i.nav.state, a).asking) i.nav.state = with_answer(i.nav.state, a, AiState());
 }
 
+void CardSession::read(int row) {
+  auto &i = *impl_;
+  if (!i.nav.has_card()) return;
+  auto v = view();
+  if (row >= static_cast<int>(v.rows.size())) return;
+  auto r = row < 0 ? v.read : v.rows[static_cast<size_t>(row)].read;
+  bool same = !i.nav.state.reading.text.empty() && i.nav.state.reading == r;
+  i.stop_reading();
+  i.nav.state.read_error.clear(), i.nav.state.read_fix = false;
+  if (r.text.empty() || same) return;
+  i.read_ticket = i.e.core->speaker().read(r);
+  i.nav.state.reading = r;
+}
+
+void CardSession::stop_reading() { impl_->stop_reading(); }
+
+std::string CardSession::take_play() { return std::exchange(impl_->play, ""); }
+
+void CardSession::played() {
+  if (impl_->playing) impl_->stop_reading();
+}
+
+bool CardSession::reading() const { return !impl_->nav.state.reading.text.empty(); }
+
 bool CardSession::poll() {
   auto &i = *impl_;
+  i.follow_reading();
   std::vector<std::function<void(Impl &)>> got;
   {
     std::lock_guard g(i.mu);
@@ -291,7 +342,9 @@ bool CardSession::poll() {
 }
 
 bool CardSession::notes_changed() { return std::exchange(impl_->notes, false); }
-bool CardSession::busy() const { return impl_->nav.busy() || impl_->waiting || impl_->section_waiting; }
+bool CardSession::busy() const {
+  return impl_->nav.busy() || impl_->waiting || impl_->section_waiting || (impl_->read_ticket && !impl_->playing);
+}
 bool CardSession::looking() const { return impl_->waiting && !impl_->nav.has_card(); }
 bool CardSession::has_card() const { return impl_->nav.has_card(); }
 CardNav CardSession::nav() const { return impl_->nav; }

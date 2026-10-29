@@ -10,7 +10,8 @@ nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from
 `mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `qt/` (M6) — Qt 6 Widgets for Windows and Linux;
 `win/` — the Windows shell being built (M8, by phases: `TODO.md`), WinUI 3 (C++/WinRT); then `qt/` stays for Linux (and as
 Windows' fallback build). `platform/` — the OS parts both Windows shells share.
-Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp. macOS 14+, Apple Silicon only.
+Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp; and Read aloud's qwentts.cpp (spec M9, not
+InkPeek's: SprachAnker's pin). macOS 14+, Apple Silicon only.
 
 ## Build and run
 Submodules: `vcpkg/` (manifest mode, `vcpkg.json`, toolchain set in `CMakeLists.txt`), `engines/` (Bergamot,
@@ -51,13 +52,17 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   WKWebView, read by `Selection.read(element:)` (`LEXIPEEK_SELECTION_TEST`, `SelectionTest.swift`; the range: `data-sel`, `<body data-from/data-to>`, `data-end-next`), compared with `<name>.expected`; PASS/FAIL table, way read, diffs.
 - Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
   catalog [filter] | get <url>` (`<data>/dicts-own/`, settings.json's `dicts`).
+- Read aloud from the CLI: `lexipeek-cli tts status|download|remove` (the model into `<data>/tts/`), `say [--lang de]
+  [--voice male] [--cpu] [--out F] TEXT` (a reading, its time), `say-bench --lang de < words.txt` (load, each reading, kept),
+  `voices [add WAV --lang de TEXT | remove ID]` (`--no-home`: without SprachAnker's voice of this computer).
 - CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`,
   `ai quick|analysis|context TEXT | models` (Settings → AI of the data dir; the key from `LEXIPEEK_AI_KEY`).
 - AI without a network or a key (tests, snapshots, the CLI): `LEXIPEEK_AI_REPLIES=<dir>` — `<dir>/<quick|analysis|context>.json`
   is the model's answer for every provider, `<dir>/status` (e.g. `401`) fails every request, `<dir>/models.json` the list.
   Snapshots: a third instance with AI on (Claude) and fixtures (`ai-*` cards: AI translation, Analysis, Context, an
   error; `settings-ai-*-on`, `settings-card-opening-on`); `&tab=analysis|context`, `&method=ai` in a case's URL. The
-  same instance learns German and English for Russian (`study-*` cards, `settings-languages-translation-on`).
+  same instance learns German and English for Russian (`study-*` cards, `settings-languages-translation-on`) and has
+  Read aloud on (`read-*` cards, ▶ in `study-*`, `settings-read-on`).
 
 ## Code layout and gotchas
 - `core/include/lexipeek/` — the facade (`mt.hpp`: `Translator`, `packs.hpp`, `core.hpp`, `views.hpp`, `app.hpp`);
@@ -123,6 +128,20 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).
 - Sentences: `mt/sentences.cpp`, UAX #29 as ICU without suppressions; table `mt/sentence_break.inc` from
   `scripts/gen-sentence-break.py <SentenceBreakProperty.txt>` (Unicode 17); tests: `tests/data/SentenceBreakTest.txt`, InkPeek's cases.
+- `core/src/speech/` (spec M9, facade `lexipeek/speech.hpp`): Read aloud by qwentts.cpp's C ABI (`qt_*`). It is its own
+  shared library (`cmake/tts.cmake`: an ExternalProject of `engines/qwentts`, `libqwen.dylib` exporting only `qt_*`, its ggml
+  fork static inside, its Metal ObjC class renamed) — never linked statically next to llama.cpp's ggml. `LEXIPEEK_TTS` on on
+  macOS (the app embeds the dylib in Frameworks; `LexiPeek.entitlements` turns library validation off: a local or ad-hoc
+  signature has no Team ID), off elsewhere (Windows CI builds the library alone, `LEXIPEEK_TTS_LIBRARY`); off, `built()` is false.
+  `speech.cpp`: the model's pinned HF files and sha256, `max_tokens` (SprachAnker's), `.rvq` packing (11 bits, 16 codebooks),
+  WAV in (torchaudio's sinc resample to 24 kHz, as qwentts reads a reference: latents byte-identical to `qwen-codec --talker`)
+  and out, voices: the app's (`core/src/speech/voices/<lang>-<female|male>.{spk,rvq,txt}`, embedded by CMake as
+  `voices.inc`; sources in `voices/SOURCES.md`), own (`<data>/voices/<id>.*`), SprachAnker's (`$HOME/SprachAnker/models/
+  word-voices/<lang>.json` + WAV, encoded on its first reading — never copied into the repo), kept readings
+  (`<data>/readings/<sha256>.wav`, newest 2,000). `engine.cpp`: `Speaker` (in `Core`): one worker, the newest reading wins
+  (qt's cancel callback), the model in its own `ModelHost` with Settings → Read aloud's time (3 min), `GGML_BACKEND=CPU` for
+  "On the GPU" off, seed 42. Views: `card_read` / `views/read.cpp` (▶ by context, rows' ▶, loading and error lines),
+  `CardState::reading`, `CardSession::read / take_play / played / reading` (the shell plays the WAV: `Player.swift`).
 - `core/src/store/`: `log` (lines, HLC, read, append, merge — pure, InkPeek's `tests/sync` cases), `store` (`Store`:
   own lines to `<data>/log/<device>.jsonl`, `<data>/lexipeek.db` is a view: rebuilt from the logs on open and
   `merge()`, a text's rows re-merged from its lines on each write; the 1,000-entry limit only in the view).

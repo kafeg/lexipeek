@@ -46,6 +46,7 @@ find_package(ZLIB REQUIRED)
 find_package(unofficial-hash-library CONFIG REQUIRED)
 
 include(cmake/engines.cmake)
+include(cmake/tts.cmake)
 set(CMAKE_CXX_STANDARD 20)
 
 # Flags for LexiPeek's own targets; engines keep theirs.

@@ -37,6 +37,7 @@ struct CardPrefs {
   std::string font;     // "" the system's, "serif", "rounded", "mono"
   int height = 45;      // % of the screen at most
   bool history = true;  // what is opened goes to History (InkPeek's Card → Opening → History); off: nothing is written
+  bool read = false;    // Read aloud is on (Settings → Read aloud, not kept here): the card's ▶
 };
 
 // The optional AI layer (InkPeek's AI → Connection · Modules). The API key is never here: the shell keeps it (Keychain).
@@ -50,6 +51,15 @@ struct AiSettings {
   std::map<std::string, std::string> prompts;   // edited prompt parts: "system", "analysis.grammar"
   std::map<std::string, bool> picked;           // answer keys switched from their default: "analysis.related"
   std::map<std::string, int> recall;            // which least-reasoning variant a (host, model) accepts
+};
+
+// Read aloud (M9): Qwen3-TTS Base 1.7B in a native speaker's voice per language.
+struct SpeechSettings {
+  bool on = false;
+  bool male = false;  // the voices in the app: female or male, for every language
+  bool gpu = true;    // Metal / Vulkan; off: the CPU
+  int keep = 3;       // minutes the model stays after a reading (its own: it holds ~3.5 GB and is used now and then), 0: until quit
+  std::vector<std::string> off;  // voices from a recording not used (ids)
 };
 
 struct Settings {
@@ -70,6 +80,7 @@ struct Settings {
   std::string theme;                    // "" as the system, "light", "dark": the card and every window
   AiSettings ai;
   std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language: "ru" → de, en (two at most)
+  SpeechSettings speech;
 };
 
 // Missing or broken file: the defaults.

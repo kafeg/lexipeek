@@ -76,7 +76,7 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
   Settings s;
   auto st = state();
   auto p = settings_view(SettingsSection::languages, 0, s, st);
-  CHECK(p.sections == std::vector<std::string>{"Languages", "Card", "AI", "General"});
+  CHECK(p.sections == std::vector<std::string>{"Languages", "Card", "AI", "General", "Read aloud"});
   CHECK(p.tabs == std::vector<std::string>{"Packs", "Translation", "Other dictionaries"});
   CHECK(p.pane == "packs");
   CHECK(settings_view(SettingsSection::languages, 2, s, st).pane == "other");
@@ -242,7 +242,7 @@ TEST_CASE("settings: General — System and Hotkeys tabs; the icon on Card → O
   CHECK(std::count_if(a.begin(), a.end(), [](auto &r) { return r.key == "license"; }) == 0);
   CHECK(about_tabs() == std::vector<std::string>{"About", "Licenses"});
   auto l = about_rows(st, 1);
-  CHECK(std::count_if(l.begin(), l.end(), [](auto &r) { return r.key == "license"; }) == 6);
+  CHECK(std::count_if(l.begin(), l.end(), [](auto &r) { return r.key == "license"; }) == 7);
   st.checking = true;
   a = about_rows(st);
   CHECK(!in("updates")->enabled);

@@ -31,6 +31,13 @@ class CardSession {
   void toggle_saved();
   void recheck_saved();  // Notes changed elsewhere: the ☆ again
   void cancel();         // the card closed: its translation stops, what is on its way is dropped (the card stays)
+  // Read aloud (M9): the card's ▶ (row -1) or a row's; a press on the one being read stops it. One reading for the app.
+  void read(int row = -1);
+  void stop_reading();
+  // The WAV to play now, once ("" none); played(): it ended. The shell plays while reading() and stops when it is not.
+  std::string take_play();
+  void played();
+  bool reading() const;
 
   // What arrived since the last poll is applied; true when the card changed (draw it again).
   bool poll();

@@ -25,6 +25,17 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
   basic display adapter come out blank in screen captures (`--snapshots` renders them by XAML instead); the host window is
   a pixel at the click (a `MenuFlyout` needs a XAML root).
 
+## M9 Read aloud (spec M9)
+Done on macOS: the engine (qwentts.cpp as `libqwen.dylib`), the model's download, the voices in the app, voices from a
+recording and SprachAnker's, ▶ in the card by context (⌘.), Settings → Read aloud, kept readings, snapshots.
+- Windows, after M8's card (`win/card*`) is committed: `LEXIPEEK_TTS` on for Windows — `qwen.dll` beside the exe, linked
+  through `win/lexipeek-core.props` (link_closure skips shared libraries now: add its import library) and delay-loaded,
+  its Vulkan delay-loaded as llama's (`cmake/vulkan_win.cpp`: no driver, the CPU); the card's ▶ / ■ and Ctrl+. in
+  `win/card*`, the WAV played (`PlaySound` with `SND_ASYNC`, or WinRT `MediaPlayer`), `CardSession::take_play/played` as
+  the Mac's `CardModel`; Settings → Read aloud (the core's rows) with the WAV picker; release.yml ships `qwen.dll`.
+- Measure on Windows (Vulkan, a real GPU and the CPU): load, a word, a sentence.
+- Polish: the model does not name it (read with "auto"); check its words by native speakers.
+
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
 (Win+Shift+D / Win+Shift+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`

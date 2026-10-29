@@ -4,14 +4,15 @@ import LexiPeekCore
 import LexiPeekKit
 import ServiceManagement
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
 enum SettingsSection: Int, CaseIterable {
-    case general, languages, card, ai
+    case general, languages, card, ai, speech
 
     // General first, as macOS settings; the core keeps InkPeek's order (Notes are in the LexiPeek window).
-    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai][rawValue] }
-    var key: String { ["general", "languages", "card", "ai"][rawValue] }
+    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai, .speech][rawValue] }
+    var key: String { ["general", "languages", "card", "ai", "read"][rawValue] }
     var title: String { String(lexipeek.settings_sections()[Int(core.rawValue)]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
@@ -21,6 +22,7 @@ enum SettingsSection: Int, CaseIterable {
         case .card: "rectangle.on.rectangle"
         case .ai: "sparkles"
         case .general: "gearshape"
+        case .speech: "speaker.wave.2"
         }
     }
 }
@@ -38,6 +40,8 @@ final class SettingsModel: ObservableObject {
     // AI → Modules' prompt editor and AI → Connection's model list, shown as sheets.
     @Published var editing: PromptEdit?
     @Published var choosingModel = false
+    // Read aloud → "Voice from a recording…", shown as a sheet.
+    @Published var addingVoice = false
     // Languages → Translation: a method's models being downloaded (its id) and how far.
     @Published private var downloading: String?
     @Published private var downloadProgress = 0.0
@@ -153,6 +157,13 @@ final class SettingsModel: ObservableObject {
         case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
         case "access": Access.ask()
+        case "speech_add": addingVoice = true
+        case "speech_remove":
+            client.engine.remove_speech()
+            refresh()
+        case _ where key.hasPrefix("voice_remove."):
+            client.engine.remove_voice(std.string(String(key.dropFirst("voice_remove.".count))))
+            refresh()
         default: break
         }
     }
@@ -174,6 +185,33 @@ final class SettingsModel: ObservableObject {
                              self?.client.reload()
                              self?.refresh()
                          })
+    }
+
+    // Read aloud's voice model from its pinned Hugging Face files, with progress (Settings → Read aloud).
+    func downloadSpeech() {
+        guard !downloader.busy else { return }
+        downloading = "speech"
+        downloadProgress = 0
+        downloadError = ""
+        downloader.start({ lexipeek.app.download_speech(std.string(), $0) },
+                         progress: { [weak self] d, t in self?.downloadProgress = t > 0 ? Double(d) / Double(t) : 0 },
+                         done: { [weak self] s in
+                             self?.downloading = nil
+                             self?.downloadError = s.cancelled ? "" : String(s.error)
+                             self?.refresh()
+                         })
+    }
+
+    // A voice from a recording, encoded by the model off the main queue: "" or the error.
+    func addVoice(wav: String, text: String, lang: String, done: @escaping (String) -> Void) {
+        let e = client.engine
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = String(e.add_voice(std.string(wav), std.string(text), std.string(lang)))
+            DispatchQueue.main.async {
+                self.refresh()
+                done(r)
+            }
+        }
     }
 
     // Only on a click: GitHub's latest release, off the main queue.
@@ -314,6 +352,7 @@ struct SectionView: View {
         .frame(width: 560, height: 540)
         .sheet(item: section == .ai ? $model.editing : .constant(nil)) { e in PromptSheet(edit: e, model: model) }
         .sheet(isPresented: section == .ai ? $model.choosingModel : .constant(false)) { ModelSheet(model: model) }
+        .sheet(isPresented: section == .speech ? $model.addingVoice : .constant(false)) { VoiceSheet(model: model) }
     }
 }
 
@@ -479,8 +518,9 @@ extension RowsView {
     // A translation method as InkPeek's card: picked by a click; what it does, needs, why not here; its download.
     func method(_ r: SettingLine) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: r.on ? "largecircle.fill.circle" : "circle")
-                .foregroundStyle(r.on ? Color.accentColor : .secondary)
+            // Read aloud's model is not picked: downloaded or not.
+            Image(systemName: r.value == "speech" ? (r.on ? "checkmark.circle.fill" : "arrow.down.circle") : r.on ? "largecircle.fill.circle" : "circle")
+                .foregroundStyle(r.on ? (r.value == "speech" ? Color.green : Color.accentColor) : .secondary)
                 .padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
                 Text(r.title).fontWeight(r.on ? .semibold : .regular)
@@ -492,7 +532,8 @@ extension RowsView {
                 if r.progress >= 0 {
                     ProgressView(value: r.progress).controlSize(.small)
                 } else if !r.button.isEmpty {
-                    Button(r.button) { model.downloadMethod(r.value, r.ids) }.controlSize(.small).padding(.top, 2)
+                    Button(r.button) { r.value == "speech" ? model.downloadSpeech() : model.downloadMethod(r.value, r.ids) }
+                        .controlSize(.small).padding(.top, 2)
                 }
             }
             Spacer(minLength: 0)
@@ -503,6 +544,10 @@ extension RowsView {
         // Picked: chosen, and its models fetched when they are missing (InkPeek's MethodPane).
         .onTapGesture {
             guard r.enabled else { return }
+            if r.value == "speech" {
+                if !r.button.isEmpty && r.progress < 0 { model.downloadSpeech() }
+                return
+            }
             model.choose(r.key, r.selected)
             if !r.button.isEmpty && r.progress < 0 { model.downloadMethod(r.value, r.ids) }
         }
@@ -675,6 +720,72 @@ private struct ModelSheet: View {
     private func pick(_ id: String) {
         model.setText("ai_model", id)
         dismiss()
+    }
+}
+
+// Read aloud → "Voice from a recording…": a WAV, what it says, its language; encoded by the voice model on this Mac.
+private struct VoiceSheet: View {
+    @ObservedObject var model: SettingsModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var file = ""
+    @State private var said = ""
+    @State private var lang = 0
+    @State private var adding = false
+    @State private var error = ""
+    private let langs = lexipeek.app.speech_languages().map { String($0) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L.t("voice_sheet_t")).font(.headline)
+            Text(L.t("read_add_d")).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            LabeledContent(L.t("voice_file")) {
+                HStack {
+                    Text(file.isEmpty ? L.t("voice_none") : (file as NSString).lastPathComponent).foregroundStyle(.secondary).lineLimit(1)
+                    Button(L.t("voice_choose")) { choose() }
+                }
+            }
+            Picker(L.t("voice_lang"), selection: $lang) {
+                ForEach(langs.indices, id: \.self) { Text(String(lexipeek.app.language(std.string(langs[$0])))).tag($0) }
+            }
+            Text(L.t("voice_text"))
+            TextEditor(text: $said)
+                .font(.body)
+                .frame(minHeight: 70)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(.separator))
+            if adding {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(L.t("voice_adding")).foregroundStyle(.secondary)
+                }
+            } else if !error.isEmpty {
+                Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Spacer()
+                Button(L.t("cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L.t("voice_add")) { add() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(adding || file.isEmpty || said.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(width: 480, height: 360)
+    }
+
+    private func choose() {
+        let p = NSOpenPanel()
+        p.allowedContentTypes = [.wav]
+        p.allowsMultipleSelection = false
+        if p.runModal() == .OK, let u = p.url { file = u.path }
+    }
+
+    private func add() {
+        adding = true
+        error = ""
+        model.addVoice(wav: file, text: said, lang: langs[lang]) { e in
+            adding = false
+            if e.isEmpty { dismiss() } else { error = e }
+        }
     }
 }
 

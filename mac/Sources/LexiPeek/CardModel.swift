@@ -13,6 +13,8 @@ struct CardLook {
         var open: String
         var entry: Int
         var copy: String
+        var read: Bool  // its own ▶
+        var reading: Bool
     }
 
     struct Lang: Identifiable {
@@ -63,6 +65,9 @@ struct CardLook {
     var text = 13
     var font = ""
     var height = 45
+    var read = false  // ▶ in the bottom row
+    var reading = false
+    var readHelp = ""
 
     init(_ v: lexipeek.CardView) {
         style = v.style
@@ -77,7 +82,7 @@ struct CardLook {
         tab = v.tab
         rows = v.rows.map {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
-                open: String($0.open), entry: Int($0.entry), copy: String($0.copy))
+                open: String($0.open), entry: Int($0.entry), copy: String($0.copy), read: !$0.read.text.empty(), reading: $0.reading)
         }
         menu = v.menu
         menuTitle = String(v.menu_title)
@@ -97,6 +102,9 @@ struct CardLook {
         text = Int(v.text)
         font = String(v.font)
         height = Int(v.height)
+        read = !v.read.text.empty()
+        reading = v.reading
+        readHelp = String(v.read_help)
     }
 }
 
@@ -138,6 +146,15 @@ final class CardModel: ObservableObject {
     // What arrived is drawn; polled again while something is on its way.
     private func pull() {
         if session.poll() { nav = session.nav() }
+        let wav = String(session.take_play())
+        if !wav.isEmpty {
+            Player.shared.play(wav, owner: self) { [weak self] in
+                self?.session.played()
+                self?.pull()
+            }
+        } else if !session.reading() {
+            Player.shared.stop(owner: self)
+        }
         if session.notes_changed() { NotificationCenter.default.post(name: .notesChanged, object: nil) }
         guard session.busy(), timer == nil else { return }
         let t = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
@@ -216,6 +233,14 @@ final class CardModel: ObservableObject {
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
     func toggleSaved() { act { $0.toggle_saved() } }
 
-    // The card closed: its translation stops, what was on its way is dropped.
-    func cancel() { act { $0.cancel() } }
+    // The card closed: its translation and its reading stop, what was on its way is dropped.
+    func cancel() {
+        act {
+            $0.cancel()
+            $0.stop_reading()
+        }
+    }
+
+    // ▶ / ■: the card's (row -1) or a row's; the core says what it reads.
+    func read(_ row: Int = -1) { act { $0.read(Int32(row)) } }
 }

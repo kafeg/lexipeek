@@ -38,6 +38,7 @@ std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &i
                      item("a_context", tr("aih_context")), item("ai_modules", tr("ha_when")), item("aih_keys_t", tr("ha_keys")),
                      item("aih_local_t", tr("aih_local")), item("aih_free_t", tr("aih_free"))}},
                    SettingsSection::ai, 0, sections[2]));
+  out.push_back(go({tr("read_help_t"), {item("", tr("read_help_x"))}}, SettingsSection::speech, 0, sections[4]));
   out.push_back({tr("aih_send_t"), {item("hn_ai_t", tr("hn_ai_d")), item("hn_dl_t", tr("hn_dl"))}});
   out.push_back({tr("ht_notes"),
                  {item("hw_save_t", tr("hw_save")), item("hw_hist_t", tr("hw_hist")), item("hw_del_t", tr("hw_del")),

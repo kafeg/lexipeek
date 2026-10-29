@@ -84,7 +84,8 @@ EOF
 }
 
 # AI on (Claude; no key, no network: LEXIPEEK_AI_REPLIES answers from files), a third instance with its own data dir and
-# languages you learn (Russian → German, English; study-*: a text in Russian): name | url | the answers (word, phrase) or
+# languages you learn (Russian → German, English; study-*: a text in Russian) and Read aloud on (read-*, study-*: ▶):
+# name | url | the answers (word, phrase) or
 # "error" (the provider says 401). method=ai: AI translation picked in the card; tab=analysis|context: that AI tab clicked.
 ai_cases() {
   cat <<EOF
@@ -95,6 +96,8 @@ ai-phrase-translate|lookup?text=Ich mache die Tür zu&method=ai|phrase
 ai-phrase-analysis|lookup?text=Ich mache die Tür zu&tab=analysis|phrase
 ai-phrase-context|lookup?text=Ich mache die Tür zu&tab=context|phrase
 ai-error|lookup?text=Bäume&tab=analysis|error
+read-word|lookup?text=Häusern&tab=dictionary|word
+read-phrase|lookup?text=Ich mache die Tür zu&tab=translate|phrase
 study-word|lookup?text=дом&tab=dictionary|word
 study-word-translate|lookup?text=дом&tab=translate|word
 study-phrase|lookup?text=Мы идём домой&tab=translate|phrase
@@ -133,6 +136,6 @@ settings_shots() {
     settings-languages-translation-on \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
-    settings-general-system settings-general-keys about
+    settings-general-system settings-general-keys settings-read settings-read-on about
 }
 

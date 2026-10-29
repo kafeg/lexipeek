@@ -76,6 +76,10 @@ struct Engine {
   MemoryView memory() const;
   void cancel(int tag = 0) const;
   static int new_tag();
+  // Read aloud (M9): the voice model removed (freed first); a voice from a recording (blocking: "" or the error), removed.
+  void remove_speech() const;
+  std::string add_voice(const std::string &wav, const std::string &text, const std::string &lang) const;
+  void remove_voice(const std::string &id) const;
 };
 
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
@@ -149,6 +153,11 @@ struct Download {
   std::int64_t get_total() const { return *total; }
   void cancel() const { *stop = true; }
 };
+
+// Blocking: Read aloud's voice model from its pinned Hugging Face files (sha256), progress over both.
+Status download_speech(const std::string &data, const Download &dl);
+// The languages with voices (codes), for "Voice from a recording…".
+std::vector<std::string> speech_languages();
 
 // Blocking: the components one after another, progress over all of them.
 Status install(const std::string &data, const std::vector<std::string> &ids, const Download &dl);

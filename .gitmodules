@@ -16,3 +16,6 @@
 [submodule "tests/inkpeek"]
 	path = tests/inkpeek
 	url = https://github.com/kafeg/inkpeek.git
+[submodule "engines/qwentts"]
+	path = engines/qwentts
+	url = https://github.com/ServeurpersoCom/qwentts.cpp

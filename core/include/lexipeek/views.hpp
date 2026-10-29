@@ -7,6 +7,7 @@
 #include <vector>
 #include "lexipeek/core.hpp"
 #include "lexipeek/packs.hpp"
+#include "lexipeek/speech.hpp"
 
 namespace lexipeek {
 
@@ -101,6 +102,10 @@ struct CardState {
   bool by_ai = false;  // Translate shows the AI translation (a method picked in the card, or Card → Opening)
   AiState quick, analysis, context;
   std::vector<Translation> learned;  // the translations into the languages you learn, as they arrive (Card::study's order)
+  speech::Read reading;       // read aloud now (its ▶ is ■), from the press until the shell has played it
+  bool read_loading = false;  // the voice model is loading: a line says so
+  std::string read_error;     // the last reading failed: a line, and Settings → Read aloud when read_fix
+  bool read_fix = false;
 };
 
 // One line of the card's body.
@@ -125,6 +130,8 @@ struct CardRow {
   std::string open = "";  // a section's key: a click opens it (section rows); "entry": the entry's full article
   int entry = 0;     // the entry the section belongs to
   std::string copy = "";  // what its copy button copies ("" = none): a translation, a dictionary's line
+  speech::Read read = {};  // its own small ▶ (a translated word of a language you learn); text "": none
+  bool reading = false;    // ■: being read
 };
 
 struct MethodItem {
@@ -146,7 +153,7 @@ struct LangItem {
 };
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
-enum class SettingsSection { languages, card, ai, general };
+enum class SettingsSection { languages, card, ai, general, speech };
 
 struct CardView {
   HeaderStyle style = HeaderStyle::passage;
@@ -177,7 +184,14 @@ struct CardView {
   int text = 13;          // the body's text size, points; the header a little larger
   std::string font;       // "" the system's, "serif", "rounded", "mono"
   int height = 45;        // % of the screen at most
+  speech::Read read;      // ▶ in the bottom row reads this (text "": no ▶)
+  bool reading = false;   // ■: it is being read, a press stops it
+  std::string read_help;  // its tooltip: "Read aloud (⌘.)", "Stop (⌘.)"
 };
+
+// What ▶ reads (spec M9): a text in another language than the answer, itself; a text in the answer language with a
+// language you learn, on Translate its translation, on Dictionary the first translated word; else nothing.
+speech::Read card_read(const Card &c, const CardState &s, CardTab tab);
 
 // The tab a new card opens on: Dictionary for a word with entries or a phrase set to open word by word, else Translate.
 CardTab first_tab(const Card &c);
@@ -366,6 +380,10 @@ struct SettingRow {
     hotkey,   // a shortcut recorder: key "lookup" / "input"
     apps,     // a list of apps by bundle id: key "ignore_apps"
     button,   // value: the button's label; the shell does what key names ("setup", "access", "order", "updates")
+  // Read aloud (app::settings_page fills them): the engine in this build, the model on disk, the voices from a recording
+  // (downloading "speech": the model's download).
+  bool speech_built = false, speech_installed = false;
+  std::vector<speech::Voice> voices;
     status,   // value: the state ("Allowed"), on: good
     link,     // value: a URL
     text,     // a line to type: value, placeholder (key "ai_url", "ai_command")

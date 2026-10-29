@@ -7,6 +7,7 @@
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/study.hpp"
 #include "text/text.hpp"
+#include "views/read.hpp"
 
 namespace lexipeek {
 
@@ -486,6 +487,7 @@ CardView card_view(const Card &c, const CardState &s) {
   v.width = c.prefs.width + (v.style == HeaderStyle::passage ? 60 : 0);  // a passage: a wider card
   v.text = c.prefs.text, v.font = c.prefs.font, v.height = c.prefs.height;
   return v;
+  read_view(c, s, v);
 }
 
 std::vector<ai::Ask> card_asks(const Card &c, const CardState &s) {

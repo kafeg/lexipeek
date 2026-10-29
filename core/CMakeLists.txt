@@ -8,6 +8,12 @@ target_link_libraries(lexipeek_core
   PRIVATE lexipeek_bergamot fasttext_lib llama pcre2-8-static nlohmann_json::nlohmann_json utf8proc::utf8proc
           SQLite::SQLite3 CURL::libcurl LibArchive::LibArchive unofficial::hash-library ZLIB::ZLIB $<IF:$<TARGET_EXISTS:zstd::libzstd_static>,zstd::libzstd_static,zstd::libzstd_shared>)
 lexipeek_flags(lexipeek_core)
+lexipeek_embed_voices(${CMAKE_CURRENT_SOURCE_DIR}/src/speech/voices ${CMAKE_CURRENT_BINARY_DIR}/gen/speech/voices.inc)
+target_include_directories(lexipeek_core PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/gen)
+if(LEXIPEEK_TTS)
+  target_link_libraries(lexipeek_core PUBLIC qwentts)
+  target_compile_definitions(lexipeek_core PRIVATE LEXIPEEK_TTS)
+endif()
 
 # Marian's headers need C++17 (std::result_of is gone in C++20): Bergamot's glue builds on its own.
 add_library(lexipeek_bergamot STATIC src/mt/bergamot.cpp)

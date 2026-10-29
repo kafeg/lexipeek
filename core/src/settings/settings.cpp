@@ -121,6 +121,13 @@ Settings load_settings(const fs::path &data) {
       for (auto &[answer, langs] : st.items())
         if (langs.is_array())
           if (auto l = study_parse(langs.get<std::vector<std::string>>()); !l.empty()) s.study[answer] = l;
+    if (auto sp = j.value("speech", json::object()); sp.is_object()) {
+      s.speech.on = sp.value("on", s.speech.on);
+      s.speech.male = sp.value("male", s.speech.male);
+      s.speech.gpu = sp.value("gpu", s.speech.gpu);
+      s.speech.keep = sp.value("keep", s.speech.keep);
+      s.speech.off = sp.value("off", s.speech.off);
+    }
   } catch (const std::exception &) {
     // A field of the wrong type: what was read before it stays (the platform's defaults too).
   }
@@ -159,6 +166,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["study"] = json::object();
   for (auto &[answer, langs] : s.study)
     if (!langs.empty()) j["study"][answer] = langs;
+  j["speech"] = {{"on", s.speech.on}, {"male", s.speech.male}, {"gpu", s.speech.gpu}, {"keep", s.speech.keep}, {"off", s.speech.off}};
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";

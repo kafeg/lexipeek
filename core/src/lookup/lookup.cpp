@@ -9,6 +9,7 @@
 #include "lexipeek/core.hpp"
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/settings.hpp"
+#include "lexipeek/speech.hpp"
 #include "lexipeek/study.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/views.hpp"
@@ -65,6 +66,7 @@ struct Core::Impl {
   std::unique_ptr<Translator> tr;
   std::unique_ptr<dict::Library> lib;
   std::unique_ptr<Store> store;
+  std::unique_ptr<speech::Speaker> speaker;
   std::mutex mu;  // the library is not thread-safe: one lookup at a time
   std::mutex opt_mu;
   std::size_t gen = 0;  // the library's generation: a reload or new own dictionaries stop a prepare() going on  // the options too (written under both): translate() and ask() read them without waiting for a lookup
@@ -172,6 +174,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->tr = std::make_unique<Translator>(o.translator);
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index", own(o.data, o.dicts));
   impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
+  impl_->speaker = std::make_unique<speech::Speaker>(o.data, o.home);
   impl_->notes_answer = o.answer;
   impl_->transport = o.ai_replies.empty() ? ai::default_transport() : ai::file_transport(o.ai_replies);
   impl_->o = std::move(o);
@@ -193,6 +196,8 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->lib->configure(own(impl_->o.data, s.dicts));
   impl_->gen++;
   impl_->o.card = s.card;
+  impl_->o.card.read = s.speech.on;
+  impl_->speaker->configure(s.speech);
   impl_->o.ai = s.ai;
   impl_->o.study = s.study;
   if (device) impl_->o.device = device;
@@ -469,7 +474,10 @@ SectionPage Core::section(const Card &card, int entry, const std::string &key, i
 
 void Core::cancel(int tag) { impl_->tr->cancel(tag); }
 
-void Core::release() { impl_->tr->release(); }
+void Core::release() {
+  impl_->tr->release();
+  impl_->speaker->release();
+}
 
 Translator::Memory Core::memory() const { return impl_->tr->memory(); }
 
@@ -501,5 +509,7 @@ void Core::reload() {
 }
 
 Translator &Core::translator() { return *impl_->tr; }
+
+speech::Speaker &Core::speaker() { return *impl_->speaker; }
 
 }  // namespace lexipeek
