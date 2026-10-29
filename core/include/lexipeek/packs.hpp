@@ -30,6 +30,8 @@ struct Manifest {
 };
 
 Manifest parse_manifest(const std::string &json);
+// A packs.json on disk, parsed once until the file changes (its time and size).
+Manifest read_manifest(const std::filesystem::path &file);
 
 // The first component of [kind] whose covers has from-to.
 std::optional<Component> covering(const Manifest &m, const std::string &kind, const std::string &from, const std::string &to);

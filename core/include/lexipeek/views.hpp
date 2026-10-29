@@ -60,9 +60,9 @@ struct PacksView {
 PacksView packs_view(const Manifest &m, const std::map<std::string, std::string> &installed, const Device &device,
                      Method method = Method::direct);
 
-// What a pair needs that is not installed yet (ids).
+// What a pair needs that is not installed yet (ids); a method whose model this device cannot run: Fast's instead.
 std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair,
-                                     Method method = Method::direct);
+                                     Method method = Method::direct, const std::optional<Device> &device = std::nullopt);
 // What removing a pair frees: its parts no other installed pair needs (ids).
 std::vector<std::string> freed_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair);
 // The answer languages the packs offer (codes), by their English names.

@@ -153,14 +153,18 @@ int main(int argc, char **argv) {
     if (f.open(QIODevice::WriteOnly)) f.write(QByteArray::fromStdString(platform::probe_selection() + "front app: " + platform::front_app() + "\n"));
     return 0;
   }
-  Shell shell(client);
-  platform::receive([&shell](const QStringList &a) {
-    if (a.contains("--quit")) return QApplication::quit();  // a newer copy installed, or uninstalled
-    shell.handle(a);
-  });
-  platform::register_scheme();
-  if (app::first_run_at_launch(data, true)) shell.open_first_run();
-  if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
-    shell.handle(args.mid(1));
-  return app.exec();
+  int code = 0;
+  {
+    Shell shell(client);
+    platform::receive([&shell](const QStringList &a) {
+      if (a.contains("--quit")) return QApplication::quit();  // a newer copy installed, or uninstalled
+      shell.handle(a);
+    });
+    platform::register_scheme();
+    if (app::first_run_at_launch(data, true)) shell.open_first_run();
+    if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
+      shell.handle(args.mid(1));
+    code = app.exec();
+  }
+  app::leave(code);  // the tray icon gone with the shell; a translation still running is not waited for
 }

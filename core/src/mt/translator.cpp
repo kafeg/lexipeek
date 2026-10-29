@@ -53,13 +53,6 @@ struct Plan {
   Component c;
 };
 
-std::string read(const std::filesystem::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  std::stringstream s;
-  s << f.rdbuf();
-  return s.str();
-}
-
 }  // namespace
 
 struct Translator::Impl {
@@ -90,7 +83,7 @@ struct Translator::Impl {
       }
       return p;
     }
-    auto manifest = parse_manifest(read(layout.manifest()));
+    auto manifest = read_manifest(layout.manifest());
     if (!manifest.error.empty()) {
       p.error = manifest.error;
       return p;

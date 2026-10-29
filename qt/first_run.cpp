@@ -163,7 +163,7 @@ void FirstRunWindow::install() {
   app::set_answer(dir, answer);
   c_.configure();
   state.answer = answer, state.book = book;
-  auto ids = app::missing_ids(dir, book, answer);
+  auto ids = app::missing_ids(dir, book, answer, c_.device);
   state.error.clear();
   state.done = state.total = 0;
   state.downloading = true;

@@ -330,6 +330,13 @@ TEST_CASE("views: the methods for the installed pairs: models, downloaded, uncov
   CHECK(infos[2].missing == std::vector<std::string>{"llm-b"});
   CHECK(infos[2].left == 1000);
   CHECK(!method_infos(m, have, {4096, {}, "arm64"})[2].cannot.empty());
+  // The first run's download: a method this device cannot run brings Fast's parts instead.
+  std::map<std::string, std::string> none;
+  auto llm = missing_ids(m, none, {"de", "ru"}, Method::llm, Device{16384, {"asimddp"}, "arm64"});
+  CHECK(std::find(llm.begin(), llm.end(), "llm-b") != llm.end());
+  auto weak = missing_ids(m, none, {"de", "ru"}, Method::llm, Device{4096, {}, "arm64"});
+  CHECK(std::find(weak.begin(), weak.end(), "llm-b") == weak.end());
+  CHECK(std::find(weak.begin(), weak.end(), "model-en-ru") != weak.end());
 }
 
 TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {

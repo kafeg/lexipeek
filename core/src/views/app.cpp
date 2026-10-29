@@ -4,6 +4,7 @@
 #include <cctype>
 #include <chrono>
 #include <fstream>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include "lexipeek/l10n.hpp"
@@ -19,6 +20,11 @@ std::filesystem::path dir(const std::string &data) { return data.empty() ? defau
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
 Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) { return {ram_mb, features, arch}; }
+
+void leave(int code) {
+  std::fflush(nullptr);
+  std::quick_exit(code);
+}
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }
 std::string save(const std::string &data, const Settings &s) { return save_settings(dir(data), s); }
@@ -212,9 +218,9 @@ PacksView packs(const std::string &data, const Device &d) {
   return packs_view(p.cached(), p.installed(), d, load_settings(dir(data)).method.value_or(Method::fast));
 }
 
-std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to) {
+std::vector<std::string> missing_ids(const std::string &data, const std::string &from, const std::string &to, const Device &d) {
   Packs p(dir(data));
-  return lexipeek::missing_ids(p.cached(), p.installed(), {from, to}, load_settings(dir(data)).method.value_or(Method::fast));
+  return lexipeek::missing_ids(p.cached(), p.installed(), {from, to}, load_settings(dir(data)).method.value_or(Method::fast), d);
 }
 
 std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().error; }

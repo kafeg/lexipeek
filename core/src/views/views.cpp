@@ -52,7 +52,10 @@ std::vector<PairRow> pack_rows(const Manifest &m, const std::map<std::string, st
 }
 
 std::vector<std::string> missing_ids(const Manifest &m, const std::map<std::string, std::string> &installed, const LangPair &pair,
-                                     Method method) {
+                                     Method method, const std::optional<Device> &device) {
+  if (device)
+    for (auto &c : needed(m, {pair}, method))
+      if (!cannot(c, *device).empty()) method = Method::fast;
   std::vector<std::string> ids;
   for (auto &c : needed(m, {pair}, method))
     if (!installed.contains(c.id)) ids.push_back(c.id);

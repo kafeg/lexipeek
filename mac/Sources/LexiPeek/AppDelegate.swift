@@ -132,6 +132,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // With a card open: another selection opens its card at once; the same one or none closes it.
     // Started again (Finder, Spotlight) while it runs: the LexiPeek window.
+    // A translation or an AI answer still running at quit: no static destructors under it.
+    func applicationWillTerminate(_ notification: Notification) {
+        if Snapshot.dir == nil { lexipeek.app.leave(0) }
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         if Snapshot.dir == nil { openMain(nil) }
         return false

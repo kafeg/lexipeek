@@ -5,6 +5,8 @@
 #include <cctype>
 #include <cstdlib>
 #include <format>
+#include <map>
+#include <mutex>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <set>
@@ -310,9 +312,28 @@ Fetched Packs::fetch() const {
   return {cached(), tr("packs_list_failed", {err})};
 }
 
+Manifest read_manifest(const fs::path &file) {
+  struct Kept {
+    fs::file_time_type time;
+    std::uintmax_t size = 0;
+    Manifest m;
+  };
+  static std::mutex mu;
+  static std::map<fs::path, Kept> kept;
+  std::error_code ec;
+  auto time = fs::last_write_time(file, ec);
+  auto size = fs::file_size(file, ec);
+  std::lock_guard g(mu);
+  auto it = kept.find(file);
+  if (!ec && it != kept.end() && it->second.time == time && it->second.size == size) return it->second.m;
+  auto m = parse_manifest(read(file));
+  if (!ec) kept[file] = {time, size, m};
+  return m;
+}
+
 Manifest Packs::cached() const {
   if (!fs::exists(layout().manifest())) return {{}, tr("packs_no_list_yet")};
-  return parse_manifest(read(layout().manifest()));
+  return read_manifest(layout().manifest());
 }
 
 std::map<std::string, std::string> Packs::installed() const {

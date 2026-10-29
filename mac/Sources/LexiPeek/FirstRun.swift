@@ -149,7 +149,7 @@ final class FirstRunModel: ObservableObject {
         Prefs.shared.reload(String(lexipeek.app.set_answer(std.string(), std.string(answer))))
         state.answer = std.string(answer)
         state.book = std.string(book)
-        let ids = lexipeek.app.missing_ids(std.string(), std.string(book), std.string(answer))
+        let ids = lexipeek.app.missing_ids(std.string(), std.string(book), std.string(answer), CoreClient.device)
         state.error = std.string()
         state.done = 0
         state.total = 0
