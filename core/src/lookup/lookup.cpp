@@ -366,8 +366,8 @@ SectionPage Core::section(const Card &card, int entry, const std::string &key, i
     if (d && key != "expr") {
       try {
         auto hs = d->lookup(w);
-        auto h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return h.word == w; });
-        if (h == hs.end()) h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &h) { return text::lower(h.word) == text::lower(w); });
+        auto h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &x2) { return x2.word == w; });
+        if (h == hs.end()) h = std::find_if(hs.begin(), hs.end(), [&](const dict::Hit &x2) { return text::lower(x2.word) == text::lower(w); });
         if (h != hs.end())
           if (auto l = dict::head_line(h->html)) meaning = dict::Head{h->word, *l, ""}.meaning();
       } catch (const std::exception &) {
