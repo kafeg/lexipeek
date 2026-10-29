@@ -39,7 +39,8 @@ enum Selection {
     // Apps asked to build their accessibility tree (Chromium, Electron): once per process.
     private static var woken = Set<pid_t>()
 
-    static func read(app: NSRunningApplication?) async -> Result? {
+    // On the main thread (its `woken` and the screens are main-thread state; AX waits a second at most).
+    @MainActor static func read(app: NSRunningApplication?) async -> Result? {
         guard trusted, let app else {
             log.info("not trusted or no app")
             return nil

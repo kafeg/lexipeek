@@ -48,6 +48,8 @@ class Shell : public QObject {
   bool reading_open_ = false;
   bool pair_ = true;
   bool keys_ = true;  // both hotkeys registered
+  std::string lookup_error_, input_error_;  // for a Settings window opened later
+  QMenu recents_;
   bool low_ = false;  // memory was low at the last check
   Settings s_;
 };

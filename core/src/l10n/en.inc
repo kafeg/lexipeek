@@ -422,6 +422,7 @@
 {"model_t", "Model"},
 {"model_d", "From the provider's list; free ones are marked."},
 {"model_choose", "Choose…"},
+{"choose_btn", "Choose"},
 {"loading_models", "Loading models…"},
 {"models_title", "{1}: {2} models"},
 {"filter", "Filter"},

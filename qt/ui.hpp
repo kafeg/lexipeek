@@ -19,6 +19,8 @@ void grey(QWidget *w);
 QLabel *link(const QString &s, std::function<void()> click);
 // Everything in a layout, nested layouts and their widgets too.
 void clear(QLayout *l);
+// A question with the app's own words on its buttons (Qt's Yes / No would be English); true: yes.
+bool ask(QWidget *parent, const QString &title, const QString &detail, const QString &yes, const QString &no);
 // A frameless scroll area around inner that paints nothing of its own (a tab page's background shows through).
 QScrollArea *scroll(QWidget *inner);
 // A scroll area's position back after its content was drawn again (once the layout has run).

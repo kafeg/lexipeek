@@ -36,7 +36,7 @@ UpdateCheck update_check(const std::string &version, long status, const std::str
   auto tag = j["tag_name"].get<std::string>();
   auto name = tag.starts_with("v") ? tag.substr(1) : tag;
   if (!newer_version(tag, version)) return {tr("update_latest", {version}), "", ""};
-  return {tr("update_new", {"LexiPeek " + name}), name, j.value("html_url", "https://github.com/kafeg/lexipeek/releases/latest")};
+  return {tr("update_new", {"LexiPeek " + name}), name, j.contains("html_url") && j["html_url"].is_string() ? j["html_url"].get<std::string>() : "https://github.com/kafeg/lexipeek/releases/latest"};
 }
 
 }  // namespace lexipeek

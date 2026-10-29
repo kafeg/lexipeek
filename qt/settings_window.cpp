@@ -405,7 +405,14 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
             QStringList names;
             for (auto &x : app::model_titles(m.list)) names << q(x);
             bool ok = false;
-            auto picked = QInputDialog::getItem(this, t("model_choose"), {}, names, 0, false, &ok);
+            QInputDialog pick(this);
+            pick.setWindowTitle(t("model_choose"));
+            pick.setLabelText(t("model_choose"));
+            pick.setComboBoxItems(names);
+            pick.setOkButtonText(t("choose_btn"));
+            pick.setCancelButtonText(t("cancel"));
+            ok = pick.exec() == QDialog::Accepted;
+            auto picked = pick.textValue();
             if (ok) after(app::set_text(dir, key, m.list[names.indexOf(picked)].id));
             else draw();
           }, this);
@@ -424,8 +431,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       e->setPlaceholderText(t("key_t"));
       auto *save = new QPushButton(t("save_key"));
       auto store = [this, e, dir] {
-        if (e->text().isEmpty()) return;
-        platform::set_secret(app::ai_provider(dir), e->text().toStdString());
+        auto key = e->text().trimmed();  // a pasted key often brings a space or a line break
+        if (key.isEmpty()) return;
+        if (!platform::set_secret(app::ai_provider(dir), key.toStdString())) return after(platform::last_error());
         sh_.keys.clear();
         e->clear();
         sh_.test.clear();

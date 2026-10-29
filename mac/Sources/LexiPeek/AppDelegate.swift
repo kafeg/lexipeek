@@ -131,13 +131,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // With a card open: another selection opens its card at once; the same one or none closes it.
+    // Started again (Finder, Spotlight) while it runs: the LexiPeek window.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if Snapshot.dir == nil { openMain(nil) }
+        return false
+    }
+
+    private var reading = false  // a hotkey's selection read is on its way: another press waits for it
+
     @objc func translateSelection() {
+        guard !reading else { return }
         let app = NSWorkspace.shared.frontmostApplication
         let id = app?.bundleIdentifier ?? ""
         if prefs.offApps.contains(id) { if card.isVisible { card.close() }; return }
         let open = card.isVisible
+        reading = true
         Task { @MainActor in
             let s = await Selection.read(app: app)
+            reading = false
             switch lexipeek.app.hotkey_step(open, s != nil, std.string(s?.text ?? ""), std.string(card.shown)) {
             case .close: card.close()
             case .show: if let s { card.show(text: s.text, source: .hotkey, bounds: s.bounds, focus: false) }
@@ -179,8 +190,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func openMain(_ page: MainPage?) {
         if mainWindow == nil {
             let w = MainWindow.make(model: main)
-            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { _ in
+            NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
                 if Snapshot.dir == nil { NSApp.setActivationPolicy(.accessory) }
+                self?.main.card.cancel()  // closed: its card's work stops
             }
             mainWindow = w
         }
@@ -226,6 +238,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             firstRunWindow = w
         }
+        firstRun.state.hotkey = std.string(prefs.translateKey.label)
+        firstRun.state.input = std.string(prefs.inputKey.label)
         firstRun.refresh()
         if let w = firstRunWindow, Snapshot.dir != nil {
             Snapshot.hide(w)

@@ -422,6 +422,7 @@
 {"model_t", "Modello"},
 {"model_d", "Dall'elenco del fornitore; quelli gratuiti sono segnati."},
 {"model_choose", "Scegli…"},
+{"choose_btn", "Scegli"},
 {"loading_models", "Caricamento modelli…"},
 {"models_title", "{1}: {2} modelli"},
 {"filter", "Filtra"},

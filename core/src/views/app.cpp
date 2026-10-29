@@ -35,10 +35,7 @@ std::string set_language(const std::string &data, const std::string &system) {
   auto lang = ui_language(s.ui_lang, system);
   set_ui_language(lang);
   // A new install answers in the app's language; an existing settings.json keeps its answer.
-  if (!std::filesystem::exists(dir(data) / "settings.json")) {
-    s.answer = lang;
-    save_settings(dir(data), s);
-  }
+  if (!std::filesystem::exists(dir(data) / "settings.json")) update_settings(dir(data), [&](Settings &n) { n.answer = lang; });
   return lang;
 }
 

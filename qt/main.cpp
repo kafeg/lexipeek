@@ -17,6 +17,7 @@
 #include "card.hpp"
 #include "first_run.hpp"
 #include "fluent.hpp"
+#include "ui.hpp"
 #include <QImage>
 #include <QPainter>
 #include "main_window.hpp"
@@ -110,18 +111,9 @@ int main(int argc, char **argv) {
   // The system's UI language ("ru" of "ru-RU"), not its formats' locale.
   auto ui = QLocale::system().uiLanguages();
   app::set_language(data, (ui.isEmpty() ? QLocale::system().name() : ui.first()).left(2).toStdString());
-  // A question with the app's own words on its buttons (Qt's Yes / No would be English).
-  auto ask = [](const QString &title, const QString &detail, const QString &yes, const QString &no) {
-    QMessageBox box(QMessageBox::Question, "LexiPeek", title, QMessageBox::NoButton);
-    if (!detail.isEmpty()) box.setInformativeText(detail);
-    auto *y = box.addButton(yes, QMessageBox::AcceptRole);
-    box.addButton(no, QMessageBox::RejectRole);
-    box.exec();
-    return box.clickedButton() == y;
-  };
   // Settings → Apps → LexiPeek → Uninstall (--yes: without asking): a running copy quits first.
   if (args.contains("--uninstall")) {
-    if (args.contains("--yes") || ask(t("uninst_q", app::data_dir()), {}, t("delete"), t("cancel"))) {
+    if (args.contains("--yes") || ui::ask(nullptr, t("uninst_q", app::data_dir()), {}, t("delete"), t("cancel"))) {
       platform::quit_running();
       platform::uninstall();
     }
@@ -138,7 +130,7 @@ int main(int argc, char **argv) {
     return e.empty() ? 0 : 1;
   }
   bool tool = args.contains("--snapshots") || args.contains("--self-test") || args.contains("--probe-selection");
-  if (!tool && args.size() == 1 && !platform::installed_here() && ask(t("inst_q_t"), t("inst_q_d"), t("inst_btn"), t("inst_run"))) {
+  if (!tool && args.size() == 1 && !platform::installed_here() && ui::ask(nullptr, t("inst_q_t"), t("inst_q_d"), t("inst_btn"), t("inst_run"))) {
     if (auto e = install(); !e.empty()) QMessageBox::warning(nullptr, "LexiPeek", q(e));
     else return QProcess::startDetached(q(platform::installed_program()), {}) ? 0 : 1;
   }
@@ -168,7 +160,7 @@ int main(int argc, char **argv) {
   });
   platform::register_scheme();
   if (app::first_run_at_launch(data, true)) shell.open_first_run();
-  else if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
+  if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
     shell.handle(args.mid(1));
   return app.exec();
 }

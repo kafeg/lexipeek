@@ -31,6 +31,8 @@ class MainWindow : public QWidget {
 
  protected:
   void changeEvent(QEvent *e) override;
+  void hideEvent(QHideEvent *e) override;  // closed: its card's work stops
+  void showEvent(QShowEvent *e) override;  // opened: the look-up field takes the keys
 
  private:
   QWidget *lookup_page();

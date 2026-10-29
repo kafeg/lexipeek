@@ -117,7 +117,7 @@ Settings load_settings(const fs::path &data) {
     s.theme = j.value("theme", s.theme);
     s.ai = ai(j.value("ai", json()));
   } catch (const std::exception &) {
-    return Settings{};
+    // A field of the wrong type: what was read before it stays (the platform's defaults too).
   }
   return s;
 }

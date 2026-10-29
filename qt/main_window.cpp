@@ -87,8 +87,11 @@ MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
     else if (r == help) draw_help(), pages_->setCurrentIndex(2);
     else if (r >= 0) tab_ = static_cast<NotesTab>(r - words), page_ = 0, draw_notes(), pages_->setCurrentIndex(1);
   });
+  // What is in memory, while the window shows (not the whole Notes list: its place and selection stay).
   auto *timer = new QTimer(this);
-  connect(timer, &QTimer::timeout, this, &MainWindow::refresh);
+  connect(timer, &QTimer::timeout, this, [this] {
+    if (isVisible()) memory_->setText(q(c_.engine.memory().text));
+  });
   timer->start(15000);
   resize(900, 600);
   side_->setCurrentRow(0);
@@ -140,6 +143,16 @@ QWidget *MainWindow::notes_page() {
 
 void MainWindow::show_page(int page) { side_->setCurrentRow(page); }
 
+void MainWindow::hideEvent(QHideEvent *e) {
+  card.cancel();
+  QWidget::hideEvent(e);
+}
+
+void MainWindow::showEvent(QShowEvent *e) {
+  QWidget::showEvent(e);
+  if (pages_->currentIndex() == 0) QMetaObject::invokeMethod(query_, [this] { query_->setFocus(); }, Qt::QueuedConnection);
+}
+
 void MainWindow::changeEvent(QEvent *e) {
   QWidget::changeEvent(e);
   if (e->type() != QEvent::ApplicationPaletteChange) return;
@@ -168,6 +181,7 @@ void MainWindow::refresh() {
   foot_->item(1)->setText(t("menu_about"));
   hint_->setText(t("win_hint", lookup_key, input_key));
   auto v = c_.engine.notes(tab_, page_);
+  page_ = v.page;  // the core keeps it inside the pages (after a removal)
   for (int i = 0; i < 3 && i < static_cast<int>(v.tabs.size()); ++i) side_->item(words + i)->setText(q(v.tabs[i]));
   side_->item(lookup)->setText(t("win_lookup"));
   side_->item(help)->setText(t("help_t"));
@@ -185,6 +199,7 @@ void MainWindow::draw_notes() {
   ui::clear(l);
   l->setContentsMargins(14, 14, 14, 14);
   auto v = c_.engine.notes(tab_, page_);
+  page_ = v.page;  // the core keeps it inside the pages (after a removal)
   if (v.rows.empty()) {
     auto *empty = ui::text(q(v.empty), 0, true);
     empty->setAlignment(Qt::AlignCenter);
@@ -259,7 +274,7 @@ void MainWindow::draw_notes() {
   if (v.clear) {
     auto *c = new QPushButton(t("clear_history_more"));
     connect(c, &QPushButton::clicked, this, [this] {
-      if (QMessageBox::question(this, t("clear_history_q"), t("notes_clear_d")) != QMessageBox::Yes) return;
+      if (!ui::ask(this, t("clear_history_q"), t("notes_clear_d"), t("delete"), t("cancel"))) return;
       c_.engine.clear_history();
       emit notes_bus().changed();
     });

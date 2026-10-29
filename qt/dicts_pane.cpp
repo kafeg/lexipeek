@@ -287,7 +287,7 @@ void CatalogDialog::draw() {
     auto item = r.item;
     auto title = r.title, about = r.about;
     connect(get, &QPushButton::clicked, this, [this, item, title, about] {
-      if (QMessageBox::question(this, q(title), q(about)) == QMessageBox::Yes) CatalogDialog::get(item, title);
+      if (ui::ask(this, q(title), q(about), t("download"), t("cancel"))) CatalogDialog::get(item, title);
     });
     row->addWidget(get);
     body_->addWidget(fluent::card(row));

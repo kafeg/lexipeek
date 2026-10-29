@@ -87,7 +87,8 @@ void Shell::register_hotkeys() {
   bool a = platform::register_hotkey(translate_key, s_.lookup, [this] { translate_selection(); });
   bool b = platform::register_hotkey(input_key, s_.input, [this] { type_text(); });
   keys_ = a && b;
-  if (settings_) settings_->hotkey_errors(a ? "" : t("hk_taken").toStdString(), b ? "" : t("hk_taken").toStdString());
+  lookup_error_ = a ? "" : t("hk_taken").toStdString(), input_error_ = b ? "" : t("hk_taken").toStdString();
+  if (settings_) settings_->hotkey_errors(lookup_error_, input_error_);
   if (main_) main_->lookup_key = app::hotkey_label(s_.lookup), main_->input_key = app::hotkey_label(s_.input);
 }
 
@@ -146,6 +147,7 @@ void Shell::open_settings(int section, int tab) {
     settings_ = new SettingsWindow(c_);
     connect(settings_, &SettingsWindow::changed, this, &Shell::apply);
     connect(settings_, &SettingsWindow::openFirstRun, this, &Shell::open_first_run);
+    settings_->hotkey_errors(lookup_error_, input_error_);
   }
   if (section >= 0) settings_->select(static_cast<SettingsSection>(section), tab);
   settings_->refresh();
@@ -197,7 +199,11 @@ void Shell::fill_menu() {
     menu_.addSeparator();
   }
   menu_.addAction(t("menu_open"), this, [this] { open_main(); });
-  auto *recents = menu_.addMenu(t("recents"));
+  // One submenu kept (menu_.clear() would leave a new one behind on every open).
+  auto *recents = &recents_;
+  recents->clear();
+  recents->setTitle(t("recents"));
+  menu_.addMenu(recents);
   for (auto &r : c_.engine.recents(app::recents_shown())) {
     auto title = r.meaning.empty() ? r.text : r.text + " — " + r.meaning;
     auto text = r.text;

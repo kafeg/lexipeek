@@ -378,12 +378,13 @@ bool hand_over(const QStringList &args) {
       auto bytes = args.join('\n').toUtf8();
       COPYDATASTRUCT cd{1, static_cast<DWORD>(bytes.size()), bytes.data()};
       AllowSetForegroundWindow(ASFW_ANY);
-      SendMessageW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd));
+      DWORD_PTR r = 0;
+      SendMessageTimeoutW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd), SMTO_ABORTIFHUNG, 3000, &r);
       return true;
     }
     Sleep(100);
   }
-  return true;
+  return false;  // no answer: this launch runs as itself
 }
 
 void quit_running() {
@@ -391,7 +392,8 @@ void quit_running() {
   if (HWND w = FindWindowW(nullptr, receiver)) {
     QByteArray bytes("--quit");
     COPYDATASTRUCT cd{1, static_cast<DWORD>(bytes.size()), bytes.data()};
-    SendMessageW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd));
+    DWORD_PTR r = 0;
+    SendMessageTimeoutW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd), SMTO_ABORTIFHUNG, 3000, &r);
     for (int i = 0; i < 30 && FindWindowW(nullptr, receiver); ++i) Sleep(100);
   }
 }
@@ -418,6 +420,7 @@ bool installed_here() {
 std::string installed_program() { return QDir::toNativeSeparators(install_dir() + "/LexiPeek.exe").toStdString(); }
 
 std::string install(const std::string &version) {
+  if (installed_here()) return "";  // this copy is the installed one
   auto dir = install_dir(), exe = dir + "/LexiPeek.exe";
   if (!QDir().mkpath(dir)) return app::text("err_write", QDir::toNativeSeparators(dir).toStdString());
   // A running copy's file cannot be replaced, but it can be renamed: it goes on running from the old name.

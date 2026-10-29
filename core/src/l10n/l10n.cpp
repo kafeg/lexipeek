@@ -68,12 +68,19 @@ const std::string *find(int lang, std::string_view key) {
   return i == m.end() ? nullptr : &i->second;
 }
 
-std::string fill(std::string s, const std::vector<std::string> &args) {
-  for (size_t i = 0; i < args.size() && i < 9; i++) {
-    auto mark = "{" + std::to_string(i + 1) + "}";
-    for (auto at = s.find(mark); at != std::string::npos; at = s.find(mark, at + args[i].size())) s.replace(at, mark.size(), args[i]);
+// One pass: an argument's own "{2}" stays as it is.
+std::string fill(const std::string &s, const std::vector<std::string> &args) {
+  std::string out;
+  for (size_t i = 0; i < s.size(); i++) {
+    if (s[i] == '{' && i + 2 < s.size() && s[i + 2] == '}' && s[i + 1] >= '1' && s[i + 1] <= '9') {
+      if (auto n = static_cast<size_t>(s[i + 1] - '1'); n < args.size()) {
+        out += args[n], i += 2;
+        continue;
+      }
+    }
+    out += s[i];
   }
-  return s;
+  return out;
 }
 
 }  // namespace

@@ -1,5 +1,8 @@
 #include "ui.hpp"
+#include <QAbstractButton>
 #include <QApplication>
+#include <QMessageBox>
+#include <QPushButton>
 #include <QGuiApplication>
 #include <QStyle>
 #include <QStyleFactory>
@@ -30,6 +33,15 @@ QLabel *link(const QString &s, std::function<void()> click) {
   l->setTextFormat(Qt::RichText);
   QObject::connect(l, &QLabel::linkActivated, [click = std::move(click)] { click(); });
   return l;
+}
+
+bool ask(QWidget *parent, const QString &title, const QString &detail, const QString &yes, const QString &no) {
+  QMessageBox box(QMessageBox::Question, "LexiPeek", title, QMessageBox::NoButton, parent);
+  if (!detail.isEmpty()) box.setInformativeText(detail);
+  auto *y = box.addButton(yes, QMessageBox::AcceptRole);
+  box.addButton(no, QMessageBox::RejectRole);
+  box.exec();
+  return box.clickedButton() == static_cast<QAbstractButton *>(y);
 }
 
 void clear(QLayout *l) {

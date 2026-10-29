@@ -236,3 +236,8 @@ TEST_CASE("l10n: no user-visible English literal left in the Swift shell") {
   }
   CHECK(lines > 1000);
 }
+
+TEST_CASE("l10n: an argument's own {2} is not filled again") {
+  set_ui_language("en");
+  CHECK(tr("download_size", {"{2}"}).find("{2}") != std::string::npos);
+}
