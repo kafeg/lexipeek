@@ -5,14 +5,12 @@ with TSV / Export / Import. Now: M6 Windows (Qt). Milestones: `docs/spec.md` →
 
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
-(Ctrl+Alt+D / Ctrl+Alt+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`
+(Win+Shift+D / Win+Shift+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`
 links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version, the
 per-user install and uninstall.
 - Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
 - First release (the owner's): a release job (tag → the Mac app signed with Developer ID, notarized, zipped; the
-  Windows exe, signed when there is a certificate; THIRD_PARTY_NOTICES.txt) and GitHub Releases. Ctrl+Alt+A is
-  AltGr+A (ą) on Polish keyboards: another input hotkey on Windows? A daily update check as InkPeek's (now only
-  "Check now")?
+  Windows exe, signed when there is a certificate; THIRD_PARTY_NOTICES.txt) and GitHub Releases.
 - llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
   (`cpu_by_arch`) do not apply; the method's card says where it runs.
 - The card's keys in its texts (`card_pin`, `card_back`, `hc_keys`): Windows has its own (`@win`); Linux will need its own.

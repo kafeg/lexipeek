@@ -346,19 +346,18 @@ TEST_CASE("settings: offline translation off is kept as \"off\"") {
   wipe(d);
 }
 
-TEST_CASE("settings: the hotkeys' default is Ctrl+Alt on Windows, a saved one stays") {
+TEST_CASE("settings: the hotkeys' default is Win+Shift on Windows, a saved one stays") {
   auto d = fs::temp_directory_path() / "lexipeek-settings-hotkeys";
   wipe(d);
   fs::create_directories(d);
   set_ui_platform("windows");
   auto s = load_settings(d);
-  CHECK(s.lookup.control);
-  CHECK(s.lookup.option);
-  CHECK(s.input.control);
+  CHECK(s.lookup == Hotkey{"D", false, true, false, true});
+  CHECK(s.input == Hotkey{"A", false, true, false, true});
   s.lookup = Hotkey{"K", true, false, false, false};
   CHECK(save_settings(d, s).empty());
-  CHECK_FALSE(load_settings(d).lookup.control);
+  CHECK(load_settings(d).lookup == Hotkey{"K", true, false, false, false});
   set_ui_platform("mac");
   wipe(d);
-  CHECK_FALSE(load_settings(d).lookup.control);
+  CHECK(load_settings(d).lookup == Hotkey{"D", true, false, false, false});
 }

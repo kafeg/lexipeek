@@ -1,5 +1,5 @@
 # The lookup hotkey in other apps, in a signed-in desktop session: each opens "Haus steht am Ende der Strasse.", "Haus"
-# is selected (a double click in a browser, the keyboard in an editor), the probe says what UI Automation sees, Alt+D
+# is selected (a double click in a browser, the keyboard in an editor), the probe says what UI Automation sees, Win+Shift+D
 # opens the card; "ok|FAIL <app>" lines, a screenshot per app, the probe's lines into the out dir.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-apps.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
 param([Parameter(Mandatory)] [string]$Exe, [Parameter(Mandatory)] [string]$Data, [Parameter(Mandatory)] [string]$Out)
@@ -9,6 +9,7 @@ Add-Type @'
 using System; using System.Runtime.InteropServices;
 public static class Win {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L, T, R, B; }
@@ -24,6 +25,13 @@ function Shot($n) {
   $bmp.Save((Join-Path $Out "$n.png")); $g.Dispose(); $bmp.Dispose()
 }
 function Keys($k) { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Milliseconds 300 }
+# Win+Shift+<letter> (SendKeys has no Win key): the hotkeys' default.
+function WinShift($letter) {
+  $vk = [byte][char]$letter.ToUpper()
+  foreach ($k in 0x5B, 0x10, $vk) { [Win]::keybd_event([byte]$k, 0, 0, [UIntPtr]::Zero) }
+  foreach ($k in $vk, 0x10, 0x5B) { [Win]::keybd_event([byte]$k, 0, 2, [UIntPtr]::Zero) }
+  Start-Sleep -Milliseconds 300
+}
 function Click($x, $y, $times) {
   [void][Win]::SetCursorPos($x, $y)
   for ($i = 0; $i -lt $times; $i++) { [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0); Start-Sleep -Milliseconds 80 }
@@ -95,7 +103,7 @@ foreach ($a in $apps) {
   Start-Sleep 1
   $probe = Join-Path $Out "$($a.name)-probe.txt"
   Start-Process $Exe -ArgumentList '--probe-selection', $probe -Wait
-  Keys '^%d'
+  WinShift 'd'
   Start-Sleep 4
   Shot $a.name
   $t = Texts $lp

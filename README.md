@@ -42,7 +42,7 @@ anyway". LexiPeek lives in the tray (^ on the taskbar).
 **First run:** pick the language you read and the one to translate into; the pair downloads once (about 60–240 MB)
 and works offline from then on. More pairs: Settings → Languages → Packs.
 
-**Hotkeys:** the selection — ⌥D on macOS, Ctrl+Alt+D on Windows; a card to type in — ⌥A / Ctrl+Alt+A. Both can be
+**Hotkeys:** the selection — ⌥D on macOS, Win+Shift+D on Windows; a card to type in — ⌥A / Win+Shift+A. Both can be
 changed in Settings → General → Hotkeys.
 
 ## Privacy

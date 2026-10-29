@@ -1,5 +1,5 @@
 # The Windows app end to end, in a signed-in desktop session (not over SSH: no desktop there): LexiPeek.exe started on
-# a data dir with packs, a word selected in Notepad, Ctrl+Alt+D, the card read by UI Automation, Esc, the input
+# a data dir with packs, a word selected in Notepad, Win+Shift+D, the card read by UI Automation, Esc, the input
 # hotkey, a lexipeek:// link, a second launch; a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-e2e.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
 param([Parameter(Mandatory)] [string]$Exe, [Parameter(Mandatory)] [string]$Data, [Parameter(Mandatory)] [string]$Out)
@@ -29,12 +29,20 @@ function AppTexts($proc) {
   $texts -join ' | '
 }
 function Keys($k) { [System.Windows.Forms.SendKeys]::SendWait($k); Start-Sleep -Milliseconds 300 }
+# Win+Shift+<letter> (SendKeys has no Win key): the hotkeys' default.
+function WinShift($letter) {
+  $vk = [byte][char]$letter.ToUpper()
+  foreach ($k in 0x5B, 0x10, $vk) { [Win]::keybd_event([byte]$k, 0, 0, [UIntPtr]::Zero) }
+  foreach ($k in $vk, 0x10, 0x5B) { [Win]::keybd_event([byte]$k, 0, 2, [UIntPtr]::Zero) }
+  Start-Sleep -Milliseconds 300
+}
 Add-Type @'
 using System; using System.Runtime.InteropServices;
 public static class Win {
   [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L, T, R, B; }
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
 }
@@ -70,7 +78,7 @@ Keys '^{HOME}'
 Keys '^+{RIGHT}'
 Shot '1-selected'
 
-Keys '^%d'
+WinShift 'd'
 Start-Sleep 4
 Shot '2-card'
 $t = AppTexts $app
@@ -82,7 +90,7 @@ Shot '3-closed'
 Check (-not ((AppTexts $app) -match 'Haus')) 'Esc closes the card'
 
 ClickIn $pad
-Keys '^%a'
+WinShift 'a'
 Start-Sleep 2
 Keys 'Tag~'
 Start-Sleep 4

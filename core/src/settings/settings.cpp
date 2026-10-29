@@ -82,8 +82,10 @@ json to_json(const AiSettings &a) {
 Settings load_settings(const fs::path &data) {
   auto j = read(data);
   Settings s;
-  // Windows: Ctrl+Alt+D and Ctrl+Alt+A (Alt+D is the browsers' address bar there).
-  if (ui_platform() == "windows") s.lookup.control = s.input.control = true;
+  // Windows: Win+Shift+D and Win+Shift+A — the Mac's letters; Alt+D is the browsers' address bar, Ctrl+Alt+letter is
+  // AltGr+letter (Polish ą), Win+Alt+D the clock's.
+  if (ui_platform() == "windows")
+    for (auto *h : {&s.lookup, &s.input}) h->option = false, h->command = h->shift = true;
   try {
     s.answer = j.value("answer", s.answer);
     if (j.contains("method") && j["method"].is_string()) {
