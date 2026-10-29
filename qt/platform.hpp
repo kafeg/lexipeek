@@ -54,6 +54,12 @@ bool set_secret(const std::string &provider, const std::string &value);  // "" r
 bool hand_over(const QStringList &args);
 void receive(std::function<void(const QStringList &)> got);
 
+// Per-user install (Windows): %LOCALAPPDATA%\Programs\LexiPeek, a Start menu shortcut, an entry in Settings → Apps.
+bool installed_here();                        // this copy runs from there (or the OS has no install: true)
+std::string install(const std::string &version);  // copies this program there; "" or the error
+std::string installed_program();              // the installed copy's path
+void uninstall();                             // shortcut, entries (Apps, Run, lexipeek://), the folder once this ends
+
 // lexipeek:// links open this program (Windows: HKCU\Software\Classes, per user).
 void register_scheme();
 

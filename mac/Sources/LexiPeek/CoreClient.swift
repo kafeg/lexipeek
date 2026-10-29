@@ -6,7 +6,7 @@ import LexiPeekKit
 // The core on serial queues for look-ups, translations and indexing and a concurrent one for AI; each card asks through
 // its CardLane.
 final class CoreClient {
-    fileprivate let engine: lexipeek.app.Engine
+    let engine: lexipeek.app.Engine
     fileprivate let lookups = DispatchQueue(label: "lexipeek.lookup", qos: .userInitiated)
     fileprivate let worker = DispatchQueue(label: "lexipeek.translate", qos: .userInitiated)
     // AI requests go out together (the open tab's first), each waits on the network.
@@ -79,81 +79,11 @@ final class CoreClient {
     }
 
     // A section of the card's entry (its words' meanings: off the main queue); done on the main queue.
-    func section(_ card: lexipeek.Card, entry: Int, key: String, page: Int, done: @escaping (lexipeek.SectionPage) -> Void) {
-        lookups.async { [engine] in
-            let p = engine.section(card, Int32(entry), std.string(key), Int32(page))
-            DispatchQueue.main.async { done(p) }
-        }
-    }
 
     // Memory pressure: free the held model now.
     func memory() -> lexipeek.MemoryView { engine.memory() }
 
     func release() {
         DispatchQueue.global(qos: .utility).async { [engine] in engine.release() }
-    }
-}
-
-// One card's requests (the pop-up's, the window's): a newer one makes its older ones no-ops and stops only its own
-// translation, so the two cards never cancel each other.
-final class CardLane {
-    private let client: CoreClient
-    private let lock = NSLock()
-    private var latest = 0
-    private var cards: [Int: lexipeek.Card] = [:]
-    private var translating = 0  // the request whose translation is running, 0 = none
-
-    private let tag = lexipeek.app.Engine.new_tag()  // this card's translations, for cancel
-
-    init(_ client: CoreClient) { self.client = client }
-
-    private func current(_ id: Int) -> Bool { lock.withLock { latest == id } }
-
-    // Its own running translation gives way (another card's goes on).
-    private func stop() {
-        if lock.withLock({ translating != 0 }) { client.engine.cancel(tag) }
-    }
-
-    // Returns the request's id; done runs on the main queue, only if no newer request came.
-    func lookup(_ text: String, source: lexipeek.Source, lang: String = "", answer: String = "",
-                done: @escaping (Int, lexipeek.Card) -> Void) -> Int {
-        let id = lock.withLock { latest += 1; cards.removeAll(); return latest }
-        stop()
-        client.lookups.async { [engine = client.engine] in
-            guard self.current(id) else { return }
-            let card = engine.lookup_as(std.string(text), source, std.string(lang), std.string(answer))
-            self.lock.withLock { self.cards[id] = card }
-            DispatchQueue.main.async { if self.current(id) { done(id, card) } }
-        }
-        return id
-    }
-
-    // A card shown again ("←"): it becomes the current request, so its translation can run.
-    func restore(_ card: lexipeek.Card) -> Int {
-        lock.withLock {
-            latest += 1
-            cards = [latest: card]
-            return latest
-        }
-    }
-
-    func translate(_ id: Int, method: lexipeek.Method, done: @escaping (lexipeek.Translation) -> Void) {
-        stop()  // the one running (another method, an older card) gives way
-        client.worker.async { [engine = client.engine] in
-            guard self.current(id), let card = self.lock.withLock({ self.cards[id] }) else { return }
-            self.lock.withLock { self.translating = id }
-            let t = engine.translate(card, method, self.tag)
-            self.lock.withLock { if self.translating == id { self.translating = 0 } }
-            DispatchQueue.main.async { if self.current(id) { done(t) } }
-        }
-    }
-
-    // One AI answer of the card (the saved one offline); done on the main queue, only if no newer request came.
-    func ask(_ id: Int, _ card: lexipeek.Card, _ a: lexipeek.ai.Ask, key: String, done: @escaping (lexipeek.AiState) -> Void) {
-        client.ai.async { [engine = client.engine] in
-            guard self.current(id) else { return }
-            let st = engine.ask(card, a, std.string(key))
-            DispatchQueue.main.async { if self.current(id) { done(st) } }
-        }
     }
 }

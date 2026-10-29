@@ -12,19 +12,14 @@ links, one instance, the Credential Manager, the Run key, CLI providers, the tra
 - llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
   (`cpu_by_arch`) do not apply; the method's card says where it runs.
 - The card's keys in its texts (`card_pin`, `card_back`, `hc_keys`): Windows has its own (`@win`); Linux will need its own.
-- Into the core, once for both shells (now in Swift and in Qt): the card's request loop (CardLane, CardNav's steps and
-  `card_asks`: Swift calls no `std::function`, so a polled session like `app::Download`), the hotkey's decision
+- Into the core, once for both shells (now in Swift and in Qt): the hotkey's decision
   (ignored app, the same selection closes, nothing read → typing), the tray / menu bar menu's items, the settings
   writes done by hand (method picked in the card, first run done, ignored apps), the snapshot driver, light Markdown.
 - Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); Notes'
-  backup / restore / TSV on the window's thread; the pop-up's ☆ not refreshed after Notes removes the word; the
-  window redrawn on every pop-up change; reading the selection blocks the UI (both shells); downloads share the AI pool.
-- From the review: a per-call cancel token (one card's ← may stop the other's LLM translation); one lock for
-  settings.json's load-modify-save; picking a method downloads it, its title instead of the raw component id; AI
-  tabs dimmed without a key; engine and download errors through tr(); the path rule (`path_of`) in stardict, store,
-  translator, dicts; packs.json parsed once per look-up; dead fields (`Card::lang_name`, `Component::license`,
-  `Model::publisher`, `CardView::star`, `CardRow::copy`), `app::rows`, `app::freed_ids`; the answer language default
-  ("ru") and a daily update check as InkPeek's.
+  backup / restore / TSV on the window's thread; downloads share the AI pool. Mac: reading the selection (AX) on the
+  main thread.
+- From the review: AI tabs dimmed without a key; the path rule (`path_of`) in stardict, store, translator, dicts;
+  packs.json parsed once per look-up; the answer language default ("ru") and a daily update check as InkPeek's.
 
 ## Open
 - CI on Linux / Windows not run since M0 (macOS first); the CLI providers' shell line (and its 2-minute stop) is

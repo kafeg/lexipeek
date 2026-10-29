@@ -1,6 +1,9 @@
 #include <QApplication>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QProcess>
 #include <QFile>
 #include <QSettings>
 #include <QThread>
@@ -123,8 +126,30 @@ int main(int argc, char **argv) {
     if (f.open(QIODevice::WriteOnly)) f.write(QByteArray::fromStdString(platform::probe_selection() + "front app: " + platform::front_app() + "\n"));
     return 0;
   }
+  // Settings → Apps → LexiPeek → Uninstall (--yes: without asking); --install: installed for this user, nothing asked.
+  if (args.contains("--uninstall")) {
+    if (args.contains("--yes") || QMessageBox::question(nullptr, "LexiPeek", t("uninst_q", app::data_dir())) == QMessageBox::Yes) platform::uninstall();
+    return 0;
+  }
+  if (args.contains("--install")) {
+    auto e = platform::install(version());
+    QTextStream(stderr) << (e.empty() ? q(platform::installed_program()) : q(e)) << "\n";
+    return e.empty() ? 0 : 1;
+  }
   // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
   if (platform::hand_over(args.mid(1))) return 0;
+  // Started by itself from elsewhere (a download): installed for this user, or run as it is.
+  if (args.size() == 1 && !platform::installed_here()) {
+    QMessageBox ask(QMessageBox::Question, "LexiPeek", t("inst_q_t"), QMessageBox::NoButton);
+    ask.setInformativeText(t("inst_q_d"));
+    auto *yes = ask.addButton(t("inst_btn"), QMessageBox::AcceptRole);
+    ask.addButton(t("inst_run"), QMessageBox::RejectRole);
+    ask.exec();
+    if (ask.clickedButton() == yes) {
+      if (auto e = platform::install(version()); !e.empty()) QMessageBox::warning(nullptr, "LexiPeek", q(e));
+      else return QProcess::startDetached(q(platform::installed_program()), {}) ? 0 : 1;
+    }
+  }
   Shell shell(client);
   platform::receive([&shell](const QStringList &a) { shell.handle(a); });
   platform::register_scheme();

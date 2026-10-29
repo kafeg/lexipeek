@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "lexipeek/app.hpp"
+#include "lexipeek/session.hpp"
 
 namespace lexipeek::mac {
 

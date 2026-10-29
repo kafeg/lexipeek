@@ -100,8 +100,8 @@ struct CardLook {
     }
 }
 
-// The card in a shell: the core's CardNav decides (what is shown, "←", sections, methods); this asks the core for what a
-// step needs, one request at a time, and hands the answers back.
+// The card in a shell: the core's CardSession decides and asks (what is shown, "←", sections, methods, AI answers); this
+// polls it while something is on its way and draws what it says.
 final class CardModel: ObservableObject {
     @Published var input = ""
     @Published var showInput = false
@@ -114,46 +114,57 @@ final class CardModel: ObservableObject {
     @Published var noAccess = false  // the hotkey without Accessibility: nothing could be read
 
     let client: CoreClient
-    private let lane: CardLane
-    private var request = 0
-
+    private var session: lexipeek.app.CardSession
+    private var timer: Timer?
     private var observer: Any?
 
     init(client: CoreClient) {
         self.client = client
-        lane = CardLane(client)
+        session = lexipeek.app.CardSession.make(client.engine)
         // Notes may have removed (or another card saved) this card's word: its ★ again.
         observer = NotificationCenter.default.addObserver(forName: .notesChanged, object: nil, queue: .main) { [weak self] _ in
-            guard let self, let card = self.card else { return }
-            let saved = self.client.isSaved(card)
-            if saved != self.nav.state.saved { self.nav.state.saved = saved }
+            self?.session.recheck_saved()
+            self?.pull()
         }
     }
 
-    // One dictionary's line clicked: its full entry alone ("←" comes back to all).
-    func openEntry(_ entry: Int) { nav.open_entry(Int32(entry)) }
-
-    var state: lexipeek.CardState {
-        get { nav.state }
-        set { nav.state = newValue }
-    }
+    var state: lexipeek.CardState { nav.state }
 
     private func relook() {
         card = nav.has_card() ? nav.card() : nil
         look = card.map { CardLook(lexipeek.card_view($0, nav.state)) }
     }
 
+    // What arrived is drawn; polled again while something is on its way.
+    private func pull() {
+        if session.poll() { nav = session.nav() }
+        if session.notes_changed() { NotificationCenter.default.post(name: .notesChanged, object: nil) }
+        guard session.busy(), timer == nil else { return }
+        let t = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            if !self.session.busy() { self.timer?.invalidate(); self.timer = nil }
+            self.pull()
+        }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+    }
+
+    // An action: the AI key for what it may ask (read only when a provider is set), then what changed.
+    private func act(_ f: (inout lexipeek.app.CardSession) -> Void) {
+        f(&session)
+        pull()
+    }
+
     func reset(input: Bool) {
-        request = 0
         self.input = ""
         showInput = input
-        nav.reset()
         unread = nil
         noAccess = false
+        act { $0.reset() }
     }
 
     // A look-up asked and not answered yet.
-    var looking: Bool { request != 0 && card == nil }
+    var looking: Bool { session.looking() }
 
     // Something is on its way: the card keeps its height meanwhile (no jumps), then fits what it shows.
     var loading: Bool { card == nil ? !showInput : nav.busy() }
@@ -163,108 +174,44 @@ final class CardModel: ObservableObject {
     func lookup(_ text: String, source: lexipeek.Source) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        run(nav.look(std.string(t), source, false, std.string(), std.string()))
+        session.set_key(std.string(Keychain.current))
+        act { $0.look(std.string(t), source, std.string(), std.string()) }
     }
 
     // A word clicked in the card (the gloss, a section): its card here, "←" comes back to this one.
-    func open(_ word: String) { run(nav.open(std.string(word))) }
+    func open(_ word: String) { act { $0.open(std.string(word)) } }
 
     // The badge's menu: this text again in another language or into another one.
-    func relookup(lang: String = "", answer: String = "") { run(nav.relookup(std.string(lang), std.string(answer))) }
+    func relookup(lang: String = "", answer: String = "") { act { $0.relookup(std.string(lang), std.string(answer)) } }
 
-    func back() { run(nav.back()) }
+    func back() { act { $0.back() } }
 
-    func openSection(_ entry: Int, _ key: String) { run(nav.open_section(Int32(entry), std.string(key), 0)) }
+    func openSection(_ entry: Int, _ key: String) { act { $0.open_section(Int32(entry), std.string(key)) } }
 
-    func turn(_ by: Int) { run(nav.turn(Int32(by))) }
+    func turn(_ by: Int) { act { $0.turn(Int32(by)) } }
 
-    // What a step asks for: a look-up, the card before made current again, a section's page.
-    private func run(_ step: lexipeek.CardStep) {
-        switch step.kind {
-        case .lookup:
-            request = lane.lookup(String(step.text), source: step.source, lang: String(step.lang), answer: String(step.answer)) { [weak self] id, card in
-                guard let self, id == self.request else { return }
-                self.nav.arrived(card)
-                if let m = Snapshot.method, self.nav.state.has_method { self.nav.state.method = m }
-                if Snapshot.ai { self.nav.state.by_ai = card.ai.translate }
-                NotificationCenter.default.post(name: .notesChanged, object: nil)
-                if self.nav.state.has_method { self.translate(self.nav.state.method) }
-                self.askAI()
-            }
-        case .restore:
-            guard let card else { return }
-            request = lane.restore(card)
-            if step.translate { translate(nav.state.method) }
-            askAI()
-        case .section:
-            guard let card else { return }
-            let id = request
-            client.section(card, entry: Int(step.entry), key: String(step.key), page: Int(step.page)) { [weak self] p in
-                guard let self, id == self.request else { return }
-                self.nav.section_arrived(p)
-            }
-        default:
-            break
-        }
-    }
+    // One dictionary's line clicked: its full entry alone ("←" comes back to all).
+    func openEntry(_ entry: Int) { act { $0.open_entry(Int32(entry)) } }
 
-    // The AI answers the card shows now (the core says which: only on the person's action), the open one first.
-    func askAI() {
-        guard let card, request != 0 else { return }
-        let id = request
-        let asks = lexipeek.card_asks(card, nav.state)
-        guard !asks.isEmpty else { return }
-        let key = Keychain.current  // read only when something is asked
-        for a in asks {
-            var asking = lexipeek.AiState()
-            asking.asking = true
-            nav.state = lexipeek.with_answer(nav.state, a, asking)
-            lane.ask(id, card, a, key: key) { [weak self] st in
-                guard let self, id == self.request else { return }
-                self.nav.state = lexipeek.with_answer(self.nav.state, a, st)
-            }
-        }
-    }
+    func fullEntries() { act { $0.full_entries() } }
 
     // A tab picked (a click, ←/→): an AI one asks when it opens.
-    func select(_ tab: lexipeek.CardTab) {
-        nav.select(tab)
-        askAI()
-    }
+    func select(_ tab: lexipeek.CardTab) { act { $0.select(tab) } }
 
-    func switchTab(_ by: Int = 1) {
-        nav.next_tab(Int32(by))
-        askAI()
-    }
-
+    func switchTab(_ by: Int = 1) { act { $0.next_tab(Int32(by)) } }
 
     // AI translation picked in the card's menu: this card only (Card → Opening makes it the default).
-    func chooseAI() {
-        nav.pick_ai()
-        askAI()
-    }
+    func chooseAI() { act { $0.choose_ai() } }
 
-    func translate(_ m: lexipeek.Method) {
-        guard request != 0 else { return }
-        nav.translating(m)
-        let id = request
-        lane.translate(id, method: m) { [weak self] t in
-            guard let self, id == self.request else { return }
-            self.nav.translated(m, t)
-        }
-    }
+    // This card only (snapshots' &method=).
+    func use(_ m: lexipeek.Method) { act { $0.use(m) } }
 
     // A method picked in the card: this text again with it, and the next cards too (Settings → Translation).
     func choose(_ m: lexipeek.Method) {
         Prefs.shared.method = String(lexipeek.app.method_id(m))
-        nav.pick_method(m)
-        translate(m)
+        use(m)
     }
 
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
-    func toggleSaved() {
-        guard let card, look?.canSave == true else { return }
-        nav.state.saved = client.toggleSaved(card, translation: String(lexipeek.shown_translation(nav.state)))
-        NotificationCenter.default.post(name: .notesChanged, object: nil)
-    }
+    func toggleSaved() { act { $0.toggle_saved() } }
 }

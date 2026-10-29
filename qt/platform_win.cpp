@@ -1,5 +1,6 @@
 #ifdef _WIN32
 #include "platform.hpp"
+#include "lexipeek/app.hpp"
 #include <QAbstractNativeEventFilter>
 #include <QCoreApplication>
 #include <QDir>
@@ -15,6 +16,9 @@
 // clang-format off
 #include <windows.h>
 #include <dwmapi.h>
+#include <objbase.h>
+#include <shlobj.h>
+#include <shobjidl.h>
 #include <psapi.h>
 #include <uiautomation.h>
 #include <wincred.h>
@@ -388,6 +392,68 @@ void receive(std::function<void(const QStringList &)> got) {
   r->setWindowTitle(QString::fromWCharArray(receiver));
   // A launch at a lower integrity level (a link from the browser or Explorer) may still send its arguments.
   ChangeWindowMessageFilterEx(reinterpret_cast<HWND>(r->winId()), WM_COPYDATA, MSGFLT_ALLOW, nullptr);  // the native window, never shown
+}
+
+namespace {
+QString install_dir() { return QDir::fromNativeSeparators(qEnvironmentVariable("LOCALAPPDATA")) + "/Programs/LexiPeek"; }
+QString shortcut_path() { return QDir::fromNativeSeparators(qEnvironmentVariable("APPDATA")) + "/Microsoft/Windows/Start Menu/Programs/LexiPeek.lnk"; }
+const char *uninstall_key = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LexiPeek";
+}  // namespace
+
+bool installed_here() {
+  return QFileInfo(QCoreApplication::applicationDirPath()).canonicalFilePath().compare(QFileInfo(install_dir()).canonicalFilePath(), Qt::CaseInsensitive) == 0 &&
+         QFileInfo::exists(install_dir());
+}
+
+std::string installed_program() { return QDir::toNativeSeparators(install_dir() + "/LexiPeek.exe").toStdString(); }
+
+std::string install(const std::string &version) {
+  auto dir = install_dir(), exe = dir + "/LexiPeek.exe";
+  if (!QDir().mkpath(dir)) return app::text("err_write", QDir::toNativeSeparators(dir).toStdString());
+  QFile::remove(exe);
+  if (!QFile::copy(QCoreApplication::applicationFilePath(), exe)) return app::text("err_write", QDir::toNativeSeparators(exe).toStdString());
+  auto native = QDir::toNativeSeparators(exe).toStdWString();
+  // The Start menu's shortcut (the shell's own link object).
+  CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  IShellLinkW *link = nullptr;
+  if (SUCCEEDED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&link)))) {
+    link->SetPath(native.c_str());
+    link->SetWorkingDirectory(QDir::toNativeSeparators(dir).toStdWString().c_str());
+    link->SetDescription(L"LexiPeek");
+    IPersistFile *file = nullptr;
+    if (SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))) {
+      file->Save(QDir::toNativeSeparators(shortcut_path()).toStdWString().c_str(), TRUE);
+      file->Release();
+    }
+    link->Release();
+  }
+  CoUninitialize();
+  QSettings u(uninstall_key, QSettings::NativeFormat);
+  auto quoted = "\"" + QDir::toNativeSeparators(exe) + "\"";
+  u.setValue("DisplayName", "LexiPeek");
+  u.setValue("DisplayVersion", QString::fromStdString(version));
+  u.setValue("Publisher", "LexiPeek");
+  u.setValue("DisplayIcon", QDir::toNativeSeparators(exe));
+  u.setValue("InstallLocation", QDir::toNativeSeparators(dir));
+  u.setValue("UninstallString", quoted + " --uninstall");
+  u.setValue("NoModify", 1);
+  u.setValue("NoRepair", 1);
+  u.setValue("EstimatedSize", static_cast<int>(QFileInfo(exe).size() / 1024));
+  return "";
+}
+
+void uninstall() {
+  QFile::remove(shortcut_path());
+  QSettings(uninstall_key, QSettings::NativeFormat).remove("");
+  QSettings(run_key, QSettings::NativeFormat).remove("LexiPeek");
+  QSettings("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek", QSettings::NativeFormat).remove("");
+  // The folder (this program in it) once this process has ended.
+  auto cmd = QString("cmd.exe /c ping -n 3 127.0.0.1 >nul & rmdir /s /q \"%1\"").arg(QDir::toNativeSeparators(install_dir())).toStdWString();
+  STARTUPINFOW si{};
+  si.cb = sizeof si;
+  PROCESS_INFORMATION pi{};
+  if (CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, nullptr, &si, &pi))
+    CloseHandle(pi.hThread), CloseHandle(pi.hProcess);
 }
 
 void register_scheme() {

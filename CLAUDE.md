@@ -129,12 +129,14 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
   The card (`CardView`, `CardModel`) draws `lexipeek::card_view`; its state is the core's `CardState`. A clicked word
   (row `link`) opens in the same card; the core's `CardNav` (`views/nav.cpp`) keeps the cards before it and decides
-  every step ("←", sections, methods, the badge's re-lookup) as a `CardStep` the shell carries out (`CardModel.run`).
+  every step ("←", sections, methods, the badge's re-lookup) as a `CardStep`; `app::CardSession` (`lexipeek/session.hpp`,
+  `views/session.cpp`) carries the steps out for every shell — look-ups and sections on one queue, translations on another
+  (one at a time for the process), AI answers at once, a newer request wins, a card's ← stops only its own translation by
+  tag — and the shell polls it from its UI thread while `busy()` (Swift takes no callbacks).
   ☆: `Card`'s `save_text`/`save_kind`/`save_line` (InkPeek's `saveKey`, set in `lookup`), `Core::toggle_saved`.
   The LexiPeek window (`MainWindow.swift`, menu bar → Open LexiPeek): Look up (an embedded `CardView`, its own
   `CardModel`) and Notes (`NotesPane.swift` draws `notes_view`, reloads on `.notesChanged` posted by the card). Each
-  `CardModel` asks through its own `CardLane` (`CoreClient.swift`): the window's and the pop-up's requests never
-  cancel each other. `NSApp.mainMenu` (App, Edit, Window) gives text fields ⌘C / ⌘V / ⌘A / ⌘Z.
+  `CardModel` has its own `CardSession`: the window's and the pop-up's requests never cancel each other. `NSApp.mainMenu` (App, Edit, Window) gives text fields ⌘C / ⌘V / ⌘A / ⌘Z.
   Settings (`SettingsView.swift`): toolbar sections, a segmented control of sub-tabs, `RowsView` draws the core's rows;
   a change goes `app::toggle` / `choose` → settings.json, then `Prefs.reload()` (its `changed` → `configure`) and
   `L.apply()` (`app::set_language`: the app's language — the setting, else the system's when it is one of the eight, else
@@ -148,11 +150,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
-  `LexiPeekKit` — pure Swift (shortcuts, placement), tested without the core; hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — two
-  serial queues (look-ups, one translation worker) and a concurrent AI queue; each `CardModel` asks through its `CardLane` (a newer request turns its older ones into no-ops).
+  `LexiPeekKit` — pure Swift (shortcuts, placement), tested without the core; hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
+  engine and queues for the rest (Notes, settings, packs).
 - `qt/` (M6, Windows; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, on
   by default on Windows; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
-  runs CardNav's steps, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
+  polls its CardSession, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
   done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets; `clear` deletes later: a redraw may come
   from a widget's own signal), `fluent` (the Windows 11 look: palettes, one style sheet, the system's icon glyphs drawn

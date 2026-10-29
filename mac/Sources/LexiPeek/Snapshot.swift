@@ -68,8 +68,6 @@ enum Snapshot {
     }
 
     // &method=fast: the card translates with it, whatever the settings say; &method=ai: by AI.
-    static var method: lexipeek.Method? { request?.method }
-    static var ai: Bool { request?.ai ?? false }
     // &whole=1: a cut title is shown whole (as clicked).
     static var whole: Bool { request?.whole ?? false }
 
@@ -124,10 +122,13 @@ enum Snapshot {
             let asking = [lexipeek.ai.Ask.quick, .analysis, .context].contains { lexipeek.card_answer(model.state, $0).asking }
             let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating && !asking)
             guard final else { return }
+            // &method=: this card with that method (or AI), once its own translation is done.
+            if let m = r.method, model.card != nil, model.state.has_method { request?.method = nil; model.use(m); return }
+            if r.ai, let card = model.card, card.ai.translate { request?.ai = false; model.chooseAI(); return }
             if let card = model.card, lexipeek.card_view(card, model.state).tabs {
                 if let t = r.tab, model.state.tab != t { model.select(t); return }
                 if let w = r.open { request?.open = nil; model.open(w); return }
-                if r.full && !model.state.full_entry && !card.entries.isEmpty { model.state.full_entry = true; return }
+                if r.full && !model.state.full_entry && !card.entries.isEmpty { model.fullEntries(); return }
                 if let k = r.section { request?.section = nil; model.openSection(0, k); return }
                 if let e = r.entry { request?.entry = nil; model.openEntry(e); return }
                 if r.page && model.state.section.page == 0 && !String(model.state.section.key).isEmpty { request?.page = false; model.turn(1); return }

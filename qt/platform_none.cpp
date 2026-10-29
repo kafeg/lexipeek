@@ -31,6 +31,10 @@ void activate(QWidget *w) {
 QImage glyph_mask(const QString &, char16_t, int) { return {}; }
 bool taskbar_light() { return false; }
 bool memory_low() { return false; }
+bool installed_here() { return true; }
+std::string install(const std::string &) { return ""; }
+std::string installed_program() { return ""; }
+void uninstall() {}
 QRect logical(const QRect &px) { return px; }
 void round(QWidget *) {}
 
