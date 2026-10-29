@@ -46,6 +46,7 @@ class CardModel : public QObject {
   void choose_ai();
   void toggle_saved();
   void toggle_pin();
+  void cancel();  // the card closed: its translation stops
 
  signals:
   void changed();

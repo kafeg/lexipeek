@@ -58,14 +58,14 @@ void CardModel::lookup(const std::string &text, const std::string &lang, const s
   session_.look(q(text).trimmed().toStdString(), source, lang, answer);
   acted();
 }
-void CardModel::open(const std::string &word) { session_.open(word), acted(); }
-void CardModel::relookup(const std::string &lang, const std::string &answer) { session_.relookup(lang, answer), acted(); }
-void CardModel::back() { session_.back(), acted(); }
+void CardModel::open(const std::string &word) { session_.set_key(key()), session_.open(word), acted(); }
+void CardModel::relookup(const std::string &lang, const std::string &answer) { session_.set_key(key()), session_.relookup(lang, answer), acted(); }
+void CardModel::back() { session_.set_key(key()), session_.back(), acted(); }
 void CardModel::open_section(int entry, const std::string &section) { session_.open_section(entry, section), acted(); }
 void CardModel::turn(int by) { session_.turn(by), acted(); }
 void CardModel::open_entry(int entry) { session_.open_entry(entry), acted(); }
-void CardModel::select(CardTab tab) { session_.select(tab), acted(); }
-void CardModel::next_tab(int by) { session_.next_tab(by), acted(); }
+void CardModel::select(CardTab tab) { session_.set_key(key()), session_.select(tab), acted(); }
+void CardModel::next_tab(int by) { session_.set_key(key()), session_.next_tab(by), acted(); }
 void CardModel::full_entries() { session_.full_entries(), acted(); }
 
 void CardModel::choose(Method m) {
@@ -76,9 +76,11 @@ void CardModel::choose(Method m) {
   use(m);
 }
 
-void CardModel::use(Method m) { session_.use(m), acted(); }
-void CardModel::choose_ai() { session_.choose_ai(), acted(); }
+void CardModel::use(Method m) { session_.set_key(key()), session_.use(m), acted(); }
+void CardModel::choose_ai() { session_.set_key(key()), session_.choose_ai(), acted(); }
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
+
+void CardModel::cancel() { session_.cancel(), acted(); }
 
 void CardModel::toggle_pin() {
   pinned = !pinned;

@@ -132,7 +132,7 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   v = first_run_view(m, {{"dict-de-ru", "d1"}, {"model-de-en", "m1"}, {"model-en-ru", "m3"}, {"langid", "l"}}, s);
   CHECK(v.step == FirstStep::done);
   CHECK(v.number == 3);
-  CHECK(v.text == "Select a word or a sentence in any app and press ⌥D.");
+  CHECK(v.text == "Select a word or a sentence in any app and press ⌥D. LexiPeek lives in the menu bar.");
   CHECK(v.button == "Close");
 
   // Later on Accessibility: the pair anyway; done says what works without it.

@@ -200,7 +200,7 @@ std::filesystem::path default_data_dir() {
   };
   if (auto d = env("LEXIPEEK_DATA"); !d.empty()) return d;
 #if defined(_WIN32)
-  return env("APPDATA") / "LexiPeek";
+  return env("LOCALAPPDATA") / "LexiPeek";  // packs and models: hundreds of MB, not for a roaming profile
 #elif defined(__APPLE__)
   return env("HOME") / "Library" / "Application Support" / "LexiPeek";
 #else

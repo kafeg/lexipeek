@@ -46,7 +46,10 @@ Shell::Shell(CoreClient &client) : c_(client), popup_(client) {
   // A pack installed or removed anywhere (Settings, the first run, the CLI): the icon follows.
   connect(&health_, &QTimer::timeout, this, [this] {
     if (app::has_pair(c_.data()) != pair_) update_tray();
-    if (platform::memory_low()) c_.engine.release();  // as the Mac's memory pressure
+    // As the Mac's memory pressure: once when memory gets low, off the window's thread.
+    bool low = platform::memory_low();
+    if (low && !low_) c_.worker.start([e = c_.engine] { e.release(); });
+    low_ = low;
   });
   health_.start(2000);
   connect(&reading_, &QFutureWatcher<std::optional<platform::Selected>>::finished, this, &Shell::selection_read);

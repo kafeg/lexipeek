@@ -386,6 +386,16 @@ bool hand_over(const QStringList &args) {
   return true;
 }
 
+void quit_running() {
+  // Only a running one's window: no mutex made here (this process must not become "the one running").
+  if (HWND w = FindWindowW(nullptr, receiver)) {
+    QByteArray bytes("--quit");
+    COPYDATASTRUCT cd{1, static_cast<DWORD>(bytes.size()), bytes.data()};
+    SendMessageW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd));
+    for (int i = 0; i < 30 && FindWindowW(nullptr, receiver); ++i) Sleep(100);
+  }
+}
+
 void receive(std::function<void(const QStringList &)> got) {
   auto *r = new Receiver;
   r->got = std::move(got);
@@ -410,8 +420,12 @@ std::string installed_program() { return QDir::toNativeSeparators(install_dir() 
 std::string install(const std::string &version) {
   auto dir = install_dir(), exe = dir + "/LexiPeek.exe";
   if (!QDir().mkpath(dir)) return app::text("err_write", QDir::toNativeSeparators(dir).toStdString());
-  QFile::remove(exe);
+  // A running copy's file cannot be replaced, but it can be renamed: it goes on running from the old name.
+  QFile::remove(dir + "/LexiPeek.old.exe");
+  if (QFile::exists(exe) && !QFile::rename(exe, dir + "/LexiPeek.old.exe")) QFile::remove(exe);
   if (!QFile::copy(QCoreApplication::applicationFilePath(), exe)) return app::text("err_write", QDir::toNativeSeparators(exe).toStdString());
+  QFile::remove(exe + ":Zone.Identifier");  // the download's "from the Internet" mark: the installed copy is trusted
+  if (login()) QSettings(run_key, QSettings::NativeFormat).setValue("LexiPeek", "\"" + QDir::toNativeSeparators(exe) + "\"");
   auto native = QDir::toNativeSeparators(exe).toStdWString();
   // The Start menu's shortcut (the shell's own link object).
   CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
@@ -448,11 +462,12 @@ void uninstall() {
   QSettings(run_key, QSettings::NativeFormat).remove("LexiPeek");
   QSettings("HKEY_CURRENT_USER\\Software\\Classes\\lexipeek", QSettings::NativeFormat).remove("");
   // The folder (this program in it) once this process has ended.
-  auto cmd = QString("cmd.exe /c ping -n 3 127.0.0.1 >nul & rmdir /s /q \"%1\"").arg(QDir::toNativeSeparators(install_dir())).toStdWString();
+  auto cmd = QString("cmd.exe /c ping -n 4 127.0.0.1 >nul & rmdir /s /q \"%1\"").arg(QDir::toNativeSeparators(install_dir())).toStdWString();
+  auto temp = QDir::toNativeSeparators(QDir::tempPath()).toStdWString();  // never inside the folder it removes
   STARTUPINFOW si{};
   si.cb = sizeof si;
   PROCESS_INFORMATION pi{};
-  if (CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, nullptr, &si, &pi))
+  if (CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW | DETACHED_PROCESS, nullptr, temp.c_str(), &si, &pi))
     CloseHandle(pi.hThread), CloseHandle(pi.hProcess);
 }
 

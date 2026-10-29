@@ -70,6 +70,7 @@ struct Translator::Impl {
   std::unique_ptr<LangIdModel> lid;
   std::atomic<bool> stop{false};
   std::atomic<int> tag{0};  // the running translation's
+  std::mutex tag_mu;        // tag and stop set together (a cancel never lands on the next card's translation)
   std::atomic<long long> idle_ms{-1};  // set_idle's; -1: the options'
   std::mutex about_mu;
   std::map<std::string, std::pair<std::string, std::int64_t>> about;  // key → title, bytes of what was loaded
@@ -192,8 +193,11 @@ Translation Translator::translate(const std::string &from, const std::string &to
     r.text = text;
     return r;
   }
-  impl_->tag = tag;
-  impl_->stop = false;
+  {
+    std::lock_guard g(impl_->tag_mu);
+    impl_->tag = tag;
+    impl_->stop = false;
+  }
   auto p = impl_->plan(from, to, m);
   r.by = p.by;
   if (!p.error.empty()) {
@@ -259,6 +263,7 @@ std::vector<Language> Translator::langid(const std::string &text, int k) {
 }
 
 void Translator::cancel(int tag) {
+  std::lock_guard g(impl_->tag_mu);
   if (tag == 0 || impl_->tag == tag) impl_->stop = true;
 }
 

@@ -21,6 +21,7 @@ std::string secret(const std::string &) { return ""; }
 bool set_secret(const std::string &, const std::string &) { return false; }
 bool hand_over(const QStringList &) { return false; }
 void receive(std::function<void(const QStringList &)>) {}
+void quit_running() {}
 void register_scheme() {}
 std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return nullptr; }
 std::string last_error() { return ""; }

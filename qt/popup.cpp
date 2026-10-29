@@ -95,6 +95,7 @@ void CardPopup::close_card() {
   platform::unregister_hotkey(escape_key);
   platform::unregister_hotkey(pin_key);
   model.pinned = false;
+  model.cancel();
 }
 
 // Its height follows the card; the top edge stays, inside the screen.

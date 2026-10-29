@@ -118,7 +118,7 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
     de → ru with `opus-deu_eng_fra_por_spa-sla` and runs the model tests).
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
-  is a setting (M8). Windows: `%APPDATA%\\LexiPeek`, Linux: XDG dirs.
+  is a setting (M8). Windows: `%LOCALAPPDATA%\\LexiPeek` (not the roaming profile: packs are large), Linux: XDG dirs.
 - **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8
   (`u8path` care on Windows).
 - **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), Notes shows it (M3).

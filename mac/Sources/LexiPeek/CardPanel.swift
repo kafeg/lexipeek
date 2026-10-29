@@ -107,6 +107,7 @@ final class CardController {
         guard panel.isVisible else { return }
         panel.orderOut(nil)
         model.pinned = false
+        model.cancel()
         Hotkeys.shared.unregister(Self.escapeKey)
         Hotkeys.shared.unregister(Self.pinKey)
         monitors.forEach(NSEvent.removeMonitor)

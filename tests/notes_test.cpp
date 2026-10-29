@@ -252,6 +252,21 @@ TEST_CASE("app: a card session — a look-up arrives at a poll, ☆, a word open
     s.look("Haus", Source::hotkey, "", "");
     settle();
     CHECK(s.nav().card().text == "Haus");
+    // Text that cleans to nothing: nothing waits.
+    s.look("…", Source::hotkey, "", "");
+    settle();
+    CHECK(!s.busy());
+    CHECK(!s.looking());
+    // ← while a clicked word's card is on its way: the card before, nothing left waiting.
+    s.open("Baum");
+    s.back();
+    settle();
+    CHECK(!s.busy());
+    // A closed card: what was on its way is dropped, nothing waits.
+    s.look("Baum", Source::hotkey, "", "");
+    s.cancel();
+    settle();
+    CHECK(!s.busy());
     s.reset();
     CHECK(s.poll());
     CHECK(!s.has_card());

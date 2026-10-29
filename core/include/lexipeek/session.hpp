@@ -30,6 +30,7 @@ class CardSession {
   void choose_ai();
   void toggle_saved();
   void recheck_saved();  // Notes changed elsewhere: the ☆ again
+  void cancel();         // the card closed: its translation stops, what is on its way is dropped (the card stays)
 
   // What arrived since the last poll is applied; true when the card changed (draw it again).
   bool poll();

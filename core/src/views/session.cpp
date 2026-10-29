@@ -64,6 +64,7 @@ struct CardSession::Impl {
   std::string key;
   std::atomic<int> request{0};
   int last = 0;
+  int section = 0;  // the section page asked last (← makes an earlier one stale)
   // From the workers: what to apply on the UI thread at the next poll.
   std::mutex mu;
   std::vector<std::function<void(Impl &)>> inbox;
@@ -85,9 +86,11 @@ struct CardSession::Impl {
           if (!self->current(id)) return;
           auto card = self->e.lookup_as(step.text, step.source, step.lang, step.answer);
           self->post([card, id](Impl &s) mutable {
-            if (!s.current(id) || card.kind == Card::Kind::empty) return;
+            if (!s.current(id)) return;
+            s.waiting = false;
+            if (card.kind == Card::Kind::empty) return;  // nothing to look up: the card as it was
             card.ai.no_key = card.ai.key && s.key.empty();
-            s.waiting = false, s.notes = true;
+            s.notes = true;
             s.nav.arrived(card);
             if (s.nav.state.has_method) s.translate(s.nav.state.method);
             s.ask();
@@ -98,18 +101,19 @@ struct CardSession::Impl {
       case CardStep::Kind::restore:
         e.cancel(tag);
         request = ++last;
+        waiting = false;  // what was on its way is dropped
         if (step.translate) translate(nav.state.method);
         ask();
         break;
       case CardStep::Kind::section: {
-        int id = request;
+        int id = request, sec = ++section;
         waiting = true;
         auto card = nav.card();
-        lookups().add([self, card, step, id] {
+        lookups().add([self, card, step, id, sec] {
           if (!self->current(id)) return;
           auto page = self->e.section(card, step.entry, step.key, step.page);
-          self->post([page, id](Impl &s) {
-            if (!s.current(id)) return;
+          self->post([page, id, sec](Impl &s) {
+            if (!s.current(id) || s.section != sec) return;  // ← closed it meanwhile
             s.waiting = false;
             s.nav.section_arrived(page);
           });
@@ -117,6 +121,8 @@ struct CardSession::Impl {
         break;
       }
       default:
+        // ← out of a section: a page still on its way is not wanted.
+        if (waiting && nav.state.section.key.empty()) ++section, waiting = false;
         break;
     }
   }
@@ -125,6 +131,7 @@ struct CardSession::Impl {
 
   void translate(Method m) {
     if (!request || !nav.has_card()) return;
+    e.cancel(tag);  // another method picked: its own running translation gives way
     nav.translating(m);
     dirty = true;
     int id = request;
@@ -235,6 +242,18 @@ void CardSession::recheck_saved() {
   if (bool saved = i.e.saved(i.nav.card()); saved != i.nav.state.saved) i.nav.state.saved = saved, i.dirty = true;
 }
 
+void CardSession::cancel() {
+  auto &i = *impl_;
+  i.e.cancel(i.tag);
+  i.request = ++i.last;
+  i.waiting = false;
+  i.dirty = true;
+  // Nothing comes for what was on its way: the card no longer waits for it.
+  i.nav.state.translating = false;
+  for (auto a : {ai::Ask::quick, ai::Ask::analysis, ai::Ask::context})
+    if (card_answer(i.nav.state, a).asking) i.nav.state = with_answer(i.nav.state, a, AiState());
+}
+
 bool CardSession::poll() {
   auto &i = *impl_;
   std::vector<std::function<void(Impl &)>> got;
@@ -250,7 +269,7 @@ bool CardSession::poll() {
 
 bool CardSession::notes_changed() { return std::exchange(impl_->notes, false); }
 bool CardSession::busy() const { return impl_->nav.busy() || impl_->waiting; }
-bool CardSession::looking() const { return impl_->request != 0 && !impl_->nav.has_card(); }
+bool CardSession::looking() const { return impl_->waiting && !impl_->nav.has_card(); }
 bool CardSession::has_card() const { return impl_->nav.has_card(); }
 CardNav CardSession::nav() const { return impl_->nav; }
 CardView CardSession::view() const { return impl_->nav.has_card() ? card_view(impl_->nav.card(), impl_->nav.state) : CardView{}; }

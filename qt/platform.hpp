@@ -53,6 +53,7 @@ bool set_secret(const std::string &provider, const std::string &value);  // "" r
 // One app per user: another one running gets these arguments (true: this launch quits); receive hands them over.
 bool hand_over(const QStringList &args);
 void receive(std::function<void(const QStringList &)> got);
+void quit_running();  // a running one quits (an install or uninstall replaces it); waits for it a few seconds
 
 // Per-user install (Windows): %LOCALAPPDATA%\Programs\LexiPeek, a Start menu shortcut, an entry in Settings → Apps.
 bool installed_here();                        // this copy runs from there (or the OS has no install: true)

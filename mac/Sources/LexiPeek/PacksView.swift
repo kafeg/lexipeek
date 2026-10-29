@@ -74,7 +74,7 @@ struct PacksPane: View {
                     Label { Text(e) } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }.font(.callout)
                 }
                 LabeledContent {
-                    Button(L.t("check_t")) { model.refresh() }.disabled(model.busy != nil)
+                    Button(L.t("packs_refresh")) { model.refresh() }.disabled(model.busy != nil)
                 } label: {
                     Text(String(v.summary))
                     Button(L.t("show_finder")) { NSWorkspace.shared.open(URL(fileURLWithPath: CoreClient.dataDir)) }

@@ -62,7 +62,7 @@ void PacksPane::draw() {
   auto *open = ui::link(t("show_finder"), [this] { QDesktopServices::openUrl(QUrl::fromLocalFile(q(c_.data().empty() ? app::data_dir() : c_.data()))); });
   col->addWidget(open, 0, Qt::AlignLeft);
   top->addLayout(col, 1);
-  auto *check = new QPushButton(t("check_t"));
+  auto *check = new QPushButton(t("packs_refresh"));
   check->setEnabled(!busy_);
   connect(check, &QPushButton::clicked, this, &PacksPane::refresh);
   top->addWidget(check, 0, Qt::AlignTop);

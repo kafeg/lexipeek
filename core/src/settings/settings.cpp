@@ -120,7 +120,16 @@ Settings load_settings(const fs::path &data) {
   return s;
 }
 
+namespace {
+// One writer of settings.json at a time (its .tmp is shared): saves and load-modify-saves.
+std::recursive_mutex &settings_mu() {
+  static std::recursive_mutex mu;
+  return mu;
+}
+}  // namespace
+
 std::string save_settings(const fs::path &data, const Settings &s) {
+  std::lock_guard g(settings_mu());
   auto j = read(data);
   j["answer"] = s.answer;
   if (s.mt_off) j["method"] = "off";
@@ -153,8 +162,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
 }
 
 std::string update_settings(const fs::path &data, const std::function<void(Settings &)> &change) {
-  static std::mutex mu;
-  std::lock_guard g(mu);
+  std::lock_guard g(settings_mu());
   auto s = load_settings(data);
   change(s);
   return save_settings(data, s);

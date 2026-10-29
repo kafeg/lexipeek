@@ -151,6 +151,8 @@ final class CardModel: ObservableObject {
 
     // An action: the AI key for what it may ask (read only when a provider is set), then what changed.
     private func act(_ f: (inout lexipeek.app.CardSession) -> Void) {
+        let p = String(lexipeek.app.ai_provider(std.string()))
+        session.set_key(std.string(!p.isEmpty && (Keychain.has(p) || Snapshot.dir != nil) ? Keychain.current : ""))
         f(&session)
         pull()
     }
@@ -174,7 +176,6 @@ final class CardModel: ObservableObject {
     func lookup(_ text: String, source: lexipeek.Source) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        session.set_key(std.string(Keychain.current))
         act { $0.look(std.string(t), source, std.string(), std.string()) }
     }
 
@@ -214,4 +215,7 @@ final class CardModel: ObservableObject {
 
     // ☆ / ★: saves the card's text in Notes (a word as its base form) with its translation, or removes it.
     func toggleSaved() { act { $0.toggle_saved() } }
+
+    // The card closed: its translation stops, what was on its way is dropped.
+    func cancel() { act { $0.cancel() } }
 }

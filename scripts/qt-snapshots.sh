@@ -9,7 +9,7 @@ UI_LANG=${UI_LANG:-}
 OUT=${1:-build-qt/snapshots${UI_LANG:+-$UI_LANG}}
 case "$(uname)" in
   Darwin) DEF="$HOME/Library/Application Support/LexiPeek" ;;
-  MINGW* | MSYS* | CYGWIN*) DEF="$APPDATA/LexiPeek" ;;
+  MINGW* | MSYS* | CYGWIN*) DEF="$LOCALAPPDATA/LexiPeek" ;;
   *) DEF="${XDG_DATA_HOME:-$HOME/.local/share}/LexiPeek" ;;
 esac
 DATA=${LEXIPEEK_DATA:-$DEF}

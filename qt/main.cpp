@@ -110,6 +110,40 @@ int main(int argc, char **argv) {
   // The system's UI language ("ru" of "ru-RU"), not its formats' locale.
   auto ui = QLocale::system().uiLanguages();
   app::set_language(data, (ui.isEmpty() ? QLocale::system().name() : ui.first()).left(2).toStdString());
+  // A question with the app's own words on its buttons (Qt's Yes / No would be English).
+  auto ask = [](const QString &title, const QString &detail, const QString &yes, const QString &no) {
+    QMessageBox box(QMessageBox::Question, "LexiPeek", title, QMessageBox::NoButton);
+    if (!detail.isEmpty()) box.setInformativeText(detail);
+    auto *y = box.addButton(yes, QMessageBox::AcceptRole);
+    box.addButton(no, QMessageBox::RejectRole);
+    box.exec();
+    return box.clickedButton() == y;
+  };
+  // Settings → Apps → LexiPeek → Uninstall (--yes: without asking): a running copy quits first.
+  if (args.contains("--uninstall")) {
+    if (args.contains("--yes") || ask(t("uninst_q", app::data_dir()), {}, t("delete"), t("cancel"))) {
+      platform::quit_running();
+      platform::uninstall();
+    }
+    return 0;
+  }
+  // --install: installed for this user, nothing asked; started by itself from elsewhere (a download): asked.
+  auto install = [&] {
+    platform::quit_running();  // an older copy running gives way
+    return platform::install(version());
+  };
+  if (args.contains("--install")) {
+    auto e = install();
+    QTextStream(stderr) << (e.empty() ? q(platform::installed_program()) : q(e)) << "\n";
+    return e.empty() ? 0 : 1;
+  }
+  bool tool = args.contains("--snapshots") || args.contains("--self-test") || args.contains("--probe-selection");
+  if (!tool && args.size() == 1 && !platform::installed_here() && ask(t("inst_q_t"), t("inst_q_d"), t("inst_btn"), t("inst_run"))) {
+    if (auto e = install(); !e.empty()) QMessageBox::warning(nullptr, "LexiPeek", q(e));
+    else return QProcess::startDetached(q(platform::installed_program()), {}) ? 0 : 1;
+  }
+  // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
+  if (!tool && platform::hand_over(args.mid(1))) return 0;
   CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   auto opt = [&](const char *name) {
     auto i = args.indexOf(name);
@@ -126,32 +160,11 @@ int main(int argc, char **argv) {
     if (f.open(QIODevice::WriteOnly)) f.write(QByteArray::fromStdString(platform::probe_selection() + "front app: " + platform::front_app() + "\n"));
     return 0;
   }
-  // Settings → Apps → LexiPeek → Uninstall (--yes: without asking); --install: installed for this user, nothing asked.
-  if (args.contains("--uninstall")) {
-    if (args.contains("--yes") || QMessageBox::question(nullptr, "LexiPeek", t("uninst_q", app::data_dir())) == QMessageBox::Yes) platform::uninstall();
-    return 0;
-  }
-  if (args.contains("--install")) {
-    auto e = platform::install(version());
-    QTextStream(stderr) << (e.empty() ? q(platform::installed_program()) : q(e)) << "\n";
-    return e.empty() ? 0 : 1;
-  }
-  // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
-  if (platform::hand_over(args.mid(1))) return 0;
-  // Started by itself from elsewhere (a download): installed for this user, or run as it is.
-  if (args.size() == 1 && !platform::installed_here()) {
-    QMessageBox ask(QMessageBox::Question, "LexiPeek", t("inst_q_t"), QMessageBox::NoButton);
-    ask.setInformativeText(t("inst_q_d"));
-    auto *yes = ask.addButton(t("inst_btn"), QMessageBox::AcceptRole);
-    ask.addButton(t("inst_run"), QMessageBox::RejectRole);
-    ask.exec();
-    if (ask.clickedButton() == yes) {
-      if (auto e = platform::install(version()); !e.empty()) QMessageBox::warning(nullptr, "LexiPeek", q(e));
-      else return QProcess::startDetached(q(platform::installed_program()), {}) ? 0 : 1;
-    }
-  }
   Shell shell(client);
-  platform::receive([&shell](const QStringList &a) { shell.handle(a); });
+  platform::receive([&shell](const QStringList &a) {
+    if (a.contains("--quit")) return QApplication::quit();  // a newer copy installed, or uninstalled
+    shell.handle(a);
+  });
   platform::register_scheme();
   if (app::first_run_at_launch(data, true)) shell.open_first_run();
   else if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
