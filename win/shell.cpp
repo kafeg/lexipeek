@@ -208,6 +208,8 @@ void Shell::open_settings(int section, int tab) {
       os::unregister_hotkey(translate_key), os::unregister_hotkey(input_key);
     };
     settings = settings_ui->window;
+    // Closed by code (not its X, which hides it): made again next time; the old one may still finish a download.
+    settings.Closed([this](auto &&, auto &&) { settings = nullptr, settings_ui = nullptr; });
   }
   settings_ui->hotkey_errors(lookup_error_, input_error_);
   if (section >= 0) settings_ui->select(static_cast<SettingsSection>(section), tab);
@@ -216,7 +218,10 @@ void Shell::open_settings(int section, int tab) {
 }
 
 void Shell::open_about() {
-  if (!about_ui) about_ui = new AboutWindow(c_, theme()), about = about_ui->window;
+  if (!about_ui) {
+    about_ui = new AboutWindow(c_, theme()), about = about_ui->window;
+    about.Closed([this](auto &&, auto &&) { about = nullptr, about_ui = nullptr; });
+  }
   about_ui->refresh(theme());
   present(about);
 }
