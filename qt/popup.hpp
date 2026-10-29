@@ -30,9 +30,10 @@ class CardPopup : public QWidget {
 
  private:
   void fit();
+  void keys(bool on);  // Esc and Ctrl+P for every app: only while the card is open and not pinned
   QRect screen_;
   QTimer outside_;
-  bool was_down_ = false;
+  bool was_down_ = false, keys_ = false;
   QPoint drag_, start_;
 };
 

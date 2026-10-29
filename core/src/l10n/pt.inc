@@ -107,6 +107,8 @@
 {"mt_none_for", "Sem modelo para {1}: traduz a Mozilla."},
 {"mt_this", "Este computador: {1} GB de memória; aceleração int8: {2}."},
 {"mt_this@win", "Este computador: {1} GB de memória; AVX2 para o modelo de IA: {2}."},
+{"mt_gpu", "O modelo de IA corre em {1}."},
+{"mt_gpu_none", "O modelo de IA corre no processador."},
 {"mt_yes", "sim"},
 {"mt_no", "não"},
 {"mt_no_models", "Ainda não está na lista de pacotes."},

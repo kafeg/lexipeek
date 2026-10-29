@@ -82,6 +82,9 @@ std::optional<Selected> read_edit() {
   DWORD_PTR got = 0;
   SendMessageTimeoutW(gui.hwndFocus, WM_GETTEXT, length + 1, reinterpret_cast<LPARAM>(text.data()), SMTO_ABORTIFHUNG, 500, &got);
   text.resize(got);
+  // RichEdit counts a paragraph break as one character, its WM_GETTEXT gives CRLF: one character per break here too.
+  if (name.startsWith("richedit"))
+    for (size_t i = text.find(L"\r\n"); i != std::wstring::npos; i = text.find(L"\r\n", i)) text.erase(i, 1);
   if (end > text.size()) return std::nullopt;
   Selected s;
   s.text = utf8(text.c_str() + start, static_cast<int>(end - start));

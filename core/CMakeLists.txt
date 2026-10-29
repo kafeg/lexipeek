@@ -15,3 +15,10 @@ set_target_properties(lexipeek_bergamot PROPERTIES CXX_STANDARD 17)
 target_include_directories(lexipeek_bergamot PRIVATE include src)
 target_link_libraries(lexipeek_bergamot PRIVATE bergamot-translator)
 lexipeek_flags(lexipeek_bergamot)
+
+# Windows: vulkan-1.dll comes with GPU drivers, not with every Windows: loaded on first use, its absence means no GPU.
+if(WIN32)
+  target_sources(lexipeek_core INTERFACE ${PROJECT_SOURCE_DIR}/cmake/vulkan_win.cpp)
+  target_link_options(lexipeek_core INTERFACE /DELAYLOAD:vulkan-1.dll)
+  target_link_libraries(lexipeek_core INTERFACE delayimp)
+endif()

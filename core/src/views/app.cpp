@@ -19,7 +19,9 @@ std::filesystem::path dir(const std::string &data) { return data.empty() ? defau
 }  // namespace
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
-Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) { return {ram_mb, features, arch}; }
+Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) {
+  return {ram_mb, features, arch, llm_gpu()};
+}
 
 void leave(int code) {
   std::fflush(nullptr);
@@ -27,7 +29,17 @@ void leave(int code) {
 }
 
 Settings settings(const std::string &data) { return load_settings(dir(data)); }
-std::string save(const std::string &data, const Settings &s) { return save_settings(dir(data), s); }
+// The shell's whole settings, but what the core writes by itself meanwhile (AI's recall, catalog downloads) kept.
+std::string save(const std::string &data, const Settings &s) {
+  return update_settings(dir(data), [&](Settings &now) {
+    auto recall = now.ai.recall;
+    auto got = now.dicts.got;
+    now = s;
+    for (auto &[k, v] : recall) now.ai.recall.try_emplace(k, v);
+    for (auto &g : got)
+      if (std::find(now.dicts.got.begin(), now.dicts.got.end(), g) == now.dicts.got.end()) now.dicts.got.push_back(g);
+  });
+}
 std::string method_id(const Settings &s) { return s.mt_off ? "off" : s.method ? method_id(*s.method) : ""; }
 std::string method_id(Method m) { return std::string(method_name(m)); }
 void set_method(Settings &s, const std::string &id) {

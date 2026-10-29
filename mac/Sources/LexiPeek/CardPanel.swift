@@ -25,6 +25,8 @@ final class CardController {
     private var hosting: CardHostingView<CardView>?
     private var screen = CGRect.zero
     private var monitors: [Any] = []
+    private var pinWatch: AnyCancellable?
+    private var keysOn = false
     private var changes: AnyCancellable?
     private var moved: Any?
     private var downAt: NSPoint?
@@ -108,18 +110,17 @@ final class CardController {
         panel.orderOut(nil)
         model.pinned = false
         model.cancel()
-        Hotkeys.shared.unregister(Self.escapeKey)
-        Hotkeys.shared.unregister(Self.pinKey)
+        pinWatch = nil
+        hotkeys(false)
         monitors.forEach(NSEvent.removeMonitor)
         monitors = []
     }
 
-    // Esc and ⌘P as hotkeys while the card is open: they work while another app has the focus.
+    // Esc and ⌘P as hotkeys while the card is open and not pinned: they work while another app has the focus; a pinned
+    // card leaves them to the apps (it stays while the person works elsewhere).
     private func watch() {
-        Hotkeys.shared.register(Self.escapeKey, code: 0x35, modifiers: 0) { [weak self] in self?.close() }
-        Hotkeys.shared.register(Self.pinKey, code: 0x23, modifiers: Shortcut.cmd) { [weak self] in
-            self?.model.pinned.toggle()
-        }
+        hotkeys(true)
+        pinWatch = model.$pinned.sink { [weak self] pinned in self?.hotkeys(!pinned) }
         if let m = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
             guard let self, !self.model.pinned else { return }
             self.close()
@@ -129,9 +130,31 @@ final class CardController {
         }
     }
 
-    // In the card (when it has the focus): ←/→ tabs, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
+    private func hotkeys(_ on: Bool) {
+        guard on != keysOn else { return }
+        keysOn = on
+        if on {
+            Hotkeys.shared.register(Self.escapeKey, code: 0x35, modifiers: 0) { [weak self] in self?.close() }
+            Hotkeys.shared.register(Self.pinKey, code: 0x23, modifiers: Shortcut.cmd) { [weak self] in self?.model.pinned.toggle() }
+        } else {
+            Hotkeys.shared.unregister(Self.escapeKey)
+            Hotkeys.shared.unregister(Self.pinKey)
+        }
+    }
+
+    // In the card (when it has the focus): Esc, ⌘P, ←/→ tabs, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
     private func key(_ e: NSEvent) -> NSEvent? {
-        guard e.window === panel, model.card != nil else { return e }
+        guard e.window === panel else { return e }
+        let mods = e.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if e.keyCode == 0x35 && mods.isEmpty && !keysOn {
+            close()
+            return nil
+        }
+        if e.keyCode == 0x23 && mods == .command && !keysOn {
+            model.pinned.toggle()
+            return nil
+        }
+        guard model.card != nil else { return e }
         if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
             model.toggleSaved()
             return nil

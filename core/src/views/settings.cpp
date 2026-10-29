@@ -128,7 +128,8 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
   rows.push_back(english);
   // The methods as InkPeek's cards: what each does, what it needs for the installed pairs, why it cannot run here.
   auto gb = [](int mb) { return decimal(mb / 1024.0); };
-  rows.push_back(heading(tr("mt_t"), st.device.ram_mb > 0 ? tr("mt_this", {gb(st.device.ram_mb), tr(st.device.features.empty() ? "mt_no" : "mt_yes")}) : ""));
+  auto where = st.device.gpu.empty() ? tr("mt_gpu_none") : tr("mt_gpu", {st.device.gpu});
+  rows.push_back(heading(tr("mt_t"), st.device.ram_mb > 0 ? tr("mt_this", {gb(st.device.ram_mb), tr(st.device.features.empty() ? "mt_no" : "mt_yes")}) + " " + where : ""));
   auto picked = s.method.value_or(Method::fast);
   if (!st.methods.empty()) {
     SettingRow off{Kind::method, "method", tr("mt_off_t"), tr("mt_off_d")};

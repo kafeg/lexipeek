@@ -274,6 +274,7 @@ std::vector<Component> updates(const Manifest &m, const std::map<std::string, st
 
 std::string cannot(const Component &c, const Device &d) {
   if (d.ram_mb < c.ram_mb) return tr("mt_cannot_mem", {std::format("{:.0f}", c.ram_mb / 1000.0), decimal(d.ram_mb / 1024.0)});
+  if (c.kind == "llm" && !d.gpu.empty()) return "";
   // The features this architecture needs; a model not built for it cannot run.
   auto need = c.cpu;
   if (!c.cpu_by_arch.empty()) {
@@ -320,9 +321,10 @@ Manifest read_manifest(const fs::path &file) {
   };
   static std::mutex mu;
   static std::map<fs::path, Kept> kept;
-  std::error_code ec;
+  std::error_code ec, ec2;
   auto time = fs::last_write_time(file, ec);
-  auto size = fs::file_size(file, ec);
+  auto size = fs::file_size(file, ec2);
+  if (ec2) ec = ec2;
   std::lock_guard g(mu);
   auto it = kept.find(file);
   if (!ec && it != kept.end() && it->second.time == time && it->second.size == size) return it->second.m;

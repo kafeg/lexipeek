@@ -73,4 +73,9 @@ class Translator {
   std::unique_ptr<Impl> impl_;
 };
 
+// The GPU the AI model (llama.cpp) runs on: Metal's, Vulkan's first one; "" = the CPU.
+std::string llm_gpu();
+// Every device llama.cpp sees: "Vulkan0: llvmpipe (GPU)", "CPU: … (CPU)".
+std::vector<std::string> llm_devices();
+
 }  // namespace lexipeek

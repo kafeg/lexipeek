@@ -1,8 +1,10 @@
 // AI translation with llama.cpp (as InkPeek's llm_jni.cpp): greedy decoding, the prompt as the model's template made it.
 #include <algorithm>
+#include <cstdlib>
 #include <mutex>
 #include <stdexcept>
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/mt.hpp"
 #include "llama.h"
 #include "mt/engines.hpp"
 
@@ -22,12 +24,16 @@ struct LlmModel::Impl {
   }
 };
 
-LlmModel::LlmModel(const std::string &path, int threads) : impl_(std::make_unique<Impl>()) {
+void llm_init() {
   static std::once_flag once;
   std::call_once(once, [] {
-    llama_log_set(quiet, nullptr);
+    if (!std::getenv("LEXIPEEK_LLM_LOG")) llama_log_set(quiet, nullptr);  // set: llama.cpp's own log on stderr
     llama_backend_init();
   });
+}
+
+LlmModel::LlmModel(const std::string &path, int threads) : impl_(std::make_unique<Impl>()) {
+  llm_init();
   auto mp = llama_model_default_params();
   mp.load_mode = LLAMA_LOAD_MODE_MMAP;
   mp.use_extra_bufts = false;  // repacked weights would be a second copy in memory
@@ -71,3 +77,29 @@ std::string LlmModel::generate(const std::string &prompt, int max_tokens, const 
 }
 
 }  // namespace lexipeek::mt
+
+namespace lexipeek {
+
+std::string llm_gpu() {
+  mt::llm_init();
+  for (size_t i = 0; i < ggml_backend_dev_count(); i++) {
+    auto *d = ggml_backend_dev_get(i);
+    auto t = ggml_backend_dev_type(d);
+    if (t == GGML_BACKEND_DEVICE_TYPE_GPU || t == GGML_BACKEND_DEVICE_TYPE_IGPU) return ggml_backend_dev_description(d);
+  }
+  return "";
+}
+
+std::vector<std::string> llm_devices() {
+  mt::llm_init();
+  std::vector<std::string> out;
+  for (size_t i = 0; i < ggml_backend_dev_count(); i++) {
+    auto *d = ggml_backend_dev_get(i);
+    auto t = ggml_backend_dev_type(d);
+    out.push_back(std::string(ggml_backend_dev_name(d)) + ": " + ggml_backend_dev_description(d) +
+                  (t == GGML_BACKEND_DEVICE_TYPE_CPU ? " (CPU)" : t == GGML_BACKEND_DEVICE_TYPE_ACCEL ? " (accelerator)" : " (GPU)"));
+  }
+  return out;
+}
+
+}  // namespace lexipeek

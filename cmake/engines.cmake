@@ -66,8 +66,15 @@ find_package(Threads REQUIRED)
 target_link_libraries(fasttext_lib PUBLIC Threads::Threads)
 set_target_properties(fasttext_lib PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# llama.cpp (MIT): Metal on macOS; weights mapped as they are, not repacked (see mt/llm.cpp).
+# llama.cpp (MIT): Metal on macOS, Vulkan on Windows (any GPU; none: the CPU); weights mapped as they are, not repacked
+# (see mt/llm.cpp).
 set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+if(WIN32)
+  # Headers and glslc from vcpkg; the system's vulkan-1.dll, loaded when first used (cmake/vulkan_win.cpp).
+  set(GGML_VULKAN ON CACHE BOOL "" FORCE)
+  find_program(Vulkan_GLSLC_EXECUTABLE glslc REQUIRED
+               PATHS "${VCPKG_INSTALLED_DIR}/${VCPKG_HOST_TRIPLET}/tools/shaderc" NO_DEFAULT_PATH)
+endif()
 if(LEXIPEEK_ARM)
   set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod" CACHE STRING "" FORCE)
 endif()

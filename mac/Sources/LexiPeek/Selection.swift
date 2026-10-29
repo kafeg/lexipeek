@@ -80,6 +80,7 @@ enum Selection {
         // A busy app answers within a second or not at all (AX's own wait is 6 s, on the main thread).
         AXUIElementSetMessagingTimeout(appEl, 1)
         guard let el = element(appEl, kAXFocusedUIElementAttribute) else { return nil }
+        AXUIElementSetMessagingTimeout(el, 1)  // the timeout is per element: the queries go to this one
         return selected(el)
     }
 
@@ -87,6 +88,7 @@ enum Selection {
         let wide = AXUIElementCreateSystemWide()
         AXUIElementSetMessagingTimeout(wide, 1)
         guard let el = element(wide, kAXFocusedUIElementAttribute) else { return nil }
+        AXUIElementSetMessagingTimeout(el, 1)
         return selected(el)
     }
 
@@ -128,7 +130,7 @@ enum Selection {
         let total = length(start, end)
         guard total > 0 else { return nil }
         var parts: [String] = []
-        var cur = start, at = 0
+        var cur = start, at = 0, whole = false
         for _ in 0..<500 {
             guard let next = param("AXNextParagraphEndTextMarkerForTextMarker", cur), CFGetTypeID(next) == AXTextMarkerGetTypeID() else { return nil }
             let pend = next as! AXTextMarker
@@ -136,12 +138,14 @@ enum Selection {
             if reach <= at { return nil }  // no headway: the app's markers do not work this way
             if reach >= total {
                 parts.append(text(cur, end))
+                whole = true
                 break
             }
             parts.append(text(cur, pend))
             cur = pend
             at = reach
         }
+        guard whole else { return nil }  // more than 500 paragraphs: the plain text, not a part of it
         let lines = parts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         return lines.count > 1 ? lines.joined(separator: "\n") : nil
     }

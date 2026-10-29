@@ -107,6 +107,8 @@
 {"mt_none_for", "No model for {1}: Mozilla translates them."},
 {"mt_this", "This computer: {1} GB of memory; int8 acceleration: {2}."},
 {"mt_this@win", "This computer: {1} GB of memory; AVX2 for the AI model: {2}."},
+{"mt_gpu", "The AI model runs on {1}."},
+{"mt_gpu_none", "The AI model runs on the processor."},
 {"mt_yes", "yes"},
 {"mt_no", "no"},
 {"mt_no_models", "Not in the packs list yet."},

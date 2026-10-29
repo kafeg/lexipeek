@@ -16,7 +16,8 @@ and a translation made on your computer — no server, no account, no telemetry.
   Wiktionary; add your own StarDict dictionaries or folders (GoldenDict's, KOReader's), or pick free ones from a
   catalog (WikDict, FreeDict, Wiktionary dumps).
 - **Translation on your computer.** Three methods: Direct · OPUS-MT (the default), Fast · Mozilla (the lightest), and
-  the Hy-MT2 AI model (the most natural, slower; 6 GB of memory).
+  the Hy-MT2 AI model (the most natural, slower; 6 GB of memory; on the GPU when there is one: Metal on a Mac,
+  Vulkan on Windows).
 - **AI is optional.** Off by default. Turn it on in Settings → AI with your own key (Anthropic, OpenAI-compatible,
   OpenRouter), a local server (Ollama, LM Studio) or the `claude` / `codex` command line: it adds Analysis and Context
   tabs and an AI translation. Only the text you look up and the prompt are sent, and only when you ask.

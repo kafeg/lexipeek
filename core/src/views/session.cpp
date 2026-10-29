@@ -84,6 +84,7 @@ struct CardSession::Impl {
       case CardStep::Kind::lookup: {
         e.cancel(tag);  // its own translation gives way
         waiting = true;
+        ++section, section_waiting = false;  // a section page on its way belongs to the card before
         int id = request = ++last;
         lookups().add([self, step, id] {
           if (!self->current(id)) return;
@@ -105,6 +106,7 @@ struct CardSession::Impl {
         e.cancel(tag);
         request = ++last;
         waiting = false;  // what was on its way is dropped
+        ++section, section_waiting = false;
         if (step.translate) translate(nav.state.method);
         ask();
         break;
@@ -204,8 +206,14 @@ void CardSession::look(const std::string &text, Source source, const std::string
   impl_->before = impl_->nav;
   impl_->run(impl_->nav.look(text, source, false, lang, answer), impl_);
 }
-void CardSession::open(const std::string &word) { impl_->run(impl_->nav.open(word), impl_); }
-void CardSession::relookup(const std::string &lang, const std::string &answer) { impl_->run(impl_->nav.relookup(lang, answer), impl_); }
+void CardSession::open(const std::string &word) {
+  impl_->before = impl_->nav;
+  impl_->run(impl_->nav.open(word), impl_);
+}
+void CardSession::relookup(const std::string &lang, const std::string &answer) {
+  impl_->before = impl_->nav;
+  impl_->run(impl_->nav.relookup(lang, answer), impl_);
+}
 void CardSession::back() { impl_->run(impl_->nav.back(), impl_); }
 void CardSession::open_section(int entry, const std::string &key) { impl_->run(impl_->nav.open_section(entry, key, 0), impl_); }
 void CardSession::turn(int by) { impl_->run(impl_->nav.turn(by), impl_); }

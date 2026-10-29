@@ -107,6 +107,8 @@
 {"mt_none_for", "Kein Modell für {1}: Mozilla übersetzt sie."},
 {"mt_this", "Dieser Computer: {1} GB Arbeitsspeicher; int8-Beschleunigung: {2}."},
 {"mt_this@win", "Dieser Computer: {1} GB Arbeitsspeicher; AVX2 für das KI-Modell: {2}."},
+{"mt_gpu", "Das KI-Modell läuft auf {1}."},
+{"mt_gpu_none", "Das KI-Modell läuft auf dem Prozessor."},
 {"mt_yes", "ja"},
 {"mt_no", "nein"},
 {"mt_no_models", "Noch nicht in der Paketliste."},

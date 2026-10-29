@@ -11,25 +11,25 @@ per-user install and uninstall.
 - Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
 - First release (the owner's): a release job (tag → the Mac app signed with Developer ID, notarized, zipped; the
   Windows exe, signed when there is a certificate; THIRD_PARTY_NOTICES.txt) and GitHub Releases.
-- llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
-  (`cpu_by_arch`) do not apply; the method's card says where it runs.
 - The card's keys in its texts (`card_pin`, `card_back`, `hc_keys`): Windows has its own (`@win`); Linux will need its own.
 - Into the core, once for both shells (now in Swift and in Qt): the hotkey's decision
   (ignored app, the same selection closes, nothing read → typing), the tray / menu bar menu's items, the settings
   writes done by hand (method picked in the card, first run done, ignored apps), the snapshot driver, light Markdown.
 - Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); downloads
   share the AI pool.
-- From the review: the path rule (`path_of`) in stardict, store, translator, dicts (a Cyrillic data path works on
-  Windows through the UTF-8 manifest); packs.json parsed once per look-up; the answer language default ("ru").
-- Work still running at quit (detached queue and AI threads); OPUS-MT counted in a pair's size where the machine
-  cannot run it.
+- The path rule (`path_of`) in stardict, store, translator, dicts: a Cyrillic data path works on Windows (tried:
+  every engine) through the UTF-8 manifest; the code still has `.string()` paths. The answer language default ("ru").
+- Vulkan tried on a software device (Mesa lavapipe, forced by `GGML_VK_VISIBLE_DEVICES`): a real GPU (NVIDIA, AMD,
+  Intel) not yet.
+- Settings saved whole by the shells (`app::save`) keep the core's own writes (AI's recall, catalog downloads), but a
+  field the shell does not know is still overwritten: shells could write only their own fields.
 
 ## Open
 - CI: Linux, its ASan and macOS green; Windows builds the core and the Qt shell (no models there).
 - No request sent to a real AI provider from here: try each once.
 - Own dictionaries are indexed in the background one at a time (a card waits for one index at most); no
   "indexing…" state in their rows.
-- `Library::all()` rescans the folders and `translate()` re-reads packs.json on every call (~1 ms now; grows with
+- `Library::all()` rescans the folders on every call (~1 ms now; grows with
   folders).
 - Check the selection and ⌥D's position (AX bounds) in Safari, Chrome, Firefox, Vivaldi and native apps.
 - OPUS-MT on an 8 GB Mac: its working set (1.2 GB) and peak (2 GB) — check `mini-batch-words`.

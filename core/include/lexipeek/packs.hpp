@@ -90,6 +90,7 @@ struct Device {
   int ram_mb = 0;
   std::vector<std::string> features;  // Linux's /proc/cpuinfo names ("asimddp", "avx2", "fma")
   std::string arch = cpu_arch();
+  std::string gpu = "";  // the GPU the AI model runs on (llm_gpu()); then its processor needs do not apply
 };
 // Why [c] cannot run on [d]; "" when it can.
 std::string cannot(const Component &c, const Device &d);

@@ -84,6 +84,13 @@ const Register langid{{"langid", "[-k 3] [TEXT...]", {}, [](const Args &a) {
                          return 0;
                        }}};
 
+const Register gpu{{"gpu", "   (where the AI model runs; every device llama.cpp sees)", {}, [](const Args &) {
+                      auto g = llm_gpu();
+                      std::cout << (g.empty() ? "CPU" : g) << "\n";
+                      for (auto &d : llm_devices()) std::cout << "  " << d << "\n";
+                      return 0;
+                    }}};
+
 const Register bench{{"bench", "[--from de --to ru] [--method M] [--text TEXT]   (no --method: each method in its own process)", {},
                       [](const Args &a) {
                         auto from = a.opt("--from", "de"), to = a.opt("--to", "ru");

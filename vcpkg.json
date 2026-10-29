@@ -39,6 +39,23 @@
     {
       "name": "clapack",
       "platform": "!osx"
+    },
+    {
+      "name": "vulkan-headers",
+      "platform": "windows"
+    },
+    {
+      "name": "vulkan-loader",
+      "platform": "windows"
+    },
+    {
+      "name": "spirv-headers",
+      "platform": "windows"
+    },
+    {
+      "name": "shaderc",
+      "host": true,
+      "platform": "windows"
     }
   ],
   "features": {

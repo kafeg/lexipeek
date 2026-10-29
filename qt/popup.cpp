@@ -48,12 +48,14 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
     model.source = Source::input;
     model.lookup(t.toStdString());
   });
-  // A click anywhere outside closes it (the focused app keeps its click).
-  outside_.setInterval(50);
+  // A click anywhere outside the card (not its shadow) closes it; the focused app keeps its click. Short: a tap is quick.
+  outside_.setInterval(15);
   connect(&outside_, &QTimer::timeout, this, [this] {
     bool down = platform::mouse_down();
-    if (down && !was_down_ && !model.pinned && !frameGeometry().contains(QCursor::pos())) close_card();
+    auto card_rect = frameGeometry().adjusted(shadow, shadow, -shadow, -shadow);
+    if (down && !was_down_ && !model.pinned && !card_rect.contains(QCursor::pos())) close_card();
     was_down_ = down;
+    keys(!model.pinned);
   });
 }
 
@@ -82,8 +84,7 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
       if (auto *e = findChild<QLineEdit *>()) e->setFocus(Qt::ActiveWindowFocusReason);
     });
   }
-  platform::register_hotkey(escape_key, Hotkey{"Esc", false, false, false, false}, [this] { close_card(); });
-  platform::register_hotkey(pin_key, Hotkey{"P", false, false, true, false}, [this] { model.toggle_pin(); });
+  keys(true);
   was_down_ = platform::mouse_down();
   outside_.start();
 }
@@ -92,10 +93,21 @@ void CardPopup::close_card() {
   if (!isVisible()) return;
   hide();
   outside_.stop();
-  platform::unregister_hotkey(escape_key);
-  platform::unregister_hotkey(pin_key);
+  keys(false);
   model.pinned = false;
   model.cancel();
+}
+
+void CardPopup::keys(bool on) {
+  if (on == keys_) return;
+  keys_ = on;
+  if (on) {
+    platform::register_hotkey(escape_key, Hotkey{"Esc", false, false, false, false}, [this] { close_card(); });
+    platform::register_hotkey(pin_key, Hotkey{"P", false, false, true, false}, [this] { model.toggle_pin(); });
+  } else {
+    platform::unregister_hotkey(escape_key);
+    platform::unregister_hotkey(pin_key);
+  }
 }
 
 // Its height follows the card; the top edge stays, inside the screen.
@@ -116,6 +128,7 @@ void CardPopup::keyPressEvent(QKeyEvent *e) {
   if (e->key() == Qt::Key_Escape) return close_card();
   if (!model.has_card()) return QWidget::keyPressEvent(e);
   if (e->key() == Qt::Key_S && e->modifiers() == Qt::ControlModifier) return model.toggle_saved();
+  if (e->key() == Qt::Key_P && e->modifiers() == Qt::ControlModifier) return model.toggle_pin();
   switch (e->key()) {
     case Qt::Key_Left: return model.next_tab(-1);
     case Qt::Key_Right: return model.next_tab(1);

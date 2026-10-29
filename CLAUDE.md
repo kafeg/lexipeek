@@ -127,6 +127,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
 - Marian needs BLAS and LAPACK: Accelerate on macOS, OpenBLAS + clapack (vcpkg, no Fortran) elsewhere. Windows: static CRT (`/MT`, Bergamot's
   choice) everywhere, triplet `x64-windows-static`; macOS: overlay triplets in `cmake/triplets/` (macOS 14).
+- llama.cpp on the GPU: Metal on macOS, Vulkan on Windows (vcpkg's headers and glslc; the system's `vulkan-1.dll`
+  delay-loaded, `cmake/vulkan_win.cpp`: without it the CPU). Software devices (lavapipe) are skipped unless
+  `GGML_VK_VISIBLE_DEVICES` names them; `lexipeek-cli gpu` lists what it sees, `LEXIPEEK_LLM_LOG=1` keeps llama's log.
+  With a GPU the AI model's processor needs do not apply (`Device::gpu`, `cannot`).
 - Engines build as C++17 (`cmake/engines.cmake`), our code as C++20. Linux: OpenBLAS `dynamic-arch` (a cached
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
 - CI (`.github/workflows/ci.yml`): macOS arm64, Linux x64, Windows x64, Linux ASan + UBSan; models from the packs
