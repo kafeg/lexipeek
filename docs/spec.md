@@ -293,27 +293,24 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   dictionaries and notes stay in the data folder, which the question names); `--install` / `--uninstall --yes` for
   scripts. Signed when there is a certificate.
 - **M7 Languages you learn** (InkPeek's milestone 21 and its `formats.md` note: the same meaning, the same AI
-  prompt paragraph and versions). A text already in the answer language is shown in up to two languages the person
-  learns. **Setting:** `settings.json` `"study": {"ru": ["de", "en"]}` — per answer language, ordered (the order of
-  ticking), two at most, none by default (off); per computer, not synced. Languages → Translation, right under
-  "Translate into": "Text already in <the answer language's name>", one line about, a check box per language X with a
-  pack answer → X in the packs list or installed (by name); with two ticked the others are off ("two at most"); one
-  whose dictionary `dict-<answer>-<x>` is not installed is off with "No pack ru → de yet: get it in Packs". The core's
-  row kind `checks` (each: code, title, on, enabled, note), toggled as `study.<code>`.
-  **When:** the ticked languages whose pack answer → X is installed (in their order; none left — off), and the text is
-  in the answer language (language id with the answer language as one more candidate: fastText, else the packs from
-  it that know more of the words). **Card:** a passive direction "ru → de, en" under the title, no badge (no
-  menu). **Dictionary** — a language per page (the pager "1 / 2" as full entries'; ← comes back to that page), its name and direction on top; a word: the line of the pack answer → X (a click: its
-  full entry alone, ← back), then up to 5 translated words of that line's meaning (notes in brackets dropped, each once:
-  InkPeek's `Study.words`), each with its own header and frequency band from the pack X → answer ("das Haus (Hauses,
-  pl. Häuser) · among the 1,000 most frequent words"; the word alone without it), a click opens its card (← back); full
-  entries (Card → Article) are not used here. A phrase: word by word through each pack answer → X, a block per
-  language. **Translate:** the offline translation answer → X for each language under its name (the method of
-  Settings → Translation when it covers the pair, else the first that does; none: why). History and ☆: the first
-  language's line or translation, its `lang` that language. **AI** (AI translation, Analysis, Context): InkPeek's
-  `Ai.STUDY` paragraph after the prompt; answers kept under `java_hash(prompt + "\n" + the paragraph with the English
-  names joined by " and ")`. An empty list: every card as before, the same AI versions. Help: "Languages you learn"
-  under translation.
+  prompt paragraph and versions). A text already in the answer language is shown in ONE language the person learns
+  (the owner simplified it from two). **Setting:** `settings.json` `"study": {"ru": ["de"]}` — per answer language, a
+  list of one kept for compatibility (an older list keeps its first), none by default (off); per computer, not synced.
+  Languages → Translation, right under "Translate into": "Text already in <the answer language's name>", a choice:
+  Off and each X whose dictionary `dict-<answer>-<x>` is installed (by name); those in the packs list without it are
+  named in the about ("No pack ru → de yet: get it in Packs").
+  **When:** that language's pack answer → X is installed and the text is in the answer language (language id with the
+  answer language as one more candidate: fastText, else the packs from it that know more of the words). **Card:** a
+  passive direction "ru → de" under the title, no badge (no menu), no headers or pager. **Dictionary** — a word: the
+  line of the pack answer → X (a click: its full entry alone, ← back), then up to 5 translated words of that line's
+  meaning (notes in brackets dropped, each once: InkPeek's `Study.words`), each with its own header and frequency band
+  from the pack X → answer ("das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words"; the word alone
+  without it), a click opens its card (← back); full entries (Card → Article) are not used here. A phrase: word by
+  word through that pack. **Translate:** the offline translation answer → X (the method of Settings → Translation or
+  the one picked in the card when it covers the pair, else the first that does; none: why). History and ☆: its line
+  or translation, its `lang` that language. **AI** (AI translation, Analysis, Context): InkPeek's `Ai.STUDY`
+  paragraph after the prompt; answers kept under `java_hash(prompt + "\n" + the paragraph with the language's English
+  name)`. Off: every card as before, the same AI versions. Help: "Languages you learn" under translation.
 - **M8 Native Windows shell** (the owner's decision: Qt's look is not Windows 11's). `win/`: WinUI 3 through the
   Windows App SDK, C++/WinRT, unpackaged and self-contained (the program and its runtime in one folder; no install of
   a runtime, no Store). The same screens and steps as `qt/` and `mac/`, drawn by the system's controls: the card (a

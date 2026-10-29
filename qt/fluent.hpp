@@ -16,7 +16,7 @@ namespace lexipeek::qt::fluent {
 enum class Glyph : char16_t {
   back = 0xE72B, chevron = 0xE70D, copy = 0xE8C8, star = 0xE734, star_filled = 0xE735, pin = 0xE718, pinned = 0xE840,
   search = 0xE721, history = 0xE81C, comment = 0xE90A, help = 0xE897, settings = 0xE713, info = 0xE946, globe = 0xE774,
-  card = 0xE8A1, robot = 0xE99A, keyboard = 0xE765, close = 0xE711, up = 0xE70E, remove = 0xE74D, more = 0xE712, left = 0xE76B, right = 0xE76C, warning = 0xE7BA
+  card = 0xE8A1, robot = 0xE99A, keyboard = 0xE765, close = 0xE711, up = 0xE70E, remove = 0xE74D, more = 0xE712, left = 0xE76B, right = 0xE76C, warning = 0xE7BA, check = 0xE73E
 };
 
 // The theme now (Fusion, the palette, the style sheet), again whenever the system's scheme changes.

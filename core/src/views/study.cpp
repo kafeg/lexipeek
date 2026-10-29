@@ -15,13 +15,6 @@ std::vector<std::string> study_parse(const std::vector<std::string> &codes) {
   return out;
 }
 
-std::vector<std::string> study_toggle(const std::vector<std::string> &langs, const std::string &code, bool on) {
-  auto out = langs;
-  if (!on) std::erase(out, code);
-  else if (std::find(out.begin(), out.end(), code) == out.end() && out.size() < study_max) out.push_back(code);
-  return out;
-}
-
 std::vector<std::string> study_offered(const std::string &answer, const std::vector<LangPair> &pairs) {
   std::set<std::string> out;
   for (auto &p : pairs)

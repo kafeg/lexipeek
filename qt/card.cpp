@@ -14,6 +14,7 @@
 #include <QRegularExpression>
 #include <QScreen>
 #include <QScrollArea>
+#include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include "fluent.hpp"
@@ -161,7 +162,7 @@ QToolButton *command(fluent::Glyph g, const QString &tip, std::function<void()> 
   b->setToolTip(tip);
   b->setProperty("command", true);
   b->setCursor(Qt::PointingHandCursor);
-  QObject::connect(b, &QToolButton::clicked, std::move(click));
+  if (click) QObject::connect(b, &QToolButton::clicked, std::move(click));
   return b;
 }
 
@@ -384,24 +385,6 @@ QWidget *CardWidget::row(const CardRow &r, const CardView &) {
       return l;
     }
     case S::heading: return label(q(r.text), font(0, true));
-    case S::block: {
-      auto *w = new QWidget;
-      auto *l = new QVBoxLayout(w);
-      l->setContentsMargins(0, r.entry > 0 ? 6 : 0, 0, 0);
-      l->setSpacing(8);
-      if (r.entry > 0) {
-        auto *rule = new QFrame;
-        rule->setFrameShape(QFrame::HLine);
-        rule->setFrameShadow(QFrame::Plain);
-        ui::grey(rule);
-        l->addWidget(rule);
-      }
-      auto f = font(2, true);
-      l->addWidget(label(q(r.text).toHtmlEscaped() + "&nbsp;&nbsp;<span style='color: gray; font-size: " + QString::number(font(-2).pointSizeF()) +
-                             "pt; font-weight: normal'>" + q(r.label).toHtmlEscaped() + "</span>",
-                         f, true));
-      return w;
-    }
     case S::sense: return label("<span style='color: gray'>" + q(r.label) + "</span>&nbsp;&nbsp;" + q(r.text).toHtmlEscaped(), font(), true);
     case S::example: {
       auto *l = label(q(r.text), font(-1));
@@ -479,7 +462,14 @@ QWidget *CardWidget::bar(const CardView &v) {
   // A pager's row has no room for copy (and a page of words has nothing to copy).
   if (!v.copy.empty() && v.pager.empty()) {
     auto text = q(v.copy);
-    l->addWidget(command(fluent::Glyph::copy, t("card_copy"), [text] { QApplication::clipboard()->setText(text); }));
+    auto *copy = command(fluent::Glyph::copy, t("card_copy"), {});
+    // Copied: a check mark for a moment, so the click is seen.
+    connect(copy, &QToolButton::clicked, copy, [copy, text] {
+      QApplication::clipboard()->setText(text);
+      copy->setIcon(fluent::icon(fluent::Glyph::check));
+      QTimer::singleShot(1500, copy, [copy] { copy->setIcon(fluent::icon(fluent::Glyph::copy)); });
+    });
+    l->addWidget(copy);
   }
   if (!v.badge.empty() || !v.books.empty() || !v.answers.empty()) {
     auto *b = menu_button(q(v.badge) + (v.books.empty() && v.answers.empty() ? "" : " ▾"), f);

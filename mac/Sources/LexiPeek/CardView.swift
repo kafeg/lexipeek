@@ -17,6 +17,7 @@ struct CardView: View {
     @State private var titleCut = false
     @State private var titleOpen = false
     @State private var titleHeight: CGFloat = 0
+    @State private var copied = false
 
     private var limit: CGFloat { (NSScreen.main?.visibleFrame.height ?? 800) * CGFloat(model.look?.height ?? 45) / 100 }
 
@@ -210,11 +211,14 @@ struct CardView: View {
         l.on ? AnyView(Label(l.title, systemImage: "checkmark")) : AnyView(Text(l.title))
     }
 
+    // Copied: a check mark for a moment, so the click is seen.
     private func copyButton(_ s: String) -> some View {
         Button {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(s, forType: .string)
-        } label: { Image(systemName: "doc.on.doc").font(font(-2)) }
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+        } label: { Image(systemName: copied ? "checkmark" : "doc.on.doc").font(font(-2)) }
             .buttonStyle(.borderless)
             .foregroundStyle(.secondary)
             .help(L.t("card_copy"))
@@ -363,11 +367,6 @@ struct CardView: View {
             }
         case .heading:
             Text(r.text).bold().textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-        case .block:
-            VStack(alignment: .leading, spacing: 8) {
-                if r.entry > 0 { Divider().padding(.top, 6) }
-                (Text(r.text).font(font(2, .semibold)) + Text("  " + r.label).font(font(-2)).foregroundColor(.secondary))
-            }
         case .sense:
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(r.label).foregroundStyle(.secondary).monospacedDigit().frame(minWidth: 18, alignment: .trailing)

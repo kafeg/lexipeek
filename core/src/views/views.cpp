@@ -148,7 +148,7 @@ CardTab first_tab(const Card &c) {
 CardState first_state(const Card &c) {
   CardState s;
   s.tab = first_tab(c);
-  s.full_entry = c.kind == Card::Kind::word && c.prefs.full && c.study.empty();  // languages you learn: their blocks
+  s.full_entry = c.kind == Card::Kind::word && c.prefs.full && c.study.empty();  // the language you learn: its lines
   s.has_method = c.method.has_value();
   s.method = c.method.value_or(Method::fast);
   for (auto &l : c.study)
@@ -223,23 +223,11 @@ CardRow gloss_row(const Card &c, const Gloss &g) {
   return r;
 }
 
-// A language you learn's block title: "German  ru → de".
-CardRow block_row(const Card &c, size_t i) {
-  CardRow r{Style::block, c.answer + " → " + c.study[i].lang, language_name(c.study[i].lang), ""};
-  r.entry = static_cast<int>(i);
-  return r;
-}
-
-// Languages you learn (InkPeek's studyBlocks): a language per page (the pager as full entries') under its name — a word:
-// its pack's line (a click: the full entry), the translated words with their own header and frequency (a click: their
-// card); a phrase: word by word.
-std::vector<CardRow> study_rows(const Card &c, const CardState &s) {
+// The language you learn (InkPeek's Study; the direction under the title names it) — a word: its pack's line (a click:
+// the full entry), the translated words with their own header and frequency (a click: their card); a phrase: word by word.
+std::vector<CardRow> study_rows(const Card &c) {
   std::vector<CardRow> rows;
-  size_t page = static_cast<size_t>(std::clamp(s.entry_page, 0, static_cast<int>(c.study.size()) - 1));
-  for (size_t i = page; i == page; i++) {
-    auto &l = c.study[i];
-    rows.push_back(block_row(c, i));
-    rows.back().entry = 0;  // alone on its page: no rule
+  for (auto &l : c.study) {
     if (c.kind != Card::Kind::word) {
       if (l.gloss.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
       for (auto &g : l.gloss) rows.push_back(gloss_row(c, g));
@@ -265,7 +253,7 @@ std::vector<CardRow> study_rows(const Card &c, const CardState &s) {
 
 std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   std::vector<CardRow> rows;
-  if (!c.study.empty() && s.section.key.empty() && s.entry_open < 0) return study_rows(c, s);
+  if (!c.study.empty() && s.section.key.empty() && s.entry_open < 0) return study_rows(c);
   if (c.kind == Card::Kind::word) {
     if (!s.section.key.empty()) return section_page(s.section);
     if (c.entries.empty()) rows.push_back({Style::note, "", tr(c.no_packs ? "card_no_packs" : "card_no_entry"), ""});
@@ -362,11 +350,10 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
   auto note = [](std::string t) { return std::vector<CardRow>{{Style::note, "", std::move(t), ""}}; };
   if (!c.study.empty()) {
     if (c.mt_off) return note(tr("card_mt_off"));
-    // Languages you learn: the translation into each under its name, as they arrive.
+    // The language you learn: its translation.
     std::vector<CardRow> rows;
     for (size_t i = 0; i < c.study.size(); i++) {
       auto &l = c.study[i];
-      rows.push_back(block_row(c, i));
       if (!l.has_method) rows.push_back({Style::note, "", l.reason.empty() ? tr("mt_none") : l.reason, ""});
       else if (i < s.learned.size() && !s.learned[i].ok()) rows.push_back({Style::error, "", s.learned[i].error, ""});
       else if (i < s.learned.size()) {
@@ -473,12 +460,6 @@ CardView card_view(const Card &c, const CardState &s) {
     int i = page_of(c, s);
     v.pager = digits(i + 1) + " / " + digits(n);
     v.prev = i > 0, v.next = i + 1 < n;
-  }
-  int langs = static_cast<int>(c.study.size());
-  if (dict && langs > 1 && !one && s.section.key.empty()) {
-    int i = std::clamp(s.entry_page, 0, langs - 1);
-    v.pager = digits(i + 1) + " / " + digits(langs);
-    v.prev = i > 0, v.next = i + 1 < langs;
   }
   if (in_section) v.back = tr("card_back_entry");
   else if (one && dict) v.back = tr("card_back_all");

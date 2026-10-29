@@ -94,24 +94,30 @@ SettingRow valued(Kind kind, std::string key, std::string title, std::string abo
   return r;
 }
 
-// Languages you learn for the answer language (InkPeek's refreshStudy): a box per language with a pack answer → X, two
-// at most; one whose pack is not installed is off, saying so.
+// The language you learn for the answer language (InkPeek's refreshStudy): Off or one with its pack answer → X
+// installed; those offered without it are named in the about.
+std::vector<std::string> study_choices(const Settings &s, const SettingsState &st) {
+  std::vector<std::string> out;
+  for (auto &x : study_offered(s.answer, st.installed_pairs)) out.push_back(x);
+  std::stable_sort(out.begin(), out.end(), [](auto &a, auto &b) { return language_name(a) < language_name(b); });
+  return out;
+}
+
 SettingRow study_row(const Settings &s, const SettingsState &st) {
-  SettingRow r{Kind::checks, "study", tr("study_t", {language_name(s.answer)}), tr("study_d")};
+  auto codes = study_choices(s, st);
   auto all = st.pairs;
   all.insert(all.end(), st.installed_pairs.begin(), st.installed_pairs.end());
-  auto offered = study_offered(s.answer, all);
-  std::stable_sort(offered.begin(), offered.end(), [](auto &a, auto &b) { return language_name(a) < language_name(b); });
+  std::string about = tr("study_d");
+  if (study_offered(s.answer, all).empty()) about = tr("study_none", {language_name(s.answer)});
+  for (auto &x : study_offered(s.answer, st.pairs))
+    if (std::find(codes.begin(), codes.end(), x) == codes.end()) about += " " + tr("study_no_pack", {s.answer + " → " + x});
+  std::vector<std::string> names{tr("mt_off_t")};
+  for (auto &x : codes) names.push_back(language_name(x));
   auto i = s.study.find(s.answer);
-  auto picked = i == s.study.end() ? std::vector<std::string>{} : i->second;
-  if (offered.empty()) r.about = tr("study_none", {language_name(s.answer)});
-  for (auto &x : offered) {
-    bool have = std::find(st.installed_pairs.begin(), st.installed_pairs.end(), LangPair{s.answer, x}) != st.installed_pairs.end();
-    bool on = std::find(picked.begin(), picked.end(), x) != picked.end();
-    bool off = !on && (!have || picked.size() >= study_max);
-    r.checks.push_back({x, language_name(x), on, !off, !have ? tr("study_no_pack", {s.answer + " → " + x}) : off ? tr("study_two") : ""});
-  }
-  return r;
+  int selected = 0;
+  if (i != s.study.end() && !i->second.empty())
+    if (auto at = std::find(codes.begin(), codes.end(), i->second.front()); at != codes.end()) selected = static_cast<int>(at - codes.begin()) + 1;
+  return choice("study", tr("study_t", {language_name(s.answer)}), about, names, selected);
 }
 
 std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) {
@@ -405,11 +411,6 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
           else s.ai.picked[id] = on;
         }
   }
-  else if (key.starts_with("study.")) {
-    auto &v = s.study[s.answer];
-    v = study_toggle(v, key.substr(6), on);
-    if (v.empty()) s.study.erase(s.answer);
-  }
   else if (key.starts_with("section.")) {
     auto k = key.substr(8);
     auto &v = s.card.sections;
@@ -429,6 +430,11 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   // Behind a first "Off" / "Fill in from a preset…".
   auto at1 = [&](const auto &xs) { return xs.at(static_cast<size_t>(std::clamp(i - 1, 0, static_cast<int>(xs.size()) - 1))); };
   if (key == "answer") s.answer = at(answer_codes(s, st));
+  else if (key == "study") {
+    auto codes = study_choices(s, st);
+    if (i <= 0 || codes.empty()) s.study.erase(s.answer);
+    else s.study[s.answer] = {at1(codes)};
+  }
   else if (key == "method") {
     s.mt_off = at(methods) == "off";
     s.method = method_from(at(methods));

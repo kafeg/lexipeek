@@ -330,14 +330,7 @@ struct SettingLine: Identifiable {
     var detail, button: String
     var ids: [String]
     var progress: Double
-    var checks: [Check]
     var id: String { "\(kind.rawValue)|\(key)|\(title)" }
-
-    // A check box of a `checks` row.
-    struct Check: Identifiable {
-        var id, title, note: String
-        var on, enabled: Bool
-    }
 
     init(_ r: lexipeek.SettingRow) {
         kind = r.kind
@@ -357,7 +350,6 @@ struct SettingLine: Identifiable {
         button = String(r.button)
         ids = r.ids.map { String($0) }
         progress = r.progress
-        checks = r.checks.map { Check(id: String($0.code), title: String($0.title), note: String($0.note), on: $0.on, enabled: $0.enabled) }
     }
 }
 
@@ -471,21 +463,6 @@ struct RowsView: View {
             } label: { label(r) }
         case .method:
             method(r)
-        case .checks:
-            // Languages you learn: a box per language, off ones say why.
-            VStack(alignment: .leading, spacing: 6) {
-                label(r)
-                ForEach(r.checks) { c in
-                    Toggle(isOn: Binding(get: { c.on }, set: { model.toggle(r.key + "." + c.id, $0) })) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(c.title)
-                            if !c.note.isEmpty { Text(c.note).font(.caption).foregroundStyle(.secondary) }
-                        }
-                    }
-                    .toggleStyle(.checkbox)
-                    .disabled(!c.enabled)
-                }
-            }
         case .link:
             LabeledContent {
                 if let url = URL(string: r.value) {

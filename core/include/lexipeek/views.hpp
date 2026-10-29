@@ -117,8 +117,7 @@ struct CardRow {
     example,   // an example under a sense, indented: "◆ Ich gehe nach Hause — Я иду домой."
     section,   // a section under an article: label its preview (two lines at most), text its caption ("Related words · 133 ›")
     english,   // Mozilla's English in between, smaller, selectable, under the translation
-    markdown,  // an AI answer's paragraph: light Markdown (**bold**, *italic*), "• " lists, selectable
-    block      // a language you learn: text its name, larger, label its direction ("ru → de"); entry its index (> 0: a rule above)
+    markdown   // an AI answer's paragraph: light Markdown (**bold**, *italic*), "• " lists, selectable
   };
   Style style = Style::note;
   std::string label, text, html;
@@ -358,13 +357,6 @@ struct SettingsState {
   std::vector<LangPair> pairs, installed_pairs;  // the packs list's pairs and those with their dictionary installed (app::settings_page fills them)
 };
 
-// A check box of a `checks` row: a language you learn.
-struct CheckItem {
-  std::string code, title;  // "de", "German"
-  bool on = false, enabled = true;
-  std::string note = "";    // why it is off: "No pack ru → de yet: get it in Packs", "Two at most: untick one first"
-};
-
 // One row, InkPeek's Rows: a title, a one-line description, a control.
 struct SettingRow {
   enum class Kind {
@@ -381,7 +373,6 @@ struct SettingRow {
     model,    // the model: value (a line to type), placeholder its default; on: "Choose model…" from the provider's list
     method,   // a translation method's card: value its id, on picked, enabled it can run here, detail its needs, ids to
               // download with button's label (progress: being downloaded)
-    checks    // check boxes (checks): a click toggles key + "." + its code ("study.de")
   };
   Kind kind = Kind::heading;
   std::string key = "", title = "", about = "";
@@ -398,7 +389,6 @@ struct SettingRow {
   // A button that opens another pane: its section and tab (go_tab -1: none).
   SettingsSection go_section = SettingsSection::general;
   int go_tab = -1;
-  std::vector<CheckItem> checks = {};
 };
 
 struct SettingsPage {

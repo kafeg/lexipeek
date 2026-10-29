@@ -1,5 +1,4 @@
 #include "settings_window.hpp"
-#include <QCheckBox>
 #include <QComboBox>
 #include <QDesktopServices>
 #include <QDialog>
@@ -453,26 +452,6 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
           draw();
         });
         l->addWidget(remove);
-      }
-      return under(r, w);
-    }
-    case K::checks: {
-      // Languages you learn: a box per language, off ones say why.
-      auto *w = new QWidget;
-      auto *l = new QVBoxLayout(w);
-      l->setContentsMargins(0, 0, 0, 0);
-      l->setSpacing(2);
-      for (auto &c : r.checks) {
-        auto *box = new QCheckBox(q(c.title));
-        box->setChecked(c.on);
-        box->setEnabled(c.enabled);
-        connect(box, &QCheckBox::toggled, this, [this, dir, k = key + "." + c.code](bool on) { after(app::toggle(dir, k, on)); });
-        l->addWidget(box);
-        if (!c.note.empty()) {
-          auto *n = ui::text(c.note, -1.5, true);
-          n->setContentsMargins(24, 0, 0, 2);
-          l->addWidget(n);
-        }
       }
       return under(r, w);
     }

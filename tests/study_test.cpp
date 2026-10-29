@@ -62,34 +62,25 @@ CoreOptions options(const fs::path &d, std::vector<std::string> study) {
 std::vector<std::string> texts(const CardView &v) {
   std::vector<std::string> out;
   for (auto &r : v.rows)
-    out.push_back(r.label.empty() || r.style == CardRow::Style::block ? r.text : r.label + (r.text.empty() ? "" : " " + r.text));
+    out.push_back(r.label.empty() ? r.text : r.label + (r.text.empty() ? "" : " " + r.text));
   return out;
 }
 
 }  // namespace
 
-TEST_CASE("study: the stored list, two at most, in order (InkPeek's Study)") {
-  CHECK(study_parse({"de", "en"}) == V{"de", "en"});
-  CHECK(study_parse({" en ", " de"}) == V{"en", "de"});
+TEST_CASE("study: the stored language, one (InkPeek's Study)") {
+  CHECK(study_parse({"de"}) == V{"de"});
+  CHECK(study_parse({" en ", " de"}) == V{"en"});  // an older list of two keeps its first
   CHECK(study_parse({}).empty());
-  CHECK(study_parse({"de", "de", "en", "fr"}) == V{"de", "en"});  // two at most, each once
-  CHECK(study_parse({"de", "", "Bad", "1"}) == V{"de"});
-  auto l = study_toggle({}, "en", true);
-  l = study_toggle(l, "de", true);
-  CHECK(l == V{"en", "de"});  // the order of ticking
-  CHECK(study_toggle(l, "fr", true) == V{"en", "de"});
-  CHECK(study_toggle(l, "en", false) == V{"de"});
-  CHECK(study_toggle(study_toggle(l, "en", false), "fr", true) == V{"de", "fr"});
-  CHECK(study_toggle(l, "de", true) == V{"en", "de"});
+  CHECK(study_parse({"", "Bad", "1", "de"}) == V{"de"});
   std::vector<LangPair> pairs{{"ru", "de"}, {"ru", "en"}, {"de", "ru"}, {"en", "ru"}, {"ru", "en"}};
   CHECK(study_offered("ru", pairs) == V{"de", "en"});
   CHECK(study_offered("de", pairs) == V{"ru"});
   CHECK(study_offered("fr", pairs).empty());
   CHECK(study_offered("ru", {{"ru", "ru"}}).empty());
-  CHECK(study_effective({"en", "de"}, "ru", pairs) == V{"en", "de"});
+  CHECK(study_effective({"en"}, "ru", pairs) == V{"en"});
   CHECK(study_effective({"fr", "de"}, "ru", pairs) == V{"de"});  // no pack ru → fr: not in the card
   CHECK(study_effective({"ru"}, "de", {{"ru", "de"}}).empty());
-  CHECK(study_direction("ru", {"de", "en"}) == "ru → de, en");
   CHECK(study_direction("en", {"de"}) == "en → de");
   CHECK(study_words("Haus, Gebäude, Dynastie") == V{"Haus", "Gebäude", "Dynastie"});
   CHECK(study_words("machen, tun") == V{"machen", "tun"});
@@ -133,13 +124,19 @@ TEST_CASE("study: settings.json, per answer language; the Translation pane's row
   std::ofstream(d / "settings.json") << R"({"study": {"ru": ["de", "en", "fr"], "de": "x", "en": []}})";
   auto s = load_settings(d);
   CHECK(s.study.size() == 1);
-  CHECK(s.study["ru"] == V{"de", "en"});
-  settings_toggle(s, "study.de", false);
+  CHECK(s.study["ru"] == V{"de"});  // one: the first
+  SettingsState have;
+  have.installed_pairs = {{"ru", "en"}, {"ru", "de"}, {"de", "ru"}};
+  s.answer = "ru";
+  settings_choose(s, "study", 1, have);  // Off, English, German: by name
   CHECK(s.study["ru"] == V{"en"});
   s.answer = "de";
-  settings_toggle(s, "study.ru", true);
+  settings_choose(s, "study", 1, have);
   CHECK(s.study["de"] == V{"ru"});
-  CHECK(s.study["ru"] == V{"en"});  // each answer language its own list
+  CHECK(s.study["ru"] == V{"en"});  // each answer language its own choice
+  settings_choose(s, "study", 0, have);
+  CHECK(!s.study.contains("de"));
+  settings_choose(s, "study", 1, have);
   CHECK(save_settings(d, s).empty());
   CHECK(load_settings(d).study == s.study);
 
@@ -154,43 +151,33 @@ TEST_CASE("study: settings.json, per answer language; the Translation pane's row
   while (at < rows.size() && rows[at].key != "answer") at++;
   REQUIRE(at + 1 < rows.size());
   auto &r = rows[at + 1];  // right under the answer language
-  CHECK(r.kind == SettingRow::Kind::checks);
+  CHECK(r.kind == SettingRow::Kind::choice);
   CHECK(r.title == "Text already in Russian");
-  REQUIRE(r.checks.size() == 3);
-  CHECK(r.checks[0].title == "English");  // by name
-  CHECK(r.checks[0].on);
-  CHECK(r.checks[1].title == "French");
-  CHECK(r.checks[1].enabled);
-  CHECK(r.checks[2].title == "German");
-  CHECK(!r.checks[2].enabled);
-  CHECK(r.checks[2].note == "No pack ru → de yet: get it in Packs");
-  t.study["ru"] = {"en", "fr"};
-  st.installed_pairs.push_back({"ru", "de"});
-  r = settings_view(SettingsSection::languages, 1, t, st).rows[at + 1];
-  CHECK(!r.checks[2].enabled);
-  CHECK(r.checks[2].note == "Two at most: untick one first");
+  CHECK(r.choices == V{"Off", "English", "French"});  // installed packs only, by name
+  CHECK(r.selected == 1);
+  CHECK(r.about.find("No pack ru → de yet: get it in Packs") != std::string::npos);
+  t.study["ru"] = {"fr"};
+  CHECK(settings_view(SettingsSection::languages, 1, t, st).rows[at + 1].selected == 2);
   t.answer = "pl";
   CHECK(settings_view(SettingsSection::languages, 1, t, st).rows[at + 1].about == "No packs Polish → other languages yet.");
   wipe(d);
 }
 
-TEST_CASE("study: a word in the answer language — a block per language, the words' own grammar and frequency") {
+TEST_CASE("study: a word in the answer language — the language you learn, its words' own grammar and frequency") {
   set_ui_language("en");
   auto d = study_data("word");
   {
-    // None ticked: the card as before.
+    // None chosen: the card as before.
     Core plain(options(d, {}));
     auto c = plain.lookup({"дом", Source::cli, "ru"});
     CHECK(c.study.empty());
     CHECK(c.lang == "ru");
   }
-  Core core(options(d, {"de", "en", }));
+  Core core(options(d, {"de"}));
   auto c = core.lookup({"дом", Source::input});
   CHECK(c.lang == "ru");
-  REQUIRE(c.study.size() == 2);
+  REQUIRE(c.study.size() == 1);
   CHECK(c.study[0].lang == "de");
-  CHECK(c.study[1].lang == "en");
-  REQUIRE(c.entries.size() == 2);
   CHECK(c.entries[0].dictionary == "InkPeek · ru → de");
   REQUIRE(c.study[0].words.size() == 3);  // Haus, Gebäude, Heim: notes dropped, each once
   CHECK(c.study[0].words[0].header == "das Haus (Hauses, pl. Häuser)");
@@ -204,44 +191,29 @@ TEST_CASE("study: a word in the answer language — a block per language, the wo
   CHECK(v.badge.empty());
   CHECK(v.books.empty());
   CHECK(v.answers.empty());  // passive: no menu
-  CHECK(v.subtitle.starts_with("ru → de, en"));
-  CHECK(v.rows.front().style == CardRow::Style::block);
-  CHECK(v.rows.front().label == "ru → de");
-  // A language per page, turned as full entries' dictionaries.
-  CHECK(texts(v) == V{"German", "дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
+  CHECK(v.subtitle.starts_with("ru → de"));
+  CHECK(texts(v) == V{"дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
                       "das Gebäude (Gebäudes, pl. Gebäude)", "Heim"});
-  CHECK(v.rows[1].open == "entry");
-  CHECK(v.rows[2].link == "Haus");
-  CHECK(v.pager == "1 / 2");
-  CHECK(!v.prev);
-  CHECK(v.next);
+  CHECK(v.rows[0].open == "entry");
+  CHECK(v.rows[1].link == "Haus");
+  CHECK(v.pager.empty());
+  // Its line: the full entry alone; ← back.
   CardNav nav;
   nav.look("дом", Source::input);
   nav.arrived(c);
-  nav.turn(1);
-  v = card_view(c, nav.state);
-  CHECK(texts(v) == V{"English", "дом (дома, pl. дома) — house, home", "house (pl. houses)", "home"});
-  CHECK(v.pager == "2 / 2");
-  CHECK(v.prev);
-  nav.turn(1);
-  CHECK(nav.state.entry_page == 1);
-  // Its line: the full entry alone; ← back to that language's page.
-  nav.open_entry(1);
-  CHECK(card_view(c, nav.state).rows.front().text.find("house, home") != std::string::npos);
-  CHECK(card_view(c, nav.state).pager.empty());
+  nav.open_entry(0);
+  CHECK(card_view(c, nav.state).rows.front().text.find("Haus, Gebäude") != std::string::npos);
   nav.back();
-  CHECK(card_view(c, nav.state).rows.front().text == "English");
-  nav.turn(-1);
+  CHECK(texts(card_view(c, nav.state)).front().starts_with("дом (дома, pl. дома) — Haus"));
   // A word clicked opens its own card.
   auto step = nav.open("Haus");
   CHECK(step.text == "Haus");
-  // Translate: each language under its name; a missing model says why.
+  // Translate: the translation; a missing model says why.
   s.tab = CardTab::translate;
   v = card_view(c, s);
-  REQUIRE(v.rows.size() == 4);
-  CHECK(v.rows[0].text == "German");
-  CHECK(v.rows[1].style == CardRow::Style::note);
-  // History: the first language's line, under that language.
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].style == CardRow::Style::note);
+  // History: its line, under that language.
   auto h = core.store().history();
   REQUIRE(h.size() == 1);
   CHECK(h[0].lang == "de");
@@ -253,17 +225,17 @@ TEST_CASE("study: a word in the answer language — a block per language, the wo
   wipe(d);
 }
 
-TEST_CASE("study: a phrase — word by word per language, the translations as they arrive") {
+TEST_CASE("study: a phrase — word by word, the translation as it arrives") {
   set_ui_language("en");
   auto d = study_data("phrase");
-  Core core(options(d, {"en", "de"}));
+  Core core(options(d, {"en"}));
   auto c = core.lookup({"большой дом", Source::cli, "ru"});
-  REQUIRE(c.study.size() == 2);
+  REQUIRE(c.study.size() == 1);
   CHECK(c.study[0].lang == "en");
   REQUIRE(c.study[0].gloss.size() == 2);
   CHECK(c.study[0].gloss[1].meaning == "house, home");
   CHECK(c.gloss.empty());
-  // The translations, pretended: one arrived, the other on its way.
+  // The translation, pretended: on its way, then arrived.
   for (auto &l : c.study) l.has_method = true;
   CardNav nav;
   nav.look(c.text, Source::input);
@@ -271,23 +243,21 @@ TEST_CASE("study: a phrase — word by word per language, the translations as th
   CHECK(nav.state.tab == CardTab::translate);
   CHECK(nav.state.has_method);
   nav.translating(nav.state.method);
+  CHECK(texts(card_view(c, nav.state)) == V{"Translating…"});
   nav.learned(0, nav.state.method, {"big house", "", "", ""});
   auto v = card_view(c, nav.state);
-  CHECK(texts(v) == V{"English", "big house", "German", "Translating…"});
+  CHECK(texts(v) == V{"big house"});
   CHECK(v.copy == "big house");
   // The method menu: the offline methods, not AI alone; its title the method in use.
   CHECK(v.menu);
   CHECK(v.methods.size() == 3);
   CHECK(v.menu_title == "Fast · Mozilla");
-  nav.learned(1, nav.state.method, {"", "", "", "failed"});
   nav.translated(nav.state.method, {"big house", "", "", ""});
-  CHECK(texts(card_view(c, nav.state)) == V{"English", "big house", "German", "failed"});
   CHECK(shown_translation(nav.state) == "big house");
   nav.select(CardTab::dictionary);
   v = card_view(c, nav.state);
-  CHECK(v.rows[0].text == "English");
-  CHECK(v.rows[1].style == CardRow::Style::gloss);
-  CHECK(v.rows[2].label == "дом (дома, pl. дома)");
-  CHECK(v.rows[2].text == "— house, home");
+  CHECK(v.rows[0].style == CardRow::Style::gloss);
+  CHECK(v.rows[1].label == "дом (дома, pl. дома)");
+  CHECK(v.rows[1].text == "— house, home");
   wipe(d);
 }

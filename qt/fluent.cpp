@@ -65,6 +65,7 @@ QString fallback(Glyph g) {
     case Glyph::close: case Glyph::remove: return "✕";
     case Glyph::up: return "▴";
     case Glyph::warning: return "⚠";
+    case Glyph::check: return "✓";
     case Glyph::left: return "‹";
     case Glyph::right: return "›";
     case Glyph::more: return "⋯";
