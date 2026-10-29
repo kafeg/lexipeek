@@ -15,7 +15,8 @@ und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 
 # name | url (snap= names the shot; tab=dictionary opens that tab; full=1 the full entry; save=1 ☆ once it is final;
 # open=<word> clicks that word in the card; section=<key> opens the first entry's section;
-# window?page=…: the LexiPeek window, notes after the cards that fill them; look= looks up there)
+# window?page=…: the LexiPeek window, notes after the cards that fill them; look= looks up there; pin=1 the card pinned;
+# \n in a text: a line break)
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
@@ -39,12 +40,20 @@ long-dictionary|lookup?text=$LONG&tab=dictionary
 long-whole|lookup?text=$LONG&whole=1
 passage-english|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&method=fast
 passage-whole|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&whole=1
+passage-direct|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&method=direct
+passage-llm|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&method=llm
+phrase-llm|lookup?text=Ich mache die Tür zu&method=llm
+passage-lines|lookup?text=Erste Zeile.\nZweite Zeile, etwas länger als die erste.\n\nEin neuer Absatz nach einer Leerzeile.
+passage-bullets|lookup?text=Einkaufsliste:\n• Brot\n• Milch und Butter\n• drei Äpfel aus dem Garten
+passage-numbered|lookup?text=1. Den Ofen auf 180 Grad vorheizen.\n2. Die Butter schmelzen.\n3. Alles gut verrühren und backen.
 passage-ru|lookup?text=Вчера мы долго гуляли по парку. Погода была тёплой, и мы не хотели возвращаться домой.
 french|lookup?text=Le chat dort sur le canapé depuis ce matin.
 unknown-symbols|lookup?text=+++ 42 ### 17 *** 9
 unknown-words|lookup?text=Blorvik tanquo meseral fintu dravok.
 input|input
 selection-failed|unread
+no-access|noaccess
+word-pinned|lookup?text=Haus&pin=1
 word-saved|lookup?text=Häusern&save=1
 word-baume-saved|lookup?text=Bäume&tab=dictionary&save=1
 article-saved|lookup?text=das Haus
@@ -90,6 +99,7 @@ study-word|lookup?text=дом&tab=dictionary|word
 study-word-translate|lookup?text=дом&tab=translate|word
 study-phrase|lookup?text=Мы идём домой&tab=translate|phrase
 study-phrase-dictionary|lookup?text=Мы идём домой&tab=dictionary|phrase
+study-word-analysis|lookup?text=дом&tab=analysis|word
 EOF
 }
 

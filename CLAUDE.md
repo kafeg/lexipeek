@@ -31,7 +31,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
 - **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
   (word, full entries with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
-  to the end, same language, no pack, unknown, input, selection failed, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
+  to the end, passages with line breaks and lists, each method, same language, no pack, unknown, input, selection failed, no
+  Accessibility, pinned, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
   settings section × tab in its toolbar window (`settings-<section>[-<tab>]`) and the About window (`about`), light and dark, into `build/snapshots/index.html`;
   `UI_LANG=de scripts/snapshots.sh` runs it in that app language (`build/snapshots-de/`). **Look at every image before
   handing over UI work**. The run is invisible
@@ -40,7 +41,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   in the script. How: `LEXIPEEK_SNAPSHOT=<dir>` (`Snapshot.swift`) — the app reads `lexipeek://…&snap=<name>[&tab=
   dictionary][&full=1][&open=<word>][&section=<key>]` (open: a word clicked in the card; section: entry 0's) from
   `<dir>/request` (not `open`: an installed copy would take the URL), writes `<name>.png`,
-  `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final, `&method=fast` overrides the method,
+  `<name>-end.png` when the body scrolls, then `<name>.done`; `&save=1` presses ☆ once the card is final, `&pin=1` pins it, `&method=fast|direct|llm` overrides the method, `\n` in a
+  case's text is a line break, `lexipeek://noaccess` the no-Accessibility card,
   `lexipeek://window?page=lookup|words|phrases|history[&look=…]&snap=<name>` shoots the LexiPeek window; no Esc/⌘P/outside-click closing; packs symlinked from
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);

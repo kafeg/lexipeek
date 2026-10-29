@@ -31,8 +31,8 @@ json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.
 
 . scripts/snapshot-cases.sh
 
-# Percent-encodes everything but unreserved characters and the query's own = and &.
-enc() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe="=&?"))' "$1"; }
+# Percent-encodes everything but unreserved characters and the query's own = and &; \n is a line break.
+enc() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1].replace("\\n", "\n"), safe="=&?"))' "$1"; }
 
 wait_for() {  # file, seconds; stops when the app has quit (another `pkill -x LexiPeek`)
   i=0

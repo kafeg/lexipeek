@@ -6,13 +6,13 @@ enum Snapshot {
     static let dir = ProcessInfo.processInfo.environment["LEXIPEEK_SNAPSHOT"]
 
     // The named shot asked for by the last URL: ?snap=<name>[&tab=dictionary|analysis|context][&full=1][&save=1][&open=<word>]
-    // [&section=<key>][&page=1][&entry=<n>][&back=1][&answer=<code>][&method=fast|ai][&whole=1] — save: ☆ once it is
+    // [&section=<key>][&page=1][&entry=<n>][&back=1][&answer=<code>][&method=fast|ai][&whole=1][&pin=1] — save: ☆ once it is
     // final; open: that word clicked in the card; section: the first entry's section opened, page: its next page;
     // entry: that dictionary's line clicked; back: ← once; answer: the badge's other answer language; tab=analysis|context:
-    // that AI tab clicked; method=ai: AI translation picked; whole: a cut title opened.
+    // that AI tab clicked; method=ai: AI translation picked; whole: a cut title opened; pin: the card pinned.
     private struct Request {
         var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool, entry: Int?,
-            back: Bool, page: Bool, answer: String?
+            back: Bool, page: Bool, answer: String?, pin: Bool
     }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
@@ -44,7 +44,8 @@ enum Snapshot {
         return (pages[v("page") ?? ""] ?? .lookup, v("snap") ?? "window", v("look"))
     }
 
-    // Reads the snapshot options of a lexipeek:// URL; true for lexipeek://unread (the selection-failed card).
+    // Reads the snapshot options of a lexipeek:// URL; true for lexipeek://unread and lexipeek://noaccess (the
+    // selection-failed and no-Accessibility cards).
     static func take(_ url: URL) -> Bool {
         guard dir != nil else { return false }
         pending?.cancel()
@@ -56,9 +57,9 @@ enum Snapshot {
                     section: v("section"),
                     method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
                     ai: v("method") == "ai", whole: v("whole") == "1", entry: v("entry").flatMap { Int($0) },
-                    back: v("back") == "1", page: v("page") == "1", answer: v("answer"))
+                    back: v("back") == "1", page: v("page") == "1", answer: v("answer"), pin: v("pin") == "1")
         }
-        return url.host == "unread"
+        return url.host == "unread" || url.host == "noaccess"
     }
 
     // Snapshot mode: the window off every screen (it is drawn, never seen).
@@ -120,7 +121,7 @@ enum Snapshot {
         let work = DispatchWorkItem {
             guard let r = request else { return }
             let asking = [lexipeek.ai.Ask.quick, .analysis, .context].contains { lexipeek.card_answer(model.state, $0).asking }
-            let final = model.unread != nil || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating && !asking)
+            let final = model.unread != nil || model.noAccess || (model.showInput && model.card == nil) || (model.card != nil && !model.state.translating && !asking)
             guard final else { return }
             // &method=: this card with that method (or AI), once its own translation is done.
             if let m = r.method, model.card != nil, model.state.has_method { request?.method = nil; model.use(m); return }
@@ -136,6 +137,7 @@ enum Snapshot {
                 if let a = r.answer { request?.answer = nil; model.relookup(answer: a); return }
             }
             if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
+            if r.pin && !model.pinned { model.pinned = true; return }
             request = nil
             write(view, "\(r.name).png")
             writeEnd(view, "\(r.name)-end.png")

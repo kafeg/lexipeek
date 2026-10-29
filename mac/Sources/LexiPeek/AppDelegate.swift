@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             if Snapshot.take(url) {
                 card.show(text: nil, source: .input, bounds: nil, focus: false)
-                model.unread = "Example"
+                if url.host == "noaccess" { model.noAccess = true } else { model.unread = "Example" }
                 continue
             }
             let l = lexipeek.app.link(std.string(url.absoluteString))
