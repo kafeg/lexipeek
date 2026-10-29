@@ -142,18 +142,22 @@ void Engine::release() const { core->release(); }
 MemoryView Engine::memory() const { return memory_view(core->memory()); }
 void Engine::cancel(int tag) const { core->cancel(tag); }
 
+// The language you learn: the pairs offered and those whose dictionary is there (the row and a choice read them).
+static SettingsState with_pairs(const std::string &data, SettingsState st) {
+  Packs p(dir(data), "");
+  if (st.pairs.empty()) st.pairs = lexipeek::pairs(p.cached());
+  if (st.installed_pairs.empty())
+    for (auto &[id, sha] : p.installed())
+      if (auto dash = id.find('-', 5); id.starts_with("dict-") && dash != std::string::npos) st.installed_pairs.push_back({id.substr(5, dash - 5), id.substr(dash + 1)});
+  return st;
+}
+
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state) {
   auto st = state;
   if (section == SettingsSection::languages && tab == 1) {
     Packs p(dir(data), "");
-    auto m = p.cached();
-    auto installed = p.installed();
-    if (st.methods.empty()) st.methods = method_infos(m, installed, st.device);
-    // Languages you learn: the pairs offered, and those whose dictionary is there.
-    if (st.pairs.empty()) st.pairs = lexipeek::pairs(m);
-    if (st.installed_pairs.empty())
-      for (auto &[id, sha] : installed)
-        if (auto dash = id.find('-', 5); id.starts_with("dict-") && dash != std::string::npos) st.installed_pairs.push_back({id.substr(5, dash - 5), id.substr(dash + 1)});
+    if (st.methods.empty()) st.methods = method_infos(p.cached(), p.installed(), st.device);
+    st = with_pairs(data, st);
   }
   return settings_view(section, tab, load_settings(dir(data)), st);
 }
@@ -171,7 +175,8 @@ std::string set_answer(const std::string &data, const std::string &code) {
 }
 
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state) {
-  return update_settings(dir(data), [&](Settings &s) { settings_choose(s, key, index, state); });
+  auto st = key == "study" ? with_pairs(data, state) : state;
+  return update_settings(dir(data), [&](Settings &s) { settings_choose(s, key, index, st); });
 }
 
 std::string ai_provider(const std::string &data) { return load_settings(dir(data)).ai.provider; }

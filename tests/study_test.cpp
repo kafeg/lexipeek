@@ -261,3 +261,16 @@ TEST_CASE("study: a phrase — word by word, the translation as it arrives") {
   CHECK(v.rows[1].text == "— house, home");
   wipe(d);
 }
+
+TEST_CASE("study: a language picked in the Translation pane is kept (the shell's state has no pairs)") {
+  auto d = fs::temp_directory_path() / "lexipeek-study-choose";
+  wipe(d);
+  fs::create_directories(d);
+  std::ofstream(d / "settings.json") << R"({"answer": "ru"})";
+  std::ofstream(d / "installed.json") << R"({"dict-ru-en": "a", "dict-ru-de": "b"})";
+  CHECK(app::choose(d.string(), "study", 2, {}).empty());  // Off, English, German
+  CHECK(load_settings(d).study["ru"] == V{"de"});
+  CHECK(app::choose(d.string(), "study", 0, {}).empty());
+  CHECK(!load_settings(d).study.contains("ru"));
+  wipe(d);
+}
