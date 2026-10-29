@@ -6,9 +6,10 @@ with TSV / Export / Import. Now: M6 Windows (Qt). Milestones: `docs/spec.md` →
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
 (Ctrl+Alt+D / Ctrl+Alt+A), the selection (Notepad, WordPad, Edge, Chrome), the icon at the selection, `lexipeek://`
-links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version.
+links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version, the
+per-user install and uninstall.
 - Firefox: not tried yet (its first-run screen); Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
-- Installer (later in M6): per-user, Start menu, uninstall; signed when there is a certificate.
+- Signing the Windows exe (a certificate); a release build in CI with the exe as an asset.
 - llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
   (`cpu_by_arch`) do not apply; the method's card says where it runs.
 - The card's keys in its texts (`card_pin`, `card_back`, `hc_keys`): Windows has its own (`@win`); Linux will need its own.

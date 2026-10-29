@@ -283,7 +283,11 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   open at login (the Run key), the AI key in the Credential Manager, the icon at the selection (a low-level mouse
   hook); Linux later. Snapshots: `lexipeek-qt --snapshots <dir>` draws the same cases as `make snapshots` on Qt's
   `minimal` platform (no window anywhere), on any OS. AI models: llama.cpp on the CPU (AVX2, FMA); a GPU through
-  Vulkan later. Installer: later in M6 (signed when there is a certificate).
+  Vulkan later. Install: the program itself, per user, nothing else needed — started from elsewhere (a download) it offers
+  "Install" or "Just Run"; installed: `%LOCALAPPDATA%\Programs\LexiPeek`, a Start menu shortcut, an entry in
+  Settings → Apps (Uninstall removes the program, the shortcut, the Run and `lexipeek://` entries; language packs,
+  dictionaries and notes stay in the data folder, which the question names); `--install` / `--uninstall --yes` for
+  scripts. Signed when there is a certificate.
 - Then: release (signing, notarization, GitHub Releases, update check) · browser
   extension (whole-page translation through a local server) · sync folder (InkPeek too) · Linux (the Qt shell).
 

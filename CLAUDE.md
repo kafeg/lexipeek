@@ -159,7 +159,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets; `clear` deletes later: a redraw may come
   from a widget's own signal), `fluent` (the Windows 11 look: palettes, one style sheet, the system's icon glyphs drawn
   by GDI, toggle, settings card, tabs). OS parts only in `platform.hpp`
-  (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key; `platform_none.cpp` elsewhere).
+  (`platform_win.cpp`: RegisterHotKey, UI Automation, Credential Manager, the Run key, the per-user install —
+  `LexiPeek.exe --install` / `--uninstall --yes`; `platform_none.cpp` elsewhere).
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
