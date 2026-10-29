@@ -5,6 +5,7 @@
 #include <functional>
 #include <thread>
 #include "lexipeek/mt.hpp"
+#include "lexipeek/session.hpp"
 
 using namespace lexipeek;
 namespace fs = std::filesystem;
@@ -126,4 +127,43 @@ TEST_CASE("llm: a newer request cancels a running translation") {
   CHECK(r.error == "Cancelled");
   CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(3));
   CHECK(tr.translate("de", "ru", "Das Haus ist alt.", Method::llm).ok());  // the next one runs
+}
+
+TEST_CASE("card session: the last method picked wins, a closed card's translation stops, ← keeps the card's own") {
+  if (!has("models/deen/set") || !has("opus/opus-deu_eng_fra_por_spa-sla") || !has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
+  auto e = app::Engine::make(models().string(), app::device(16384, {"asimddp"}, "arm64"));
+  auto s = app::CardSession::make(e);
+  auto settle = [&](int ms) {
+    for (int i = 0; i < ms / 10 && s.busy(); i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    s.poll();
+  };
+  s.look("Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.", Source::input, "de", "ru");
+  settle(30000);
+  REQUIRE(s.has_card());
+  s.use(Method::llm);
+  s.use(Method::fast);
+  settle(30000);
+  auto st = s.nav().state;
+  CHECK(st.method == Method::fast);
+  CHECK(st.translated);
+  CHECK(!st.translating);
+  CHECK(cyrillic(st.translation.text));
+  // A long text on the AI model, the card closed meanwhile: nothing waits, the next card translates.
+  std::string text;
+  for (int i = 0; i < 8; i++) text += "Am nächsten Morgen stand er früh auf und ging zum Bahnhof. Der Zug war voll. ";
+  s.look(text, Source::input, "de", "ru");
+  settle(30000);
+  s.use(Method::llm);
+  s.poll();
+  CHECK(s.busy());
+  auto t0 = std::chrono::steady_clock::now();
+  s.cancel();
+  settle(5000);
+  CHECK(!s.busy());
+  CHECK(!s.nav().state.translating);
+  s.look("Das Haus ist alt.", Source::input, "de", "ru");
+  s.use(Method::fast);
+  settle(30000);
+  CHECK(s.nav().state.translated);
+  CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(10));
 }
