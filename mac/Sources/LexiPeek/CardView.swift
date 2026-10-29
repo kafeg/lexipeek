@@ -109,8 +109,9 @@ struct CardView: View {
 
     // As InkPeek's title: cut with "…" (not selectable: a selection inside spills over); a click on a cut one shows it whole
     // over the card (wholeTitle).
-    private func title(_ s: String, _ f: Font, lines: Int, secondary: Bool) -> some View {
-        Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary).lineLimit(lines).truncationMode(.tail)
+    private func title(_ whole: String, _ f: Font, lines: Int, secondary: Bool) -> some View {
+        let s = whole.split(whereSeparator: \.isNewline).joined(separator: " ")  // a list's lines run on, not stop at the first
+        return Text(s).font(f).foregroundStyle(secondary ? .secondary : .primary).lineLimit(lines).truncationMode(.tail)
             .background(GeometryReader { cut in
                 // The whole text at the same width, unseen: taller means the title is cut.
                 Text(s).font(f).fixedSize(horizontal: false, vertical: true)
@@ -306,7 +307,8 @@ struct CardView: View {
     private func bar(_ look: CardLook) -> some View {
         HStack(spacing: 12) {
             if !look.back.isEmpty {
-                Button { model.back() } label: { Image(systemName: "chevron.left") }
+                // An arrow, not a chevron: the pager's ‹ › may stand next to it.
+                Button { model.back() } label: { Image(systemName: "arrow.left") }
                     .buttonStyle(.borderless).help(look.back)
             }
             if look.menu { methods(look) }
