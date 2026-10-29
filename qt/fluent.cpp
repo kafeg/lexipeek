@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QDir>
 #include <QFontDatabase>
+#include <QPolygonF>
+#include <QPen>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QHash>
@@ -71,14 +73,15 @@ QString fallback(Glyph g) {
 }
 
 // The combo box's arrow: the system's chevron glyph as a picture (a style sheet takes no font glyph).
+// Drawn as lines: an icon font's glyph may be missing (Windows 10 without Segoe Fluent Icons, other systems).
 QString chevron_file(const Theme &t) {
   auto path = QDir(QDir::tempPath()).filePath(QString("lexipeek-chevron-%1.png").arg(t.text.name().mid(1)));
   QPixmap pm(24, 24);
   pm.fill(Qt::transparent);
   QPainter p(&pm);
-  p.setFont(icons(16));
-  p.setPen(t.text);
-  p.drawText(pm.rect(), Qt::AlignCenter, glyph(Glyph::chevron));
+  p.setRenderHint(QPainter::Antialiasing);
+  p.setPen(QPen(t.text, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  p.drawPolyline(QPolygonF({QPointF(6.5, 9.5), QPointF(12, 15), QPointF(17.5, 9.5)}));
   p.end();
   pm.save(path);
   return QDir::fromNativeSeparators(path);
@@ -135,7 +138,7 @@ QCheckBox::indicator, QRadioButton::indicator { width: 18px; height: 18px; }
   s.replace("BOTTOM", t.bottom.name()).replace("ONACCENT", t.on_accent.name()).replace("ACCENT", t.accent.name());
   s.replace("HOVER", t.hover.name()).replace("SELECTED", t.selected.name()).replace("WINDOW", t.window.name());
   s.replace("CHEVRON", chevron_file(t));
-  s.replace("NAV", QString::number(QApplication::font().pointSizeF() + 1.5));  // Windows 11 Settings' list: 14 px
+  s.replace("NAV", QString::number(QApplication::font().pointSizeF()));
   return s;
 }
 
@@ -150,9 +153,13 @@ void apply() {
   static bool connected = false;
   if (!connected) QObject::connect(QGuiApplication::styleHints(), &QStyleHints::colorSchemeChanged, [] { apply(); }), connected = true;
   if (QApplication::style()->name() != "fusion") QApplication::setStyle(QStyleFactory::create("fusion"));
-  // Windows 11's own text face where it is (Windows 10: Segoe UI, as the system gives it).
-  if (auto f = QApplication::font(); QFontDatabase::hasFamily("Segoe UI Variable Text") && f.family() != "Segoe UI Variable Text")
-    f.setFamily("Segoe UI Variable Text"), QApplication::setFont(f);
+#ifdef Q_OS_WIN
+  // Windows 11 Settings' text: Segoe UI Variable where it is (else Segoe UI) at 14 px, not Qt's 9 pt.
+  auto f = QApplication::font();
+  if (QFontDatabase::hasFamily("Segoe UI Variable Text")) f.setFamily("Segoe UI Variable Text");
+  if (f.pointSizeF() < 10.5) f.setPointSizeF(10.5);
+  if (f != QApplication::font()) QApplication::setFont(f);
+#endif
   auto &t = theme();
   QPalette p;
   p.setColor(QPalette::Window, t.window);

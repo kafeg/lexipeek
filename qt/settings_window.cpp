@@ -314,6 +314,8 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       auto *e = new QKeySequenceEdit(sequence(input ? s.input : s.lookup));
       e->setMaximumSequenceLength(1);
       e->setFixedWidth(160);
+      // The core's label ("Win+Shift+D"), not Qt's ("Meta+Shift+D"); while recording, Qt's own.
+      if (auto *le = e->findChild<QLineEdit *>()) le->setText(q(app::hotkey_label(input ? s.input : s.lookup)));
       connect(e, &QKeySequenceEdit::editingFinished, this, [this, e, input, dir] {
         auto h = hotkey_of(e->keySequence());
         if (!h) return draw();

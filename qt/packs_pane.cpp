@@ -19,7 +19,7 @@ namespace lexipeek::qt {
 PacksPane::PacksPane(CoreClient &client) : c_(client) {
   auto *inner = new QWidget;
   body_ = new QVBoxLayout(inner);
-  body_->setContentsMargins(20, 12, 20, 16);
+  body_->setContentsMargins(0, 4, 8, 8);  // as the rows pages
   body_->setSpacing(10);
   auto *scroll = ui::scroll(inner);
   auto *l = new QVBoxLayout(this);

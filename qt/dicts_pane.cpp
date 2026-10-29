@@ -35,7 +35,7 @@ DictsPane::DictsPane(CoreClient &client) : c_(client) {
   setAcceptDrops(true);
   auto *inner = new QWidget;
   body_ = new QVBoxLayout(inner);
-  body_->setContentsMargins(20, 12, 20, 16);
+  body_->setContentsMargins(0, 4, 8, 8);  // as the rows pages
   body_->setSpacing(8);
   auto *l = new QVBoxLayout(this);
   l->setContentsMargins(0, 0, 0, 0);
