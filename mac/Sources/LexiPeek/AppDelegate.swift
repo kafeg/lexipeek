@@ -146,6 +146,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if prefs.offApps.contains(id) { if card.isVisible { card.close() }; return }
         let open = card.isVisible
         reading = true
+        AXProbe.write(app: app)
         Task { @MainActor in
             let s = await Selection.read(app: app)
             reading = false

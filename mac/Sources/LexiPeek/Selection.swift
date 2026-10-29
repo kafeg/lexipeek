@@ -98,12 +98,46 @@ enum Selection {
         if AXUIElementCopyAttributeValue(el, "AXSelectedTextMarkerRange" as CFString, &range) == .success, let range,
            AXUIElementCopyParameterizedAttributeValue(el, "AXStringForTextMarkerRange" as CFString, range, &str) == .success,
            let text = str as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return Result(text: text, bounds: bounds(el))
+            return Result(text: paragraphs(el, range) ?? text, bounds: bounds(el))
         }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(el, kAXSelectedTextAttribute as CFString, &value) == .success,
               let text = value as? String, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return Result(text: text, bounds: bounds(el))
+    }
+
+    // A web view's selection paragraph by paragraph, joined by line breaks (Chromium and Electron give its text with none
+    // between blocks: "Что сделал:• Очистка…"); nil when it is one paragraph or the app cannot say.
+    static func paragraphs(_ el: AXUIElement, _ range: CFTypeRef) -> String? {
+        guard CFGetTypeID(range) == AXTextMarkerRangeGetTypeID() else { return nil }
+        let r = range as! AXTextMarkerRange
+        let start = AXTextMarkerRangeCopyStartMarker(r), end = AXTextMarkerRangeCopyEndMarker(r)
+        func param(_ name: String, _ arg: CFTypeRef) -> CFTypeRef? {
+            var x: CFTypeRef?
+            return AXUIElementCopyParameterizedAttributeValue(el, name as CFString, arg, &x) == .success ? x : nil
+        }
+        func span(_ a: AXTextMarker, _ b: AXTextMarker) -> AXTextMarkerRange { AXTextMarkerRangeCreate(nil, a, b) }
+        func length(_ a: AXTextMarker, _ b: AXTextMarker) -> Int { (param("AXLengthForTextMarkerRange", span(a, b)) as? NSNumber)?.intValue ?? -1 }
+        func text(_ a: AXTextMarker, _ b: AXTextMarker) -> String { (param("AXStringForTextMarkerRange", span(a, b)) as? String) ?? "" }
+        let total = length(start, end)
+        guard total > 0 else { return nil }
+        var parts: [String] = []
+        var cur = start, at = 0
+        for _ in 0..<500 {
+            guard let next = param("AXNextParagraphEndTextMarkerForTextMarker", cur), CFGetTypeID(next) == AXTextMarkerGetTypeID() else { return nil }
+            let pend = next as! AXTextMarker
+            let reach = length(start, pend)
+            if reach <= at { return nil }  // no headway: the app's markers do not work this way
+            if reach >= total {
+                parts.append(text(cur, end))
+                break
+            }
+            parts.append(text(cur, pend))
+            cur = pend
+            at = reach
+        }
+        let lines = parts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        return lines.count > 1 ? lines.joined(separator: "\n") : nil
     }
 
     private static func element(_ from: AXUIElement, _ attr: String) -> AXUIElement? {

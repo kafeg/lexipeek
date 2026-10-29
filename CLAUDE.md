@@ -168,6 +168,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Manager): `scripts/win-e2e.ps1` there (self-test, a selection in Notepad, hotkeys, Esc, typing, a link, a second
   launch, screenshots); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
   UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
+  Mac: a web view's selection by its text markers, paragraph by paragraph (Chromium / Electron give none between
+  blocks); `<data>/ax-probe` makes the lookup hotkey write what each AX way gives into `<data>/ax-probe.txt`.
 - Icons: `mac/Icon/AppIcon.svg` (the card at the cursor) and `MenuBarIcon.svg` (a template glyph) → `scripts/gen-icons.sh`
   (rsvg-convert) → `Assets.xcassets` and `qt/icons` (PNGs committed; the tray's glyph white and black from `MenuBarIcon.svg`). An old icon after a rebuild is LaunchServices' cache: `lsregister -f`.
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
