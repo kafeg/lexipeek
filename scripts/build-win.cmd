@@ -10,6 +10,7 @@ setlocal
 set "SRC=%~dp0.."
 set "OUT=%~1"
 if "%OUT%"=="" set "OUT=%SRC%\build-win"
+for %%i in ("%OUT%") do set "OUT=%%~fi"
 where cl >nul 2>nul || for /f "usebackq delims=" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat" >nul
 where cl >nul 2>nul || (echo no MSVC: install Visual Studio 2022 or later, or its Build Tools & exit /b 1)
 if /i "%~2"=="qt" (
