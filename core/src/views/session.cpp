@@ -84,8 +84,9 @@ struct CardSession::Impl {
         lookups().add([self, step, id] {
           if (!self->current(id)) return;
           auto card = self->e.lookup_as(step.text, step.source, step.lang, step.answer);
-          self->post([card, id](Impl &s) {
+          self->post([card, id](Impl &s) mutable {
             if (!s.current(id) || card.kind == Card::Kind::empty) return;
+            card.ai.no_key = card.ai.key && s.key.empty();
             s.waiting = false, s.notes = true;
             s.nav.arrived(card);
             if (s.nav.state.has_method) s.translate(s.nav.state.method);

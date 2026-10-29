@@ -147,7 +147,7 @@ CardState first_state(const Card &c) {
   s.method = c.method.value_or(Method::fast);
   s.saved = c.saved;
   // Offline translation off (InkPeek's "off"): Translate is the AI translation, when AI is on.
-  s.by_ai = c.ai.translate && (c.mt_off || (c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai"));
+  s.by_ai = c.ai.translate && (c.mt_off || (c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai" && !c.ai.no_key));
   return s;
 }
 

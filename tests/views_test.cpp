@@ -606,3 +606,11 @@ TEST_CASE("app: hotkey labels, lexipeek:// links, menu lines, Notes' file names"
   CHECK(app::notes_file(NotesTab::phrases).starts_with("lexipeek-phrases-"));
   CHECK(app::backup_file().ends_with(".db"));
 }
+
+TEST_CASE("views: a phrase set to open on AI opens offline when the provider's key is missing") {
+  auto c = phrase();
+  c.ai.translate = true, c.ai.key = true, c.prefs.phrase_open = "ai";
+  CHECK(first_state(c).by_ai);
+  c.ai.no_key = true;
+  CHECK(!first_state(c).by_ai);
+}

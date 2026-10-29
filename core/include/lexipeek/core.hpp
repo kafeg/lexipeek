@@ -83,6 +83,8 @@ struct CardAi {
   bool analysis = false, context = false;  // the AI tabs
   bool prefetch = true;    // opening one asks the others too
   std::string method;      // "AI · claude-sonnet-5-5"
+  bool key = false;        // its provider needs an API key
+  bool no_key = false;     // and the shell has none: AI is offered, never opened by itself
 };
 
 struct Card {

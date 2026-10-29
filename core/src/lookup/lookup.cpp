@@ -139,7 +139,7 @@ Card Core::lookup(const Request &r) {
   c.prefs = impl_->o.card;
   if (auto &a = impl_->o.ai; ai::provider(a.provider)) {
     c.ai = {a.translate && ai::module_on(ai::Ask::quick, a), ai::module_on(ai::Ask::analysis, a), ai::module_on(ai::Ask::context, a),
-            a.prefetch, ai::method_title(a)};
+            a.prefetch, ai::method_title(a), ai::provider(a.provider)->key};
   }
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(r.text);

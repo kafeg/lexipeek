@@ -76,12 +76,16 @@ enum Selection {
 
     private static func viaAX(pid: pid_t) -> Result? {
         let appEl = AXUIElementCreateApplication(pid)
+        // A busy app answers within a second or not at all (AX's own wait is 6 s, on the main thread).
+        AXUIElementSetMessagingTimeout(appEl, 1)
         guard let el = element(appEl, kAXFocusedUIElementAttribute) else { return nil }
         return selected(el)
     }
 
     private static func viaSystemWide() -> Result? {
-        guard let el = element(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute) else { return nil }
+        let wide = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(wide, 1)
+        guard let el = element(wide, kAXFocusedUIElementAttribute) else { return nil }
         return selected(el)
     }
 

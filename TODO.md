@@ -17,9 +17,8 @@ per-user install and uninstall.
   (ignored app, the same selection closes, nothing read → typing), the tray / menu bar menu's items, the settings
   writes done by hand (method picked in the card, first run done, ignored apps), the snapshot driver, light Markdown.
 - Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); Notes'
-  backup / restore / TSV on the window's thread; downloads share the AI pool. Mac: reading the selection (AX) on the
-  main thread.
-- From the review: AI tabs dimmed without a key; the path rule (`path_of`) in stardict, store, translator, dicts;
+  backup / restore / TSV on the window's thread; downloads share the AI pool.
+- From the review: the path rule (`path_of`) in stardict, store, translator, dicts;
   packs.json parsed once per look-up; the answer language default ("ru") and a daily update check as InkPeek's.
 
 ## Open
