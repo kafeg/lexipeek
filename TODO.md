@@ -5,11 +5,14 @@ with TSV / Export / Import. Now: M6 Windows (Qt). Milestones: `docs/spec.md` →
 
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
-(Ctrl+Alt+D / Ctrl+Alt+A), the selection (Notepad, WordPad, Edge, Chrome), the icon at the selection, `lexipeek://`
+(Ctrl+Alt+D / Ctrl+Alt+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`
 links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version, the
 per-user install and uninstall.
-- Office, Explorer, terminals; DPI scaling on two screens; Windows 11 (Notepad, WordPad, Edge, Chrome, Firefox pass).
-- Signing the Windows exe (a certificate); a release build in CI with the exe as an asset.
+- Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
+- First release (the owner's): a release job (tag → the Mac app signed with Developer ID, notarized, zipped; the
+  Windows exe, signed when there is a certificate; THIRD_PARTY_NOTICES.txt) and GitHub Releases. Ctrl+Alt+A is
+  AltGr+A (ą) on Polish keyboards: another input hotkey on Windows? A daily update check as InkPeek's (now only
+  "Check now")?
 - llama.cpp with Vulkan (NVIDIA, AMD, Intel GPUs in one build), CPU when no GPU: with a GPU the AI model's CPU needs
   (`cpu_by_arch`) do not apply; the method's card says where it runs.
 - The card's keys in its texts (`card_pin`, `card_back`, `hc_keys`): Windows has its own (`@win`); Linux will need its own.
@@ -18,12 +21,13 @@ per-user install and uninstall.
   writes done by hand (method picked in the card, first run done, ignored apps), the snapshot driver, light Markdown.
 - Qt: two installs at once into one data dir (Packs, Settings → method, first run guard only themselves); downloads
   share the AI pool.
-- From the review: the path rule (`path_of`) in stardict, store, translator, dicts;
-  packs.json parsed once per look-up; the answer language default ("ru") and a daily update check as InkPeek's.
+- From the review: the path rule (`path_of`) in stardict, store, translator, dicts (a Cyrillic data path works on
+  Windows through the UTF-8 manifest); packs.json parsed once per look-up; the answer language default ("ru").
+- Work still running at quit (detached queue and AI threads); OPUS-MT counted in a pair's size where the machine
+  cannot run it.
 
 ## Open
-- CI on Linux / Windows not run since M0 (macOS first); the CLI providers' shell line (and its 2-minute stop) is
-  POSIX only.
+- CI: Linux, its ASan and macOS green; Windows builds the core and the Qt shell (no models there).
 - No request sent to a real AI provider from here: try each once.
 - Own dictionaries are indexed in the background one at a time (a card waits for one index at most); no
   "indexing…" state in their rows.
