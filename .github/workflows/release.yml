@@ -1,4 +1,6 @@
 name: release
+# The title names the tag for a push and for a run by hand: scripts/release.sh finds its run by it.
+run-name: Release ${{ inputs.tag || github.ref_name }}
 
 # A v* tag: the macOS app (zip) and the Windows program (exe) built, tested and published on GitHub Releases with the
 # third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
@@ -6,6 +8,10 @@ name: release
 on:
   push:
     tags: ["v*"]
+  # By hand when a tag's push event is lost: gh workflow run release.yml -f tag=v0.1.N
+  workflow_dispatch:
+    inputs:
+      tag: { description: "Tag to release, e.g. v0.1.230", required: true }
 
 permissions:
   contents: write
@@ -22,10 +28,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # the version's last part is the commit count
+          ref: ${{ inputs.tag || github.ref }}
+      - name: The tag names the built version
+        shell: bash
+        run: |
+          V="v$(sed -n 's/^VERSION := //p' Makefile).$(git rev-list --count HEAD)"
+          [ "$TAG" = "$V" ] || { echo "::error::tag $TAG, but this commit builds $V"; exit 1; }
       - name: Submodules
         shell: bash
         run: |
@@ -114,8 +127,12 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -127,4 +144,4 @@ jobs:
           cp THIRD_PARTY_NOTICES.txt dist/
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
           NOTE=$'macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.\n\nWindows 10/11 (x64): run LexiPeek.exe; it offers to install itself for you. It is not signed yet: on\n"Windows protected your PC" click More info › Run anyway.'
-          gh release create "$GITHUB_REF_NAME" --title "LexiPeek ${GITHUB_REF_NAME#v}" --generate-notes --notes "$NOTE" dist/*
+          gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

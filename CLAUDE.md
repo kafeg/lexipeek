@@ -186,6 +186,13 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - A Debug `LexiPeek.app` would also claim `lexipeek://`: the test scheme builds only `LexiPeekKit`.
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 
+## Release
+`scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## 0.1` section
+(the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
+(macOS zip ad-hoc signed, Windows exe, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
+version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
+`cmake/version.cmake` and `qt/lexipeek.rc.in`, a new CHANGELOG section.
+
 ## Rules
 - Branch model: `main` only, commit and push to `main`.
 - Spec first: a new feature → `docs/spec.md` → implement by milestone, stop after each.

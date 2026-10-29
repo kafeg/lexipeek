@@ -49,7 +49,7 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `mac/` | Swift, SwiftUI + AppKit, as panerail: XcodeGen `project.yml`, `make build/test/install`. Calls the core through Swift's C++ interop. Menu bar (`LSUIElement`), non-activating `NSPanel` with a system material, hotkey (Carbon `RegisterEventHotKey`), selected text (AX only; the clipboard is never touched), Service, URL scheme, Accessibility, memory pressure |
 | `qt/` | (M6) Windows and Linux: Qt 6 Widgets in C++ — the core is called directly; Windows 11 style, on Linux the desktop's theme. Platform parts per OS (Windows: `RegisterHotKey`, UI Automation; Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
-| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; `.app` signed with Developer ID, notarized, on GitHub Releases |
+| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account) and the Windows exe on GitHub Releases |
 
 Why native shells: the look must be the system's on every OS; on macOS almost everything is native anyway (panel,
 material, Service, Accessibility), and SwiftUI settings look as in panerail. The rule (as panerail's `PaneRailKit`):
@@ -258,7 +258,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 Done: **M0 Engines** (CMake + vcpkg, engines at InkPeek's pins, `lexipeek-cli`, bench; CI on three OSes) · **M1 Core**
 (packs, StarDict, header, gloss, separable verbs, language by the dictionaries, methods with reasons, the log and
 SQLite, settings) · **M2 macOS app** (menu bar, ⌥D / ⌥A, the icon at the selection, the card by kind of text,
-Service, URL scheme, settings, packs).
+Service, URL scheme, settings, packs) · M3–M5 and M7 (below) · M6 Windows except what `TODO.md` lists.
 
 Parity with InkPeek first, then the other OS, then a release when the owner says so:
 - **M2.1 Debts.** The card's view model in the core (`views`: tabs, the open one, labels, every state's text — the
@@ -272,7 +272,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
 - **M4 Dictionaries and settings parity.** Own StarDict dictionaries (a folder, InkPeek's catalog of public
   sources, import), dictionary order and on / off; settings in InkPeek's sections (Languages · Card · AI; Notes in the window) in
   desktop form; the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl); updates and About.
-- **M5 AI** (done, branch m5-ai). InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context**
+- **M5 AI** (done). InkPeek's AI layer: AI translation, **Analysis** (Grammar, Words), **Context**
   (Explanation, Examples); providers as in InkPeek (Claude, OpenAI, OpenRouter, an OpenAI-compatible server) and CLI
   providers (`claude -p`, `codex exec`); editable prompts; answers cached through `ai.put`.
 - **M6 Windows app.** The Mac app's UI and UX as they are (frozen before the port), drawn by a Qt Widgets shell (`qt/`,
