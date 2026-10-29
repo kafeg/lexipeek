@@ -240,7 +240,7 @@ void CardWidget::rebuild() {
     scroll->setFixedHeight(std::min(bl->totalHeightForWidth(width()), limit));
   }
   box_->addWidget(scroll, 1);
-  if (!embedded_) box_->addWidget(bar(v_));
+  if (!embedded_) box_->addStretch(), box_->addWidget(bar(v_));  // the bar at the foot while the pop-up keeps a taller height
   if (!embedded_) adjustSize();
 }
 

@@ -36,8 +36,11 @@ struct CardView: View {
         let look = model.look
         VStack(spacing: 0) {
             content(look)
-            // The buttons under the text (InkPeek's bottom row): the header keeps the whole width.
-            if let look, !embedded { bar(look) }
+            // The buttons under the text (InkPeek's bottom row), at the panel's foot while it keeps a taller height.
+            if let look, !embedded {
+                Spacer(minLength: 0)
+                bar(look)
+            }
         }
         .font(font())
         .frame(width: embedded ? nil : CGFloat(look?.width ?? 400), alignment: .leading)
@@ -99,7 +102,8 @@ struct CardView: View {
                 ProgressView().controlSize(.small).frame(maxWidth: .infinity)
             }
         }
-        .padding(14)
+        .padding([.horizontal, .top], 14)
+        .padding(.bottom, model.look != nil && !embedded ? 6 : 14)  // the bottom row has its own padding
     }
 
     // As InkPeek's title: cut with "…" (not selectable: a selection inside spills over); a click on a cut one shows it whole
