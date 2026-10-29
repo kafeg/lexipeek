@@ -282,3 +282,8 @@ TEST_CASE("packs: an AI model's CPU needs per architecture (cpu_by_arch), cpu al
   CHECK(cannot(b, {8192, {"avx2", "fma"}, "x86_64"}) == "Not built for this processor.");  // an older list: arm64 only
   CHECK(cannot(b, {8192, {"asimddp"}, "arm64"}).empty());
 }
+
+TEST_CASE("text: a phrase's lines stay lines, blank ones and spaces around them become one break") {
+  CHECK(text::clean_phrase("  Own the power\r\n\n  Crypto,   stocks  ") == "Own the power\nCrypto, stocks");
+  CHECK(text::clean_phrase("a\tb") == "a b");
+}

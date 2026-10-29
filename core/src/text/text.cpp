@@ -169,7 +169,11 @@ std::string clean_query(std::string_view s) {
 std::string clean_phrase(std::string_view s) {
   static const Regex start("^(?:(?![¿¡])[\\p{P}\\p{S}\\s])+");
   static const Regex end("(?:(?![.!?…。！？])[\\p{P}\\p{S}\\s])+$");
-  return end.replace(start.replace(spaces().replace(no_soft_hyphens(s), " "), ""), "");
+  // Lines stay lines (a selection of paragraphs, a list): blank lines and spaces around them become one line break.
+  static const Regex breaks("[^\\S\\n]*\\n\\s*");
+  static const Regex blanks("[^\\S\\n]+");
+  auto t = blanks.replace(breaks.replace(no_soft_hyphens(s), "\n"), " ");
+  return end.replace(start.replace(t, ""), "");
 }
 
 std::string unescape(std::string_view s) {

@@ -193,6 +193,28 @@ Translation Translator::translate(const std::string &from, const std::string &to
     r.text = text;
     return r;
   }
+  // Line by line: the translation keeps the text's lines (paragraphs, a list's items).
+  if (text.find('\n') != std::string::npos) {
+    std::string texts, englishes;
+    bool any_english = false;
+    for (size_t at = 0, n = 0;; ++n) {
+      auto end = text.find('\n', at);
+      auto line = text.substr(at, end == std::string::npos ? std::string::npos : end - at);
+      Translation t;
+      if (line.find_first_not_of(" \t\r") != std::string::npos) {
+        if (n > 0 && impl_->stop) return r.error = "Cancelled", r;  // a cancel while an earlier line ran
+        t = translate(from, to, line, m, tag);
+        if (!t.ok()) return t;
+        r.by = t.by;
+      }
+      texts += (n ? "\n" : "") + t.text, englishes += (n ? "\n" : "") + t.english;
+      any_english = any_english || !t.english.empty();
+      if (end == std::string::npos) break;
+      at = end + 1;
+    }
+    r.text = texts, r.english = any_english ? englishes : "";
+    return r;
+  }
   {
     std::lock_guard g(impl_->tag_mu);
     impl_->tag = tag;
