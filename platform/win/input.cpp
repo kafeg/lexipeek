@@ -25,6 +25,7 @@ std::map<int, std::function<void()>> &fired() {
 
 UINT key_code(const std::string &k) {
   if (k == "Esc") return VK_ESCAPE;
+  if (k == ".") return VK_OEM_PERIOD;
   if (k.size() == 1 && ((k[0] >= 'A' && k[0] <= 'Z') || (k[0] >= '0' && k[0] <= '9'))) return static_cast<UINT>(k[0]);
   return 0;
 }

@@ -19,7 +19,7 @@ jobs:
         include:
           - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
           - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
-          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_TTS_LIBRARY=ON -DLEXIPEEK_QT=OFF" }
+          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_QT=OFF" }
           - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
     runs-on: ${{ matrix.os }}
     env:

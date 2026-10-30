@@ -30,5 +30,7 @@ where nuget >nul 2>nul || (
 msbuild "%SRC%\win\LexiPeek.vcxproj" -nologo -m -v:minimal -p:Configuration=Release -p:Platform=x64 "-p:LexiPeekBuild=%OUT%" || exit /b 1
 robocopy "%OUT%\win\bin" "%OUT%\win\LexiPeek" /MIR /NJH /NJS /NFL /NDL /NP /XF *.pdb *.lib *.exp *.winmd Microsoft.Web.WebView2.Core.dll RestartAgent.exe PushNotificationsLongRunningTask.ProxyStub.dll >nul
 if errorlevel 8 exit /b 1
+rem Read aloud's engine (cmake/tts.cmake): its DLL beside the exe.
+if exist "%OUT%\engines\qwentts\qwen.dll" copy /y "%OUT%\engines\qwentts\qwen.dll" "%OUT%\win\LexiPeek\" >nul
 echo %OUT%\win\LexiPeek\LexiPeek.exe
 exit /b 0

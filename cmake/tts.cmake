@@ -1,8 +1,7 @@
 # Read aloud (spec M9): qwentts.cpp (MIT) as its own shared library — only its C ABI (qt_*) exported, its ggml fork inside
 # (llama.cpp's ggml is another copy: the two cannot be linked into one binary). Metal on macOS, Vulkan on Windows.
-# Windows' shells link it once the WinUI card plays (TODO.md); until then CI builds the library there on its own
-# (LEXIPEEK_TTS_LIBRARY: built, not linked).
-if(APPLE)
+# Windows: qwen.dll beside each program (lexipeek_qwentts_dll); Linux not yet (LEXIPEEK_TTS_LIBRARY: built, not linked).
+if(APPLE OR WIN32)
   option(LEXIPEEK_TTS "Read aloud (qwentts.cpp)" ON)
 else()
   option(LEXIPEEK_TTS "Read aloud (qwentts.cpp)" OFF)
@@ -22,7 +21,8 @@ function(lexipeek_qwentts_args out)
     # Vulkan's headers, loader library and glslc from vcpkg, as llama.cpp's (cmake/engines.cmake).
     list(APPEND args -DGGML_VULKAN=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
          -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DVulkan_GLSLC_EXECUTABLE=${Vulkan_GLSLC_EXECUTABLE}
-         -DCMAKE_PREFIX_PATH=${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
+         -DCMAKE_PREFIX_PATH=${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}
+         -DCMAKE_PROJECT_INCLUDE=${PROJECT_SOURCE_DIR}/cmake/qwentts_win.cmake)
   endif()
   set(${out} ${args} PARENT_SCOPE)
 endfunction()
@@ -54,6 +54,13 @@ if(LEXIPEEK_TTS OR LEXIPEEK_TTS_LIBRARY)
     list(APPEND CMAKE_BUILD_RPATH ${QWENTTS_DIR})
   endif()
 endif()
+
+# Windows has no rpath: qwen.dll is copied beside a program that links the core.
+function(lexipeek_qwentts_dll target)
+  if(WIN32 AND LEXIPEEK_TTS)
+    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${QWENTTS_LIB} $<TARGET_FILE_DIR:${target}>)
+  endif()
+endfunction()
 
 # The voices in the app (core/src/speech/voices/<lang>-<female|male>.{spk,rvq,txt}) as one C++ table: kilobytes each.
 function(lexipeek_embed_voices dir out)

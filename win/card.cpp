@@ -4,9 +4,14 @@
 #include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <winrt/Windows.UI.Text.h>
 #include <winrt/Windows.UI.ViewManagement.h>
+#include <mmsystem.h>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <filesystem>
 #include "lexipeek/app.hpp"
+
+#pragma comment(lib, "winmm.lib")  // PlaySound: read aloud
 
 namespace lexipeek::win {
 
@@ -16,6 +21,16 @@ using winrt::Windows::Foundation::IInspectable;
 using Style = CardRow::Style;
 
 namespace {
+// Read aloud's sound: one WAV at a time for the app (PlaySound), whose card it is.
+const void *playing = nullptr;
+
+// A WAV's length (the core writes 16-bit mono at 24 kHz).
+std::chrono::milliseconds wav_length(const std::string &file) {
+  std::error_code ec;
+  auto bytes = std::filesystem::file_size(std::filesystem::path(winrt::to_hstring(file).c_str()), ec);
+  return std::chrono::milliseconds(ec || bytes < 44 ? 0 : static_cast<long long>((bytes - 44) / 48));
+}
+
 std::string trimmed(const std::string &s) {
   auto a = s.find_first_not_of(" \t\r\n"), b = s.find_last_not_of(" \t\r\n");
   return a == std::string::npos ? "" : s.substr(a, b - a + 1);
@@ -40,8 +55,17 @@ NotesBus &notes_bus() {
 CardModel::CardModel(CoreClient &client) : c_(client), session_(app::CardSession::make(client.engine)) {
   poll_ = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
   poll_.Interval(std::chrono::milliseconds(40));
+  played_ = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
+  played_.IsRepeating(false);
+  played_.Tick([this](auto &&, auto &&) {
+    played_.Stop();
+    if (playing == this) playing = nullptr;
+    session_.played();
+    acted();
+  });
   poll_.Tick([this](auto &&, auto &&) {
     if (session_.poll()) relook();
+    polled();
     if (session_.notes_changed()) notes_bus().changed();
     if (!session_.busy()) poll_.Stop();
   });
@@ -54,6 +78,8 @@ CardModel::CardModel(CoreClient &client) : c_(client), session_(app::CardSession
 
 CardModel::~CardModel() {
   poll_.Stop();
+  played_.Stop();
+  if (playing == this) PlaySoundW(nullptr, nullptr, 0), playing = nullptr;
   notes_bus().forget(notes_);
 }
 
@@ -71,8 +97,27 @@ int CardModel::listen(std::function<void()> f) {
 }
 void CardModel::forget(int id) { changed_.erase(id); }
 
+void CardModel::polled() {
+  auto wav = session_.take_play();
+  if (!wav.empty()) {
+    playing = this;
+    played_.Stop();
+    if (!PlaySoundW(winrt::to_hstring(wav).c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT)) {
+      session_.played();
+      return;
+    }
+    played_.Interval(wav_length(wav) + std::chrono::milliseconds(100));
+    played_.Start();
+  } else if (!session_.reading() && playing == this) {
+    PlaySoundW(nullptr, nullptr, 0);
+    playing = nullptr;
+    played_.Stop();
+  }
+}
+
 void CardModel::acted() {
   if (session_.poll()) relook();
+  polled();
   if (session_.notes_changed()) notes_bus().changed();
   if (session_.busy() && !poll_.IsRunning()) poll_.Start();
 }
@@ -108,7 +153,8 @@ void CardModel::choose(Method m) {
 void CardModel::use(Method m) { session_.set_key(key()), session_.use(m), acted(); }
 void CardModel::choose_ai() { session_.set_key(key()), session_.choose_ai(), acted(); }
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
-void CardModel::cancel() { session_.cancel(), acted(); }
+void CardModel::cancel() { session_.cancel(), session_.stop_reading(), acted(); }
+void CardModel::read(int row) { session_.read(row), acted(); }
 
 void CardModel::toggle_pin() {
   pinned = !pinned;
@@ -309,7 +355,27 @@ void CardWidget::rebuild() {
   controls::StackPanel body;
   body.Padding({16, 0, 20, 12});
   body.Spacing(8);
-  for (auto &r : v_.rows) body.Children().Append(row(r));
+  for (size_t i = 0; i < v_.rows.size(); i++) {
+    auto &r = v_.rows[i];
+    if (r.read.text.empty()) {
+      body.Children().Append(row(r));
+      continue;
+    }
+    // A translated word of a language you learn: its own ▶ at the row's end.
+    controls::Grid g;
+    controls::ColumnDefinition wide, narrow;
+    wide.Width(xaml::GridLengthHelper::FromValueAndType(1, xaml::GridUnitType::Star));
+    narrow.Width(xaml::GridLengthHelper::Auto());
+    g.ColumnDefinitions().Append(wide);
+    g.ColumnDefinitions().Append(narrow);
+    g.Children().Append(row(r));
+    int at = static_cast<int>(i);
+    auto play = command(r.reading ? 0xE71A : 0xE768, app::text(r.reading ? "read_stop" : "read_help"), [this, at] { m_.read(at); }, nullptr, 12);
+    play.VerticalAlignment(xaml::VerticalAlignment::Top);
+    controls::Grid::SetColumn(play, 1);
+    g.Children().Append(play);
+    body.Children().Append(g);
+  }
   if (!v_.fix.empty()) {
     controls::HyperlinkButton fix;
     fix.Content(winrt::box_value(h(v_.fix)));
@@ -571,6 +637,7 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
     next.IsEnabled(v.next);
     left.Children().Append(next);
   }
+  if (!v.read.text.empty()) right.Children().Append(command(v.reading ? 0xE71A : 0xE768, v.read_help, [this] { m_.read(); }));
   // A pager's row has no room for copy (and a page of words has nothing to copy).
   if (!v.copy.empty() && v.pager.empty()) {
     auto copied = v.copy;

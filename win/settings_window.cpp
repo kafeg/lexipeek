@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "settings_window.hpp"
 #include <algorithm>
+#include <iterator>
 #include <optional>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include "lexipeek/os.hpp"
@@ -129,7 +130,7 @@ SettingsWindow::SettingsWindow(CoreClient &client, xaml::ElementTheme theme) : s
   scroll_.ViewChanged([this](auto &&, controls::ScrollViewerViewChangedEventArgs const &e) {
     if (!e.IsIntermediate()) offset_ = scroll_.VerticalOffset();
   });
-  const wchar_t glyphs[] = {0xE713, 0xE774, 0xE8A1, 0xE99A};  // General, Languages, Card, AI
+  const wchar_t glyphs[] = {0xE713, 0xE774, 0xE8A1, 0xE99A, 0xE767};  // General, Languages, Card, AI, Read aloud
   for (auto g : glyphs) {
     controls::NavigationViewItem item;
     item.Icon(page::icon(g));
@@ -203,7 +204,7 @@ void SettingsWindow::draw_now() {
   auto view = app::settings_page(dir, section_, tabs_[section_], st);
   tabs_[section_] = view.tab;
   selecting_ = true;
-  for (uint32_t i = 0; i < 4; ++i) {
+  for (uint32_t i = 0; i < std::size(shown_sections); ++i) {
     auto item = nav_.MenuItems().GetAt(i).as<controls::NavigationViewItem>();
     item.Content(winrt::box_value(h(view.sections[static_cast<int>(shown_sections[i])])));
     if (shown_sections[i] == section_ && nav_.SelectedItem() != item) nav_.SelectedItem(item);
@@ -499,6 +500,23 @@ xaml::UIElement SettingsWindow::apps(const SettingRow &r) {
 // A translation method (InkPeek's MethodPane): a radio button, what it does, needs, why not here; its download.
 xaml::UIElement SettingsWindow::method(const SettingRow &r) {
   auto dir = sh_.client.data();
+  if (r.value == "speech") {
+    // Read aloud's voice model: nothing to pick, downloaded or not.
+    controls::StackPanel below;
+    below.Spacing(6);
+    if (!r.detail.empty()) below.Children().Append(page::text(r.detail, L"CaptionTextBlockStyle", true));
+    if (r.progress >= 0) {
+      bar_ = page::progress(r.progress);
+      bar_.MaxWidth(360);
+      bar_.HorizontalAlignment(xaml::HorizontalAlignment::Left);
+      below.Children().Append(bar_);
+    }
+    xaml::UIElement control{nullptr};
+    if (r.progress < 0 && !r.button.empty()) control = page::button(h(r.button), [this] { download_speech(); });
+    auto c = page::card(page::icon(static_cast<wchar_t>(r.on ? 0xE73E : 0xE896)), r.title, r.about, control, below);
+    if (!r.enabled) page::dim(c);
+    return c;
+  }
   controls::RadioButton radio;
   radio.MinWidth(0);
   radio.IsChecked(r.on);
@@ -539,6 +557,9 @@ void SettingsWindow::press(const SettingRow &r) {
     return;
   }
   if (r.key == "ai_reset") return after(app::reset_prompts(dir));
+  if (r.key == "speech_add") return add_voice();
+  if (r.key == "speech_remove") return sh_.client.engine.remove_speech(), draw();
+  if (r.key.starts_with("voice_remove.")) return sh_.client.engine.remove_voice(r.key.substr(13)), draw();
   if (r.key == "ai_test" && !sh_.testing) {
     sh_.testing = true;
     draw();
@@ -673,6 +694,62 @@ void SettingsWindow::download(const std::string &method, const std::vector<std::
     draw();
   });
   draw();
+}
+
+// Read aloud's voice model from its pinned Hugging Face files, progress on its card.
+void SettingsWindow::download_speech() {
+  if (!sh_.downloading.empty()) return;
+  sh_.downloading = "speech", sh_.progress = 0, sh_.download_error.clear();
+  app::Download dl;
+  auto ticks = page::every(500, [this, dl] {
+    auto total = dl.get_total();
+    sh_.progress = total > 0 ? static_cast<double>(dl.get_done()) / total : 0;
+  });
+  ticks.Start();
+  poll_.Start();
+  auto dir = sh_.client.data();
+  page::run<Status>(sh_.client, [dir, dl] { return app::download_speech(dir, dl); }, [this, ticks](Status s) {
+    ticks.Stop();
+    poll_.Stop();
+    sh_.downloading.clear();
+    sh_.download_error = s.cancelled ? "" : s.error;
+    draw();
+  });
+  draw();
+}
+
+// Read aloud → Voice from a recording…: a WAV, what it says, its language; encoded by the voice model.
+void SettingsWindow::add_voice() {
+  auto files = page::pick_files(page::owner(scroll_), h(app::text("voice_file")));
+  if (files.empty()) return;
+  controls::StackPanel body;
+  body.Spacing(8);
+  body.Width(440);
+  body.Children().Append(page::text(app::text("read_add_d"), L"CaptionTextBlockStyle", true));
+  body.Children().Append(page::text(files.front(), L"BodyTextBlockStyle", true));
+  controls::ComboBox lang;
+  lang.Header(winrt::box_value(h(app::text("voice_lang"))));
+  auto langs = app::speech_languages();
+  for (auto &l : langs) lang.Items().Append(winrt::box_value(h(app::language(l))));
+  lang.SelectedIndex(0);
+  body.Children().Append(lang);
+  controls::TextBox said;
+  said.Header(winrt::box_value(h(app::text("voice_text"))));
+  said.AcceptsReturn(true);
+  said.TextWrapping(xaml::TextWrapping::Wrap);
+  said.Height(90);
+  body.Children().Append(said);
+  auto d = page::dialog(scroll_, h(app::text("voice_sheet_t")), body, h(app::text("voice_add")), h(app::text("cancel")));
+  page::show(d, [this, file = files.front(), lang, said, langs](controls::ContentDialogResult r) {
+    if (r != controls::ContentDialogResult::Primary) return;
+    auto code = langs.at(static_cast<size_t>(std::max(0, lang.SelectedIndex())));
+    auto text = winrt::to_string(said.Text());
+    auto e = sh_.client.engine;
+    page::run<std::string>(sh_.client, [e, file, text, code] { return e.add_voice(file, text, code); }, [this](std::string err) {
+      if (!err.empty()) page::show(page::dialog(scroll_, h(app::text("voice_sheet_t")), winrt::box_value(h(err)), L"", h(app::text("cancel"))));
+      draw();
+    });
+  });
 }
 
 AboutWindow::AboutWindow(CoreClient &client, xaml::ElementTheme theme) : sh_(client) {

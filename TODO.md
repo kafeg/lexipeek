@@ -39,11 +39,10 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 ## M9 Read aloud (spec M9)
 Done on macOS: the engine (qwentts.cpp as `libqwen.dylib`), the model's download, the voices in the app, voices from a
 recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept readings, snapshots.
-- Windows, after M8's card (`win/card*`) is committed: `LEXIPEEK_TTS` on for Windows — `qwen.dll` beside the exe, linked
-  through `win/lexipeek-core.props` (link_closure skips shared libraries now: add its import library) and delay-loaded,
-  its Vulkan delay-loaded as llama's (`cmake/vulkan_win.cpp`: no driver, the CPU); the card's ▶ / ■ and Ctrl+. in
-  `win/card*`, the WAV played (`PlaySound` with `SND_ASYNC`, or WinRT `MediaPlayer`), `CardSession::take_play/played` as
-  the Mac's `CardModel`; Settings → Read aloud (the core's rows) with the WAV picker; release.yml ships `qwen.dll`.
+- Windows (built, not yet run): `qwen.dll` beside each program (its Vulkan delay-loaded with the core's hook), the card's
+  ▶ / ■ and Ctrl+., `PlaySound` and a timer by the WAV's length, Settings → Read aloud with the WAV picker. Run it on
+  Windows: the download, a reading, Ctrl+., a voice from a recording, `--snapshots`. "On the GPU" off does nothing there yet
+  (`GGML_BACKEND` is read by qwen.dll's own C runtime, which does not see the exe's `_putenv`).
 - Measure on Windows (Vulkan, a real GPU and the CPU): load, a word, a sentence.
 - Polish: the model does not name it (read with "auto"); check its words by native speakers.
 

@@ -6,6 +6,7 @@ file(GLOB LEXIPEEK_QT_SOURCES CONFIGURE_DEPENDS *.cpp)
 add_executable(lexipeek-qt WIN32 ${LEXIPEEK_QT_SOURCES} lexipeek.qrc $<$<PLATFORM_ID:Windows>:${PROJECT_SOURCE_DIR}/cmake/utf8.manifest>)
 target_link_libraries(lexipeek-qt PRIVATE lexipeek_platform Qt6::Widgets Qt6::Concurrent)
 lexipeek_flags(lexipeek-qt)
+lexipeek_qwentts_dll(lexipeek-qt)
 # 0.1.<git commit count>, as InkPeek's and the Mac app's (Makefile's VERSION): version.h, checked at every build.
 add_custom_target(lexipeek-version COMMAND ${CMAKE_COMMAND} -DSOURCE=${PROJECT_SOURCE_DIR} -DOUT=${CMAKE_CURRENT_BINARY_DIR}/version.h
                   -P ${PROJECT_SOURCE_DIR}/cmake/version.cmake BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/version.h)

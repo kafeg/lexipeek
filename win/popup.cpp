@@ -11,7 +11,7 @@ using namespace winrt::Microsoft::UI::Composition::SystemBackdrops;
 using winrt::Windows::System::VirtualKey;
 
 namespace {
-constexpr int escape_key = 100, pin_key = 101, gap = 6;
+constexpr int escape_key = 100, pin_key = 101, read_key = 102, gap = 6;
 
 // A window of this process is under the point (the card, its menus, the icon at the selection).
 bool ours(POINT p) {
@@ -170,9 +170,11 @@ void CardPopup::keys(bool on) {
   if (on) {
     os::register_hotkey(escape_key, Hotkey{"Esc", false, false, false, false}, [this] { close(); });
     os::register_hotkey(pin_key, Hotkey{"P", false, false, true, false}, [this] { model.toggle_pin(); });
+    os::register_hotkey(read_key, Hotkey{".", false, false, true, false}, [this] { model.read(); });
   } else {
     os::unregister_hotkey(escape_key);
     os::unregister_hotkey(pin_key);
+    os::unregister_hotkey(read_key);
   }
 }
 
@@ -200,7 +202,8 @@ void CardPopup::fit() {
   if (x != at.X || y != at.Y) aw.Move({std::max<int>(x, screen_.left), std::max<int>(y, screen_.top)});
 }
 
-// With the focus (typing): Esc, ←/→ tabs, Ctrl+S ☆, Ctrl+P the pin, Backspace back (a text field keeps its own keys).
+// With the focus (typing): Esc, ←/→ tabs, Ctrl+S ☆, Ctrl+P the pin, Ctrl+. read aloud, Backspace back (a text field keeps
+// its own keys).
 void CardPopup::key(const xaml::Input::KeyRoutedEventArgs &e) {
   bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
   auto k = e.Key();
@@ -208,6 +211,7 @@ void CardPopup::key(const xaml::Input::KeyRoutedEventArgs &e) {
   if (!model.has_card()) return;
   if (ctrl && k == VirtualKey::S) model.toggle_saved();
   else if (ctrl && k == VirtualKey::P) model.toggle_pin();
+  else if (ctrl && static_cast<int>(k) == VK_OEM_PERIOD) model.read();
   else if (k == VirtualKey::Left) model.next_tab(-1);
   else if (k == VirtualKey::Right) model.next_tab(1);
   else if (k == VirtualKey::Back) model.back();

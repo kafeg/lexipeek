@@ -35,6 +35,10 @@ function(lexipeek_collect item out_libs out_flags)
     get_target_property(type ${item} TYPE)
     if(type STREQUAL "STATIC_LIBRARY")
       set_property(GLOBAL APPEND PROPERTY ${out_libs} "$<TARGET_FILE:${item}>")
+    elseif(type STREQUAL "SHARED_LIBRARY" AND WIN32)
+      # Read aloud's qwen.dll: its import library (the DLL is copied beside the program; macOS embeds its dylib by Xcode).
+      get_target_property(implib ${item} IMPORTED_IMPLIB)
+      set_property(GLOBAL APPEND PROPERTY ${out_libs} ${implib})
     elseif(type STREQUAL "UNKNOWN_LIBRARY")
       # Find modules (OpenSSL, LibArchive): a file, a framework or a system library.
       foreach(p IMPORTED_LOCATION_RELEASE IMPORTED_LOCATION)

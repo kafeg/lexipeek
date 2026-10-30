@@ -63,14 +63,17 @@ class CardModel {
   void choose_ai();
   void toggle_saved();
   void toggle_pin();
-  void cancel();  // the card closed: its translation stops
+  void cancel();  // the card closed: its translation and its reading stop
+  void read(int row = -1);  // ▶ / ■: the card's (row -1) or a row's; the core says what it reads
 
  private:
   void acted();  // after an action: draw, and poll while something is on its way
+  void polled();  // after a poll: a reading to play starts, one the card no longer reads stops
   void relook();
   CoreClient &c_;
   app::CardSession session_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer poll_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer played_{nullptr};  // fires when the WAV has been played
   CardView look_;
   int notes_ = -1, next_ = 0;
   std::map<int, std::function<void()>> changed_;

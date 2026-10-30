@@ -23,7 +23,8 @@ struct SettingsShell {
 };
 
 // The order of Settings' sections: General first (as the Mac app), the core keeps InkPeek's.
-inline const SettingsSection shown_sections[] = {SettingsSection::general, SettingsSection::languages, SettingsSection::card, SettingsSection::ai};
+inline const SettingsSection shown_sections[] = {SettingsSection::general, SettingsSection::languages, SettingsSection::card, SettingsSection::ai,
+                                                 SettingsSection::speech};
 
 class SettingsWindow {
  public:
@@ -51,6 +52,8 @@ class SettingsWindow {
   void press(const SettingRow &r);
   void edit_prompt(const std::string &id);
   void download(const std::string &method, const std::vector<std::string> &ids);
+  void download_speech();  // Read aloud's voice model
+  void add_voice();        // Read aloud → Voice from a recording…
   SettingsShell sh_;
   xaml::Controls::NavigationView nav_{nullptr};
   xaml::Controls::Grid page_{nullptr};
