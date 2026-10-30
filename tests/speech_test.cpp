@@ -176,7 +176,7 @@ TEST_CASE("read aloud: voices — an own one first for its language, else the ap
   wipe(d);
 }
 
-TEST_CASE("read aloud: every language has a female and a male voice in the app, each with its clip's text" * doctest::skip(true)) {
+TEST_CASE("read aloud: every language has a female and a male voice in the app, each with its clip's text") {
   auto app = app_voices();
   for (auto &l : languages())
     for (auto g : {"-female", "-male"}) {

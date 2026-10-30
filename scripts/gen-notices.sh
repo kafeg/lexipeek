@@ -29,12 +29,17 @@ for p in intgemm ruy sentencepiece yaml-cpp spdlog CLI cnpy pathie-cpp phf zstr 
 add fasttext engines/fasttext/LICENSE
 add llama.cpp engines/llama/LICENSE
 add pcre2 engines/pcre2/COPYING
+add qwentts.cpp engines/qwentts/LICENSE
+add ggml-qwentts engines/qwentts/ggml/LICENSE
+add voices core/src/speech/voices/SOURCES.md
 {
   echo "LexiPeek — third-party components"
   echo
   echo "LexiPeek (MIT, see LICENSE) bundles the components below; each keeps its own license, in full after the list."
   echo "The language packs (dictionaries, translation models) are downloaded separately; their licenses are in the app's"
-  echo "About → Licenses. The sentence breaking table is generated from Unicode's data (Unicode License v3)."
+  echo "About → Licenses. The sentence breaking table is generated from Unicode's data (Unicode License v3). Read aloud's"
+  echo "voice model (Qwen3-TTS Base 1.7B, Apache-2.0) is downloaded separately too; the voices in the app (\"voices\") are"
+  echo "latents of clips under their sources' licences."
   echo
   echo "Qt (qtbase, the Windows app) is used under the GNU Lesser General Public License v3 and statically linked. Its"
   echo "source: https://download.qt.io/official_releases/qt/ (the version vcpkg.json's baseline pins, with vcpkg's port"
