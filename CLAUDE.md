@@ -132,7 +132,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Peek` and decks made when
   missing, notes found by their Key field, then updated or added, by `multi`), `Sender` (in `Core`: one thread looks at the
   store every 3 s, asks Anki every 30 s, makes one missing reading at a time through `Reader` — the core's
-  `Speaker::make_now`, the text's language by `source()` —, sends what waits; started by the shell, never in snapshot mode).
+  `Speaker::make_now`, the text's language by `source()` —, sends what waits — a note Anki refused again after 2 min; what it did in `<data>/anki.log`; started by the shell, never in snapshot mode).
   Views: Settings → Sync → Anki rows (`anki_rows`, picked by the tab's key; a text row's `choices` are Anki's decks to
   pick), `NotesRow::key` / `anki`. Tests: `anki_test`'s fake AnkiConnect on 127.0.0.1 and a fake `Reader`. AnkiConnect's
   key: Keychain account `anki` (Mac), Credential Manager's `anki` (Windows); `SettingsState::anki_app` (Anki runs) by the shell.

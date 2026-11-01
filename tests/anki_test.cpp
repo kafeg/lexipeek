@@ -302,6 +302,11 @@ TEST_CASE("anki: sent once, then only what changed; a note deleted in Anki is ad
     CHECK(haus->fields.at("Front") == "Haus");
     CHECK(snd.sent(anki::key_of("Haus", "ru")));
     CHECK(s.text.find("2") != std::string::npos);
+    {
+      std::ifstream f(d / "anki.log");
+      std::string log((std::istreambuf_iterator<char>(f)), {});
+      CHECK(log.find("sent 2: 2 added, 0 updated, 0 failed") != std::string::npos);
+    }
 
     // Nothing waits: Anki is not asked at all.
     auto before = anki.requests;

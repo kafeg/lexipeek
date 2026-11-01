@@ -347,7 +347,8 @@ struct Sender::Impl {
   AnkiSettings s;
   std::string key;
   Sent sent;
-  Sent failed;  // Key → the digest that failed: not tried again until it changes or "Send now"
+  Sent failed;  // Key → the digest Anki refused: tried again after a while, at once when it changes or on "Send now"
+  std::chrono::steady_clock::time_point refused_until{};
   std::map<std::string, std::string> audio;  // Key → its reading made for Anki
   std::set<std::string> no_audio;            // Keys whose reading cannot be made (no voice for the language)
   std::set<std::string> tried;               // Keys whose reading was tried: their note goes, without one if need be
@@ -357,6 +358,15 @@ struct Sender::Impl {
   std::thread worker;
 
   bool voice() const { return reader.ready && reader.ready(); }
+
+  // What the binding did, for when nothing arrives: <data>/anki.log (the last 256 KB, then anki.log.1).
+  void log(const std::string &line) {
+    std::error_code ec;
+    auto f = data / "anki.log";
+    if (fs::file_size(f, ec) > 256 * 1024 && !ec) fs::rename(f, data / "anki.log.1", ec);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::ofstream(f, std::ios::app | std::ios::binary) << text::local_time(ms) << " " << line << "\n";
+  }
 
   // The store's notes with the readings made so far; those still without one, unsent first.
   std::vector<Note> all_notes(const AnkiSettings &set, std::vector<Note> &missing) {
@@ -402,6 +412,7 @@ struct Sender::Impl {
     if (std::chrono::steady_clock::now() >= probed) {
       auto c = check(set, k, t);
       g.lock();
+      if (!st.probed || c.code != st.check.code) log("anki: " + (c.code == Code::ok ? c.text : text_of(c.code, c.text)));
       st.check = c, st.probed = true, probed = std::chrono::steady_clock::now() + std::chrono::seconds(30);
       g.unlock();
     }
@@ -418,6 +429,7 @@ struct Sender::Impl {
       g.lock();
       st.making = false;
       tried.insert(n.key);
+      log("reading " + n.text + ": " + (!m.file.empty() ? "made" : m.later ? "not now" : "none for its language"));
       if (!m.file.empty()) audio[n.key] = m.file;
       else if (!m.later) no_audio.insert(n.key);
       missing.clear();
@@ -431,6 +443,7 @@ struct Sender::Impl {
       for (auto &n : missing)
         if (!tried.count(n.key)) held.insert(n.key);
     count(all, wait, missing);
+    if (std::chrono::steady_clock::now() >= refused_until) failed.clear();
     std::erase_if(wait, [&](const Note &n) {
       auto i = failed.find(n.key);
       return held.count(n.key) || (i != failed.end() && i->second == digest(n));
@@ -441,11 +454,14 @@ struct Sender::Impl {
     g.unlock();
     auto r = send(wait, set, k, t, out);
     g.lock();
+    log("sent " + std::to_string(wait.size()) + ": " + std::to_string(r.added) + " added, " + std::to_string(r.updated) + " updated, " +
+        std::to_string(r.failed) + " failed" + (r.error.empty() ? "" : " — " + r.error));
     sent = out;
     write_sent(data, sent);
     for (auto &n : wait)
       if (auto i = sent.find(n.key); i == sent.end() || i->second != digest(n)) failed[n.key] = digest(n);
-    // Anki not answering (or not set up) is tried again; a note it refused waits for a change or "Send now".
+    if (!failed.empty()) refused_until = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+    // Anki not answering (or not set up) is tried again soon; a note it refused, in 2 minutes (at once when it changes).
     if (r.code == Code::not_running || r.code == Code::need_key || r.code == Code::old || r.code == Code::model) {
       for (auto &n : wait) failed.erase(n.key);
       retry = std::chrono::steady_clock::now() + std::chrono::seconds(r.code == Code::not_running ? 15 : 60);
