@@ -171,9 +171,9 @@ std::string Engine::restore(const std::string &file) const {
   return r.error.empty() ? tr("restore_done", {digits(r.added)}) : tr("failed", {r.error});
 }
 
-// At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five).
+// At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five). The sync
+// folder is the shell's own call on its own thread (a stalled share would hold the indexes back).
 void Engine::prepare() const {
-  core->store().sync(false);  // the first read of the sync folder, unless the shell did it
   core->prepare();
   core->store().daily_backup(core->data() / "backup");
 }

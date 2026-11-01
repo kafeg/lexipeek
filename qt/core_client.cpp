@@ -16,6 +16,10 @@ CoreClient::CoreClient(const std::string &data, const Device &d) : device(d), en
   worker.setMaxThreadCount(1);
   indexing.setMaxThreadCount(1);
   ai.setMaxThreadCount(4);
+  syncing.setMaxThreadCount(1);
+  syncing.start([e = engine] {
+    if (e.sync(true)) QMetaObject::invokeMethod(&notes_bus(), [] { emit notes_bus().changed(); }, Qt::QueuedConnection);
+  });
   prepare();
 }
 

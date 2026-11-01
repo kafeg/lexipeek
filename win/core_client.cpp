@@ -31,7 +31,7 @@ CoreClient::CoreClient(const std::string &data, const Device &d)
   DWORD size = 256;
   std::string computer = GetComputerNameExW(ComputerNamePhysicalDnsHostname, name, &size) ? winrt::to_string(name) : "";
   auto e = engine;
-  indexing.start([this, e, computer] {
+  syncing.start([this, e, computer] {
     e.name_device(computer);
     if (e.sync(true)) ui([] { notes_bus().changed(); });
   });

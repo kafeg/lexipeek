@@ -30,12 +30,12 @@ final class CoreClient {
     init() {
         engine = lexipeek.app.Engine.make(std.string(), Self.device)
         let name = SCDynamicStoreCopyComputerName(nil, nil) as String? ?? ""
-        indexing.async { [engine] in
+        syncQueue.async { [engine] in
             engine.name_device(std.string(name))
             _ = engine.sync(true)
             DispatchQueue.main.async { NotificationCenter.default.post(name: .notesChanged, object: nil) }
-            engine.prepare()
         }
+        indexing.async { [engine] in engine.prepare() }
         // Every 30 s the folder is looked at; read only when its files changed.
         let t = DispatchSource.makeTimerSource(queue: syncQueue)
         t.schedule(deadline: .now() + 30, repeating: 30)

@@ -31,7 +31,7 @@ class CoreClient : public QObject {
 
   Device device;  // this machine: memory, the CPU's features, its architecture
   app::Engine engine;
-  QThreadPool lookups, worker, ai, indexing;
+  QThreadPool lookups, worker, ai, indexing, syncing;  // syncing: the sync folder's calls (it may be a slow share)
 
   // work on a pool, done back on the main thread (not when ctx is gone by then).
   template <class R>
