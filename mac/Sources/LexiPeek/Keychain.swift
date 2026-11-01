@@ -8,6 +8,9 @@ import Security
 enum Keychain {
     private static let service = "dev.kafeg.lexipeek.ai"
     static let anki = "anki"
+    // Read once per launch: every card action wants the key, and a Keychain prompt blocks the main thread until answered.
+    private static var read: [String: String] = [:]
+    private static let lock = NSLock()
 
     private static func query(_ provider: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: provider]
@@ -16,12 +19,15 @@ enum Keychain {
     // Snapshot runs never touch the Keychain (a prompt could show on the owner's screen).
     static func key(_ provider: String) -> String {
         guard !provider.isEmpty, Snapshot.dir == nil else { return "" }
+        if let k = lock.withLock({ read[provider] }) { return k }
         var q = query(provider)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: AnyObject?
         guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return "" }
-        return String(data: data, encoding: .utf8) ?? ""
+        let k = String(data: data, encoding: .utf8) ?? ""
+        lock.withLock { read[provider] = k }
+        return k
     }
 
     // Whether one is kept: its attributes only (the key itself is not read).
@@ -37,6 +43,7 @@ enum Keychain {
         guard !provider.isEmpty, Snapshot.dir == nil else { return }
         SecItemDelete(query(provider) as CFDictionary)
         let k = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        lock.withLock { read[provider] = k }
         guard !k.isEmpty else { return }
         var q = query(provider)
         q[kSecValueData as String] = Data(k.utf8)
