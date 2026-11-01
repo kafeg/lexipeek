@@ -153,7 +153,8 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
 // cannot be listed or read (the share gone meanwhile) leaves [dst] as it is.
 std::string mirror_folder(const fs::path &src, const fs::path &dst) {
   std::error_code ec;
-  if (fs::directory_iterator probe(src, ec); ec) return "cannot read " + text::utf8_of(src) + ": " + ec.message();
+  (void)fs::directory_iterator(src, ec);
+  if (ec) return "cannot read " + text::utf8_of(src) + ": " + ec.message();
   auto files = store::log_files(src);
   if (fs::exists(src / "device.json", ec)) files.push_back(src / "device.json");
   std::set<fs::path> names;
