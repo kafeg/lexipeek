@@ -72,16 +72,25 @@ TEST_CASE("☆: a word as its base form, also after its article; a phrase as it 
     CHECK(card_view(again, s).saved);
     CHECK(card_view(again, s).star_help == "Remove Haus from Notes");
 
+    // An article and its noun (the pack's header starts so): the noun's card, on Dictionary.
     auto article = core.lookup(Request{.text = "das Haus", .source = Source::hotkey});
-    CHECK(article.kind == Card::Kind::phrase);
+    CHECK(article.kind == Card::Kind::word);
+    CHECK(article.text == "Haus");
+    CHECK(article.header == "das Haus (Hauses, pl. Häuser)");
+    REQUIRE(article.entries.size() == 1);
+    CHECK(first_state(article).tab == CardTab::dictionary);
+    CHECK(core.lookup(Request{.text = "Das Haus.", .source = Source::hotkey}).kind == Card::Kind::word);
     CHECK(article.save_text == "Haus");
     CHECK(article.save_kind == "word");
     CHECK(article.saved);
     CHECK(!core.toggle_saved(article, ""));
     CHECK(!core.store().is_saved("Haus"));
 
-    // Not the pack's header: "ein Haus" is a phrase of its own.
+    // Not the pack's header: "ein Haus", "der Haus", "das Haus steht" are phrases.
+    CHECK(core.lookup(Request{.text = "der Haus", .source = Source::hotkey}).kind == Card::Kind::phrase);
+    CHECK(core.lookup(Request{.text = "das Haus steht", .source = Source::hotkey}).kind == Card::Kind::phrase);
     auto other = core.lookup(Request{.text = "ein Haus", .source = Source::hotkey});
+    CHECK(other.kind == Card::Kind::phrase);
     CHECK(other.save_text == "ein Haus");
     CHECK(other.save_kind == "phrase");
     CHECK(other.save_line.empty());

@@ -238,6 +238,14 @@ Card Core::lookup(const Request &r) {
       if (c.lang == c.answer)
         for (auto &x : langs) c.study.push_back({x});
     }
+    // "die Konjugation": an article and its noun — the pack's header of the second word starts so → the noun's card.
+    static const text::Regex word_re("\\S+");
+    if (auto words = word_re.all(c.text); c.kind == Card::Kind::phrase && c.study.empty() && !c.lang.empty() && words.size() == 2) {
+      auto noun = text::clean_query(words[1].groups[0]);
+      auto heads = lib.heads(noun, c.answer, c.lang);
+      if (!heads.empty() && text::lower(heads.front().header()).starts_with(text::lower(text::clean_query(words[0].groups[0]) + " " + noun)))
+        c.kind = Card::Kind::word, c.text = noun;
+    }
     // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
     auto add_entry = [&](dict::StarDict *d, const std::vector<dict::Hit> &hits) {
       Entry e;
@@ -303,13 +311,6 @@ Card Core::lookup(const Request &r) {
       }
       for (auto &[d, hits] : lib.lookup(c.text, c.answer, c.lang)) add_entry(d, hits);
     } else if (!c.lang.empty()) {
-      // "das Haus": the pack's header of its second word starts so → saved as that word.
-      static const text::Regex word_re("\\S+");
-      auto words = word_re.all(c.text);
-      if (words.size() == 2)
-        if (auto heads = lib.heads(words[1].groups[0], c.answer, c.lang);
-            !heads.empty() && text::lower(heads.front().header()).starts_with(text::lower(c.text)))
-          c.save_text = heads.front().word, c.save_kind = "word", c.save_line = heads.front().line;
       const size_t limit = 60;
       for (auto &gl : lib.gloss(c.text, c.answer, limit, c.lang)) c.gloss.push_back(gloss_of(gl));
       c.more = static_cast<int>(dict::gloss_words(c.text) - c.gloss.size());

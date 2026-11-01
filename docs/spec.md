@@ -145,8 +145,10 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Look:** system on every OS — fonts, light / dark, accent; on Linux the current desktop's theme. Settings are a
   plain native window. The card: a non-activating panel with the system's material, like Look Up or Spotlight.
 - **Card:** under the selection, on the screen with the cursor, kept inside its edges; it can be dragged anywhere
-  (an option keeps a dragged card open, as pinned). By the text: a word — header, dictionary first; a phrase (up to 8
-  words, one sentence: InkPeek's `Kind.of`) — translation first, word by word in Dictionary; a passage — its
+  (an option keeps a dragged card open, as pinned). By the text: a word — header, dictionary first; an article and its
+  noun ("die Konjugation": the pack's header of the noun starts so) — the noun's word card (InkPeek opens it as a
+  phrase, ☆ saves the noun); a phrase (up to 8 words, one sentence: InkPeek's `Kind.of`) — translation first, word by
+  word in Dictionary; a passage — its
   translation only (its text in one line above it). At most 45% of the screen high, the rest scrolls inside; the card
   keeps its height while something loads, then fits what it shows (smaller too).
   The header has the card's whole width; every button is in the bottom row (InkPeek's): ← (an icon; its tooltip says where it goes), the method (its tooltip: how long the
