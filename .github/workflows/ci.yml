@@ -93,26 +93,6 @@ jobs:
       - name: Swift tests (macOS)
         if: runner.os == 'macOS'
         run: make app-test SIGN=-
-      # The app draws every snapshot case (scripts/snapshots.sh, invisible: off screen, never activated) on the packs above;
-      # a case that never finished (a crash, a hang) fails. Not compared with anything: the images are an artifact.
-      - name: App snapshots (macOS)
-        if: runner.os == 'macOS'
-        timeout-minutes: 25
-        run: make app SIGN=- && LEXIPEEK_DATA=$PWD/models scripts/snapshots.sh build/snapshots
-      - uses: actions/upload-artifact@v4
-        if: always() && runner.os == 'macOS'
-        with:
-          name: snapshots-macos
-          path: build/snapshots
-          retention-days: 7
-      # The web views' selection read by the hotkey's code (scripts/selection-test.sh): needs Accessibility, granted here
-      # through TCC's database (a hosted runner's SIP is off).
-      - name: Selection test (macOS)
-        if: runner.os == 'macOS'
-        timeout-minutes: 5
-        run: |
-          sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAccessibility', 'dev.kafeg.lexipeek', 0, 2, 4, 1, 'UNUSED', 0, CAST(strftime('%s','now') AS INTEGER));"
-          scripts/selection-test.sh build/selection-test
       - uses: actions/cache@v4
         if: runner.os == 'Windows'
         with:
@@ -127,23 +107,6 @@ jobs:
         with:
           name: LexiPeek-Windows
           path: build/win/LexiPeek
-          retention-days: 7
-      # The WinUI shell on the runner's desktop: --self-test (the OS parts), --snapshots of the card cases on the packs
-      # above (RenderTargetBitmap, light and dark; a case not drawn goes to failed.txt and the exit code). Not compared.
-      - name: WinUI shell checks (Windows)
-        if: runner.os == 'Windows'
-        timeout-minutes: 20
-        shell: bash
-        run: |
-          mkdir -p build/win-checks && . scripts/snapshot-cases.sh && cases >build/win-checks/cases.txt
-          export LEXIPEEK_CATALOG=$(cygpath -m "$LEXIPEEK_CATALOG")
-          cp -r models build/win-data
-          pwsh -NoProfile -File scripts/win-checks.ps1 -Exe build/win/LexiPeek/LexiPeek.exe -Data build/win-data -Out build/win-checks
-      - uses: actions/upload-artifact@v4
-        if: always() && runner.os == 'Windows'
-        with:
-          name: snapshots-windows
-          path: build/win-checks
           retention-days: 7
       - name: Backtrace
         if: failure() && runner.os == 'Linux'

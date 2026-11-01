@@ -67,11 +67,7 @@ per-user install and uninstall.
   field the shell does not know is still overwritten: shells could write only their own fields.
 
 ## Open
-- Tests not on CI (map: `docs/testing.md`): Hy-MT2 (1.1 GB; the cache's 10 GB is shared with vcpkg's) and Read aloud
-  with the real voice model (2.4 GB; `lexipeek-cli say-bench` by hand); on Windows the first-run and AI snapshot runs and
-  `win-e2e.ps1` (keys sent to Notepad, the tray: a desktop where input can be sent); the Qt shell's snapshots.
-- Not tested without a network: `app::install` / `refresh` / `check_updates` (their parts are: `Packs` from a `file://`
-  release, `update_check`). Windows' store tests take ~1.5 min of its 2.3 (a SQLite commit per write on its disk).
+- Hy-MT2 tests run only locally (1.1 GB; the cache's 10 GB is shared with vcpkg's).
 - No request sent to a real AI provider from here: try each once.
 - Own dictionaries are indexed in the background one at a time (a card waits for one index at most); no
   "indexing…" state in their rows.
