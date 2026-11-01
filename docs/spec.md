@@ -352,12 +352,16 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   `<data>/voices/` (latents and text; the WAV is not kept), listed first for its language and used for it while on;
   Such a voice is never shipped or synced (a recording is someone's voice).
   **What ▶ reads** (the core decides, `card_view`'s `read`: text and language; the shells only play): a text in another
-  language than the answer — the text itself in its language; a text in the answer language with a language you learn —
-  on Translate the translation into it (once there), on Dictionary the first translated word, and each translated
-  word's row has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
-  **Card:** ▶ in the bottom row on the right (before copy), ■ while it reads (a press stops); ⌘. (Windows Ctrl+.) the
-  same, a key of the card (while it has the focus), not a hotkey. The first ▶ loads the model: "Loading the voice
-  model…" under the rows until the reading starts; a failure is a line with Settings → Read aloud. Read aloud off (the default): no ▶; on without the model: a press says what to do
+  language than the answer — a word as its headword without the grammar in brackets (gescheitert → "scheitern", "das
+  Haus"), a phrase or a passage as itself; a text in the answer language with a language you learn — on Translate the
+  translation into it (once there), on Dictionary the first translated word's headword, and each translated word's row
+  has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
+  **Card:** ▶ in the bottom row on the right (before copy); a press shows the reading's phase in ▶'s own place, one size
+  (nothing in the card moves): the model loading (an hourglass; Windows a clock), the reading being made (a sound wave;
+  Windows a speaker), ■ while it plays; a press on any of them stops. ⌘. (Windows Ctrl+.) the same, a key of the card
+  (while it has the focus), not a hotkey. A failure is a line with Settings → Read aloud. ☆ keeps the card's reading
+  with its note (`<data>/readings/saved/`, never pruned; one made later for a saved card too). The menu (menu bar, tray)
+  names the voice model while it is in memory, with its own Unload Now. Read aloud off (the default): no ▶; on without the model: a press says what to do
   (the line and its button).
   **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for its own time
   after its last reading (Settings → Read aloud: 1, 3, 5, 15 min, 1 h, until quit; 3 min by default — it holds ~3.5 GB
