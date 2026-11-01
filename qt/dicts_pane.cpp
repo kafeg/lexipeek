@@ -126,8 +126,11 @@ void DictsPane::draw() {
         box.addButton(t("cancel"), QMessageBox::RejectRole);
         box.exec();
         if (box.clickedButton() != del) return;
-        message_ = c_.engine.remove_dict(dir, id);
-        changed(true);
+        // Waits for a look-up or an index being built (the core's lock): off the UI thread.
+        c_.run<std::string>(c_.worker, [e = c_.engine, dir, id] { return e.remove_dict(dir, id); }, [this](std::string m) {
+          message_ = m;
+          changed(true);
+        }, this);
       }));
     }
     body_->addWidget(fluent::card(row));

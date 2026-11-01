@@ -95,8 +95,11 @@ xaml::UIElement DictsPane::view() {
       auto title = r.title;
       right.Children().Append(page::icon_button(0xE74D, tr("delete"), [this, dir, id, title] {
         page::confirm(root_, app::text("delete_q", title), app::text("delete_d"), app::text("delete"), [this, dir, id] {
-          message_ = c_.engine.remove_dict(dir, id);
-          changed(true);
+          // Waits for a look-up or an index being built (the core's lock): off the UI thread.
+          page::run<std::string>(c_, [e = c_.engine, dir, id] { return e.remove_dict(dir, id); }, [this](std::string m) {
+            message_ = m;
+            changed(true);
+          });
         });
       }));
     }

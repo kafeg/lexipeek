@@ -60,8 +60,14 @@ final class OtherDictionariesModel: ObservableObject {
     }
 
     func remove(_ r: Row) {
-        message = String(client.engine.remove_dict(std.string(), std.string(r.id)))
-        changed(reload: true)
+        // Waits for a look-up or an index being built (the core's lock): off the main thread.
+        DispatchQueue.global(qos: .userInitiated).async { [weak self, engine = client.engine, id = r.id] in
+            let m = String(engine.remove_dict(std.string(), std.string(id)))
+            DispatchQueue.main.async {
+                self?.message = m
+                self?.changed(reload: true)
+            }
+        }
     }
 
     func addFolder() {
