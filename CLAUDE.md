@@ -7,9 +7,9 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 ## Stack
 C++20 core with all the logic + a thin native shell per OS. `core/` — no UI, no OS headers; vcpkg: sqlite3,
 nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
-`mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `qt/` (M6) — Qt 6 Widgets for Windows and Linux;
-`win/` — the Windows shell being built (M8, by phases: `TODO.md`), WinUI 3 (C++/WinRT); then `qt/` stays for Linux (and as
-Windows' fallback build). `platform/` — the OS parts both Windows shells share.
+`mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `win/` (M8) — the Windows shell, WinUI 3 (C++/WinRT);
+`qt/` (M6) — Qt 6 Widgets, for Linux later and Windows' fallback build (`LEXIPEEK_QT` off by default everywhere).
+`platform/` — the OS parts both Windows shells share.
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp; and Read aloud's qwentts.cpp (spec M9, not
 InkPeek's: its own pin). macOS 14+, Apple Silicon only.
 
@@ -190,8 +190,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
   `LexiPeekKit` — pure Swift (shortcuts, placement), tested without the core; hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
   engine and queues for the rest (Notes, settings, packs).
-- `qt/` (M6, Windows; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, on
-  by default on Windows; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
+- `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
+  by default — on Windows too since M8: `build-win.cmd <dir> qt`; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   polls its CardSession, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
   done, ctx)` drops `done` when ctx is gone), `ui` (shared small widgets; `clear` deletes later: a redraw may come
@@ -217,8 +217,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `win/` (M8): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core and
   platform → `<dir>/win/lexipeek-core.props` + `version.h` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`,
   shared with mac) → NuGet `win/packages.config` → MSBuild → what ships trimmed into `<dir>\win\LexiPeek\`);
-  `build-win.cmd [dir] qt` builds the Qt shell instead. Works on VS Build Tools without VS's WindowsXaml targets (the vcxproj
-  runs the XAML passes itself). `App.xaml.cpp` — the process (qt/main.cpp's: arguments, one instance, install question, every
+  `build-win.cmd [dir] qt` builds the Qt shell instead. The vcxproj runs the XAML passes itself (Build Tools have no
+  WindowsXaml targets; a full VS, as CI's, does not import them here); its toolset is the installed VS's default. `App.xaml.cpp` — the process (qt/main.cpp's: arguments, one instance, install question, every
   way out through `app::leave`), `shell` (tray, its menu, hotkeys, the selection read), `tray` (Shell_NotifyIcon), `MenuHost`
   (the tray menu: a `MenuFlyout` from a 1-pixel host window at the click), `ui` (texts via `tr`, Mica windows with the content in
   the title bar, `ask`), small screens as XAML text (`load` + `part`), `card` (`CardModel` polls its `CardSession`, `CardWidget` draws `CardView`:

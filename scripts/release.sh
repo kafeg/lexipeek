@@ -54,8 +54,8 @@ got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVer
 codesign --verify --deep --strict "$dir/mac/LexiPeek.app" || die "the Mac app's signature does not verify"
 # The Windows zip: the LexiPeek folder with the program and the Windows App SDK's runtime beside it.
 names=$(unzip -Z1 "$dir/LexiPeek-Windows.zip")
-for f in LexiPeek.exe Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll resources.pri; do
-  grep -qx "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
+for f in LexiPeek.exe LexiPeek.pri Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll; do
+  grep -qix "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
 done
 [ "$(unzip -p "$dir/LexiPeek-Windows.zip" LexiPeek/LexiPeek.exe | head -c 2)" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
 [ "${1:-}" = "--pre" ] || [ "$(gh api "repos/$REPO/releases/latest" -q .tag_name)" = "$TAG" ] || die "$TAG is not the latest release"

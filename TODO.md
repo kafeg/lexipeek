@@ -29,7 +29,8 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 5. Done: the first run (`first_run`: qt/first_run's steps as Windows' setup pages, its `firstrun-*` snapshots); CI's Windows
    job builds the core by Ninja with `-DLEXIPEEK_QT=OFF`, then the WinUI shell (`build-win.cmd build`, the folder as an
    artifact; the Qt shell only in a run by hand); release.yml ships `LexiPeek-Windows.zip` (the folder), release.sh checks
-   it. Open: THIRD_PARTY_NOTICES.txt still names Qt for the Windows app and not the Windows App SDK (MIT) and C++/WinRT
+   it; `LEXIPEEK_QT` is off by default on Windows too. Open: THIRD_PARTY_NOTICES.txt still names Qt for the Windows app
+   and not the Windows App SDK (MIT) and C++/WinRT
    it ships now.
 - Open: the tray menu on Windows 11 and by a real click on the icon (tried on Windows 10 with Explorer's messages to the
   icon's window: items, invoked items, light dismiss, Quit; the icon is in the taskbar); WinUI windows on a VM's
