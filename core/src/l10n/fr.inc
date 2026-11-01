@@ -700,3 +700,4 @@
 {"anki_in", "Dans Anki"},
 {"anki_decks.one", "{n} paquet"},
 {"anki_decks.other", "{n} paquets"},
+{"anki_inkpeek", "Vous utilisez aussi InkPeek ? Synchronisez Anki avec AnkiWeb avant d'activer ceci, pour que les deux applis trouvent les mêmes notes."},

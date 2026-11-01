@@ -336,6 +336,43 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
   return r;
 }
 
+int dedupe(const std::vector<std::string> &keys, const AnkiSettings &s, const std::string &key, const Transport &t,
+           const std::function<void(const std::string &)> &log) {
+  std::set<std::string> ours(keys.begin(), keys.end());
+  auto found = post(s, key, t, "findNotes", {{"query", std::string("\"note:") + model_name + "\""}});
+  if (found.code != Code::ok || !found.result.is_array() || found.result.empty()) return 0;
+  auto info = post(s, key, t, "notesInfo", {{"notes", found.result}});
+  if (info.code != Code::ok || !info.result.is_array()) return 0;
+  struct Rec {
+    long long id;
+    std::string audio;
+  };
+  std::map<std::string, std::vector<Rec>> by_key;
+  for (auto &n : info.result) {
+    if (!n.is_object() || !n.contains("fields") || !n["noteId"].is_number_integer()) continue;
+    auto field = [&](const char *f) { return n["fields"].value(f, json::object()).value("value", std::string()); };
+    if (auto k = field("Key"); ours.count(k)) by_key[k].push_back({n["noteId"].get<long long>(), field("Audio")});
+  }
+  int removed = 0;
+  for (auto &[k, recs] : by_key) {
+    if (recs.size() < 2) continue;
+    std::sort(recs.begin(), recs.end(), [](const Rec &a, const Rec &b) { return a.id < b.id; });
+    auto &kept = recs.front();
+    if (kept.audio.empty())
+      for (auto &r : recs)
+        if (!r.audio.empty()) {
+          post(s, key, t, "updateNoteFields", {{"note", {{"id", kept.id}, {"fields", {{"Audio", r.audio}}}}}});
+          break;
+        }
+    json gone = json::array();
+    for (std::size_t i = 1; i < recs.size(); i++) gone.push_back(recs[i].id);
+    if (post(s, key, t, "deleteNotes", {{"notes", gone}}).code != Code::ok) continue;
+    removed += static_cast<int>(gone.size());
+    log("merged " + k + ": kept " + std::to_string(kept.id) + ", deleted " + gone.dump());
+  }
+  return removed;
+}
+
 struct Sender::Impl {
   Impl(Store &the_store, fs::path dir, Transport to, Reader rd, std::chrono::milliseconds e)
       : store(the_store), data(std::move(dir)), t(std::move(to)), reader(std::move(rd)), every(e), sent(read_sent(data)) {}
@@ -355,7 +392,7 @@ struct Sender::Impl {
   std::set<std::string> no_audio;            // Keys whose reading cannot be made (no voice for the language)
   std::set<std::string> tried;               // Keys whose reading was tried: their note goes, without one if need be
   Status st;
-  std::chrono::steady_clock::time_point retry{}, probed{};
+  std::chrono::steady_clock::time_point retry{}, probed{}, deduped{};
   bool now = false, stop = false, more = false, unsynced = false;
   std::thread worker;
 
@@ -412,7 +449,7 @@ struct Sender::Impl {
     auto k = key;
     bool forced = std::exchange(now, false);
     more = false;
-    if (forced) failed.clear(), retry = {}, probed = {};
+    if (forced) failed.clear(), retry = {}, probed = {}, deduped = {};
     st.on = set.on;
     if (!set.on) {
       st.waiting = 0;
@@ -430,6 +467,13 @@ struct Sender::Impl {
     }
     std::vector<Note> missing;
     auto listed = notes(store, set, data);
+    // Duplicates by Key (another app sent before AnkiWeb synced): every 10 min while Anki answers, and on "Send now".
+    if (std::chrono::steady_clock::now() >= deduped && st.check.code == Code::ok) {
+      deduped = std::chrono::steady_clock::now() + std::chrono::minutes(10);
+      std::vector<std::string> keys;
+      for (auto &n : listed) keys.push_back(n.key);
+      dedupe(keys, set, k, t, [this](const std::string &line) { log(line); });
+    }
     g.lock();
     st.voice = ready;
     auto all = with_audio(listed, missing);

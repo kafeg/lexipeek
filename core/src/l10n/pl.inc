@@ -705,3 +705,4 @@
 {"anki_decks.one", "{n} talia"},
 {"anki_decks.few", "{n} talie"},
 {"anki_decks.many", "{n} talii"},
+{"anki_inkpeek", "Używasz też InkPeek? Zsynchronizuj Anki z AnkiWeb przed włączeniem, żeby obie aplikacje znalazły te same notatki."},

@@ -87,7 +87,7 @@ struct FakeAnki {
       for (std::sregex_iterator i(q.begin(), q.end(), k), e; i != e; ++i) keys.insert((*i)[1]);
       json out = json::array();
       for (auto &n : notes)
-        if (q.find("\"note:" + n.model + "\"") != std::string::npos && keys.count(n.fields["Key"])) out.push_back(n.id);
+        if (q.find("\"note:" + n.model + "\"") != std::string::npos && (keys.empty() || keys.count(n.fields["Key"]))) out.push_back(n.id);
       return ok(out);
     }
     if (a == "notesInfo") {
@@ -120,6 +120,10 @@ struct FakeAnki {
           return ok(nullptr);
         }
       return err("note was not found: " + std::to_string(id));
+    }
+    if (a == "deleteNotes") {
+      for (auto &id : p["notes"]) std::erase_if(notes, [&](const NoteRec &n) { return n.id == id.get<long long>(); });
+      return ok(nullptr);
     }
     if (a == "storeMediaFile") return media[p["filename"].get<std::string>()] = p["data"].get<std::string>(), ok(p["filename"]);
     if (a == "sync") return syncs++, ok(nullptr);
@@ -646,6 +650,41 @@ TEST_CASE("anki: an update without a reading at hand keeps the note's Audio (a r
     again.configure(on(srv.url()));
     again.run_once();
     CHECK(anki.by_key(key)->fields.at("Audio") == "[sound:lexipeek_" + key + ".wav]");
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: duplicates by Key after AnkiWeb merged two apps' notes — the oldest kept with an Audio, the others deleted; only ours, only Peek") {
+  auto d = fresh("lexipeek-anki-dedupe");
+  FakeAnki anki;
+  anki.models["Peek"] = anki::fields;
+  anki.decks.insert("Peek::Words");
+  auto haus = anki::key_of("Haus", "ru");
+  auto add = [&](long long id, const std::string &model, const std::string &key, const std::string &audio) {
+    anki.notes.push_back({id, "Peek::Words", model, {{"Front", "x"}, {"Back", "y"}, {"Audio", audio}, {"Example", ""}, {"Key", key}}});
+  };
+  add(9, "Peek", haus, "[sound:lexipeek_" + haus + ".wav]");  // InkPeek's, with its reading
+  add(5, "Peek", haus, "");                                    // LexiPeek's, older
+  add(7, "Peek", haus, "");
+  add(3, "Peek", "ru-notours", ""), add(4, "Peek", "ru-notours", "");  // not an entry of this app
+  add(2, "Basic", haus, "");                                        // another note type
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    anki::Sender snd(st, d, anki::default_transport());
+    snd.configure(on(srv.url()));
+    snd.run_once();
+    std::vector<long long> ids;
+    for (auto &n : anki.notes) ids.push_back(n.id);
+    std::sort(ids.begin(), ids.end());
+    CHECK(ids == std::vector<long long>{2, 3, 4, 5});
+    auto *kept = anki.by_key(haus);
+    REQUIRE(kept);
+    CHECK(kept->fields.at("Audio") == "[sound:lexipeek_" + haus + ".wav]");  // kept by the send that followed
+    std::ifstream f(d / "anki.log");
+    std::string log((std::istreambuf_iterator<char>(f)), {});
+    CHECK(log.find("merged " + haus + ": kept 5, deleted [7,9]") != std::string::npos);
   }
   wipe(d);
 }

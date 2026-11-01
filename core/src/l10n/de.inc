@@ -700,3 +700,4 @@
 {"anki_in", "In Anki"},
 {"anki_decks.one", "{n} Stapel"},
 {"anki_decks.other", "{n} Stapel"},
+{"anki_inkpeek", "Nutzen Sie auch InkPeek? Synchronisieren Sie Anki vor dem Einschalten mit AnkiWeb, damit beide Apps dieselben Notizen finden."},

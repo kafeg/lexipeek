@@ -700,3 +700,4 @@
 {"anki_in", "In Anki"},
 {"anki_decks.one", "{n} deck"},
 {"anki_decks.other", "{n} decks"},
+{"anki_inkpeek", "Using InkPeek too? Sync Anki with AnkiWeb before turning this on, so both apps find the same notes."},

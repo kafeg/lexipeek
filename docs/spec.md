@@ -270,7 +270,10 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   default) —, as notes of the note type **Peek** (Front · Back · Audio · Example · Key; "Peek": InkPeek shares the
   binding through AnkiDroid later). Key = the answer language + the first 32 hex digits of sha256 of InkPeek's lookup
   key of the text (`h-` before a history note's): a change of an entry updates its note (found by Key), a note deleted
-  in Anki is added again, never a duplicate. **Audio for every note**: its kept reading, else Read aloud makes one for
+  in Anki is added again, never a duplicate. AnkiWeb merges by a GUID neither app can set, so LexiPeek and InkPeek
+  sending before a sync make two notes of one Key: every 10 min (and on Send now) both apps keep the oldest `Peek` note of
+  each of their Keys (with another's Audio when its own is empty) and delete the others, each merge in `anki.log`; the
+  tab says to sync Anki with AnkiWeb before turning the binding on when InkPeek is used too. **Audio for every note**: its kept reading, else Read aloud makes one for
   it (one at a time in the background, the text's language and the voice setting, a ▶ reading first; the model goes by
   its idle time), as `lexipeek_<Key>.wav` in Anki's media; without the voice model notes go without audio (the tab says
   so, with a way to Read aloud) and get it once the model is there. What could not go waits and goes when Anki answers

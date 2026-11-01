@@ -86,6 +86,12 @@ struct Result {
 };
 Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::string &key, const Transport &t, Sent &sent);
 
+// Two notes with one Key (LexiPeek and InkPeek sent before AnkiWeb synced: its merge goes by a GUID neither can set):
+// among the "Peek" notes of [keys], the oldest (smallest id) is kept, with another's Audio when its own is empty; the
+// others are deleted. InkPeek's rule, word for word. [log] gets a line per merge; the count of notes deleted.
+int dedupe(const std::vector<std::string> &keys, const AnkiSettings &s, const std::string &key, const Transport &t,
+           const std::function<void(const std::string &)> &log);
+
 // Per deck: in Anki, waiting (not sent or changed since), without their reading yet.
 struct Count {
   int sent = 0, waiting = 0, audio = 0;

@@ -700,3 +700,4 @@
 {"anki_in", "En Anki"},
 {"anki_decks.one", "{n} mazo"},
 {"anki_decks.other", "{n} mazos"},
+{"anki_inkpeek", "¿Usa también InkPeek? Sincronice Anki con AnkiWeb antes de activar esto, para que ambas apps encuentren las mismas notas."},

@@ -387,7 +387,7 @@ std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) 
 std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
   auto &a = s.anki;
   auto &k = st.anki;
-  std::vector<SettingRow> rows{heading(tr("anki_how_t"), tr("anki_how_d")), toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
+  std::vector<SettingRow> rows{heading(tr("anki_how_t"), tr("anki_how_d") + "\n" + tr("anki_inkpeek")), toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
   // The connection: the Check's answer, else the binding's last one.
   bool known = st.anki_checked || k.probed;
   auto c = st.anki_checked ? st.anki_check : k.check;

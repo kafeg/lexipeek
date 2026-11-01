@@ -700,3 +700,4 @@
 {"anki_in", "No Anki"},
 {"anki_decks.one", "{n} baralho"},
 {"anki_decks.other", "{n} baralhos"},
+{"anki_inkpeek", "Também usa o InkPeek? Sincronize o Anki com o AnkiWeb antes de ligar isto, para que as duas apps encontrem as mesmas notas."},
