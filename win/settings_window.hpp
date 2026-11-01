@@ -19,12 +19,13 @@ struct SettingsShell {
   std::string test, downloading, download_error, lookup_error, input_error;
   double progress = 0;
   mutable std::map<std::string, bool> keys;  // per provider: a key is stored (the store read once, again after a change)
+  SyncInfo sync;  // Sync → Sync's status line, asked on the sync queue
   SettingsState state() const;
 };
 
 // The order of Settings' sections: General first (as the Mac app), the core keeps InkPeek's.
 inline const SettingsSection shown_sections[] = {SettingsSection::general, SettingsSection::languages, SettingsSection::card, SettingsSection::ai,
-                                                 SettingsSection::speech};
+                                                 SettingsSection::speech, SettingsSection::sync};
 
 class SettingsWindow {
  public:
@@ -54,6 +55,9 @@ class SettingsWindow {
   void download(const std::string &method, const std::vector<std::string> &ids);
   void download_speech();  // Read aloud's voice model
   void add_voice();        // Read aloud → Voice from a recording…
+  // Sync → Sync: the store's state again; a folder picked, set and read.
+  void refresh_sync();
+  void choose_sync_folder();
   SettingsShell sh_;
   xaml::Controls::NavigationView nav_{nullptr};
   xaml::Controls::Grid page_{nullptr};

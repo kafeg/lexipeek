@@ -2,6 +2,7 @@ import CxxStdlib
 import Foundation
 import LexiPeekCore
 import LexiPeekKit
+import SystemConfiguration
 
 // The engine and a serial queue for settings, packs and Notes' files; the cards ask through their own CardSession.
 final class CoreClient {
@@ -22,9 +23,35 @@ final class CoreClient {
     // The dictionaries' indexes, built in the background (one at a time: look-ups go on meanwhile).
     private let indexing = DispatchQueue(label: "lexipeek.prepare", qos: .utility)
 
+    // The sync folder's calls (it may be a slow share) and its timer.
+    private let syncQueue = DispatchQueue(label: "lexipeek.sync", qos: .utility)
+    private var syncTimer: DispatchSourceTimer?
+
     init() {
         engine = lexipeek.app.Engine.make(std.string(), Self.device)
-        prepare()
+        let name = SCDynamicStoreCopyComputerName(nil, nil) as String? ?? ""
+        indexing.async { [engine] in
+            engine.name_device(std.string(name))
+            _ = engine.sync(true)
+            DispatchQueue.main.async { NotificationCenter.default.post(name: .notesChanged, object: nil) }
+            engine.prepare()
+        }
+        // Every 30 s the folder is looked at; read only when its files changed.
+        let t = DispatchSource.makeTimerSource(queue: syncQueue)
+        t.schedule(deadline: .now() + 30, repeating: 30)
+        t.setEventHandler { [engine] in
+            if engine.sync(false) { DispatchQueue.main.async { NotificationCenter.default.post(name: .notesChanged, object: nil) } }
+        }
+        t.resume()
+        syncTimer = t
+    }
+
+    // A sync call off the main queue; done on it.
+    func syncing<T>(_ work: @escaping (lexipeek.app.Engine) -> T, done: @escaping (T) -> Void) {
+        syncQueue.async { [engine] in
+            let r = work(engine)
+            DispatchQueue.main.async { done(r) }
+        }
     }
 
     private func prepare() { indexing.async { [engine] in engine.prepare() } }

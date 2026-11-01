@@ -3,7 +3,7 @@
 The point of the tests: LexiPeek's logic and data formats stay identical to InkPeek's. The parity tests run InkPeek's own
 cases from `tests/inkpeek` (the pinned submodule), never edited to make LexiPeek pass:
 - **sync** — `store_test`: InkPeek's `tests/sync` cases — `reader` (the merge, and the store's SQLite view of the folder),
-  `identity` (keep / new / ask, by the pure check and by the store at start), `writer` (the device's files byte for byte,
+  `identity` (keep / new, by the pure check and by the store at start), `writer` (the device's files byte for byte,
   written by the store) —, compaction merging the same, two stores on one folder;
 - **device cases** — `inkpeek_cases_test`: InkPeek's `cases.tsv` (headers, meanings, the text's language, separable verbs,
   translations) on real packs: 211 run on macOS and Linux, 200 on Windows (no translation model there);

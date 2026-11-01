@@ -155,7 +155,7 @@ struct LangItem {
 };
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs; every pane's rows come from here.
-enum class SettingsSection { languages, card, ai, general, speech };
+enum class SettingsSection { languages, card, ai, general, speech, sync };
 
 struct CardView {
   HeaderStyle style = HeaderStyle::passage;
@@ -288,7 +288,6 @@ struct NotesRow {
   std::string text;   // what opens the card
   std::string line;   // one short line: the saved meaning, else the newest answer, else "—"
   std::string looks;  // History: "3×"; "" elsewhere
-  std::string where;  // the device that saved it and when ("MacBook Air · 2026-10-28"); History: the devices, the last look
 };
 
 struct NotesView {
@@ -392,7 +391,7 @@ struct SettingsState {
   // (downloading "speech": the model's download).
   bool speech_built = false, speech_installed = false;
   std::vector<speech::Voice> voices;
-  SyncInfo sync;  // General → Sync (the shell asks the engine: Engine::sync_info)
+  SyncInfo sync;  // Sync → Sync's status line (the shell asks the engine: Engine::sync_info)
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
@@ -495,17 +494,6 @@ struct HelpTopic {
 };
 // lookup, input: the hotkeys' labels ("⌥D", "⌥A").
 std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &input);
-
-// "Continue as <device>" when a sync folder is chosen (Store::ask): one button per device, then "New device".
-struct SyncOffer {
-  std::string id, label, detail;  // "Continue as MacBook Air", "Last active 2026-10-28 14:02 · mac-k3fw2xqa"
-};
-struct SyncAsk {
-  std::string title, text;
-  std::vector<SyncOffer> offers;  // none: no question
-  std::string new_device;         // the last button
-};
-SyncAsk sync_ask_view(const std::vector<SyncDevice> &devices);
 
 // "1 language pair installed"; a pair's second line ("Full · Mozilla · OPUS-MT", "Basic · 84 MB").
 std::string packs_summary(const std::vector<PairRow> &rows);

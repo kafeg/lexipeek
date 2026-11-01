@@ -171,16 +171,14 @@ struct Store::Impl {
   StoreOptions o;
   std::string error, sync_error;
   store::DeviceFile self;
-  bool joined = false;    // this device wrote to a sync folder once (no "Continue as" any more)
   bool checked = false;   // the two-installs check passed for the folder: own lines go there
   bool pending = false;   // own lines not written to the folder yet
   bool reachable = false;
-  std::int64_t read_ms = 0;
+  std::int64_t read_ms = 0, wrote_ms = 0;
   std::string sig;
   sqlite3 *db = nullptr;
   store::Clock clock;
   std::map<std::string, std::vector<Line>> lines;  // per text, in order
-  std::map<std::string, store::DeviceFile> names;  // device.json of every device seen
   mutable std::mutex m;
 
   ~Impl() { sqlite3_close(db); }
@@ -212,21 +210,19 @@ struct Store::Impl {
     return "cannot open " + text::utf8_of(file);
   }
 
-  // <data>/device.json: this device (made once), whether it joined a folder.
+  // <data>/device.json: this device, made once (no file: a new id; its earlier logs are read as any other device's).
   std::string load_self() {
     auto j = nlohmann::json::parse(slurp(o.data / "device.json"), nullptr, false);
     if (j.is_object() && j.value("device", "") != "" && (o.device.empty() || j.value("device", "") == o.device)) {
       self = {j.value("device", ""), APP, j.value("name", ""), j.value("created", std::int64_t(0))};
-      joined = j.value("joined", false);
       return "";
     }
     self = {o.device.empty() ? new_id() : o.device, APP, o.name, now_ms()};
-    joined = false;
     return save_self();
   }
 
   std::string save_self() {
-    nlohmann::ordered_json j = {{"device", self.device}, {"app", APP}, {"name", self.name}, {"created", self.created}, {"joined", joined}};
+    nlohmann::ordered_json j = {{"device", self.device}, {"app", APP}, {"name", self.name}, {"created", self.created}};
     return store::write_whole(o.data / "device.json", j.dump(1) + "\n");
   }
 
@@ -236,10 +232,6 @@ struct Store::Impl {
   // The roots' lines again, the whole view made again.
   std::string reread(const std::vector<fs::path> &roots) {
     lines.clear();
-    names.clear();
-    for (auto &r : roots)
-      for (auto &d : store::device_folders(r))
-        if (auto f = store::read_device_file(d / "device.json")) names[f->device] = *f;
     for (auto &l : store::read_roots(roots)) {
       clock.see(l.t);
       lines[l.text].push_back(std::move(l));
@@ -287,7 +279,6 @@ struct Store::Impl {
       }
       checked = true;
     }
-    if (!joined) joined = true;
     save_self();
     push();
     for (auto &d : store::device_folders(o.sync))
@@ -310,6 +301,15 @@ struct Store::Impl {
     if (e.empty() && slurp(remote() / "device.json") != dev) e = store::write_whole(remote() / "device.json", dev);
     pending = !e.empty();
     if (!e.empty()) sync_error = e;
+    else wrote_ms = own_newest();
+  }
+
+  std::int64_t own_newest() const {
+    std::int64_t ms = 0;
+    for (auto &[text, ls] : lines)
+      for (auto &l : ls)
+        if (l.d == self.device) ms = std::max(ms, l.t.ms);
+    return ms;
   }
 
   // The rows of [text]: its lines merged.
@@ -396,39 +396,14 @@ bool Store::sync(bool force) {
   return impl_->sync(force);
 }
 
-std::vector<SyncDevice> Store::ask(const std::filesystem::path &folder) const {
-  std::lock_guard g(impl_->m);
-  std::vector<SyncDevice> out;
-  if (impl_->joined || folder.empty()) return out;
-  for (auto &c : store::candidates(folder, APP, now_ms()))
-    if (c.device.device != impl_->self.device)
-      out.push_back({c.device.device, c.device.app, c.device.name, c.device.created, c.active, false});
-  return out;
-}
-
-std::string Store::set_folder(const std::filesystem::path &folder, const std::string &as) {
+std::string Store::set_folder(const std::filesystem::path &folder) {
   std::lock_guard g(impl_->m);
   auto &im = *impl_;
   if (!im.db) return im.error;
-  if (!as.empty() && as != im.self.device && !folder.empty()) {
-    auto from = folder / "inkpeek-log" / text::path_of(as);
-    auto d = store::read_device_file(from / "device.json");
-    if (!d || d->device != as) return "no device " + as;
-    // What this device wrote before goes to the folder once, under its own id; from now on it is [as].
-    auto old = im.own(), there = folder / "inkpeek-log" / text::path_of(im.self.device);
-    if (!store::log_files(old).empty()) {
-      if (auto e = push_folder(old, there); !e.empty()) return e;
-      store::write_whole(there / "device.json", store::format(im.shared()));
-    }
-    im.self = {as, APP, d->name, d->created};
-    if (auto e = mirror_folder(from, im.own()); !e.empty()) return e;
-  }
   im.o.sync = folder;
-  im.checked = false, im.sig.clear();
-  if (!folder.empty()) im.joined = true;
-  if (auto e = im.save_self(); !e.empty()) return e;
+  im.checked = false, im.sig.clear(), im.wrote_ms = 0;
   im.sync(true);
-  return im.sync_error == "unreachable" ? "" : im.sync_error;
+  return "";  // the folder's own problems: sync_info().error
 }
 
 std::string Store::set_name(const std::string &name) {
@@ -447,35 +422,9 @@ std::string Store::own_name() const {
 SyncInfo Store::sync_info() const {
   std::lock_guard g(impl_->m);
   auto &im = *impl_;
-  SyncInfo s;
-  s.folder = text::utf8_of(im.o.sync);
-  s.reachable = im.reachable, s.read = im.read_ms;
-  s.error = im.sync_error == "unreachable" ? "" : im.sync_error;
-  std::map<std::string, std::int64_t> active;
-  for (auto &[text, ls] : im.lines)
-    for (auto &l : ls) active[l.d] = std::max(active[l.d], l.t.ms);
-  std::map<std::string, SyncDevice> all;
-  for (auto &[id, d] : im.names) all[id] = {id, d.app, d.name, d.created, 0, false};
-  for (auto &[id, t] : active) all[id].id = id;
-  all[im.self.device] = {im.self.device, APP, im.self_name(), im.self.created, 0, true};
-  for (auto &[id, d] : all) {
-    d.active = active.contains(id) ? active[id] : 0;
-    if (d.name.empty()) d.name = id;
-    s.devices.push_back(d);
-  }
-  std::stable_sort(s.devices.begin(), s.devices.end(), [](const SyncDevice &a, const SyncDevice &b) {
-    return a.own != b.own ? a.own : a.active > b.active;
-  });
-  s.self = s.devices.front();
-  return s;
+  return {text::utf8_of(im.o.sync), im.reachable, im.read_ms, im.wrote_ms, im.sync_error == "unreachable" ? "" : im.sync_error};
 }
 
-std::string Store::device_name(const std::string &id) const {
-  std::lock_guard g(impl_->m);
-  if (id == impl_->self.device) return impl_->self_name();
-  auto i = impl_->names.find(id);
-  return i != impl_->names.end() && !i->second.name.empty() ? i->second.name : id;
-}
 
 std::string Store::seen(const std::string &text, const std::string &kind, const std::string &lang, const std::string &meaning,
                         const std::string &base) {

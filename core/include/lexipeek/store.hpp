@@ -38,21 +38,13 @@ struct Records {
   std::vector<Answer> ai;
 };
 
-// A device in the sync folder (or this one): its device.json and its newest line.
-struct SyncDevice {
-  std::string id, app, name;
-  std::int64_t created = 0, active = 0;  // ms; active: its newest line's (0: none)
-  bool own = false;
-};
-
-// Settings → General → Sync and the "Continue as" question.
+// Settings → Sync's status line.
 struct SyncInfo {
-  std::string folder;           // "" = none: the logs stay in the data dir
-  bool reachable = false;       // the folder is there now
-  std::int64_t read = 0;        // ms of the last read of the folder (0: not yet)
-  std::string error;            // the last read's or write's problem
-  SyncDevice self;              // this device
-  std::vector<SyncDevice> devices;  // every device of the logs, this one too, the newest active first
+  std::string folder;            // "" = none: the logs stay in the data dir
+  bool reachable = false;        // the folder is there now
+  std::int64_t read = 0;         // ms of the last read of the folder (0: not yet)
+  std::int64_t wrote = 0;        // ms of this device's newest line in the folder (0: none)
+  std::string error;             // the last read's or write's problem
 };
 
 struct StoreOptions {
@@ -94,15 +86,12 @@ class Store {
   // kept in <data>/sync-cache), rebuilds the view. Not forced: only when the folder changed. → whether the view changed.
   bool sync(bool force = true);
   std::string merge() { return sync(true), error(); }
-  // Another sync folder ("" = none). With [as]: continue as that device of the folder ("" = this one). The question
-  // first: ask() lists the devices to continue as (empty: none, no question).
-  std::vector<SyncDevice> ask(const std::filesystem::path &folder) const;
-  std::string set_folder(const std::filesystem::path &folder, const std::string &as = "");
+  // Another sync folder ("" = none), read at once.
+  std::string set_folder(const std::filesystem::path &folder);
+  // This device's name in device.json (a new one: the computer's, from the shell); "" = never named.
   std::string set_name(const std::string &name);
-  std::string own_name() const;  // "" = never named
+  std::string own_name() const;
   SyncInfo sync_info() const;
-  // A device's name (its id when none is known).
-  std::string device_name(const std::string &id) const;
 
   std::optional<std::string> answer(const std::string &text, const std::string &lang, const std::string &section,
                                     std::int64_t ver) const;

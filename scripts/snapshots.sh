@@ -18,16 +18,17 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir "$TMP/data"
 for f in "$DATA"/*; do
-  case "${f##*/}" in log | device | lexipeek.db* | settings.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
+  case "${f##*/}" in log | device | device.json | inkpeek-log | sync-cache | lexipeek.db* | settings.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
 done
-# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English) and
-# the run's app language.
+# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English),
+# the run's app language and a sync folder of its own (sync_fixture: other devices' logs; made again for each look).
 python3 -c 'import json, sys
 try: s = json.load(open(sys.argv[1]))
 except OSError: s = {}
 s["mt_english"] = True
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
-json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG"
+s["sync"] = sys.argv[4]
+json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG" "$TMP/sync"
 
 . scripts/snapshot-cases.sh
 
@@ -59,11 +60,13 @@ s = json.load(open(sys.argv[1]))
 s["ai"] = {"provider": "anthropic"}
 s["study"] = {"ru": ["de", "en"]}
 s["speech"] = {"on": True}
+s.pop("sync", None)
 json.dump(s, open(sys.argv[2], "w"))' "$TMP/data/settings.json" "$TMP/aidata/settings.json"
 fail=0
 for look in light dark; do
   dir="$OUT/$look"
-  rm -rf "$dir" "$TMP/data/log" "$TMP/data/device" "$TMP/data"/lexipeek.db* && mkdir -p "$dir"
+  rm -rf "$dir" "$TMP/data/inkpeek-log" "$TMP/data/sync-cache" "$TMP/data/device.json" "$TMP/data"/lexipeek.db* && mkdir -p "$dir"
+  rm -rf "$TMP/sync" && sync_fixture "$TMP/sync"
   LEXIPEEK_SNAPSHOT="$dir" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$TMP/data" \
     "$APP/Contents/MacOS/LexiPeek" >"$dir/app.log" 2>&1 &
   pid=$!
@@ -94,7 +97,7 @@ for look in light dark; do
   rm -rf "$dir/empty"
 
   # AI on: its settings shots (-on) and its cards; the answers in $TMP/ai, refilled before each case.
-  ai="$dir/ai" && rm -rf "$ai" "$TMP/ai" "$TMP/aidata/log" "$TMP/aidata/device" "$TMP/aidata"/lexipeek.db* && mkdir -p "$ai" "$TMP/ai"
+  ai="$dir/ai" && rm -rf "$ai" "$TMP/ai" "$TMP/aidata/inkpeek-log" "$TMP/aidata/sync-cache" "$TMP/aidata/device.json" "$TMP/aidata"/lexipeek.db* && mkdir -p "$ai" "$TMP/ai"
   LEXIPEEK_SNAPSHOT="$ai" LEXIPEEK_SNAPSHOT_APPEARANCE=$look LEXIPEEK_DATA="$TMP/aidata" LEXIPEEK_AI_REPLIES="$TMP/ai" \
     "$APP/Contents/MacOS/LexiPeek" >"$ai/app.log" 2>&1 &
   pid=$!

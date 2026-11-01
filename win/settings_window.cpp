@@ -6,6 +6,7 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include "lexipeek/os.hpp"
 #include "resource.h"
+#include "card.hpp"
 #include "settings_ui.hpp"
 #include "version.h"
 
@@ -36,6 +37,7 @@ SettingsState SettingsShell::state() const {
   s.downloading = downloading;
   s.progress = progress;
   s.download_error = download_error;
+  s.sync = sync;
   return s;
 }
 
@@ -51,7 +53,8 @@ wchar_t glyph(const std::string &key) {
       {"height", 0xE9A6},        {"ai_provider", 0xE99A},   {"ai_preset", 0xE71D},  {"ai_url", 0xE71B},     {"ai_command", 0xE756},
       {"ai_key", 0xE8D7},        {"ai_model", 0xE950},      {"answer_lang", 0xE774}, {"edit", 0xE70F},      {"ai_test", 0xE9D9},
       {"ai_translate", 0xE8C1},  {"ai_prefetch", 0xE896},   {"ai_reset", 0xE72C},   {"download_error", 0xE783}, {"version", 0xE946},
-      {"updates", 0xE895},       {"release", 0xE896},       {"source", 0xE943},     {"inkpeek", 0xE71B},    {"license", 0xE8A5}};
+      {"updates", 0xE895},       {"release", 0xE896},       {"source", 0xE943},     {"inkpeek", 0xE71B},    {"license", 0xE8A5},
+      {"sync_folder", 0xE8B7},   {"sync_state", 0xE895}};
   auto i = glyphs.find(key);
   return static_cast<wchar_t>(i == glyphs.end() ? 0 : i->second);
 }
@@ -130,7 +133,7 @@ SettingsWindow::SettingsWindow(CoreClient &client, xaml::ElementTheme theme) : s
   scroll_.ViewChanged([this](auto &&, controls::ScrollViewerViewChangedEventArgs const &e) {
     if (!e.IsIntermediate()) offset_ = scroll_.VerticalOffset();
   });
-  const wchar_t glyphs[] = {0xE713, 0xE774, 0xE8A1, 0xE99A, 0xE767};  // General, Languages, Card, AI, Read aloud
+  const wchar_t glyphs[] = {0xE713, 0xE774, 0xE8A1, 0xE99A, 0xE767, 0xE895};  // General, Languages, Card, AI, Read aloud, Sync
   for (auto g : glyphs) {
     controls::NavigationViewItem item;
     item.Icon(page::icon(g));
@@ -158,7 +161,34 @@ SettingsWindow::SettingsWindow(CoreClient &client, xaml::ElementTheme theme) : s
   poll_ = page::every(500, [this] {
     if (bar_) bar_.Value(sh_.progress);
   });
+  notes_bus().listen([this] { refresh_sync(); });  // the folder read: its status line again
   refresh(theme);
+  refresh_sync();
+}
+
+void SettingsWindow::refresh_sync() {
+  auto e = sh_.client.engine;
+  sh_.client.syncing.start([this, e] {
+    auto info = e.sync_info();
+    sh_.client.ui([this, info] {
+      sh_.sync = info;
+      if (section_ == SettingsSection::sync) draw();
+    });
+  });
+}
+
+void SettingsWindow::choose_sync_folder() {
+  auto folder = page::pick_folder(page::owner(scroll_), tr("sync_folder_t"));
+  if (folder.empty()) return;
+  auto e = sh_.client.engine;
+  auto dir = sh_.client.data();
+  sh_.client.syncing.start([this, e, dir, folder] {
+    auto error = e.set_sync_folder(dir, folder);
+    sh_.client.ui([this, error] {
+      after(error);
+      notes_bus().changed();
+    });
+  });
 }
 
 void SettingsWindow::select(SettingsSection section, int tab) {
@@ -557,6 +587,7 @@ void SettingsWindow::press(const SettingRow &r) {
     return;
   }
   if (r.key == "ai_reset") return after(app::reset_prompts(dir));
+  if (r.key == "sync_folder") return choose_sync_folder();
   if (r.key == "speech_add") return add_voice();
   if (r.key == "speech_remove") return sh_.client.engine.remove_speech(), draw();
   if (r.key.starts_with("voice_remove.")) return sh_.client.engine.remove_voice(r.key.substr(13)), draw();

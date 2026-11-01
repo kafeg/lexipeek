@@ -229,23 +229,6 @@ bool keep_id(const std::vector<Line> &own, const std::set<std::string> &known) {
   return true;
 }
 
-std::vector<Candidate> candidates(const fs::path &root, const std::string &app, std::int64_t now) {
-  std::vector<Candidate> out;
-  for (auto &folder : device_folders(root)) {
-    auto id = text::utf8_of(folder.filename());
-    auto d = read_device_file(folder / "device.json");
-    if (!d || d->device != id || d->app != app) continue;
-    Candidate c{*d, d->created};
-    for (auto &l : read_device(folder))
-      if (l.d == id) c.active = l.t.ms;  // in order: the newest last
-    if (c.active <= now - 86'400'000) out.push_back(c);
-  }
-  std::sort(out.begin(), out.end(), [](const Candidate &a, const Candidate &b) {
-    return std::tie(b.active, a.device.device) < std::tie(a.active, b.device.device);
-  });
-  return out;
-}
-
 std::vector<Line> compact(const std::vector<Line> &lines) {
   std::map<std::string, std::vector<size_t>> by_text;
   for (size_t i = 0; i < lines.size(); i++) by_text[lines[i].text].push_back(i);

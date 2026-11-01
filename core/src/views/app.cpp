@@ -35,7 +35,9 @@ std::string save(const std::string &data, const Settings &s) {
   return update_settings(dir(data), [&](Settings &now) {
     auto recall = now.ai.recall;
     auto got = now.dicts.got;
+    auto sync = now.sync;  // set only by Engine::set_sync_folder
     now = s;
+    now.sync = sync;
     for (auto &[k, v] : recall) now.ai.recall.try_emplace(k, v);
     for (auto &g : got)
       if (std::find(now.dicts.got.begin(), now.dicts.got.end(), g) == now.dicts.got.end()) now.dicts.got.push_back(g);
@@ -141,20 +143,18 @@ std::string Engine::export_tsv(NotesTab tab, const std::string &file) const {
 }
 // At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five).
 void Engine::prepare() const {
-  core->store().sync(true);
+  core->store().sync(false);  // the first read of the sync folder, unless the shell did it
   core->prepare();
   core->store().daily_backup(core->data() / "backup");
 }
 bool Engine::sync(bool force) const { return core->store().sync(force); }
 SyncInfo Engine::sync_info() const { return core->store().sync_info(); }
-SyncAsk Engine::sync_ask(const std::string &folder) const { return sync_ask_view(core->store().ask(text::path_of(folder))); }
-std::string Engine::set_sync_folder(const std::string &data, const std::string &folder, const std::string &as) const {
-  auto e = core->store().set_folder(text::path_of(folder), as);
+std::string Engine::set_sync_folder(const std::string &data, const std::string &folder) const {
+  auto e = core->store().set_folder(text::path_of(folder));
   if (!e.empty()) return tr("failed", {e});
   e = update_settings(dir(data), [&](Settings &s) { s.sync = folder; });
   return e.empty() ? "" : tr("failed", {e});
 }
-std::string Engine::set_device_name(const std::string &name) const { return core->store().set_name(name); }
 void Engine::name_device(const std::string &computer) const {
   if (core->store().own_name().empty() && !computer.empty()) core->store().set_name(computer);
 }

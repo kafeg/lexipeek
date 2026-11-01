@@ -50,7 +50,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `lexipeek://window?page=lookup|words|phrases|history[&look=…]&snap=<name>` shoots the LexiPeek window; no Esc/⌘P/outside-click closing; packs symlinked from
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
-  the data dir, history empty. Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
+  the data dir, history empty (its own logs, `device.json` and `sync-cache` never linked: the run's are its own). The
+  main instance's sync folder is a fixture made for each look (`sync_fixture` in `snapshot-cases.sh`: an InkPeek reader,
+  LexiPeek on Windows, an earlier Mac): Notes show their words, `settings-sync-sync` the folder's status line.
+  Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
 - **Selection check: `scripts/selection-test.sh`** (after `make app`, ~10 s, as invisible) — `tests/selection/<name>.html` selected in an off-screen
   WKWebView, read by `Selection.read(element:)` (`LEXIPEEK_SELECTION_TEST`, `SelectionTest.swift`; the range: `data-sel`, `<body data-from/data-to>`, `data-end-next`), compared with `<name>.expected`; PASS/FAIL table, way read, diffs.
 - Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
@@ -146,22 +149,22 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `CardState::reading`, `CardSession::read / take_play / played / reading` (the shell plays the WAV: `Player.swift`).
 - `core/src/store/`: InkPeek's one sync log format (`docs/formats.md` "Sync log", cases `tests/sync/{reader,identity,writer}`).
   `log` — pure: lines (canonical bytes, `raw` kept), HLC, device folders, read, append, `device.json`, `keep_id` (two
-  installs with one id), `candidates` (continue as), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
-  `store` (`Store`): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created, `joined`); own
+  installs with one id), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
+  `store` (`Store`): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created; none: a new id); own
   lines always to `<data>/inkpeek-log/<id>/<YYYY-MM>.jsonl` first (the whole own log stays local), then to
   `<sync>/inkpeek-log/<id>/` (settings.json `sync`): month files made equal (append, or whole after compaction),
   `device.json`. `sync(force)` (launch: `Engine::prepare`; the shells' timer, not forced: only when the folder's files
   changed or own lines wait): the two-installs check once per folder (keep when the folder's newest own lines are lines
   of the local own log, else a new id, the same name), push, other devices' folders mirrored into `<data>/sync-cache/`
-  (read while the folder is away or after it is dropped), the view rebuilt from data + cache + folder. `ask(folder)`:
-  "Continue as" only for a device never joined to a folder (`joined`); `set_folder(folder, as)` takes that device's id,
-  name, created and log, its own earlier lines going to the folder under its old id. No sync folder: the data dir only.
+  (read while the folder is away or after it is dropped), the view rebuilt from data + cache + folder. `set_folder`:
+  another folder, read at once. No sync folder: the data dir only.
   `<data>/lexipeek.db` is a view: rebuilt from the logs on open and `sync()`, a text's rows re-merged from its lines on
   each write; the 1,000-entry limit only in the view. Backup (`Store::backup` / `restore` / `daily_backup`): the view as
   InkPeek's backup file; an import writes own log lines (`Line::t` kept for texts the logs do not know). Compaction: the
   own folder on open, when it has ≥ 1,000 lines and ≥ 2× what it keeps (kept lines byte-equal, in their month files).
-  `store::fixed_now` fixes the wall clock in tests. Views: General → Sync (`sync_rows`, `SettingsState::sync` from
-  `Engine::sync_info`), `sync_ask_view` (the dialog), Notes' `where` (device · date), help topic Sync.
+  `store::fixed_now` fixes the wall clock in tests. Views: the Settings section Sync (`SettingsSection::sync`, its tabs
+  by key: `sync` — `sync_rows`: the folder, the hint, one status line from `SettingsState::sync` = `Engine::sync_info`;
+  other tabs join it), help topic Sync.
 - Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
 - Marian needs BLAS and LAPACK: Accelerate on macOS, OpenBLAS + clapack (vcpkg, no Fortran) elsewhere. Windows: static CRT (`/MT`, Bergamot's
@@ -208,7 +211,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
   `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
-  engine and queues for the rest (Notes, settings, packs).
+  engine and queues for the rest (Notes, settings, packs; the sync folder's own queue: at launch `name_device` (the
+  computer's name) and `sync(true)` before `prepare`, then `sync(false)` every 30 s, `.notesChanged` on a change).
+  Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line from `sync_info`.
 - `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
   by default — on Windows too since M8: `build-win.cmd <dir> qt`; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   polls its CardSession, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
@@ -255,7 +260,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   outlives it — the card's `CardModel` and the query — is the shell's `MainKeep` (a `CardModel`'s listeners and a
   `CardWidget` forget each other when the widget goes).
   Settings and About: `settings_window` (+ `packs_pane`, `dicts_pane` with the catalog window, `settings_ui`: setting cards,
-  dialogs, pickers) draw the core's rows; made once, their X hides them (downloads go on), a close by code makes them again.
+  dialogs, pickers) draw the core's rows (Settings → Sync: `pick_folder`; the sync folder's calls on
+  `CoreClient::syncing`, its 30 s timer there too); made once, their X hides them (downloads go on), a close by code makes them again.
   `first_run` (qt/first_run's steps as Windows' setup pages: no Accessibility step) is made once too; Done or its X finish it.
   Its snapshots: `firstrun?step=…` lines (`snapshot-cases.sh`'s `firstrun_cases` without `access` / `done-later`) on an empty
   data dir with `--firstrun-from <a data dir>` (its packs.json / installed.json copied in as the step needs).

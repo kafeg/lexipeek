@@ -137,27 +137,23 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
 
 ## Records and the sync log
 The format (records schema, the sync log: a folder per device, `device.json`, monthly files, merge rules, compaction,
-two installs with one id, continue as a device) is InkPeek's
+two installs with one id) is InkPeek's
 [`docs/formats.md`](https://github.com/kafeg/inkpeek/blob/main/docs/formats.md), "Sync log" — one format, no versions;
 its cases are `tests/sync/` there, run here through `tests/inkpeek`. No servers of ours: a folder another tool keeps the
 same everywhere (Syncthing, a cloud drive, a NAS share).
 - **Where the log is.** The whole own log stays in the data dir (`<data>/inkpeek-log/<id>/`): no sync folder, nothing
   else. With one, each own line goes there too at once; lines written while it is away (an unmounted share) go when it is
-  back. Other devices' folders are copied into `<data>/sync-cache/`, so the records stay while the folder is away or
-  after "Stop syncing". The device is made at the first start (`<data>/device.json`, survives a reinstall); its name is
-  the computer's until changed.
+  back. Other devices' folders are copied into `<data>/sync-cache/`, so the records stay while the folder is away. The
+  device is made at the first start (`<data>/device.json`, survives a reinstall), named as the computer.
 - **Reading.** At launch, then whenever the folder's files change: the shells' timer asks the core every 30 s, which
   compares the files' names, sizes and times and reads nothing when nothing changed; a change shows in Notes.
 - **Two installs with one id.** The check runs once per folder before the first write there: the folder's newest own
   lines must be lines of the local own log (the format's `last`, with the whole own log kept), else a new id.
-- **Continue as.** LexiPeek always has an id (it writes its history before any folder is chosen); "no id" in the
-  format's sense is a device never joined to a folder. Choosing a folder then asks "Continue as `<device>`" (devices of
-  LexiPeek in it, inactive for 24 hours) or "New device"; continuing takes that id, name, created and log, and the lines
-  written before go to the folder under the old id.
-- **Screens** (approved mockups, 01.11): Settings → General → Sync — the folder (Choose… / Change…: the system's folder
-  picker), its state (read at, not reachable), Stop syncing; this device (name, id, added); every device (app, id, last
-  active). The "Continue as" dialog. Notes: each row's device and date (History: the devices that looked it up). Help:
-  topic Sync. All of it from the core's views; the shells only draw them.
+- **A new install** with its data folder deleted makes a new device; its earlier logs are read as any other device's.
+- **Screens** (the owner's cut, 01.11): one Settings section, Sync, with tabs (Sync here; Anki joins it). The Sync tab:
+  the folder (Choose… / Change…: the system's folder picker), a hint how to keep it the same everywhere (Syncthing,
+  Nextcloud, Dropbox, iCloud Drive, OneDrive, a NAS; Syncthing works best), one status line (read at, written at, not
+  reachable). No device list, names or "Continue as". Help: topic Sync, a few lines. All of it from the core's views.
 
 ## Card and screens
 From the study of other translators (private research): the most common complaints are a pop-up that takes focus,

@@ -144,7 +144,6 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
     CHECK(v.rows[0].text == "Baum");
     CHECK(v.rows[0].line == "der Baum — дерево");
     CHECK(v.rows[0].looks.empty());
-    CHECK(v.rows[0].where == st.device_name(st.device()) + " · " + text::local_day(st.saved()[0].created));
     CHECK(v.rows[1].text == "Haus");
     CHECK(v.empty.empty());
     CHECK(!v.clear);

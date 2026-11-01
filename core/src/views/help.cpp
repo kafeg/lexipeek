@@ -39,10 +39,8 @@ std::vector<HelpTopic> help_view(const std::string &lookup, const std::string &i
                      item("aih_local_t", tr("aih_local")), item("aih_free_t", tr("aih_free"))}},
                    SettingsSection::ai, 0, sections[2]));
   out.push_back(go({tr("read_help_t"), {item("", tr("read_help_x"))}}, SettingsSection::speech, 0, sections[4]));
-  out.push_back(go({tr("sync_t"),
-                    {item("hy_what_t", tr("hy_what")), item("hy_folder_t", tr("hy_folder")), item("hy_devices_t", tr("hy_devices")),
-                     item("hy_continue_t", tr("hy_continue")), item("hy_copies_t", tr("hy_copies"))}},
-                   SettingsSection::general, 2, tabs(SettingsSection::general, 2)));
+  out.push_back(go({tr("sync_t"), {item("hy_what_t", tr("hy_what")), item("hy_folder_t", tr("hy_folder"))}},
+                   SettingsSection::sync, 0, sections[5]));
   out.push_back({tr("aih_send_t"), {item("hn_ai_t", tr("hn_ai_d")), item("hn_dl_t", tr("hn_dl"))}});
   out.push_back({tr("ht_notes"),
                  {item("hw_save_t", tr("hw_save")), item("hw_hist_t", tr("hw_hist")), item("hw_del_t", tr("hw_del")),

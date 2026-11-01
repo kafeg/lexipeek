@@ -77,12 +77,6 @@ std::string format(const DeviceFile &d);  // the canonical form, with "\n"
 // Two installs with one id: keep it when the folder's newest own lines ([own], of the id, in order) are all lines this
 // install wrote ([known]: its last line, or every line of its own log); none: keep.
 bool keep_id(const std::vector<Line> &own, const std::set<std::string> &known);
-// Continue as a device: the folders of [root] of this [app], inactive for 24 hours before [now], newest first.
-struct Candidate {
-  DeviceFile device;
-  std::int64_t active = 0;  // the newest own line's t[0], else created
-};
-std::vector<Candidate> candidates(const std::filesystem::path &root, const std::string &app, std::int64_t now);
 
 // The lines of one device that merge to the same state with any other logs ([lines] in order).
 std::vector<Line> compact(const std::vector<Line> &lines);

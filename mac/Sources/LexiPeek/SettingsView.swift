@@ -8,11 +8,11 @@ import UniformTypeIdentifiers
 
 // Settings: InkPeek's sections as toolbar tabs, each with its sub-tabs (a segmented control); rows from the core's settings_view.
 enum SettingsSection: Int, CaseIterable {
-    case general, languages, card, ai, speech
+    case general, languages, card, ai, speech, sync
 
     // General first, as macOS settings; the core keeps InkPeek's order (Notes are in the LexiPeek window).
-    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai, .speech][rawValue] }
-    var key: String { ["general", "languages", "card", "ai", "read"][rawValue] }
+    var core: lexipeek.SettingsSection { [.general, .languages, .card, .ai, .speech, .sync][rawValue] }
+    var key: String { ["general", "languages", "card", "ai", "read", "sync"][rawValue] }
     var title: String { String(lexipeek.settings_sections()[Int(core.rawValue)]) }
     var tabs: [String] { lexipeek.settings_tabs(core).map { String($0) } }
     var tabKeys: [String] { lexipeek.settings_tab_keys(core).map { String($0) } }
@@ -23,6 +23,7 @@ enum SettingsSection: Int, CaseIterable {
         case .ai: "sparkles"
         case .general: "gearshape"
         case .speech: "speaker.wave.2"
+        case .sync: "arrow.triangle.2.circlepath"
         }
     }
 }
@@ -42,6 +43,9 @@ final class SettingsModel: ObservableObject {
     @Published var choosingModel = false
     // Read aloud → "Voice from a recording…", shown as a sheet.
     @Published var addingVoice = false
+    // Sync → Sync's status line: the store's state, asked off the main queue.
+    @Published private var sync = lexipeek.SyncInfo()
+    private var notesObserver: Any?
     // Languages → Translation: a method's models being downloaded (its id) and how far.
     @Published private var downloading: String?
     @Published private var downloadProgress = 0.0
@@ -57,6 +61,9 @@ final class SettingsModel: ObservableObject {
     init(client: CoreClient) {
         self.client = client
         refresh()
+        notesObserver = NotificationCenter.default.addObserver(forName: .notesChanged, object: nil, queue: .main) { [weak self] _ in
+            self?.refreshSync()
+        }
     }
 
     private var short: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "" }
@@ -75,6 +82,30 @@ final class SettingsModel: ObservableObject {
         login = SMAppService.mainApp.status == .enabled
         aiKey = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
         revision += 1
+        refreshSync()
+    }
+
+    func refreshSync() { client.syncing({ $0.sync_info() }) { [weak self] in self?.sync = $0 } }
+
+    // Sync → Choose…: the system's folder picker; the folder read at once.
+    private func chooseSyncFolder() {
+        let p = NSOpenPanel()
+        p.canChooseDirectories = true
+        p.canChooseFiles = false
+        p.canCreateDirectories = true
+        p.allowsMultipleSelection = false
+        p.prompt = L.t("sync_pick")
+        p.message = L.t("sync_pick_d")
+        guard p.runModal() == .OK, let folder = p.url?.path else { return }
+        client.syncing({ String($0.set_sync_folder(std.string(), std.string(folder))) }) { [weak self] error in
+            if !error.isEmpty {
+                let a = NSAlert()
+                a.messageText = error
+                a.runModal()
+            }
+            NotificationCenter.default.post(name: .notesChanged, object: nil)
+            self?.refreshSync()
+        }
     }
 
     func state() -> lexipeek.SettingsState {
@@ -96,6 +127,7 @@ final class SettingsModel: ObservableObject {
         s.downloading = std.string(downloading ?? "")
         s.progress = downloadProgress
         s.download_error = std.string(downloadError)
+        s.sync = sync
         return s
     }
 
@@ -157,6 +189,7 @@ final class SettingsModel: ObservableObject {
         case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
         case "access": Access.ask()
+        case "sync_folder": chooseSyncFolder()
         case "speech_add": addingVoice = true
         case "speech_remove":
             client.engine.remove_speech()

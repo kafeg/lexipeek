@@ -143,6 +143,27 @@ settings_shots() {
     settings-languages-translation-on \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
-    settings-general-system settings-general-keys settings-read settings-read-on about catalog
+    settings-general-system settings-general-keys settings-read settings-read-on settings-sync-sync about catalog
 }
 
+
+# A sync folder with other devices' logs (InkPeek's format): an InkPeek reader, LexiPeek on Windows and an earlier Mac.
+sync_fixture() {
+  for d in "boox-7hq2mzta|inkpeek|Boox Note Air4 C" "win-r4dn6wpe|lexipeek|Desktop" "mac-k3fw2xqa|lexipeek|MacBook Air"; do
+    id=${d%%|*} rest=${d#*|}
+    mkdir -p "$1/inkpeek-log/$id"
+    printf '{"device":"%s","app":"%s","name":"%s","created":1790553600000}\n' "$id" "${rest%%|*}" "${rest#*|}" >"$1/inkpeek-log/$id/device.json"
+  done
+  cat >"$1/inkpeek-log/boox-7hq2mzta/2026-10.jsonl" <<'LOG'
+{"t":[1793145600000,0],"d":"boox-7hq2mzta","op":"saved.put","text":"Brief","kind":"word","lang":"ru","meaning":"der Brief — письмо"}
+{"t":[1793145601000,0],"d":"boox-7hq2mzta","op":"history.seen","text":"Brief","kind":"word","lang":"ru","meaning":"der Brief — письмо","c":1}
+LOG
+  cat >"$1/inkpeek-log/win-r4dn6wpe/2026-10.jsonl" <<'LOG'
+{"t":[1793318400000,0],"d":"win-r4dn6wpe","op":"saved.put","text":"Schule","kind":"word","lang":"ru","meaning":"die Schule — школа"}
+{"t":[1793318460000,0],"d":"win-r4dn6wpe","op":"saved.put","text":"Guten Morgen!","kind":"phrase","lang":"ru","meaning":"Доброе утро!"}
+{"t":[1793318470000,0],"d":"win-r4dn6wpe","op":"history.seen","text":"Brief","kind":"word","lang":"ru","meaning":"der Brief — письмо","c":2}
+LOG
+  cat >"$1/inkpeek-log/mac-k3fw2xqa/2026-10.jsonl" <<'LOG'
+{"t":[1792972800000,0],"d":"mac-k3fw2xqa","op":"history.seen","text":"Zug","kind":"word","lang":"ru","meaning":"der Zug — поезд","c":1}
+LOG
+}

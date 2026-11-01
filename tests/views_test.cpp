@@ -572,8 +572,8 @@ TEST_CASE("help: topics in the app's language, each with its items; a pane to op
   CHECK(h[3].section == SettingsSection::languages);
   CHECK(h[3].tab == 1);
   CHECK(h[7].title == "Sync");
-  CHECK(h[7].section == SettingsSection::general);
-  CHECK(h[7].tab == 2);
+  CHECK(h[7].section == SettingsSection::sync);
+  CHECK(h[7].tab == 0);
   for (auto &t : h)
     for (auto &i : t.items) CHECK(!i.text.empty());
 }

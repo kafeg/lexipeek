@@ -69,6 +69,7 @@ struct Engine {
   std::string backup(const std::string &file) const;
   std::string restore(const std::string &file) const;
   std::string export_tsv(NotesTab tab, const std::string &file) const;
+  // At launch, off the main thread: the sync folder (unless read just before), the indexes, the day's backup.
   void prepare() const;
   void reload() const;
   // Settings → Other dictionaries' Delete and Settings → Packs' Remove with this engine's files closed meanwhile (else
@@ -87,15 +88,12 @@ struct Engine {
   void release_speech() const;
   std::string add_voice(const std::string &wav, const std::string &text, const std::string &lang) const;
   void remove_voice(const std::string &id) const;
-  // Sync (General → Sync). The folder read again (not forced: only when it changed; a timer's) → whether Notes changed.
+  // Sync (Settings → Sync). The folder read again (not forced: only when it changed; a timer's) → whether Notes changed.
   bool sync(bool force) const;
   SyncInfo sync_info() const;
-  // A folder picked: the question first (no offers: none), then the folder set ("" = none; as: the device to continue
-  // as, "" = this one) and kept in settings.json. "" or the error's text.
-  SyncAsk sync_ask(const std::string &folder) const;
-  std::string set_sync_folder(const std::string &data, const std::string &folder, const std::string &as) const;
-  std::string set_device_name(const std::string &name) const;
-  // At launch, before prepare(): this computer's name for a device never named.
+  // A folder picked ("" = none): set, read and kept in settings.json. "" or the error's text.
+  std::string set_sync_folder(const std::string &data, const std::string &folder) const;
+  // At launch, before prepare(): this computer's name for a device never named (device.json's name).
   void name_device(const std::string &computer) const;
 };
 

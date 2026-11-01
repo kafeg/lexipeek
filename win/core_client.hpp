@@ -26,18 +26,21 @@ class CoreClient {
   CoreClient(const std::string &data, const Device &device);
   Device device;  // this machine: memory, the CPU's features, its architecture
   app::Engine engine;
-  Queue lookups, worker, indexing;
+  Queue lookups, worker, indexing, syncing;  // syncing: the sync folder's calls (it may be a slow share)
 
   void configure();
   void reload();
   const std::string &data() const { return data_; }
   // f on the UI thread, after the current message.
   void ui(std::function<void()> f) const;
+  // The sync folder read again on its queue (not forced: only when its files changed); Notes hear a change.
+  void sync(bool force);
 
  private:
   void prepare();
   std::string data_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueue ui_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer sync_timer_{nullptr};
 };
 
 }  // namespace lexipeek::win

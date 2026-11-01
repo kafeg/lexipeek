@@ -82,7 +82,7 @@ std::map<std::string, std::string> files(const fs::path &dir) {
 // What an install keeps of itself: <data>/device.json.
 void local_device(const fs::path &data, const std::string &id, const std::string &name, std::int64_t created) {
   fs::create_directories(data);
-  std::ofstream(data / "device.json") << json{{"device", id}, {"name", name}, {"created", created}, {"joined", true}}.dump();
+  std::ofstream(data / "device.json") << json{{"device", id}, {"name", name}, {"created", created}}.dump();
 }
 
 std::vector<std::string> own_lines(const fs::path &folder) {
@@ -116,57 +116,33 @@ TEST_CASE("sync cases: reader — the store's SQLite view of the folder") {
   }
 }
 
-TEST_CASE("sync cases: identity — keep, new, ask") {
+TEST_CASE("sync cases: identity — keep or new, by the pure check and by the store at start") {
   auto all = cases("identity");
-  REQUIRE(all.size() >= 8);
+  REQUIRE(all.size() >= 6);
   for (auto &d : all) {
     auto local = json::parse(slurp(d / "local.json"));
     auto want = json::parse(slurp(d / "expected.json"));
     INFO(d.filename().string());
-    json got;
-    if (local["device"].is_string()) {
-      auto id = local["device"].get<std::string>();
-      std::vector<store::Line> own;
-      for (auto &l : store::read_device(d / "inkpeek-log" / id))
-        if (l.d == id) own.push_back(l);
-      std::set<std::string> known;
-      if (local["last"].is_string()) known.insert(local["last"].get<std::string>());
-      got = {{"decision", store::keep_id(own, known) ? "keep" : "new"}};
-    } else {
-      json offer = json::array();
-      for (auto &c : store::candidates(d, local["app"], local["now"])) offer.push_back(c.device.device);
-      got = offer.empty() ? json{{"decision", "new"}} : json{{"decision", "ask"}, {"offer", offer}};
-    }
-    CHECK(got == want);
-  }
-}
+    std::string id = local["device"];
+    std::vector<store::Line> own;
+    for (auto &l : store::read_device(d / "inkpeek-log" / id))
+      if (l.d == id) own.push_back(l);
+    std::set<std::string> known;
+    if (local["last"].is_string()) known.insert(local["last"].get<std::string>());
+    CHECK(json{{"decision", store::keep_id(own, known) ? "keep" : "new"}} == want);
 
-TEST_CASE("sync cases: identity — the store's check at start and its question") {
-  for (auto &d : cases("identity")) {
-    auto local = json::parse(slurp(d / "local.json"));
-    auto want = json::parse(slurp(d / "expected.json"));
-    INFO(d.filename().string());
-    Now now(local["now"].get<std::int64_t>());
+    // The store: its own log holds only that last line; the check runs at its first read of the folder.
     auto data = fresh("lexipeek-store-identity");
     auto folder = copy_of(d, "lexipeek-store-identity-folder");
-    if (local["device"].is_string()) {
-      // The install's own log: its last line only.
-      auto id = local["device"].get<std::string>();
-      local_device(data, id, "Test", 1790553600000);
-      if (local["last"].is_string()) {
-        auto last = local["last"].get<std::string>();
-        store::append(data / "inkpeek-log" / id / store::month_file(store::parse(last)->t.ms), last);
-      }
-      Store st({data, folder, "", ""});
-      REQUIRE(st.error() == "");
-      st.sync();
-      CHECK((st.device() == id) == (want["decision"] == "keep"));
-    } else if (local["app"] == "lexipeek") {
-      Store st({data, {}, "", ""});
-      json offer = json::array();
-      for (auto &c : st.ask(folder)) offer.push_back(c.id);
-      CHECK(offer == want.value("offer", json::array()));
+    local_device(data, id, "Test", 1790553600000);
+    if (local["last"].is_string()) {
+      auto last = local["last"].get<std::string>();
+      store::append(data / "inkpeek-log" / id / store::month_file(store::parse(last)->t.ms), last);
     }
+    Store st({data, folder, "", ""});
+    REQUIRE(st.error() == "");
+    st.sync();
+    CHECK((st.device() == id) == (want["decision"] == "keep"));
   }
 }
 
@@ -366,7 +342,7 @@ TEST_CASE("store: the history keeps the newest entries") {
   CHECK(again.history().size() == size_t(Store::history_limit));
 }
 
-TEST_CASE("sync folder: two computers, one folder; stopped, the records stay; the device's name") {
+TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the records stay") {
   auto root = fresh("lexipeek-sync-two");
   auto folder = root / "Sync";
   fs::create_directories(folder);
@@ -378,13 +354,16 @@ TEST_CASE("sync folder: two computers, one folder; stopped, the records stay; th
   CHECK(a.sync());
   CHECK(own_lines(folder / "inkpeek-log" / "mac-0000000a").size() == 1);
   CHECK(slurp(folder / "inkpeek-log" / "mac-0000000a" / "device.json").find("\"name\":\"MacBook Air\"") != std::string::npos);
+  auto info = a.sync_info();
+  CHECK(info.folder == folder.string());
+  CHECK(info.reachable);
+  CHECK(info.read > 0);
+  CHECK(info.wrote == a.saved()[0].created);
 
   CHECK(b.seen("Baum", "word", "ru", "дерево") == "");  // before b had a folder: its own log takes it there
-  CHECK(b.ask(folder).empty());                          // a is active: nothing to continue as
   CHECK(b.set_folder(folder) == "");
   CHECK(b.is_saved("Haus"));
   CHECK(b.saved()[0].origin == "mac-0000000a");
-  CHECK(b.device_name("mac-0000000a") == "MacBook Air");
   CHECK(a.sync(false));  // the folder changed
   CHECK(a.looks("Baum") == 1);
   CHECK(!a.sync(false));  // nothing new
@@ -394,18 +373,10 @@ TEST_CASE("sync folder: two computers, one folder; stopped, the records stay; th
   CHECK(a.sync(false));
   CHECK(a.saved()[0].origin == "mac-0000000a");
   CHECK(a.saved()[0].updated_by == "win-0000000b");
-  auto info = a.sync_info();
-  CHECK(info.folder == folder.string());
-  CHECK(info.reachable);
-  REQUIRE(info.devices.size() == 2);
-  CHECK(info.self.id == "mac-0000000a");
-  CHECK(info.self.own);
-  CHECK(info.devices[1].name == "Desktop");
-  CHECK(info.devices[1].app == "lexipeek");
 
   CHECK(a.set_name("Work Mac") == "");
-  CHECK(b.sync(false));
-  CHECK(b.device_name("mac-0000000a") == "Work Mac");
+  CHECK(slurp(folder / "inkpeek-log" / "mac-0000000a" / "device.json").find("\"name\":\"Work Mac\"") != std::string::npos);
+  CHECK(a.own_name() == "Work Mac");
 
   // The folder gone (an unmounted share): the records stay, writes wait for it.
   fs::rename(folder, root / "away");
@@ -424,7 +395,7 @@ TEST_CASE("sync folder: two computers, one folder; stopped, the records stay; th
   CHECK(b.looks("Baum") == 2);
 }
 
-TEST_CASE("sync folder: a copied install takes a new id; continue as a device after a reinstall") {
+TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id reads the earlier logs") {
   auto root = fresh("lexipeek-sync-copy");
   auto folder = root / "Sync";
   fs::create_directories(folder);
@@ -444,28 +415,19 @@ TEST_CASE("sync folder: a copied install takes a new id; continue as a device af
   Store copy({root / "copy", folder, "", ""});
   copy.sync();
   CHECK(copy.device() != "mac-0000000a");
-  CHECK(copy.sync_info().self.name == "MacBook Air");
+  CHECK(copy.own_name() == "MacBook Air");
   CHECK(copy.looks("Haus") == 1);
+  CHECK(copy.seen("Haus", "word", "ru", "дом") == "");
+  CHECK(own_lines(folder / "inkpeek-log" / copy.device()).size() == 1);
 
-  // Data deleted, a day later: the folder offers the inactive one; continuing takes its id, name and log.
-  now = 1793491200000 + 2 * 86'400'000;
-  Store fresh_install({root / "new", {}, "", ""});
-  CHECK(fresh_install.seen("Baum", "word", "ru", "дерево") == "");
-  auto offer = fresh_install.ask(folder);
-  REQUIRE(offer.size() == 2);
-  CHECK(offer[0].id == copy.device());  // newest first
-  CHECK(offer[1].id == "mac-0000000a");
-  auto before = fresh_install.device();
-  CHECK(fresh_install.set_folder(folder, "mac-0000000a") == "");
-  CHECK(fresh_install.device() == "mac-0000000a");
-  CHECK(fresh_install.sync_info().self.name == "MacBook Air");
-  CHECK(fresh_install.looks("Haus") == 1);
-  CHECK(fresh_install.looks("Baum") == 1);
-  CHECK(fs::exists(folder / "inkpeek-log" / before / "device.json"));  // its lines before: under its own id
-  CHECK(fresh_install.seen("Haus", "word", "ru", "дом") == "");
-  CHECK(fresh_install.sync());
-  CHECK(fresh_install.device() == "mac-0000000a");  // its own install, not a copy
-  CHECK(fresh_install.ask(folder).empty());         // joined: no question any more
+  // Its data deleted: a new device; the old id's logs are read as any other device's.
+  Store fresh_install({root / "new", folder, "", ""});
+  fresh_install.sync();
+  CHECK(fresh_install.device() != "mac-0000000a");
+  CHECK(fresh_install.device() != copy.device());
+  CHECK(fresh_install.is_saved("Haus"));
+  CHECK(fresh_install.saved()[0].origin == "mac-0000000a");
+  CHECK(fresh_install.looks("Haus") == 2);
 }
 
 TEST_CASE("compaction: the reader cases merge the same with any one device compacted") {
