@@ -332,7 +332,6 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
       }
     }
   }
-  if (s.sync && r.added + r.updated > 0) post(s, key, t, "sync");
   if (r.failed == 0) r.code = Code::ok;
   return r;
 }
@@ -357,10 +356,20 @@ struct Sender::Impl {
   std::set<std::string> tried;               // Keys whose reading was tried: their note goes, without one if need be
   Status st;
   std::chrono::steady_clock::time_point retry{}, probed{};
-  bool now = false, stop = false, more = false;
+  bool now = false, stop = false, more = false, unsynced = false;
   std::thread worker;
 
   bool voice() const { return reader.ready && reader.ready(); }
+
+  // "Sync after sending": AnkiWeb once what waits went — a backlog sends a note a round, and a sync after each one kept
+  // Anki busy ("Collection lifecycle operation is active" refused the next notes).
+  void sync_when_done(const AnkiSettings &set, const std::string &k, std::unique_lock<std::mutex> &g) {
+    if (!set.sync || !unsynced || more) return;
+    unsynced = false;
+    g.unlock();
+    post(set, k, t, "sync");
+    g.lock();
+  }
 
   // What the binding did, for when nothing arrives: <data>/anki.log (the last 256 KB, then anki.log.1).
   void log(const std::string &line) {
@@ -452,7 +461,11 @@ struct Sender::Impl {
       auto i = failed.find(n.key);
       return held.count(n.key) || (i != failed.end() && i->second == digest(n));
     });
-    if (wait.empty() || std::chrono::steady_clock::now() < retry) return st;
+    if (wait.empty()) {
+      sync_when_done(set, k, g);
+      return st;
+    }
+    if (std::chrono::steady_clock::now() < retry) return st;
     st.sending = true;
     auto out = sent;
     g.unlock();
@@ -462,6 +475,7 @@ struct Sender::Impl {
         std::to_string(r.failed) + " failed" + (r.error.empty() ? "" : " — " + r.error));
     sent = out;
     write_sent(data, sent);
+    if (r.added + r.updated > 0) unsynced = true;
     for (auto &n : wait)
       if (auto i = sent.find(n.key); i == sent.end() || i->second != digest(n)) failed[n.key] = digest(n);
     if (!failed.empty()) refused_until = std::chrono::steady_clock::now() + std::chrono::minutes(2);
@@ -477,6 +491,7 @@ struct Sender::Impl {
     st.text = r.added + r.updated > 0 || r.failed == 0 ? tr("anki_sent_line", {digits(r.added), digits(r.updated)}) : "";
     if (r.failed > 0) st.text += (st.text.empty() ? "" : " · ") + r.error;
     count(all, backlog(all, sent), missing);
+    sync_when_done(set, k, g);
     return st;
   }
 };

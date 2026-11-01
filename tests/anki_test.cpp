@@ -489,12 +489,16 @@ TEST_CASE("anki: audio — a kept reading, else one made for the note (one at a 
     CHECK(made[0] == "Baum");
     CHECK(anki.by_key(anki::key_of("Baum", "ru"))->fields.at("Audio") == "[sound:lexipeek_" + anki::key_of("Baum", "ru") + ".wav]");
     CHECK(r.history.audio == 1);
+    CHECK(anki.syncs == 1);  // AnkiWeb once the backlog went, not after each note
     r = snd.run_once();
     CHECK(made.size() == 2);
     CHECK(anki.by_key(anki::key_of("Tür", "ru", true))->deck == "Peek::History");
     CHECK(anki.by_key(anki::key_of("Tür", "ru", true))->fields.at("Audio").starts_with("[sound:"));
     CHECK(r.words.audio + r.phrases.audio + r.history.audio == 0);
     CHECK(r.waiting == 0);
+    CHECK(anki.syncs == 2);
+    snd.run_once();
+    CHECK(anki.syncs == 2);
   }
   wipe(d);
 }
