@@ -165,7 +165,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `<sync>/inkpeek-log/<id>/` (settings.json `sync`) at once by the store's own thread once the folder was checked
   (`push_files`): month files made equal (append, or whole after compaction), `device.json`. The folder's files are read
   and written only outside the store's lock (`sync_m`, one sync at a time): a stalled share never holds a look-up, ☆ or
-  Notes. `sync(force)` (launch: `Engine::prepare`; the shells' timer, not forced: only when the folder's files
+  Notes. `sync(force)` (launch: forced, each shell on its sync thread; the shells' timer, not forced: only when the folder's files
   changed or own lines wait): the two-installs check once per folder (keep when the folder's newest own lines are lines
   of the local own log, else a new id, the same name, and the own lines the folder lacks written again as the new id's),
   again before every push (a failing one pushes nothing and checks at the next sync: two installs running at once), push, other devices' folders mirrored into `<data>/sync-cache/`
@@ -230,7 +230,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
   `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and the backup's file name come from the core (`app::hotkey_label`, `link`, `menu_line`, `backup_file`). `CoreClient` — the
   engine and queues for the rest (Notes, settings, packs; the sync folder's own queue: at launch `name_device` (the
-  computer's name) and `sync(true)` before `prepare`, then `sync(false)` every 30 s, `.notesChanged` on a change).
+  computer's name) and `sync(true)` (`prepare` on the indexing queue meanwhile), then `sync(false)` every 30 s, `.notesChanged` on a change).
   Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line and this device
   from `sync_info`, Export… / Import… (`backup` / `restore`; what they said: `SettingsState::backup_said`) — Notes has none.
 - `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
