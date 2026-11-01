@@ -38,6 +38,8 @@ HWND owner(const xaml::UIElement &e);
 // Open dialogs (IFileOpenDialog): files to import, a folder; empty when cancelled.
 std::vector<std::string> pick_files(HWND owner, const winrt::hstring &title);
 std::string pick_folder(HWND owner, const winrt::hstring &title);
+// The save dialog in Downloads with the file's name; "" when cancelled.
+std::string save_to(HWND owner, const std::string &name);
 // A link that opens in the browser (or a folder in Explorer).
 void open(const std::string &target);
 controls::HyperlinkButton link(const winrt::hstring &label, const std::string &url);

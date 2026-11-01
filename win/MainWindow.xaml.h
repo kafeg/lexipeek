@@ -34,7 +34,6 @@ struct MainWindow : MainWindowT<MainWindow> {
   void draw_notes();
   void draw_help();
   void remove(const std::string &text);
-  void said(const std::string &s);
   lexipeek::win::MainKeep *keep_ = nullptr;
   std::unique_ptr<lexipeek::win::CardWidget> card_;
   Microsoft::UI::Dispatching::DispatcherQueueTimer memory_{nullptr};

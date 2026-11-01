@@ -302,13 +302,14 @@ std::vector<SettingRow> appearance(const Settings &s) {
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
-// Sync → Sync: the folder (picked by the shell), how to keep it the same everywhere, its state.
+// Sync → Sync: what syncs, the folder (picked by the shell), its state, this device; how to keep the folder the same
+// everywhere; the backups (Export… / Import…, done by the shell through Engine::backup / restore).
 std::vector<SettingRow> sync_rows(const SettingsState &st) {
   auto &s = st.sync;
   std::vector<SettingRow> rows;
+  rows.push_back(heading(tr("sync_what_t"), tr("hy_what")));
   rows.push_back(valued(Kind::button, "sync_folder", tr("sync_folder_t"), s.folder.empty() ? tr("sync_folder_none") : s.folder,
                         tr(s.folder.empty() ? "sync_choose" : "sync_change")));
-  rows.push_back(heading(tr("sync_hint_t"), tr("sync_hint")));
   if (!s.folder.empty()) {
     auto state = !s.reachable ? tr("sync_away") : !s.error.empty() ? tr("failed", {s.error})
                  : !s.read ? tr("sync_not_read")
@@ -318,6 +319,12 @@ std::vector<SettingRow> sync_rows(const SettingsState &st) {
     r.on = s.reachable && s.error.empty() && s.read;
     rows.push_back(r);
   }
+  rows.push_back(valued(Kind::status, "sync_device", tr("sync_device_t"), s.name.empty() ? "—" : s.name, s.device));
+  rows.push_back(heading(tr("sync_hint_t"), tr("sync_hint")));
+  rows.push_back(heading(tr("backup_t"), tr("backup_d")));
+  rows.push_back(valued(Kind::button, "backup_export", tr("backup_export_t"), tr("backup_export_d"), tr("export_btn")));
+  rows.push_back(valued(Kind::button, "backup_import", tr("backup_import_t"), tr("backup_import_d"), tr("import_btn")));
+  if (!st.backup_said.empty()) rows.push_back(valued(Kind::status, "backup_said", tr("backup_last_t"), st.backup_said, ""));
   return rows;
 }
 

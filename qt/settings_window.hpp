@@ -21,6 +21,7 @@ struct SettingsShell {
   std::string test, downloading, download_error, lookup_error, input_error;
   double progress = 0;
   mutable std::map<std::string, bool> keys;  // per provider: a key is stored (the store read once, again after a change)
+  std::string backup_said;  // what the last Export… / Import… said (Sync → Sync)
   SettingsState state() const;
 };
 
@@ -71,7 +72,7 @@ class AboutWindow : public QWidget {
 
 // The order of Settings' sections: General first (as the Mac app), the core keeps InkPeek's.
 inline const SettingsSection shown_sections[] = {SettingsSection::general, SettingsSection::languages, SettingsSection::card,
-                                                 SettingsSection::ai};
+                                                 SettingsSection::ai, SettingsSection::sync};
 
 // This build's version, 0.1.<git commit count> (InkPeek's).
 std::string version();

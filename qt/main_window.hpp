@@ -44,7 +44,7 @@ class MainWindow : public QWidget {
   QListWidget *side_ = nullptr, *foot_ = nullptr;
   QStackedWidget *pages_ = nullptr;
   QLineEdit *query_ = nullptr;
-  QLabel *hint_ = nullptr, *memory_ = nullptr, *said_ = nullptr;
+  QLabel *hint_ = nullptr, *memory_ = nullptr;
   QWidget *notes_ = nullptr, *help_ = nullptr;
   QVBoxLayout *banner_ = nullptr;  // ⚠ while no language pack is installed
   NotesTab tab_ = NotesTab::words;

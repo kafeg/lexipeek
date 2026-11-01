@@ -3,6 +3,8 @@
 #include <QDesktopServices>
 #include <QDialog>
 #include <QEvent>
+#include <QFileDialog>
+#include <QStandardPaths>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -52,6 +54,8 @@ SettingsState SettingsShell::state() const {
   s.downloading = downloading;
   s.progress = progress;
   s.download_error = download_error;
+  s.sync = client.engine.sync_info();
+  s.backup_said = backup_said;
   return s;
 }
 
@@ -127,8 +131,8 @@ SettingsWindow::SettingsWindow(CoreClient &client) : sh_(client) {
   nav_->setFixedWidth(200);
   nav_->setIconSize(QSize(16, 16));
   auto names = settings_sections();
-  const fluent::Glyph glyphs[] = {fluent::Glyph::settings, fluent::Glyph::globe, fluent::Glyph::card, fluent::Glyph::robot};
-  for (int i = 0; i < 4; ++i) nav_->addItem(new QListWidgetItem(fluent::icon(glyphs[i]), q(names[static_cast<int>(shown_sections[i])])));
+  const fluent::Glyph glyphs[] = {fluent::Glyph::settings, fluent::Glyph::globe, fluent::Glyph::card, fluent::Glyph::robot, fluent::Glyph::sync};
+  for (int i = 0; i < static_cast<int>(std::size(shown_sections)); ++i) nav_->addItem(new QListWidgetItem(fluent::icon(glyphs[i]), q(names[static_cast<int>(shown_sections[i])])));
   nav_->setCurrentRow(0);
   sl->addWidget(nav_);
   l->addWidget(side);
@@ -150,7 +154,7 @@ SettingsWindow::SettingsWindow(CoreClient &client) : sh_(client) {
 void SettingsWindow::select(SettingsSection section, int tab) {
   tabs_[section] = tab;
   section_ = section;
-  for (int i = 0; i < 4; ++i)
+  for (int i = 0; i < static_cast<int>(std::size(shown_sections)); ++i)
     if (shown_sections[i] == section) nav_->setCurrentRow(i);
   draw();
 }
@@ -176,7 +180,7 @@ void SettingsWindow::after(const std::string &error) {
   error_ = error;
   emit changed();
   auto names = settings_sections();
-  for (int i = 0; i < 4; ++i) nav_->item(i)->setText(q(names[static_cast<int>(shown_sections[i])]));
+  for (int i = 0; i < static_cast<int>(std::size(shown_sections)); ++i) nav_->item(i)->setText(q(names[static_cast<int>(shown_sections[i])]));
   setWindowTitle(t("settings_more"));
   draw();
 }
@@ -532,6 +536,29 @@ void SettingsWindow::press(const SettingRow &r) {
     return after(app::set_prompts(dir, ids, texts));
   }
   if (r.key == "setup") return emit openFirstRun();
+  if (r.key == "sync_folder") {
+    auto f = QFileDialog::getExistingDirectory(this, t("sync_folder_t"));
+    if (f.isEmpty()) return;
+    auto e = sh_.client.engine;
+    return sh_.client.run<std::string>(sh_.client.worker, [e, dir, f] { return e.set_sync_folder(dir, f.toStdString()); }, [this](std::string err) {
+      emit notes_bus().changed();
+      after(err);
+    }, this);
+  }
+  if (r.key == "backup_export" || r.key == "backup_import") {
+    bool out = r.key == "backup_export";
+    auto where = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    auto f = out ? QFileDialog::getSaveFileName(this, {}, where + "/" + q(app::backup_file())) : QFileDialog::getOpenFileName(this, {}, where);
+    if (f.isEmpty()) return;
+    // Off the window's thread: a big backup takes a while.
+    auto e = sh_.client.engine;
+    return sh_.client.run<std::string>(sh_.client.worker, [e, f, out] { return out ? e.backup(f.toStdString()) : e.restore(f.toStdString()); },
+                                       [this, out](std::string said) {
+                                         if (!out) emit notes_bus().changed();
+                                         sh_.backup_said = said;
+                                         draw();
+                                       }, this);
+  }
   if (r.key == "ai_reset") return after(app::reset_prompts(dir));
   if (r.key == "updates" && !sh_.checking) {
     sh_.checking = true;

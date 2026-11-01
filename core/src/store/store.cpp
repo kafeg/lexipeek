@@ -554,7 +554,8 @@ std::string Store::own_name() const {
 SyncInfo Store::sync_info() const {
   std::lock_guard g(impl_->m);
   auto &im = *impl_;
-  return {text::utf8_of(im.o.sync), im.reachable, im.read_ms, im.wrote_ms, im.sync_error == "unreachable" ? "" : im.sync_error};
+  return {text::utf8_of(im.o.sync), im.reachable, im.read_ms, im.wrote_ms, im.sync_error == "unreachable" ? "" : im.sync_error,
+          im.self.device, im.self_name()};
 }
 
 

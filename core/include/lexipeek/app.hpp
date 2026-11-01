@@ -66,7 +66,7 @@ struct Engine {
   bool saved(const Card &card) const;
   void remove_note(NotesTab tab, const std::string &text) const;
   void clear_history() const;
-  // Notes → Export… / Import…: what to say after it ("Saved: …", "Added: 3", the error).
+  // Settings → Sync → Export… / Import…: what to say after it ("Saved: …", "Added: 3", the error).
   std::string backup(const std::string &file) const;
   std::string restore(const std::string &file) const;
   // At launch, off the main thread: the sync folder (unless read just before), the indexes, the day's backup.
@@ -161,7 +161,7 @@ Link link(const std::string &url);
 // The menu's recent look-ups: how many, and an entry's one line of at most 40 characters.
 inline int recents_shown() { return 5; }  // a function: Swift does not import a constexpr
 std::string menu_line(const std::string &text);
-// Notes' backup file, today's: "lexipeek-backup-2026-10-28.db".
+// The backup's file, today's: "lexipeek-backup-2026-10-28.db".
 std::string backup_file();
 // It opens at launch (no pair yet, or Accessibility not granted and the window never finished).
 bool first_run_at_launch(const std::string &data, bool trusted);

@@ -22,15 +22,6 @@
 
 namespace lexipeek::qt {
 
-namespace {
-
-QString downloads(const QString &name) {
-  return QStandardPaths::writableLocation(QStandardPaths::DownloadLocation) + "/" + name;
-}
-
-
-}  // namespace
-
 MainWindow::MainWindow(CoreClient &client) : card(client), c_(client) {
   setWindowTitle("LexiPeek");
   connect(new QShortcut(QKeySequence::HelpContents, this), &QShortcut::activated, this, [this] { show_page(help); });
@@ -192,9 +183,8 @@ void MainWindow::refresh() {
   if (pages_->currentIndex() == 1) draw_notes();
 }
 
-// The open list's page: a click opens the card, ✕ removes; the pager, "Clear history"; the backup under it.
+// The open list's page: a click opens the card, ✕ removes; the pager, "Clear history".
 void MainWindow::draw_notes() {
-  auto said = said_ ? said_->text() : QString();
   auto *l = static_cast<QVBoxLayout *>(notes_->layout());
   ui::clear(l);
   l->setContentsMargins(14, 14, 14, 14);
@@ -269,36 +259,6 @@ void MainWindow::draw_notes() {
     bar->addWidget(c);
   }
   l->addLayout(bar);
-  auto *line = new QFrame;
-  line->setFrameShape(QFrame::HLine);
-  line->setFrameShadow(QFrame::Sunken);
-  l->addWidget(line);
-  auto *backup = new QHBoxLayout;
-  backup->addWidget(ui::text(t("backup_d"), -1.5, true), 1);
-  auto *out = new QPushButton(t("export_btn"));
-  connect(out, &QPushButton::clicked, this, [this] {
-    auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::backup_file())));
-    if (f.isEmpty()) return;
-    auto e = c_.engine;
-    c_.run<std::string>(c_.worker, [e, f] { return e.backup(f.toStdString()); }, [this](std::string said) { if (said_) said_->setText(q(said)); }, this);
-  });
-  auto *in = new QPushButton(t("import_btn"));
-  connect(in, &QPushButton::clicked, this, [this] {
-    auto f = QFileDialog::getOpenFileName(this, {}, QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
-    if (f.isEmpty()) return;
-    // Off the window's thread: a big backup takes a while.
-    auto e = c_.engine;
-    c_.run<std::string>(c_.worker, [e, f] { return e.restore(f.toStdString()); }, [this](std::string said) {
-      emit notes_bus().changed();
-      if (said_) said_->setText(q(said));
-    }, this);
-  });
-  backup->addWidget(out);
-  backup->addWidget(in);
-  l->addLayout(backup);
-  said_ = ui::text(said, -1.5, true);
-  said_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  l->addWidget(said_);
 }
 
 // Every topic on one page, each with the settings pane it is about.

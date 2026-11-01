@@ -21,6 +21,7 @@ struct SettingsShell {
   double progress = 0;
   mutable std::map<std::string, bool> keys;  // per provider ("anki": AnkiConnect's): a key is stored (read once, again after a change)
   SyncInfo sync;  // Sync → Sync's status line, asked on the sync queue
+  std::string backup_said;  // what the last Export… / Import… said
   bool anki_checking = false;
   std::optional<anki::Check> anki_check;  // Sync → Anki's last Check
   SettingsState state() const;

@@ -176,7 +176,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   InkPeek's backup file; an import writes own log lines (`Line::t` kept for texts the logs do not know). Compaction: the
   own folder on open, when it has ≥ 1,000 lines and ≥ 2× what it keeps (kept lines byte-equal, in their month files).
   `store::fixed_now` fixes the wall clock in tests. Views: the Settings section Sync (`SettingsSection::sync`, its tabs
-  by key: `sync` — `sync_rows`: the folder, the hint, one status line from `SettingsState::sync` = `Engine::sync_info`;
+  by key: `sync` — `sync_rows`: what syncs, the folder, one status line and this device from `SettingsState::sync` = `Engine::sync_info`,
+  the hint, the backups (Export… / Import…: the shells, Mac / WinUI / Qt);
   other tabs join it), help topic Sync.
 - Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
@@ -227,7 +228,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and the backup's file name come from the core (`app::hotkey_label`, `link`, `menu_line`, `backup_file`). `CoreClient` — the
   engine and queues for the rest (Notes, settings, packs; the sync folder's own queue: at launch `name_device` (the
   computer's name) and `sync(true)` before `prepare`, then `sync(false)` every 30 s, `.notesChanged` on a change).
-  Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line from `sync_info`.
+  Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line and this device
+  from `sync_info`, Export… / Import… (`backup` / `restore`; what they said: `SettingsState::backup_said`) — Notes has none.
 - `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
   by default — on Windows too since M8: `build-win.cmd <dir> qt`; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   polls its CardSession, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+

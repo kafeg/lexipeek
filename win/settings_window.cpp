@@ -58,6 +58,7 @@ SettingsState SettingsShell::state() const {
   s.progress = progress;
   s.download_error = download_error;
   s.sync = sync;
+  s.backup_said = backup_said;
   return s;
 }
 
@@ -74,7 +75,7 @@ wchar_t glyph(const std::string &key) {
       {"ai_key", 0xE8D7},        {"ai_model", 0xE950},      {"answer_lang", 0xE774}, {"edit", 0xE70F},      {"ai_test", 0xE9D9},
       {"ai_translate", 0xE8C1},  {"ai_prefetch", 0xE896},   {"ai_reset", 0xE72C},   {"download_error", 0xE783}, {"version", 0xE946},
       {"updates", 0xE895},       {"release", 0xE896},       {"source", 0xE943},     {"inkpeek", 0xE71B},    {"license", 0xE8A5},
-      {"sync_folder", 0xE8B7},   {"sync_state", 0xE895},
+      {"sync_folder", 0xE8B7},   {"sync_state", 0xE895},    {"sync_device", 0xE7F4}, {"backup_export", 0xE896}, {"backup_import", 0xE8B5},
       {"anki_on", 0xE724},       {"anki_check", 0xE703},    {"anki_send", 0xE898},  {"anki_url", 0xE71B},   {"anki_key", 0xE8D7},
       {"anki_voice", 0xE767},    {"anki_sync", 0xE895},     {"anki_model", 0xE8A1}};
   auto i = glyphs.find(key);
@@ -637,6 +638,21 @@ void SettingsWindow::press(const SettingRow &r) {
   }
   if (r.key == "ai_reset") return after(app::reset_prompts(dir));
   if (r.key == "sync_folder") return choose_sync_folder();
+  if (r.key == "backup_export" || r.key == "backup_import") {
+    // Off the window's thread: a big backup takes a while.
+    bool out = r.key == "backup_export";
+    auto f = out ? page::save_to(page::owner(scroll_), app::backup_file()) : "";
+    if (!out)
+      if (auto files = page::pick_files(page::owner(scroll_), tr("import_btn")); !files.empty()) f = files.front();
+    if (f.empty()) return;
+    auto e = sh_.client.engine;
+    page::run<std::string>(sh_.client, [e, f, out] { return out ? e.backup(f) : e.restore(f); }, [this, out](std::string s) {
+      sh_.backup_said = s;
+      if (!out) notes_bus().changed();
+      draw();
+    });
+    return;
+  }
   if (r.key == "speech_add") return add_voice();
   if (r.key == "speech_remove") return sh_.client.engine.remove_speech(), draw();
   if (r.key.starts_with("voice_remove.")) return sh_.client.engine.remove_voice(r.key.substr(13)), draw();

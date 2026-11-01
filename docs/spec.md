@@ -229,8 +229,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   right under the text; no height limit, the page scrolls): a pasted
   paragraph is a passage card with its translation. Notes (`notes_view`): newest first, 50 a page with a pager (InkPeek's); a row is the text and one line (the saved
   line, else the newest kept answer, else "—"), History also its looks; an open card's ★ follows Notes; a click opens it in Look up, ✕ removes, "Clear history…"
-  (asks) under History; a row that went to Anki has a small mark. Under the lists (no TSV: Anki is Settings → Sync →
-  Anki's binding): **Export…** — the whole store (saved, history, AI answers) as
+  (asks) under History; a row that went to Anki has a small mark (no TSV: Anki is Settings → Sync → Anki's binding).
+  Backups are in Settings → Sync → Sync, with the folder, its state and this device (id, name): **Export…** — the whole store (saved, history, AI answers) as
   one SQLite file with InkPeek's tables and columns (`lexipeek-backup-<date>.db`, `VACUUM INTO`); **Import…** — a
   backup of ours or InkPeek's (an older one too: the columns both have) adds what this computer does not have, as this
   device's log lines (a text the logs do not know keeps its dates, another one gets now). A copy a day in

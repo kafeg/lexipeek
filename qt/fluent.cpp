@@ -69,6 +69,7 @@ QString fallback(Glyph g) {
     case Glyph::left: return "‹";
     case Glyph::right: return "›";
     case Glyph::more: return "⋯";
+    case Glyph::sync: return "⟳";
   }
   return "";
 }

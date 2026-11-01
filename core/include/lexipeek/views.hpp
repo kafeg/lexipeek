@@ -391,7 +391,8 @@ struct SettingsState {
   // (downloading "speech": the model's download).
   bool speech_built = false, speech_installed = false;
   std::vector<speech::Voice> voices;
-  SyncInfo sync;  // Sync → Sync's status line (the shell asks the engine: Engine::sync_info)
+  SyncInfo sync;  // Sync → Sync: the folder's state, this device (the shell asks the engine: Engine::sync_info)
+  std::string backup_said;  // Sync → Sync: what the last Export… / Import… said ("Saved: …", "Added: 3", the error)
   // Sync → Anki: AnkiConnect's key is kept (Keychain / Credential Manager), the Check running and its last answer, the
   // binding's state (Engine::anki_status).
   bool anki_key = false, anki_checking = false;

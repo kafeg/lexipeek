@@ -38,13 +38,14 @@ struct Records {
   std::vector<Answer> ai;
 };
 
-// Settings → Sync's status line.
+// Settings → Sync: the folder's state and this device.
 struct SyncInfo {
   std::string folder;            // "" = none: the logs stay in the data dir
   bool reachable = false;        // the folder is there now
   std::int64_t read = 0;         // ms of the last read of the folder (0: not yet)
   std::int64_t wrote = 0;        // ms of this device's newest line in the folder (0: none)
   std::string error;             // the last read's or write's problem
+  std::string device, name;      // this device: its id ("mac-k3fw2xqa") and the name in its device.json
 };
 
 struct StoreOptions {

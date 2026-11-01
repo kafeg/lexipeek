@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "settings_ui.hpp"
+#include <shlobj_core.h>
 #include <shobjidl_core.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 
@@ -185,6 +186,27 @@ std::vector<std::string> pick(HWND owner, const winrt::hstring &title, FILEOPEND
   return out;
 }
 }  // namespace
+
+std::string save_to(HWND owner, const std::string &name) {
+  try {
+    auto d = winrt::create_instance<IFileSaveDialog>(CLSID_FileSaveDialog);
+    winrt::com_ptr<IShellItem> downloads;
+    if (SUCCEEDED(SHGetKnownFolderItem(FOLDERID_Downloads, KF_FLAG_DEFAULT, nullptr, IID_PPV_ARGS(downloads.put())))) d->SetFolder(downloads.get());
+    d->SetFileName(h(name).c_str());
+    FILEOPENDIALOGOPTIONS o{};
+    d->GetOptions(&o);
+    d->SetOptions(o | FOS_FORCEFILESYSTEM | FOS_OVERWRITEPROMPT);
+    if (d->Show(owner) != S_OK) return "";
+    winrt::com_ptr<IShellItem> item;
+    PWSTR path = nullptr;
+    if (FAILED(d->GetResult(item.put())) || FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) return "";
+    auto s = winrt::to_string(path);
+    CoTaskMemFree(path);
+    return s;
+  } catch (winrt::hresult_error const &) {
+    return "";
+  }
+}
 
 std::vector<std::string> pick_files(HWND owner, const winrt::hstring &title) { return pick(owner, title, FOS_ALLOWMULTISELECT); }
 

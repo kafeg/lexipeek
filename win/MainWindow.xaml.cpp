@@ -20,28 +20,6 @@ using winrt::Windows::System::VirtualKey;
 
 namespace {
 
-// The system's save dialog in Downloads with the file's name; "" when cancelled.
-std::string save_to(HWND owner, const std::string &name) {
-  try {
-    auto d = winrt::create_instance<IFileSaveDialog>(CLSID_FileSaveDialog);
-    winrt::com_ptr<IShellItem> downloads;
-    if (SUCCEEDED(SHGetKnownFolderItem(FOLDERID_Downloads, KF_FLAG_DEFAULT, nullptr, IID_PPV_ARGS(downloads.put())))) d->SetFolder(downloads.get());
-    d->SetFileName(h(name).c_str());
-    FILEOPENDIALOGOPTIONS o{};
-    d->GetOptions(&o);
-    d->SetOptions(o | FOS_FORCEFILESYSTEM | FOS_OVERWRITEPROMPT);
-    if (d->Show(owner) != S_OK) return "";
-    winrt::com_ptr<IShellItem> item;
-    PWSTR path = nullptr;
-    if (FAILED(d->GetResult(item.put())) || FAILED(item->GetDisplayName(SIGDN_FILESYSPATH, &path))) return "";
-    auto s = winrt::to_string(path);
-    CoTaskMemFree(path);
-    return s;
-  } catch (winrt::hresult_error const &) {
-    return "";
-  }
-}
-
 // A list's or a passage's lines run on in a one-line row (mac NotesPane's oneLine).
 std::string one_line(std::string s) {
   for (auto &c : s)
@@ -145,26 +123,6 @@ void MainWindow::start(MainKeep &keep) {
       notes_bus().changed();
     });
   });
-  Export().Click([this](auto &&, auto &&) {
-    auto f = save_to(hwnd(*this), app::backup_file());
-    if (f.empty()) return;
-    auto e = keep_->client.engine;
-    page::run<std::string>(keep_->client, [e, f] { return e.backup(f); }, [this, alive = alive_](std::string s) {
-      if (*alive) said(s);
-    });
-  });
-  // Off the window's thread: a big backup takes a while.
-  Import().Click([this](auto &&, auto &&) {
-    auto files = page::pick_files(hwnd(*this), tr("import_btn"));
-    if (files.empty()) return;
-    auto e = keep_->client.engine;
-    auto f = files.front();
-    page::run<std::string>(keep_->client, [e, f] { return e.restore(f); }, [this, alive = alive_](std::string s) {
-      notes_bus().changed();
-      if (*alive) said(s);
-    });
-  });
-
   // Notes changed anywhere (a look-up, ☆, ✕, an import): the counts and the open list again.
   listening_ = notes_bus().listen([this] { refresh(Root().RequestedTheme()); });
   // What is in memory, while the window is open.
@@ -206,10 +164,6 @@ void MainWindow::refresh(xaml::ElementTheme theme) {
     }));
   }
   Clear().Content(box_value(tr("clear_history_more")));
-  BackupTitle().Text(tr("hw_backup_t"));
-  BackupAbout().Text(tr("backup_d"));
-  Export().Content(box_value(tr("export_btn")));
-  Import().Content(box_value(tr("import_btn")));
   Root().RequestedTheme(theme);
   AppWindow().TitleBar().PreferredTheme(theme == xaml::ElementTheme::Light  ? Microsoft::UI::Windowing::TitleBarTheme::Light
                                         : theme == xaml::ElementTheme::Dark ? Microsoft::UI::Windowing::TitleBarTheme::Dark
@@ -238,11 +192,6 @@ void MainWindow::remove(const std::string &text) {
   if (text.empty()) return;
   keep_->client.engine.remove_note(tabs[page_ - words], text);
   notes_bus().changed();
-}
-
-void MainWindow::said(const std::string &s) {
-  Said().Text(h(s));
-  Said().Visibility(s.empty() ? xaml::Visibility::Collapsed : xaml::Visibility::Visible);
 }
 
 // The open list's page: a click (or Return) opens the card, ✕ (or Delete) removes; the pager, Clear History….

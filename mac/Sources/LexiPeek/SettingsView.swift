@@ -47,6 +47,8 @@ final class SettingsModel: ObservableObject {
     @Published var addingVoice = false
     // Sync → Sync's status line: the store's state, asked off the main queue.
     @Published private var sync = lexipeek.SyncInfo()
+    // What the last Export… / Import… said (Settings → Sync).
+    @Published private var backupSaid = ""
     private var notesObserver: Any?
     // Languages → Translation: a method's models being downloaded (its id) and how far.
     @Published private var downloading: String?
@@ -87,6 +89,28 @@ final class SettingsModel: ObservableObject {
         ankiKey = Keychain.has(Keychain.anki)
         revision += 1
         refreshSync()
+    }
+
+    // Export…: the whole store as one file, in Downloads by default.
+    private func backup() {
+        let p = NSSavePanel()
+        p.nameFieldStringValue = String(lexipeek.app.backup_file())
+        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        guard p.runModal() == .OK, let f = p.url?.path else { return }
+        client.backup(f) { [weak self] in self?.backupSaid = $0 }
+    }
+
+    // Import…: what a backup (ours or InkPeek's) has and this store lacks.
+    private func restore() {
+        let p = NSOpenPanel()
+        p.canChooseDirectories = false
+        p.allowsMultipleSelection = false
+        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+        guard p.runModal() == .OK, let f = p.url?.path else { return }
+        client.restore(f) { [weak self] in
+            self?.backupSaid = $0
+            NotificationCenter.default.post(name: .notesChanged, object: nil)
+        }
     }
 
     func refreshSync() { client.syncing({ $0.sync_info() }) { [weak self] in self?.sync = $0 } }
@@ -138,6 +162,7 @@ final class SettingsModel: ObservableObject {
         s.progress = downloadProgress
         s.download_error = std.string(downloadError)
         s.sync = sync
+        s.backup_said = std.string(backupSaid)
         return s
     }
 
@@ -215,6 +240,8 @@ final class SettingsModel: ObservableObject {
         case "updates": checkUpdates()
         case "access": Access.ask()
         case "sync_folder": chooseSyncFolder()
+        case "backup_export": backup()
+        case "backup_import": restore()
         case "speech_add": addingVoice = true
         case "speech_remove":
             client.engine.remove_speech()

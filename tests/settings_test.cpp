@@ -93,20 +93,28 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
       }
 }
 
-TEST_CASE("settings: Sync → Sync — the folder, the hint, one status line") {
+TEST_CASE("settings: Sync → Sync — what syncs, the folder, its state, this device, the hint, the backups") {
   Settings s;
   auto st = state();
+  st.sync.device = "mac-k3fw2xqa", st.sync.name = "MacBook Air";
   auto p = settings_view(SettingsSection::sync, 0, s, st);
   CHECK(p.tabs == std::vector<std::string>{"Sync", "Anki"});
-  REQUIRE(row(p, "sync_folder"));
+  std::vector<std::string> keys;
+  for (auto &r : p.rows) keys.push_back(r.kind == Kind::heading ? "#" + r.title : r.key);
+  CHECK(keys == std::vector<std::string>{"#What syncs", "sync_folder", "sync_device", "#Keeping it the same everywhere", "#Backups",
+                                         "backup_export", "backup_import"});
+  CHECK(p.rows[0].about.find("no conflicts") != std::string::npos);
   CHECK(row(p, "sync_folder")->value == "Choose…");
   CHECK(row(p, "sync_folder")->about.starts_with("None"));
-  CHECK(!row(p, "sync_state"));
-  REQUIRE(p.rows.size() == 2);
-  CHECK(p.rows[1].kind == Kind::heading);
-  CHECK(p.rows[1].about.find("Syncthing works best") != std::string::npos);
-  CHECK(p.rows[1].about.find("Synology Drive") != std::string::npos);
-  st.sync = {"/Volumes/Sync", true, 1793491200000, 0, ""};
+  CHECK(row(p, "sync_device")->value == "mac-k3fw2xqa");
+  CHECK(row(p, "sync_device")->about == "MacBook Air");
+  CHECK(p.rows[3].about.find("Syncthing works best") != std::string::npos);
+  CHECK(p.rows[3].about.find("Synology Drive") != std::string::npos);
+  CHECK(row(p, "backup_export")->value == "Export…");
+  CHECK(row(p, "backup_import")->value == "Import…");
+  st.backup_said = "Added: 3";
+  CHECK(row(settings_view(SettingsSection::sync, 0, s, st), "backup_said")->about == "Added: 3");
+  st.sync = {"/Volumes/Sync", true, 1793491200000, 0, "", "mac-k3fw2xqa", "MacBook Air"};
   p = settings_view(SettingsSection::sync, 0, s, st);
   CHECK(row(p, "sync_folder")->value == "Change…");
   CHECK(row(p, "sync_folder")->about == "/Volumes/Sync");

@@ -80,35 +80,6 @@ final class NotesModel: ObservableObject {
         client.clearHistory()
         refresh()
     }
-
-    // What the last Export / Import said.
-    @Published var said = ""
-
-    // A save panel in Downloads with the file's name; nil when cancelled.
-    private func saveTo(_ name: String) -> String? {
-        let p = NSSavePanel()
-        p.nameFieldStringValue = name
-        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        return p.runModal() == .OK ? p.url?.path : nil
-    }
-
-    func backup() {
-        guard let f = saveTo(String(lexipeek.app.backup_file())) else { return }
-        client.backup(f) { [weak self] in self?.said = $0 }
-    }
-
-    func restore() {
-        let p = NSOpenPanel()
-        p.canChooseDirectories = false
-        p.allowsMultipleSelection = false
-        p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-        guard p.runModal() == .OK, let f = p.url?.path else { return }
-        client.restore(f) { [weak self] in
-            self?.said = $0
-            self?.refresh()
-            NotificationCenter.default.post(name: .notesChanged, object: nil)
-        }
-    }
 }
 
 // The window's Notes: the open page's rows (Words · Phrases · History), newest first; a click opens
@@ -135,15 +106,6 @@ struct NotesList: View {
                 }
                 if model.look.clear { Button(L.t("clear_history_more")) { confirmClear = true } }
             }
-            Divider()
-            // The whole store to one file and back (InkPeek's backups too).
-            HStack(alignment: .top) {
-                Text(L.t("backup_d")).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button(L.t("export_btn")) { model.backup() }
-                Button(L.t("import_btn")) { model.restore() }
-            }
-            if !model.said.isEmpty { Text(model.said).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
         }
         .padding(14)
         .confirmationDialog(L.t("clear_history_q"), isPresented: $confirmClear) {
