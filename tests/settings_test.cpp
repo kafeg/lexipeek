@@ -361,3 +361,61 @@ TEST_CASE("settings: the hotkeys' default is Win+Shift on Windows, a saved one s
   wipe(d);
   CHECK(load_settings(d).lookup == Hotkey{"D", true, false, false, false});
 }
+
+TEST_CASE("settings: every pane's toggles and choices round trip through settings.json, each index shown back") {
+  set_ui_language("en");
+  auto d = fs::temp_directory_path() / "lexipeek-settings-rows";
+  wipe(d);
+  fs::create_directories(d);
+  std::ofstream(d / "settings.json") << R"({"ai": {"provider": "anthropic"}, "speech": {"on": true}})";
+  auto st = state();
+  st.answers = {"en", "ru", "de"};
+  st.pairs = {{"ru", "de"}, {"ru", "en"}, {"de", "ru"}, {"en", "ru"}};
+  st.installed_pairs = {{"ru", "de"}, {"ru", "en"}};
+  auto ds = d.string();
+  int toggles = 0, choices = 0;
+  for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general, SettingsSection::speech}) {
+    auto tabs = std::max<size_t>(1, settings_tabs(sec).size());
+    for (int tab = 0; tab < static_cast<int>(tabs); tab++) {
+      auto page = [&] { return app::settings_page(ds, sec, tab, st); };
+      for (auto &r : page().rows) {
+        CAPTURE(r.key);
+        // Open at login shows the system's say (SettingsState::login), not settings.json.
+        if (r.kind == Kind::toggle && r.enabled && r.key != "open_at_login") {
+          toggles++;
+          CHECK(app::toggle(ds, r.key, !r.on).empty());
+          auto now = row(page(), r.key);
+          REQUIRE(now);
+          CHECK(now->on == !r.on);
+          CHECK(app::toggle(ds, r.key, r.on).empty());
+          CHECK(row(page(), r.key)->on == r.on);
+        } else if (r.kind == Kind::choice && r.enabled && r.key != "ai_preset") {
+          for (int i = 0; i < static_cast<int>(r.choices.size()); i++) {
+            CAPTURE(i);
+            choices++;
+            CHECK(app::choose(ds, r.key, i, st).empty());
+            auto now = row(page(), r.key);
+            REQUIRE(now);
+            CHECK(now->selected == i);
+          }
+          CHECK(app::choose(ds, r.key, r.selected, st).empty());
+          CHECK(row(page(), r.key)->selected == r.selected);
+        }
+      }
+    }
+  }
+  CHECK(toggles > 15);
+  CHECK(choices > 40);
+  // A preset fills the server's address in, the provider stays.
+  CHECK(app::choose(ds, "ai_provider", 4, st).empty());
+  auto custom = app::settings(ds).ai.provider;
+  CHECK(app::choose(ds, "ai_preset", 1, st).empty());
+  CHECK(!app::settings(ds).ai.url.empty());
+  CHECK(app::settings(ds).ai.provider == custom);
+  // Every change above was written whole: what is on disk reads back the same.
+  auto s = app::settings(ds);
+  CHECK(app::save(ds, s).empty());
+  CHECK(app::settings(ds).ai.provider == s.ai.provider);
+  CHECK(app::settings(ds).speech.on);
+  wipe(d);
+}

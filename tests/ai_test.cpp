@@ -580,3 +580,89 @@ TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysi
   ai::set_cli_runner(nullptr);
   wipe(d);
 }
+
+TEST_CASE("ai: answers from files (snapshots, LEXIPEEK_AI_REPLIES) — every provider the same JSON, a status fails all, the model list") {
+  auto d = fs::temp_directory_path() / "lexipeek-ai-files";
+  wipe(d);
+  fs::create_directories(d);
+  std::ofstream(d / "quick.json") << quick_json;
+  std::ofstream(d / "analysis.json") << R"({"grammar":"G","words":[]})";
+  std::ofstream(d / "models.json") << R"({"data":[{"id":"claude-sonnet-5-5","display_name":"Claude Sonnet 5.5"}]})";
+  auto t = ai::file_transport(d);
+  std::map<std::string, int> recall;
+  auto custom = with("custom", "local");
+  custom.url = "http://127.0.0.1:1/v1";
+  for (auto &s : {with("anthropic"), with("openai", "gpt-x"), custom, with("claude-cli"), with("codex-cli")}) {
+    CAPTURE(s.provider);
+    auto a = ai::ask(query(), s, recall, t);
+    REQUIRE(a.ok());
+    CHECK(json::parse(a.json)["base"] == "Haus");
+    auto g = ai::ask(query(ai::Ask::analysis), s, recall, t);
+    REQUIRE(g.ok());
+    CHECK(json::parse(g.json)["grammar"] == "G");
+  }
+  auto m = ai::models(with("anthropic"), "sk", t);
+  REQUIRE(m.error.ok());
+  CHECK(m.list.at(0).id == "claude-sonnet-5-5");
+  std::ofstream(d / "status") << "401";
+  CHECK(ai::ask(query(), with("anthropic"), recall, t).code == ai::Code::key);
+  CHECK(ai::ask(query(), with("claude-cli"), recall, t).code == ai::Code::failed);
+  wipe(d);
+}
+
+#ifndef _WIN32
+// The real transport of a CLI provider (POSIX: a shell line, outputs into files, the process group stopped after it).
+TEST_CASE("ai: a program run for real — its flags and prompt as claude -p gets them, a helper it leaves does not hold the answer, not found, a failure") {
+  auto d = fs::temp_directory_path() / "lexipeek-ai-run";
+  wipe(d);
+  fs::create_directories(d);
+  auto prog = d / "claude";
+  {
+    std::ofstream f(prog);
+    f << "#!/bin/sh\n"
+         "printf '%s\\n' \"$@\" > \"$(dirname \"$0\")/args.txt\"\n"
+         "echo \"thinking=$MAX_THINKING_TOKENS\" > \"$(dirname \"$0\")/env.txt\"\n"
+         "sleep 30 &\n"  // a helper left running (Claude Code's does)
+         "echo 'progress' >&2\n"
+         "printf '%s' '{\"type\":\"result\",\"is_error\":false,\"result\":\"{\\\"base\\\":\\\"Haus\\\",\\\"meanings\\\":[\\\"дом\\\"]}\"}'\n";
+  }
+  fs::permissions(prog, fs::perms::owner_all);
+  ai::set_cli_runner(nullptr);
+  auto s = with("claude-cli");
+  s.commands["claude-cli"] = prog.string();
+  std::map<std::string, int> recall;
+  auto q = query();
+  q.text = "it's \"Häusern\" $HOME";
+  auto t0 = std::chrono::steady_clock::now();
+  auto a = ai::ask(q, s, recall, ai::default_transport());
+  CHECK(std::chrono::steady_clock::now() - t0 < std::chrono::seconds(20));
+  REQUIRE(a.ok());
+  CHECK(json::parse(a.json)["base"] == "Haus");
+  std::ifstream args(d / "args.txt");
+  std::vector<std::string> got;
+  for (std::string l; std::getline(args, l);) got.push_back(l);
+  REQUIRE(got.size() >= 14);
+  CHECK(std::vector<std::string>(got.begin(), got.begin() + 13) ==
+        std::vector<std::string>{"-p", "--output-format", "json", "--setting-sources", "", "--strict-mcp-config", "--tools", "", "--effort",
+                                 "low", "--no-session-persistence", "--model", "sonnet"});
+  std::string prompt;
+  for (size_t i = 13; i < got.size(); i++) prompt += got[i] + "\n";
+  CHECK(prompt.find("«it's \"Häusern\" $HOME»") != std::string::npos);  // the text as it is: quoted, nothing expanded
+  std::ifstream env(d / "env.txt");
+  std::string e;
+  std::getline(env, e);
+  CHECK(e == "thinking=0");
+
+  s.commands["claude-cli"] = (d / "no-such-program").string();
+  CHECK(ai::ask(query(), s, recall, ai::default_transport()).code == ai::Code::no_cli);
+  {
+    std::ofstream f(prog);
+    f << "#!/bin/sh\necho 'Not logged in' >&2\nexit 3\n";
+  }
+  s.commands["claude-cli"] = prog.string();
+  auto bad = ai::ask(query(), s, recall, ai::default_transport());
+  CHECK(bad.code == ai::Code::failed);
+  CHECK(bad.detail == "Not logged in");
+  wipe(d);
+}
+#endif
