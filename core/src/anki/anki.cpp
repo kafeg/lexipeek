@@ -15,6 +15,7 @@
 #include "lexipeek/speech.hpp"
 #include "lexipeek/store.hpp"
 #include "packs/http.hpp"
+#include "store/log.hpp"
 #include "text/text.hpp"
 
 namespace lexipeek::anki {
@@ -212,16 +213,7 @@ Sent read_sent(const fs::path &data) {
 }
 
 std::string write_sent(const fs::path &data, const Sent &sent) {
-  std::error_code ec;
-  fs::create_directories(data, ec);
-  auto tmp = data / "anki.json.tmp";
-  {
-    std::ofstream f(tmp, std::ios::binary);
-    if (!f) return tr("err_write", {text::utf8_of(tmp.filename())});
-    f << json{{"sent", sent}}.dump() << "\n";
-  }
-  fs::rename(tmp, data / "anki.json", ec);
-  return ec ? ec.message() : "";
+  return store::write_whole(data / "anki.json", json{{"sent", sent}}.dump(-1, ' ', false, json::error_handler_t::replace) + "\n");
 }
 
 std::vector<Note> backlog(const std::vector<Note> &all, const Sent &sent) {
@@ -478,6 +470,7 @@ struct Sender::Impl {
     bool forced = std::exchange(now, false);
     more = false;
     if (forced) failed.clear(), retry = {}, probed = {}, deduped = {};
+    auto probe_at = probed;
     st.on = set.on;
     if (!set.on) {
       st.waiting = 0;
@@ -486,7 +479,7 @@ struct Sender::Impl {
     g.unlock();
     bool ready = voice();
     // Anki asked every 30 s: the tab's connection line and its decks.
-    if (std::chrono::steady_clock::now() >= probed) {
+    if (std::chrono::steady_clock::now() >= probe_at) {
       auto c = check(set, k, t);
       g.lock();
       if (!st.probed || c.code != st.check.code) log("anki: " + c.text);
