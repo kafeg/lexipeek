@@ -1,0 +1,86 @@
+[
+ {
+  "name": "deu-rus",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/deu-rus/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/deu-rus/deu-rus.stardict.tar.xz",
+    "size": "1800000"
+   }
+  ]
+ },
+ {
+  "name": "deu-eng",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/deu-eng/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/deu-eng/deu-eng.stardict.tar.xz",
+    "size": "9800000"
+   }
+  ]
+ },
+ {
+  "name": "eng-rus",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/eng-rus/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/eng-rus/eng-rus.stardict.tar.xz",
+    "size": "1200000"
+   }
+  ]
+ },
+ {
+  "name": "fra-rus",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/fra-rus/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/fra-rus/fra-rus.stardict.tar.xz",
+    "size": "900000"
+   }
+  ]
+ },
+ {
+  "name": "spa-rus",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/spa-rus/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/spa-rus/spa-rus.stardict.tar.xz",
+    "size": "700000"
+   }
+  ]
+ },
+ {
+  "name": "eng-deu",
+  "releases": [
+   {
+    "platform": "src",
+    "URL": "https://download.freedict.org/dictionaries/eng-deu/src.tar.xz"
+   },
+   {
+    "platform": "stardict",
+    "URL": "https://download.freedict.org/dictionaries/eng-deu/eng-deu.stardict.tar.xz",
+    "size": "11500000"
+   }
+  ]
+ }
+]

@@ -14,6 +14,7 @@
 #include <map>
 #include <optional>
 #include "card.hpp"
+#include "dicts_pane.hpp"
 #include "first_run.hpp"
 #include "main_window.hpp"
 #include "settings_window.hpp"
@@ -224,6 +225,10 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
                        about->refresh();
                        return about;
                      }});
+    // The catalog's listings from LEXIPEEK_CATALOG (no network).
+    auto *catalog = new CatalogDialog(client, nullptr);
+    panes.push_back({"catalog" + o.suffix, [catalog] { return catalog; }, [catalog] { return !catalog->loading(); },
+                     [] { return false; }, true});
   }
   // Settings first: the cases after them may change the data dir (☆, a first-run step's files).
   shots.insert(shots.begin(), panes.begin(), panes.end());

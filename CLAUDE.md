@@ -34,7 +34,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (word, full entries with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
   to the end, passages with line breaks and lists, each method, same language, no pack, unknown, input, selection failed, no
   Accessibility, pinned, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
-  settings section × tab in its toolbar window (`settings-<section>[-<tab>]`) and the About window (`about`), light and dark, into `build/snapshots/index.html`;
+  settings section × tab in its toolbar window (`settings-<section>[-<tab>]`) and the About window (`about`), the dictionary catalog (`catalog`: its listings from `tests/data/catalog` by
+  `LEXIPEEK_CATALOG`, no network), light and dark, into `build/snapshots/index.html`;
   `UI_LANG=de scripts/snapshots.sh` runs it in that app language (`build/snapshots-de/`). **Look at every image before
   handing over UI work**. The run is invisible
   (accessory app, windows off screen, no menu-bar item, no hotkeys, never activated): it must never show a window on

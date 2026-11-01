@@ -188,7 +188,7 @@ CatalogView catalog_view(const CatalogList &list, const DictSettings &s, const s
     auto &src = sources[std::min(rank(it), sources.size() - 1)];
     auto pair = language_name(it.from) + " → " + language_name(it.to);
     if (!f.empty() && text::lower(it.from + "-" + it.to + " " + src.title + " " + pair).find(f) == std::string::npos) continue;
-    CatalogRow r{i, (recommended(it) ? "★ " : "") + pair, "", ""};
+    CatalogRow r{i, (recommended(it) ? "★ " : "") + pair, "", "", recommended(it)};
     for (auto &p : {src.title, mb(it.size), got.contains(it.url) ? "✓ " + tr("got_mark") : std::string()})
       if (!p.empty()) r.detail += (r.detail.empty() ? "" : " · ") + p;
     r.about = tr("cat_" + src.id) + "\n\n" + (it.size > 0 ? mb(it.size) + " · " : "") + it.license;

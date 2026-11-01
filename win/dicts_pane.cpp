@@ -156,7 +156,7 @@ void DictsPane::changed(bool reload) {
 CatalogWindow::CatalogWindow(CoreClient &client) : c_(client) {
   auto content = load(LR"(<Grid Padding="24,0,24,24" RowSpacing="12">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <StackPanel x:Name="Sources" Orientation="Horizontal" Spacing="16"/>
+  <StackPanel x:Name="Sources" Spacing="2"/>
   <TextBox x:Name="Filter" Grid.Row="1"/>
   <ScrollViewer Grid.Row="2" Margin="0,0,-16,0"><StackPanel x:Name="Body" Spacing="4" Padding="0,0,16,0"/></ScrollViewer>
   <Button x:Name="Done" Grid.Row="3" HorizontalAlignment="Right" MinWidth="120" Style="{StaticResource AccentButtonStyle}"/>
@@ -213,21 +213,24 @@ void CatalogWindow::draw() {
   auto v = app::catalog_view(dir, list_, filter_);
   filter_box_.PlaceholderText(h(v.filter_hint));
   sources_.Children().Clear();
+  // Each source with what it gives, as InkPeek's: what to download is said here.
   for (auto &s : v.sources) {
     controls::CheckBox b;
     b.Content(winrt::box_value(h(s.title)));
     b.IsChecked(s.on);
-    controls::ToolTipService::SetToolTip(b, winrt::box_value(h(s.about)));
     auto id = s.id;
     b.Click([this, dir, id](winrt::Windows::Foundation::IInspectable const &sender, auto &&) {
       app::set_source_on(dir, id, sender.as<controls::CheckBox>().IsChecked().Value());
       c_.ui([this] { fetch(); });
     });
     sources_.Children().Append(b);
+    auto about = page::text(s.about, L"CaptionTextBlockStyle", true);
+    about.Margin({28, 0, 0, 4});
+    sources_.Children().Append(about);
   }
   body_.Children().Clear();
   bar_ = nullptr;
-  body_.Children().Append(page::text(v.legend, L"CaptionTextBlockStyle", true));
+  body_.Children().Append(page::text(v.legend));
   if (!downloading_.empty()) {
     bar_ = page::progress(0);
     auto total = dl_.get_total();

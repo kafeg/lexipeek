@@ -387,7 +387,10 @@ std::string imported_text(const Imported &r) {
   return out;
 }
 
-CatalogList catalog(const std::string &data) { return fetch_catalog(load_settings(dir(data)).dicts); }
+CatalogList catalog(const std::string &data) {
+  auto *listings = std::getenv("LEXIPEEK_CATALOG");  // NOLINT(concurrency-mt-unsafe)
+  return fetch_catalog(load_settings(dir(data)).dicts, listings ? listings : "");
+}
 
 CatalogView catalog_view(const std::string &data, const CatalogList &list, const std::string &filter) {
   auto s = load_settings(dir(data));

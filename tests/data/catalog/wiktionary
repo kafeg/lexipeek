@@ -1,0 +1,30 @@
+{
+ "tag_name": "2026-10",
+ "assets": [
+  {
+   "name": "de-ru.tar.zst",
+   "browser_download_url": "https://github.com/xxyzz/wiktionary_stardict/releases/download/2026-10/de-ru.tar.zst",
+   "size": 18300000
+  },
+  {
+   "name": "en-ru.tar.zst",
+   "browser_download_url": "https://github.com/xxyzz/wiktionary_stardict/releases/download/2026-10/en-ru.tar.zst",
+   "size": 41200000
+  },
+  {
+   "name": "fr-ru.tar.zst",
+   "browser_download_url": "https://github.com/xxyzz/wiktionary_stardict/releases/download/2026-10/fr-ru.tar.zst",
+   "size": 9100000
+  },
+  {
+   "name": "de-en.tar.zst",
+   "browser_download_url": "https://github.com/xxyzz/wiktionary_stardict/releases/download/2026-10/de-en.tar.zst",
+   "size": 95000000
+  },
+  {
+   "name": "ru-en.tar.zst",
+   "browser_download_url": "https://github.com/xxyzz/wiktionary_stardict/releases/download/2026-10/ru-en.tar.zst",
+   "size": 30500000
+  }
+ ]
+}

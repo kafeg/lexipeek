@@ -228,6 +228,7 @@ final class CatalogModel: ObservableObject {
         var title: String
         var detail: String
         var about: String
+        var recommended: Bool
     }
 
     struct Source: Identifiable {
@@ -268,7 +269,8 @@ final class CatalogModel: ObservableObject {
 
     func show() {
         let v = lexipeek.app.catalog_view(std.string(), list, std.string(filter))
-        rows = v.rows.map { Row(id: Int($0.item), title: String($0.title), detail: String($0.detail), about: String($0.about)) }
+        rows = v.rows.map { Row(id: Int($0.item), title: String($0.title), detail: String($0.detail), about: String($0.about),
+                              recommended: $0.recommended) }
         sources = v.sources.map { Source(id: String($0.id), title: String($0.title), about: String($0.about), on: $0.on) }
         info = String(v.info)
         legend = String(v.legend)
@@ -307,13 +309,15 @@ struct CatalogSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L.t("lang_own")).font(.headline)
-            HStack {
-                ForEach(model.sources) { s in
-                    Toggle(s.title, isOn: Binding(get: { s.on }, set: { model.setSource(s, $0) })).help(s.about)
+            // Each source with what it gives, as InkPeek's: what to download is said here.
+            ForEach(model.sources) { s in
+                VStack(alignment: .leading, spacing: 1) {
+                    Toggle(s.title, isOn: Binding(get: { s.on }, set: { model.setSource(s, $0) }))
+                    Text(s.about).font(.caption).foregroundStyle(.secondary).padding(.leading, 20)
                 }
             }
+            Text(model.legend).font(.callout).padding(.top, 2)
             TextField(model.hint, text: $model.filter).textFieldStyle(.roundedBorder)
-            Text(model.legend).font(.caption).foregroundStyle(.secondary)
             if let d = model.downloading {
                 HStack {
                     Text(d).lineLimit(1)
@@ -327,7 +331,7 @@ struct CatalogSheet: View {
             List(model.rows) { r in
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.title)
+                        Text(r.title).fontWeight(r.recommended ? .semibold : .regular)
                         Text(r.detail).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -342,7 +346,7 @@ struct CatalogSheet: View {
             }
         }
         .padding()
-        .frame(width: 520, height: 520)
+        .frame(width: 520, height: 600)
         .onAppear { model.fetch() }
         .alert(confirm?.title ?? "", isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }), presenting: confirm) { r in
             Button(L.t("download")) { model.get(r) }

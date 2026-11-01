@@ -250,8 +250,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   speech, Wiktionary's first sense, Mueller's first line without its marks; up to the first ";"); the full entry is the
   article's HTML. The gloss of a phrase takes an own dictionary's first meaning too. "Import…" takes StarDict files
   (a picked one brings its siblings) or archives (.zip, .tar, .tar.gz, .tar.bz2, .tar.xz, .tar.zst), each dictionary
-  once. "Catalog…": InkPeek's public sources (WikDict, Wiktionary by xxyzz, FreeDict; each can be off), into the
-  answer language first, WikDict's recommended (★), a filter, one download at a time with progress, ✓ while a
+  once. "Catalog…": InkPeek's public sources (WikDict, Wiktionary by xxyzz, FreeDict; each can be off, what it gives
+  written under it, as InkPeek's), into the answer language first, WikDict's recommended (★, its legend above the
+  list, the rows stronger), a filter, one download at a time with progress, ✓ while a
   dictionary it brought is on disk. Settings: `dicts` in settings.json (order, off, folders, sources_off, got).
 - **First run** (a window of its own, at launch while no pair is installed, or Accessibility is off and it was never
   finished; again from Settings → Translation): why Accessibility → open System Settings → continue by itself when

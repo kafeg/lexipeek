@@ -143,12 +143,12 @@ std::string catalog_language(const std::string &code) {
   return code;
 }
 
-CatalogList fetch_catalog(const DictSettings &s) {
+CatalogList fetch_catalog(const DictSettings &s, const std::string &listings) {
   CatalogList out;
   for (auto &src : catalog_sources()) {
     if (std::find(s.sources_off.begin(), s.sources_off.end(), src.id) != s.sources_off.end()) continue;
     std::string body;
-    auto err = http::get(src.url, body);
+    auto err = http::get(listings.empty() ? src.url : "file://" + listings + "/" + src.id, body);
     try {
       if (err.empty()) {
         auto items = parse_catalog(src.id, body);

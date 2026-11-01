@@ -1,5 +1,7 @@
 # The snapshot cases, shared by the Mac app's (snapshots.sh) and the Qt shell's (qt-snapshots.sh): sourced, not run.
 # shellcheck shell=sh
+# The dictionary catalog's listings (Settings → Other dictionaries → its sheet): a fixture, no network.
+export LEXIPEEK_CATALOG="$PWD/tests/data/catalog"
 LONG="Am nächsten Morgen stand Anna früh auf, weil sie den ersten Zug in die Stadt nicht verpassen wollte. \
 Draußen war es noch dunkel, und auf den Straßen lag eine dünne Schicht Schnee. Sie trank schnell einen Kaffee, \
 zog ihren warmen Mantel an und ging zum Bahnhof. Der Zug war fast leer, nur ein alter Mann las seine Zeitung. \
@@ -139,6 +141,6 @@ settings_shots() {
     settings-languages-translation-on \
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
-    settings-general-system settings-general-keys settings-read settings-read-on about
+    settings-general-system settings-general-keys settings-read settings-read-on about catalog
 }
 

@@ -282,9 +282,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let about = AboutWindow.make(model: settings)
                 Snapshot.hide(about)
                 about.orderBack(nil)
+                // The catalog of other dictionaries (its listings from LEXIPEEK_CATALOG: no network).
+                let catalog = NSWindow(contentViewController: NSHostingController(rootView: CatalogSheet(model: CatalogModel())))
+                catalog.styleMask = [.titled]
+                catalog.titleVisibility = .hidden
+                Snapshot.hide(catalog)
+                catalog.orderBack(nil)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     Snapshot.write(about.contentView?.superview, "about.png")
                     about.orderOut(nil)
+                    Snapshot.write(catalog.contentView?.superview, "catalog.png")
+                    catalog.orderOut(nil)
                     Snapshot.mark("settings.done")
                 }
                 return

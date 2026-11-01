@@ -362,6 +362,10 @@ TEST_CASE("catalog: rows into the answer language first, WikDict recommended, a 
   CHECK(v.rows[4].title == "German → English");
   CHECK(v.info == "5 of 5");
   CHECK(v.rows[0].about.ends_with("1.0 MB · CC"));
+  CHECK(v.rows[0].recommended);
+  CHECK(v.rows[1].recommended);
+  CHECK_FALSE(v.rows[2].recommended);
+  CHECK_FALSE(v.rows[4].recommended);  // WikDict, but not into the answer language
   CHECK(catalog_view(l, s, "ru", " de-ru ", {}).rows.size() == 3);
   CHECK(catalog_view(l, s, "ru", "french", {}).rows.size() == 1);
   set_source_on(s, "wikdict", false);
@@ -369,6 +373,20 @@ TEST_CASE("catalog: rows into the answer language first, WikDict recommended, a 
   set_source_on(s, "freedict", false);
   CHECK(catalog_view({}, s, "ru", "", {}).empty == "All sources are off");
   CHECK(fetch_catalog(s).items.empty());
+}
+
+TEST_CASE("catalog: the listings from a folder (snapshots, no network)") {
+  DictSettings s;
+  auto l = fetch_catalog(s, LEXIPEEK_TESTDATA "/catalog");
+  CHECK(l.failed.empty());
+  CHECK(l.items.size() == 24);
+  auto v = catalog_view(l, s, "ru", "", {});
+  REQUIRE(v.rows.size() == 24);
+  CHECK(v.rows[0].title == "★ English → Russian");
+  CHECK(v.rows[0].recommended);
+  set_source_on(s, "wikdict", false);
+  CHECK(fetch_catalog(s, LEXIPEEK_TESTDATA "/catalog").items.size() == 11);
+  CHECK(fetch_catalog({}, LEXIPEEK_TESTDATA "/none").failed.size() == 3);
 }
 
 TEST_CASE("catalog: a download is imported and marked") {

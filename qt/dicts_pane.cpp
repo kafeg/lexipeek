@@ -190,7 +190,7 @@ void DictsPane::dropEvent(QDropEvent *e) {
 
 CatalogDialog::CatalogDialog(CoreClient &client, QWidget *parent) : QDialog(parent), c_(client) {
   setWindowTitle(t("lang_own"));
-  resize(520, 520);
+  resize(520, 600);
   // Closed while downloading: the download stops too.
   connect(this, &QDialog::finished, this, [this] { dl_.cancel(); });
   auto *l = new QVBoxLayout(this);
@@ -205,9 +205,11 @@ CatalogDialog::CatalogDialog(CoreClient &client, QWidget *parent) : QDialog(pare
   il->setContentsMargins(0, 0, 0, 0);
   il->addLayout(body_);
   il->addStretch();
-  auto *sources = new QHBoxLayout;
+  auto *sources = new QVBoxLayout;
   sources->setObjectName("sources");
   l->addLayout(sources);
+  legend_ = ui::text(QString());
+  l->addWidget(legend_);
   l->addWidget(filter_edit_);
   l->addWidget(scrolled(inner), 1);
   auto *done = new QPushButton(t("done"));
@@ -243,22 +245,24 @@ void CatalogDialog::draw() {
   auto dir = c_.data();
   auto v = app::catalog_view(dir, list_, filter_);
   filter_edit_->setPlaceholderText(q(v.filter_hint));
-  auto *sources = findChild<QHBoxLayout *>("sources");
+  auto *sources = findChild<QVBoxLayout *>("sources");
   ui::clear(sources);
+  // Each source with what it gives, as InkPeek's: what to download is said here.
   for (auto &s : v.sources) {
     auto *b = new QCheckBox(q(s.title));
     b->setChecked(s.on);
-    b->setToolTip(q(s.about));
     auto id = s.id;
     connect(b, &QCheckBox::toggled, this, [this, dir, id](bool on) {
       app::set_source_on(dir, id, on);
       QMetaObject::invokeMethod(this, [this] { fetch(); }, Qt::QueuedConnection);
     });
     sources->addWidget(b);
+    auto *about = ui::text(s.about, -1.5, true);
+    about->setContentsMargins(24, 0, 0, 4);
+    sources->addWidget(about);
   }
-  sources->addStretch();
+  legend_->setText(q(v.legend));
   ui::clear(body_);
-  body_->addWidget(ui::text(v.legend, -1.5, true));
   if (!downloading_.empty()) {
     auto *row = new QHBoxLayout;
     row->addWidget(ui::text(downloading_));
@@ -279,7 +283,7 @@ void CatalogDialog::draw() {
     auto *row = new QHBoxLayout;
     auto *col = new QVBoxLayout;
     col->setSpacing(1);
-    col->addWidget(ui::text(r.title));
+    col->addWidget(ui::text(r.title, 0, false, r.recommended));
     col->addWidget(ui::text(r.detail, -1.5, true));
     row->addLayout(col, 1);
     auto *get = new QPushButton(t("download"));

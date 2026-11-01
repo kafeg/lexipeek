@@ -5,6 +5,7 @@
 #include <QWidget>
 #include "core_client.hpp"
 
+class QLabel;
 class QLineEdit;
 class QVBoxLayout;
 class QTimer;
@@ -35,6 +36,7 @@ class CatalogDialog : public QDialog {
   Q_OBJECT
  public:
   explicit CatalogDialog(CoreClient &client, QWidget *parent);
+  bool loading() const { return loading_; }
 
  private:
   void fetch();
@@ -49,6 +51,7 @@ class CatalogDialog : public QDialog {
   QTimer *poll_;
   QLineEdit *filter_edit_;
   QVBoxLayout *body_;
+  QLabel *legend_;
 };
 
 }  // namespace lexipeek::qt

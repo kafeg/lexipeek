@@ -51,8 +51,8 @@ struct CatalogList {
   std::vector<std::string> failed;  // the sources whose list did not come ("WikDict: …")
 };
 
-// The switched-on sources' lists (network, blocking).
-CatalogList fetch_catalog(const DictSettings &s);
+// The switched-on sources' lists (network, blocking); listings: a folder with each one's as <id> (tests, snapshots).
+CatalogList fetch_catalog(const DictSettings &s, const std::string &listings = "");
 // Downloads an item into <data>/tmp, imports it into dicts-own, notes what it brought (its ✓) in the settings.
 Imported download_dict(const std::filesystem::path &data, const CatalogItem &item, const Progress &progress = {}, const Cancel &cancel = {});
 
@@ -92,6 +92,7 @@ struct CatalogRow {
   int item = 0;  // its index in the list
   std::string title, detail;  // "★ German → Russian"; "WikDict · 4.2 MB · ✓ downloaded"
   std::string about;          // the source's about, its size and license (the download's confirmation)
+  bool recommended = false;   // WikDict into the answer language (★, drawn stronger)
 };
 
 struct SourceRow {

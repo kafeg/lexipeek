@@ -43,7 +43,6 @@ recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept read
   a machine with a sound device), the WAV picker's dialog, Vulkan on a real GPU. "On the GPU" off does nothing there yet
   (`GGML_BACKEND` is read by qwen.dll's own C runtime, which does not see the exe's `_putenv`).
 - Measure on Windows (Vulkan, a real GPU and the CPU): load, a word, a sentence.
-- Windows: Ctrl+. is still a hotkey while the card is up (`win/popup`): make it the card's own key, as ⌘. on the Mac (spec).
 - Polish: the model does not name it (read with "auto"); check its words by native speakers.
 
 ## M6 Windows (Qt shell, `qt/`)

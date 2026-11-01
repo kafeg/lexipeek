@@ -184,7 +184,8 @@ std::string remove_dict(const std::string &data, const std::string &id);
 Imported import_dicts(const std::string &data, const std::vector<std::string> &files);
 // "Added: X. Already there: Y." or the error.
 std::string imported_text(const Imported &r);
-// The catalog: the switched-on sources' lists (network, blocking), its rows by a filter, one item's download.
+// The catalog: the switched-on sources' lists (network, blocking; LEXIPEEK_CATALOG: a folder of listings instead), its
+// rows by a filter, one item's download.
 CatalogList catalog(const std::string &data);
 CatalogView catalog_view(const std::string &data, const CatalogList &list, const std::string &filter);
 void set_source_on(const std::string &data, const std::string &id, bool on);
