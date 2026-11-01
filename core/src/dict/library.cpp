@@ -223,16 +223,19 @@ std::vector<Head> Library::heads(const std::string &query, const std::string &an
 }
 
 std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string &answer, size_t limit, const std::string &book) {
-  static const text::Regex word("\\p{L}[\\p{L}'’-]*"), tail("[\\s]+$");
+  static const text::Regex word("\\p{L}[\\p{L}'’-]*");
   auto dicts = all();
   auto matches = word.all(txt);
   std::vector<std::string> words;
   std::set<std::string> seen, starts;
   for (auto &m : matches) {
     if (seen.insert(text::lower(m.groups[0])).second && words.size() < limit) words.push_back(m.groups[0]);
-    auto before = tail.replace(txt.substr(0, m.begin), "");
-    // A sentence's first word is capitalised by spelling, not by meaning: "Er" is "er".
-    if (before.empty() || std::string(".!?:").find(before.back()) != std::string::npos || before.ends_with("…")) starts.insert(m.groups[0]);
+    // A sentence's first word is capitalised by spelling, not by meaning: "Er" is "er". Back over the spaces before it
+    // (PCRE2's \s: ASCII), not the whole text before it again for every word.
+    auto e = m.begin;
+    while (e > 0 && std::string_view(" \t\n\v\f\r").find(txt[e - 1]) != std::string_view::npos) --e;
+    auto before = std::string_view(txt).substr(0, e);
+    if (before.empty() || std::string_view(".!?:").find(before.back()) != std::string_view::npos || before.ends_with("…")) starts.insert(m.groups[0]);
   }
   std::map<std::string, std::vector<std::pair<StarDict *, std::vector<Hit>>>> found;
   std::map<std::string, int> known;
