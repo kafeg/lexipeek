@@ -24,13 +24,25 @@ json read(const fs::path &data) {
   }
 }
 
+// A field, or [def] when it is missing or of another type: one bad field (an older build's, a hand edit) keeps the rest.
+template <class T>
+T get(const json &j, const char *key, const T &def) {
+  auto it = j.is_object() ? j.find(key) : j.end();
+  if (!j.is_object() || it == j.end()) return def;
+  try {
+    return it->template get<T>();
+  } catch (const json::exception &) {
+    return def;
+  }
+}
+
 Hotkey hotkey(const json &j, Hotkey def) {
   if (!j.is_object()) return def;
-  def.key = j.value("key", def.key);
-  def.option = j.value("option", def.option);
-  def.command = j.value("command", def.command);
-  def.control = j.value("control", def.control);
-  def.shift = j.value("shift", def.shift);
+  def.key = get(j, "key", def.key);
+  def.option = get(j, "option", def.option);
+  def.command = get(j, "command", def.command);
+  def.control = get(j, "control", def.control);
+  def.shift = get(j, "shift", def.shift);
   return def;
 }
 
@@ -41,15 +53,15 @@ json to_json(const Hotkey &h) {
 CardPrefs card(const json &j) {
   CardPrefs c;
   if (!j.is_object()) return c;
-  c.phrase_open = j.value("phrase_open", c.phrase_open);
-  c.full = j.value("full", c.full);
-  c.grammar = j.value("grammar", c.grammar);
-  c.sections = j.value("sections", c.sections);
-  c.width = j.value("width", c.width);
-  c.text = j.value("text", c.text);
-  c.font = j.value("font", c.font);
-  c.height = j.value("height", c.height);
-  c.history = j.value("history", c.history);
+  c.phrase_open = get(j, "phrase_open", c.phrase_open);
+  c.full = get(j, "full", c.full);
+  c.grammar = get(j, "grammar", c.grammar);
+  c.sections = get(j, "sections", c.sections);
+  c.width = get(j, "width", c.width);
+  c.text = get(j, "text", c.text);
+  c.font = get(j, "font", c.font);
+  c.height = get(j, "height", c.height);
+  c.history = get(j, "history", c.history);
   return c;
 }
 
@@ -61,15 +73,15 @@ json to_json(const CardPrefs &c) {
 AiSettings ai(const json &j) {
   AiSettings a;
   if (!j.is_object()) return a;
-  a.provider = j.value("provider", a.provider);
-  a.models = j.value("models", a.models);
-  a.url = j.value("url", a.url);
-  a.commands = j.value("commands", a.commands);
-  a.translate = j.value("translate", a.translate);
-  a.prefetch = j.value("prefetch", a.prefetch);
-  a.prompts = j.value("prompts", a.prompts);
-  a.picked = j.value("picked", a.picked);
-  a.recall = j.value("recall", a.recall);
+  a.provider = get(j, "provider", a.provider);
+  a.models = get(j, "models", a.models);
+  a.url = get(j, "url", a.url);
+  a.commands = get(j, "commands", a.commands);
+  a.translate = get(j, "translate", a.translate);
+  a.prefetch = get(j, "prefetch", a.prefetch);
+  a.prompts = get(j, "prompts", a.prompts);
+  a.picked = get(j, "picked", a.picked);
+  a.recall = get(j, "recall", a.recall);
   return a;
 }
 
@@ -88,52 +100,52 @@ Settings load_settings(const fs::path &data) {
   if (ui_platform() == "windows")
     for (auto *h : {&s.lookup, &s.input}) h->option = false, h->command = h->shift = true;
   try {
-    s.answer = j.value("answer", s.answer);
+    s.answer = get(j, "answer", s.answer);
     if (j.contains("method") && j["method"].is_string()) {
       s.mt_off = j["method"] == "off";
       s.method = method_from(j["method"].get<std::string>());
     }
     if (j.contains("hotkeys")) {
-      s.lookup = hotkey(j["hotkeys"].value("lookup", json()), s.lookup);
-      s.input = hotkey(j["hotkeys"].value("input", json()), s.input);
+      s.lookup = hotkey(get(j["hotkeys"], "lookup", json()), s.lookup);
+      s.input = hotkey(get(j["hotkeys"], "input", json()), s.input);
     }
-    s.open_at_login = j.value("open_at_login", s.open_at_login);
-    s.selection_icon = j.value("selection_icon", s.selection_icon);
-    s.pin_moved = j.value("pin_moved", s.pin_moved);
-    s.mt_english = j.value("mt_english", s.mt_english);
-    s.first_run = j.value("first_run", s.first_run);
-    s.keep_model = j.value("keep_model", s.keep_model);
+    s.open_at_login = get(j, "open_at_login", s.open_at_login);
+    s.selection_icon = get(j, "selection_icon", s.selection_icon);
+    s.pin_moved = get(j, "pin_moved", s.pin_moved);
+    s.mt_english = get(j, "mt_english", s.mt_english);
+    s.first_run = get(j, "first_run", s.first_run);
+    s.keep_model = get(j, "keep_model", s.keep_model);
     // One of Settings → General's choices (minutes; 0: until quit), else the default.
     if (s.keep_model != 0 && s.keep_model != 1 && s.keep_model != 15 && s.keep_model != 60) s.keep_model = 5;
-    s.ignore_apps = j.value("ignore_apps", s.ignore_apps);
-    if (auto d = j.value("dicts", json::object()); d.is_object()) {
-      s.dicts.order = d.value("order", s.dicts.order);
-      s.dicts.off = d.value("off", s.dicts.off);
-      s.dicts.folders = d.value("folders", s.dicts.folders);
-      s.dicts.sources_off = d.value("sources_off", s.dicts.sources_off);
-      s.dicts.got = d.value("got", s.dicts.got);
+    s.ignore_apps = get(j, "ignore_apps", s.ignore_apps);
+    if (auto d = get(j, "dicts", json::object()); d.is_object()) {
+      s.dicts.order = get(d, "order", s.dicts.order);
+      s.dicts.off = get(d, "off", s.dicts.off);
+      s.dicts.folders = get(d, "folders", s.dicts.folders);
+      s.dicts.sources_off = get(d, "sources_off", s.dicts.sources_off);
+      s.dicts.got = get(d, "got", s.dicts.got);
     }
-    s.card = card(j.value("card", json()));
-    s.ui_lang = j.value("ui_lang", s.ui_lang);
-    s.theme = j.value("theme", s.theme);
-    s.sync = j.value("sync", s.sync);
-    s.ai = ai(j.value("ai", json()));
-    if (auto st = j.value("study", json::object()); st.is_object())
+    s.card = card(get(j, "card", json()));
+    s.ui_lang = get(j, "ui_lang", s.ui_lang);
+    s.theme = get(j, "theme", s.theme);
+    s.sync = get(j, "sync", s.sync);
+    s.ai = ai(get(j, "ai", json()));
+    if (auto st = get(j, "study", json::object()); st.is_object())
       for (auto &[answer, langs] : st.items())
         if (langs.is_array())
           if (auto l = study_parse(langs.get<std::vector<std::string>>()); !l.empty()) s.study[answer] = l;
-    if (auto sp = j.value("speech", json::object()); sp.is_object()) {
-      s.speech.on = sp.value("on", s.speech.on);
-      s.speech.male = sp.value("male", s.speech.male);
-      s.speech.gpu = sp.value("gpu", s.speech.gpu);
-      s.speech.keep = sp.value("keep", s.speech.keep);
-      s.speech.off = sp.value("off", s.speech.off);
+    if (auto sp = get(j, "speech", json::object()); sp.is_object()) {
+      s.speech.on = get(sp, "on", s.speech.on);
+      s.speech.male = get(sp, "male", s.speech.male);
+      s.speech.gpu = get(sp, "gpu", s.speech.gpu);
+      s.speech.keep = get(sp, "keep", s.speech.keep);
+      s.speech.off = get(sp, "off", s.speech.off);
     }
-    if (auto a = j.value("anki", json::object()); a.is_object()) {
+    if (auto a = get(j, "anki", json::object()); a.is_object()) {
       auto &k = s.anki;
-      k.on = a.value("on", k.on), k.url = a.value("url", k.url), k.sync = a.value("sync", k.sync);
-      k.words = a.value("words", k.words), k.phrases = a.value("phrases", k.phrases), k.history = a.value("history", k.history);
-      k.words_on = a.value("words_on", k.words_on), k.phrases_on = a.value("phrases_on", k.phrases_on), k.history_on = a.value("history_on", k.history_on);
+      k.on = get(a, "on", k.on), k.url = get(a, "url", k.url), k.sync = get(a, "sync", k.sync);
+      k.words = get(a, "words", k.words), k.phrases = get(a, "phrases", k.phrases), k.history = get(a, "history", k.history);
+      k.words_on = get(a, "words_on", k.words_on), k.phrases_on = get(a, "phrases_on", k.phrases_on), k.history_on = get(a, "history_on", k.history_on);
     }
   } catch (const std::exception &) {
     // A field of the wrong type: what was read before it stays (the platform's defaults too).
@@ -184,8 +196,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   auto tmp = data / "settings.json.tmp";
   {
     std::ofstream f(tmp, std::ios::binary);
-    if (!f) return tr("err_write", {text::utf8_of(tmp.filename())});
-    f << j.dump(2) << "\n";
+    if (!(f << j.dump(2) << "\n") || !f.flush()) return fs::remove(tmp, ec), tr("err_write", {text::utf8_of(tmp.filename())});
   }
   fs::rename(tmp, data / "settings.json", ec);
   return ec ? ec.message() : "";

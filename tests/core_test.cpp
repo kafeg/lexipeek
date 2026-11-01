@@ -209,6 +209,10 @@ TEST_CASE("settings: defaults, round trip, unknown fields kept") {
   CHECK(all.find("future") != std::string::npos);
   std::ofstream(d / "settings.json") << "{broken";
   CHECK(load_settings(d).answer == "ru");
+  // A field of another type is that field's default only: the sync folder after it stays (a save keeps it).
+  std::ofstream(d / "settings.json") << R"({"answer": null, "card": {"font": null}, "sync": "/s", "theme": "dark"})";
+  CHECK(load_settings(d).sync == "/s");
+  CHECK(load_settings(d).theme == "dark");
   wipe(d);
 }
 
