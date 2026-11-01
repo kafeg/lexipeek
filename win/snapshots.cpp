@@ -120,6 +120,7 @@ struct Request {
   std::optional<std::string> open, section, answer;
   std::optional<int> entry;
   std::optional<Method> method;
+  std::optional<speech::Phase> read;  // &read=loading|making|ready: ▶ drawn in that phase of a reading
   bool first = true;
 };
 
@@ -217,6 +218,7 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
   if (!f["section"].empty()) r.section = f["section"];
   if (!f["answer"].empty()) r.answer = f["answer"];
   if (!f["entry"].empty()) r.entry = std::stoi(f["entry"]);
+  if (auto p = f["read"]; !p.empty()) r.read = p == "loading" ? speech::Phase::loading : p == "making" ? speech::Phase::making : speech::Phase::ready;
   auto m = f["method"];
   r.ai = m == "ai";
   if (m == "fast") r.method = Method::fast;
@@ -260,6 +262,7 @@ std::optional<Case> card_case(const std::string &line, const std::string &fixtur
     }
     if (r.save && !model.nav.state.saved) return r.save = false, model.toggle_saved(), true;
     if (r.whole) return r.whole = false, s.card.card.show_whole(true), true;
+    if (r.read) return model.show_reading(*std::exchange(r.read, std::nullopt)), true;
     return false;
   };
   return c;

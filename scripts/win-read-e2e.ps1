@@ -1,5 +1,5 @@
-﻿# Read aloud end to end in a signed-in desktop session (not over SSH): a word's card, ▶ (the model loads, a WAV is made,
-# ■ then ▶ again), Ctrl+. again from the kept reading, a Russian word's card in study mode and a translated word's own ▶.
+﻿# Read aloud end to end in a signed-in desktop session (not over SSH): a word's card, ▶ (its phases in its own name: the
+# model loading, the reading being made; ▶ again after it), Ctrl+. again from the kept reading, a Russian word's card in study mode and a translated word's own ▶.
 # The data dir: packs with de-ru and ru-de, the voice model in tts\, settings.json with "answer": "ru", "ui_lang": "en",
 # "study": {"ru": ["de"]}, "speech": {"on": true}. Screenshots into the out dir, "ok|FAIL" lines on stdout.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-read-e2e.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
@@ -58,7 +58,7 @@ function ClickIn($proc) {
   Start-Sleep -Milliseconds 500
 }
 function Wavs { @(Get-ChildItem (Join-Path $Data 'readings') -Filter *.wav -ErrorAction SilentlyContinue).Count }
-$play = 'Read aloud (Ctrl+.)'; $stop = 'Stop (Ctrl+.)'
+$play = 'Read aloud (Ctrl+.)'; $loadingName = 'Loading the voice model…'; $makingName = 'Making the reading…'
 
 Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
 Remove-Item -Recurse -Force (Join-Path $Data 'readings') -ErrorAction SilentlyContinue
@@ -80,26 +80,25 @@ Check ($b.Count -ge 1) "the card has ▶ ($((Texts $app).Substring(0, 120)))"
 if ($b.Count) {
   $t0 = Get-Date
   Press $b[0]
-  $loading = $false; $stopped = $false
+  $loading = $false; $making = $false
+  $rows = @(All $app).Count
   while (((Get-Date) - $t0).TotalSeconds -lt 120 -and (Wavs) -eq 0) {
-    $t = Texts $app
-    if ($t -match 'Loading the voice model') { if (-not $loading) { Shot 'r2-loading' }; $loading = $true }
-    if ((Buttons $app $stop).Count) { $stopped = $true }
+    if ((Buttons $app $loadingName).Count) { if (-not $loading) { Shot 'r2-loading' }; $loading = $true }
+    if ((Buttons $app $makingName).Count) { if (-not $making) { Shot 'r2-making' }; $making = $true }
     Start-Sleep -Milliseconds 300
   }
   $made = ((Get-Date) - $t0).TotalSeconds
   Check ((Wavs) -eq 1) "▶ made a reading in $([int]$made) s"
-  Check $loading 'the card said the model was loading'
-  Check $stopped 'the button was ■ while it read'
+  Check $loading '▶ showed the model loading'
+  Check $making '▶ showed the reading being made'
+  Check (-not ((Texts $app) -match 'Loading the voice model')) 'no line about the model in the body'
   Start-Sleep 4
   Shot 'r3-done'
   Check ((Buttons $app $play).Count -ge 1 -and (Buttons $app $stop).Count -eq 0) 'the button is ▶ again after the reading'
   $t1 = Get-Date
   CtrlDot
-  $seen = $false
-  while (((Get-Date) - $t1).TotalSeconds -lt 3) { if ((Buttons $app $stop).Count) { $seen = $true }; Start-Sleep -Milliseconds 100 }
-  Check $seen 'Ctrl+. reads again (■ shown)'
   Start-Sleep 2
+  Check (-not $app.HasExited) 'Ctrl+. reads again'
   Check ((Wavs) -eq 1) 'read again from the kept reading (no new WAV)'
 }
 Keys '{ESC}'

@@ -156,6 +156,7 @@ void CardModel::choose_ai() { session_.set_key(key()), session_.choose_ai(), act
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
 void CardModel::cancel() { session_.cancel(), session_.stop_reading(), acted(); }
 void CardModel::read(int row) { session_.read(row), acted(); }
+void CardModel::show_reading(speech::Phase p) { session_.show_reading(p), acted(); }
 
 void CardModel::toggle_pin() {
   pinned = !pinned;
@@ -163,6 +164,13 @@ void CardModel::toggle_pin() {
 }
 
 namespace {
+
+// ▶ and its reading's phases in its own place (a button of one size: nothing moves): the model loading (a clock), the
+// reading being made (a speaker), ■ while it plays.
+wchar_t read_glyph(bool reading, speech::Phase p) {
+  if (!reading) return 0xE768;
+  return static_cast<wchar_t>(p == speech::Phase::loading ? 0xE823 : p == speech::Phase::making ? 0xE767 : 0xE71A);
+}
 
 // Windows 11's text and fill colours (its design tokens) for the card's theme: runs take no theme resources.
 xaml::Media::SolidColorBrush brush(uint32_t argb) {
@@ -372,7 +380,10 @@ void CardWidget::rebuild() {
     g.ColumnDefinitions().Append(narrow);
     g.Children().Append(row(r));
     int at = static_cast<int>(i);
-    auto play = command(r.reading ? 0xE71A : 0xE768, app::text(r.reading ? "read_stop" : "read_help"), [this, at] { m_.read(at); }, nullptr, 12);
+    auto play = command(read_glyph(r.reading, r.read_phase),
+                        app::text(!r.reading ? "read_help" : r.read_phase == speech::Phase::loading ? "read_loading"
+                                                           : r.read_phase == speech::Phase::making ? "read_making" : "read_stop"),
+                        [this, at] { m_.read(at); }, nullptr, 12);
     play.VerticalAlignment(xaml::VerticalAlignment::Top);
     controls::Grid::SetColumn(play, 1);
     g.Children().Append(play);
@@ -639,7 +650,7 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
     next.IsEnabled(v.next);
     left.Children().Append(next);
   }
-  if (!v.read.text.empty()) right.Children().Append(command(v.reading ? 0xE71A : 0xE768, v.read_help, [this] { m_.read(); }));
+  if (!v.read.text.empty()) right.Children().Append(command(read_glyph(v.reading, v.read_phase), v.read_help, [this] { m_.read(); }));
   // A pager's row has no room for copy (and a page of words has nothing to copy).
   if (!v.copy.empty() && v.pager.empty()) {
     auto copied = v.copy;
