@@ -57,7 +57,6 @@ std::vector<Note> backlog(const std::vector<Note> &all, const Sent &sent);
 
 enum class Code {
   ok,
-  off,          // the binding is off
   not_running,  // nothing answers at the address: Anki is not running, or AnkiConnect is not installed
   need_key,     // AnkiConnect wants its key
   old,          // AnkiConnect older than API version 6

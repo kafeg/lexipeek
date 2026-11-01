@@ -671,7 +671,6 @@
 {"anki_old", "AnkiConnect jest za stary: zaktualizuj go w Anki (Narzędzia → Dodatki)."},
 {"anki_model_changed", "Typ notatki {1} w Anki nie ma pola {2}: zmień jego nazwę w Anki, a powstanie nowy."},
 {"anki_refused", "Anki nie przyjęło: {1}"},
-{"anki_off", "Wysyłanie do Anki jest wyłączone."},
 {"anki_voice_t", "Pobierz model głosu do nagrań"},
 {"anki_voice_d", "Do tego czasu notatki idą bez nagrania i dostaną je, gdy model będzie."},
 {"anki_send_t", "Do wysłania"},

@@ -239,11 +239,6 @@ std::string StarDict::stamp() const {
   return s;
 }
 
-bool StarDict::ready() {
-  std::lock_guard g(mu_);
-  return !index_.empty() || (slurp(work_ / "stamp") == stamp() && fs::exists(work_ / "index.ipk"));
-}
-
 void StarDict::prepare() {
   std::lock_guard g(mu_);
   if (!index_.empty()) return;

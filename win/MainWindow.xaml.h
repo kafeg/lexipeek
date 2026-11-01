@@ -39,7 +39,6 @@ struct MainWindow : MainWindowT<MainWindow> {
   Microsoft::UI::Dispatching::DispatcherQueueTimer memory_{nullptr};
   int page_ = lookup, notes_page_ = 0, listening_ = -1, card_listening_ = -1;
   bool help_drawn_ = false;
-  std::shared_ptr<bool> alive_ = std::make_shared<bool>(true);  // work off the window's thread finds it gone
 };
 
 }  // namespace winrt::LexiPeek::implementation

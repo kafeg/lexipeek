@@ -134,7 +134,6 @@ std::vector<Answer> multi(const AnkiSettings &s, const std::string &key, const T
 std::string text_of(Code c, const std::string &error) {
   switch (c) {
     case Code::ok: return "";
-    case Code::off: return tr("anki_off");
     case Code::not_running: return tr("anki_not_running_t");
     case Code::need_key: return tr("anki_need_key_t");
     case Code::old: return tr("anki_old");

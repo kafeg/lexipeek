@@ -41,7 +41,6 @@ class StarDict {
   // The .ifo's wordcount, 0 when it has none.
   long words() const { return words_; }
   // Its own index is built (a lookup needs no build first).
-  bool ready();
 
   // Builds the index when it is missing or from other files (once; slow for a big dictionary).
   void prepare();

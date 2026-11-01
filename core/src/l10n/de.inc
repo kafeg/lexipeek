@@ -667,7 +667,6 @@
 {"anki_old", "AnkiConnect ist zu alt: Aktualisieren Sie es in Anki (Extras → Add-ons)."},
 {"anki_model_changed", "Dem Notiztyp {1} in Anki fehlt das Feld {2}: Benennen Sie ihn in Anki um, dann wird ein neuer angelegt."},
 {"anki_refused", "Anki hat es nicht angenommen: {1}"},
-{"anki_off", "Das Senden an Anki ist aus."},
 {"anki_voice_t", "Sprachmodell für Audio herunterladen"},
 {"anki_voice_d", "Bis dahin gehen Notizen ohne Audio und bekommen es, sobald das Modell da ist."},
 {"anki_send_t", "Zu senden"},

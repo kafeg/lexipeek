@@ -94,13 +94,6 @@ void Tray::remove() {
   added_ = false;
 }
 
-RECT Tray::rect() const {
-  NOTIFYICONIDENTIFIER id{sizeof id, hwnd_, 1, {}};
-  RECT r{};
-  if (FAILED(Shell_NotifyIconGetRect(&id, &r))) return {};
-  return r;
-}
-
 LRESULT CALLBACK Tray::proc(HWND h, UINT m, WPARAM w, LPARAM l) {
   auto *t = reinterpret_cast<Tray *>(GetWindowLongPtrW(h, GWLP_USERDATA));
   if (!t) return DefWindowProcW(h, m, w, l);

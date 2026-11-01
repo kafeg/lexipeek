@@ -667,7 +667,6 @@
 {"anki_old", "AnkiConnect is too old: update it in Anki (Tools → Add-ons)."},
 {"anki_model_changed", "The note type {1} in Anki has no field {2}: rename that note type in Anki, and a new one is made."},
 {"anki_refused", "Anki did not take it: {1}"},
-{"anki_off", "Sending to Anki is off."},
 {"anki_voice_t", "Download the voice model for audio"},
 {"anki_voice_d", "Notes go without audio until then, and get it once the model is there."},
 {"anki_send_t", "Notes to send"},

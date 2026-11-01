@@ -4,8 +4,6 @@
 #include "MainWindow.g.cpp"
 #endif
 #include <algorithm>
-#include <shlobj_core.h>
-#include <shobjidl_core.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include "resource.h"
 #include "settings_ui.hpp"
@@ -46,7 +44,6 @@ void MainWindow::InitializeComponent() {
 }
 
 MainWindow::~MainWindow() {
-  *alive_ = false;
   if (memory_) memory_.Stop();
   if (listening_ >= 0) notes_bus().forget(listening_);
   if (keep_) keep_->card.forget(card_listening_);

@@ -1,12 +1,11 @@
 # Read aloud (spec M9): qwentts.cpp (MIT) as its own shared library — only its C ABI (qt_*) exported, its ggml fork inside
 # (llama.cpp's ggml is another copy: the two cannot be linked into one binary). Metal on macOS, Vulkan on Windows.
-# Windows: qwen.dll beside each program (lexipeek_qwentts_dll); Linux not yet (LEXIPEEK_TTS_LIBRARY: built, not linked).
+# Windows: qwen.dll beside each program (lexipeek_qwentts_dll); Linux not yet.
 if(APPLE OR WIN32)
   option(LEXIPEEK_TTS "Read aloud (qwentts.cpp)" ON)
 else()
   option(LEXIPEEK_TTS "Read aloud (qwentts.cpp)" OFF)
 endif()
-option(LEXIPEEK_TTS_LIBRARY "Build Read aloud's library without linking it" OFF)
 
 # The library's own build: a separate CMake project (its ggml next to llama.cpp's would clash as targets too).
 function(lexipeek_qwentts_args out)
@@ -27,7 +26,7 @@ function(lexipeek_qwentts_args out)
   set(${out} ${args} PARENT_SCOPE)
 endfunction()
 
-if(LEXIPEEK_TTS OR LEXIPEEK_TTS_LIBRARY)
+if(LEXIPEEK_TTS)
   include(ExternalProject)
   lexipeek_qwentts_args(QWENTTS_ARGS)
   set(QWENTTS_DIR ${CMAKE_BINARY_DIR}/engines/qwentts)

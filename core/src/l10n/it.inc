@@ -667,7 +667,6 @@
 {"anki_old", "AnkiConnect è troppo vecchio: aggiornalo in Anki (Strumenti → Componenti aggiuntivi)."},
 {"anki_model_changed", "Il tipo di nota {1} in Anki non ha il campo {2}: rinominalo in Anki e ne verrà creato uno nuovo."},
 {"anki_refused", "Anki non l'ha accettato: {1}"},
-{"anki_off", "L'invio ad Anki è disattivato."},
 {"anki_voice_t", "Scarica il modello vocale per l'audio"},
 {"anki_voice_d", "Fino ad allora le note partono senza audio e lo ricevono quando il modello c'è."},
 {"anki_send_t", "Da inviare"},

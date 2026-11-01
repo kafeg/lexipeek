@@ -85,11 +85,10 @@ final class CoreClient {
     }
 
     func notes(_ tab: lexipeek.NotesTab, page: Int = 0) -> lexipeek.NotesView { engine.notes(tab, Int32(page)) }
-    func isSaved(_ card: lexipeek.Card) -> Bool { engine.saved(card) }
     func removeNote(_ tab: lexipeek.NotesTab, _ text: String) { engine.remove_note(tab, std.string(text)) }
     func clearHistory() { engine.clear_history() }
 
-    // Notes → Export… / Import… off the main queue; done gets what to say.
+    // Settings → Sync → Export… / Import… off the main queue; done gets what to say.
     func backup(_ file: String, done: @escaping (String) -> Void) { run(done) { $0.backup(std.string(file)) } }
     func restore(_ file: String, done: @escaping (String) -> Void) { run(done) { $0.restore(std.string(file)) } }
 

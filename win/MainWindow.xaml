@@ -68,12 +68,11 @@
                      VerticalAlignment="Center" Margin="0,0,0,48" Style="{StaticResource BodyTextBlockStyle}"
                      Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
         </Grid>
-        <!-- Words · Phrases · History: the list's page, its commands, the backup. -->
+        <!-- Words · Phrases · History: the list's page and its commands. -->
         <Grid x:Name="NotesPage" Grid.Row="1" Visibility="Collapsed" Padding="36,0,36,24" RowSpacing="12">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
           <TextBlock x:Name="NotesHeading" Style="{StaticResource TitleTextBlockStyle}" Margin="0,4,0,4" />

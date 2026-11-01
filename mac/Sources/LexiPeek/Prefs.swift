@@ -10,11 +10,9 @@ final class Prefs: ObservableObject {
     @Published var translateKey: Shortcut { didSet { save() } }
     @Published var inputKey: Shortcut { didSet { save() } }
     @Published var offApps: [String] { didSet { save() } }
-    @Published var method: String { didSet { save() } }
     @Published var answer: String { didSet { save() } }
     @Published var selectionIcon: Bool { didSet { save() } }
     @Published var pinMoved: Bool { didSet { save() } }
-    @Published var firstRun: Bool { didSet { save() } }
     @Published var error = ""
     // Bumped whenever settings.json changed here: the core is configured again.
     @Published private(set) var changed = 0
@@ -25,11 +23,9 @@ final class Prefs: ObservableObject {
         translateKey = Self.shortcut(s.lookup) ?? .translate
         inputKey = Self.shortcut(s.input) ?? .input
         offApps = s.ignore_apps.map { String($0) }
-        method = String(lexipeek.app.method_id(s))
         answer = String(s.answer)
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
-        firstRun = s.first_run
         Self.theme(String(s.theme))
     }
 
@@ -40,11 +36,9 @@ final class Prefs: ObservableObject {
         if let k = Self.shortcut(s.lookup), k != translateKey { translateKey = k }
         if let k = Self.shortcut(s.input), k != inputKey { inputKey = k }
         offApps = s.ignore_apps.map { String($0) }
-        method = String(lexipeek.app.method_id(s))
         answer = String(s.answer)
         selectionIcon = s.selection_icon
         pinMoved = s.pin_moved
-        firstRun = s.first_run
         Self.theme(String(s.theme))
         loading = false
         self.error = error
@@ -83,11 +77,9 @@ final class Prefs: ObservableObject {
         s.lookup = Self.hotkey(translateKey)
         s.input = Self.hotkey(inputKey)
         s.ignore_apps = offApps.cxx
-        lexipeek.app.set_method(&s, std.string(method))
         s.answer = std.string(answer.isEmpty ? "ru" : answer)
         s.selection_icon = selectionIcon
         s.pin_moved = pinMoved
-        s.first_run = firstRun
         error = String(lexipeek.app.save(std.string(), s))
         changed += 1
     }

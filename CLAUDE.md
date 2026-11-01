@@ -148,7 +148,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   shared library (`cmake/tts.cmake`: an ExternalProject of `engines/qwentts`, `libqwen.dylib` exporting only `qt_*`, its ggml
   fork static inside, its Metal ObjC class renamed) — never linked statically next to llama.cpp's ggml. `LEXIPEEK_TTS` on on
   macOS (the app embeds the dylib in Frameworks; `LexiPeek.entitlements` turns library validation off: a local or ad-hoc
-  signature has no Team ID), off elsewhere (Windows CI builds the library alone, `LEXIPEEK_TTS_LIBRARY`); off, `built()` is false.
+  signature has no Team ID) and on Windows (`qwen.dll` beside each program), off on Linux; off, `built()` is false.
   `speech.cpp`: the model's pinned HF files and sha256, `max_tokens` (a reading's length by its text), `.rvq` packing (11 bits, 16 codebooks),
   WAV in (torchaudio's sinc resample to 24 kHz, as qwentts reads a reference: latents byte-identical to `qwen-codec --talker`)
   and out, voices: the app's (`core/src/speech/voices/<lang>-<female|male>.{spk,rvq,txt}`, embedded by CMake as
@@ -246,7 +246,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
   Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
   Manager): `scripts/win-e2e.ps1` there (self-test, a selection in Notepad, hotkeys, Esc, typing, a link, a second
-  launch, screenshots); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
+  launch, screenshots), `scripts/win-apps.ps1` (the hotkey in other apps: browsers, editors); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
   UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
   Mac: a web view's selection by its text markers, paragraph by paragraph (Chromium / Electron give none between
   blocks); `<data>/ax-probe` makes the lookup hotkey write what each AX way gives into `<data>/ax-probe.txt`.
