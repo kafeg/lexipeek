@@ -240,10 +240,15 @@ Speaker::~Speaker() {
 }
 
 void Speaker::configure(const SpeechSettings &s) {
-  std::lock_guard g(impl_->mu);
-  if (!s.on) impl_->host.release();
-  impl_->s = s, impl_->keep = s.keep;
-  impl_->host.set_idle(impl_->idle());
+  std::chrono::milliseconds idle;
+  {
+    std::lock_guard g(impl_->mu);
+    impl_->s = s, impl_->keep = s.keep;
+    idle = impl_->idle();
+  }
+  // The model's lock without mu: a reading holds it to its end and says how it goes under mu.
+  if (!s.on) impl_->wanted = 0, impl_->host.release();
+  impl_->host.set_idle(idle);
 }
 
 int Speaker::read(const Read &r) {
