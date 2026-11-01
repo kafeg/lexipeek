@@ -467,6 +467,11 @@ std::vector<std::string> settings_sections() {
   return names({"tab_dicts", "tab_card", "tab_ai", "sec_general", "read_section", "sec_sync"});
 }
 
+std::string settings_section_key(SettingsSection section) {
+  static const char *keys[] = {"languages", "card", "ai", "general", "read", "sync"};
+  return keys[static_cast<int>(section)];
+}
+
 std::vector<std::string> settings_tab_keys(SettingsSection section) {
   switch (section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};

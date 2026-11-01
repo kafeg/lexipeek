@@ -82,11 +82,10 @@ Case pane_case(const std::string &name) {
     return {name, [tab](Shell &s) { s.open_about(), s.about_ui->select(tab); }, [hide](Shell &s) { hide(s.about); },
             [](Shell &s) { return content(s.about); }};
   }
-  static const char *keys[] = {"languages", "card", "ai", "general", "read", "sync"};
   SettingsSection sec = SettingsSection::general;
   int tab = 0;
   for (auto x : shown_sections) {
-    auto base = std::string("settings-") + keys[static_cast<int>(x)];
+    auto base = "settings-" + settings_section_key(x);
     if (!name.starts_with(base)) continue;
     sec = x;
     auto tabs = settings_tab_keys(x);
@@ -296,11 +295,10 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures, co
        [asked](Shell &) { return content(*asked); }},
   };
   // Every Settings section × tab, About's tabs.
-  static const char *keys[] = {"languages", "card", "ai", "general", "read", "sync"};
   for (auto sec : shown_sections) {
     auto tabs = settings_tab_keys(sec);
     for (size_t tab = 0; tab < std::max<size_t>(1, tabs.size()); ++tab)
-      all.push_back(pane_case(std::string("settings-") + keys[static_cast<int>(sec)] + (tabs.empty() ? "" : "-" + tabs[tab])));
+      all.push_back(pane_case("settings-" + settings_section_key(sec) + (tabs.empty() ? "" : "-" + tabs[tab])));
   }
   all.push_back(pane_case("about"));
   all.push_back(pane_case("about-licenses"));

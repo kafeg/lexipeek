@@ -450,8 +450,9 @@ struct SettingsPage {
 
 std::vector<std::string> settings_sections();
 std::vector<std::string> settings_tabs(SettingsSection section);
-// The tabs' names that do not change with the language ("packs", "other-dictionaries"): snapshot names.
+// The tabs' names that do not change with the language ("packs", "other-dictionaries"): snapshot names; the section's too.
 std::vector<std::string> settings_tab_keys(SettingsSection section);
+std::string settings_section_key(SettingsSection section);
 SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, const SettingsState &state);
 // A row's change → the settings ("" when the key is not the row's). Toggles and choices by the row's key and index.
 void settings_toggle(Settings &s, const std::string &key, bool on);
