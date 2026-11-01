@@ -5,8 +5,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer push stops the run before it, except on main: a run there finishes (Windows takes ~30 min), the newest push
-# waits for it. A run by hand is its own group: it has the Qt job.
+# A newer push stops the run before it, except on main: a run there finishes, the newest push waits for it. A run by
+# hand is its own group: it has the ASan and Qt jobs.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -23,7 +23,6 @@ jobs:
           - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en" }
           - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en" }
           - { name: windows-x64, os: windows-2025, packs: "langid dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en", cmake: "-DLEXIPEEK_QT=OFF" }
-          - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
     runs-on: ${{ matrix.os }}
     env:
       TYPE: ${{ matrix.type || 'Release' }}
@@ -38,14 +37,14 @@ jobs:
           [ "$RUNNER_OS" = Linux ] || git submodule update --init --recursive --depth 1 engines/qwentts || git submodule update --init --recursive engines/qwentts
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
-      # vcpkg's binaries: the newest cache of this vcpkg and manifest; saved again after Configure when it built something
-      # (a runner image with another compiler gives other ABI hashes: restored 0 packages, all built again).
+      # vcpkg's binaries by this vcpkg, manifest and runner image; another image's cache is restored, then saved under
+      # this key right after Configure without the zips this build does not use (also when a test fails later).
       - uses: actions/cache/restore@v4
         id: vcpkg
         with:
           path: .vcpkg-cache
-          key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
-          restore-keys: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
+          key: vcpkg2-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-${{ env.ImageVersion }}
+          restore-keys: vcpkg2-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
       - name: Tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
@@ -66,19 +65,17 @@ jobs:
       - name: Configure
         shell: bash
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
-      # Zips of neither this build's ABIs nor the last 21 days go (another image's set ages out); the key names the rest.
       - name: vcpkg cache
-        id: vcpkg-set
         shell: bash
         run: |
-          abis=$(grep -h '^Abi:' build/vcpkg_installed/vcpkg/status | cut -d' ' -f2 | sort -u)
-          find .vcpkg-cache -name '*.zip' -mtime +21 | while read -r f; do echo "$abis" | grep -qx "$(basename "$f" .zip)" || rm "$f"; done
-          echo "key=${{ steps.vcpkg.outputs.cache-primary-key }}$(find .vcpkg-cache -name '*.zip' | sed 's|.*/||' | sort | sha1sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+          abis=$(grep -h '^Abi:' build/vcpkg_installed/vcpkg/status | cut -d' ' -f2 | tr -d '\r' | sort -u)
+          find .vcpkg-cache -name '*.zip' | while read -r f; do echo "$abis" | grep -qx "$(basename "$f" .zip)" || rm "$f"; done
+          echo "vcpkg cache: $(find .vcpkg-cache -name '*.zip' | wc -l) zips, $(echo "$abis" | wc -l) ports"
       - uses: actions/cache/save@v4
-        if: steps.vcpkg-set.outputs.key != steps.vcpkg.outputs.cache-matched-key
+        if: steps.vcpkg.outputs.cache-hit != 'true'
         with:
           path: .vcpkg-cache
-          key: ${{ steps.vcpkg-set.outputs.key }}
+          key: ${{ steps.vcpkg.outputs.cache-primary-key }}
       - name: Build
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - name: Packs (Windows)
@@ -121,6 +118,36 @@ jobs:
           $cli --data models langid "Das Haus am Ende der Straße ist alt."
           $cli --data models translate --from de --to en "Das Haus am Ende der Straße ist alt."
           if [ -d models/opus ]; then $cli --data models translate --from de --to ru --method direct "Das Haus ist alt. Der Garten ist klein."; fi
+
+  # ASan + UBSan on our code, only in a run by hand (gh workflow run ci.yml); locally: make asan
+  linux-asan:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      MODELS: langid model-de-en dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en
+    steps:
+      - uses: actions/checkout@v4
+      - name: Submodules
+        run: |
+          git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
+          git submodule update --init --recursive engines/bergamot
+          echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
+          mkdir -p .vcpkg-cache
+      - uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg2-linux-x64-asan-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-${{ env.ImageVersion }}
+          restore-keys: vcpkg2-linux-x64-asan-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: models-${{ runner.os }}-${{ hashFiles('scripts/fetch-models.sh') }}-${{ env.MODELS }}
+      - run: scripts/fetch-models.sh models $MODELS && echo "LEXIPEEK_MODELS=$PWD/models" >> "$GITHUB_ENV"
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure
 
   # Windows' fallback shell (qt/), only in a run by hand: gh workflow run ci.yml
   windows-qt:

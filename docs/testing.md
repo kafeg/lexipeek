@@ -18,7 +18,7 @@ fixed sleep.
 |---|---|---|
 | `core macos-arm64` | ctest (core, engine-pins, cli-usage), `make app-test` (LexiPeekKit), the CLI translates | langid, Mozilla de-en and en-ru, OPUS-MT de→sla, six dictionaries (de, en, ru pairs) |
 | `core linux-x64` | ctest, the CLI translates | the same |
-| `core linux-x64-asan` | ctest under ASan + UBSan | langid, Mozilla de-en, the six dictionaries |
+| `linux-asan` | ctest under ASan + UBSan, only in a run by hand (`gh workflow run ci.yml`; locally `make asan`) | langid, Mozilla de-en, the six dictionaries |
 | `core windows-x64` | ctest, the WinUI shell's build (artifact) | langid and the six dictionaries (`lexipeek-cli packs install`) |
 | `windows-qt` | the Qt shell's build, only in a run by hand (`gh workflow run ci.yml`) | — |
 
