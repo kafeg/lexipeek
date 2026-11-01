@@ -163,6 +163,7 @@ struct CoreOptions {
   CardPrefs card;                // copied into every card
   AiSettings ai;                 // the AI layer
   std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language
+  std::filesystem::path sync;        // the sync folder ("" = none)
   std::filesystem::path ai_replies;  // answers from files instead of a provider (snapshots, tests): ai/ai.hpp file_transport
 };
 

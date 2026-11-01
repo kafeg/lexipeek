@@ -1,12 +1,15 @@
-// The sync log: parse, format, read, append, merge.
+// The sync log: parse, format, read, append, merge, compact.
 #include "store/log.hpp"
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
 #include <fstream>
 #include <map>
 #include <nlohmann/json.hpp>
-#include <set>
 #include <sstream>
 #include <tuple>
+#include "text/text.hpp"
 
 namespace lexipeek::store {
 
@@ -36,20 +39,34 @@ std::int64_t num(const json &j, const char *k) {
   return i != j.end() && i->is_number_integer() ? i->get<std::int64_t>() : 0;
 }
 
+std::string dump(const ojson &j) { return j.dump(-1, ' ', false, json::error_handler_t::replace); }
+
+std::string slurp(const fs::path &f) {
+  std::ifstream in(f, std::ios::binary);
+  std::stringstream ss;
+  ss << in.rdbuf();
+  return ss.str();
+}
+
 }  // namespace
+
+std::int64_t now() {
+  if (auto f = fixed_now.load()) return f;
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
 
 Time Clock::tick(std::int64_t now) {
   last = now > last.ms ? Time{now, 0} : Time{last.ms, last.n + 1};
   return last;
 }
 
-bool before(const Line &a, const Line &b) { return std::tie(a.t, a.d) < std::tie(b.t, b.d); }
+bool before(const Line &a, const Line &b) { return std::tie(a.t, a.d, a.raw) < std::tie(b.t, b.d, b.raw); }
 
 std::optional<Line> parse(const std::string &s) {
   auto j = json::parse(s, nullptr, false);
   if (!j.is_object()) return std::nullopt;
-  auto v = j.find("v"), t = j.find("t"), op = j.find("op");
-  if (v == j.end() || !v->is_number_integer() || v->get<std::int64_t>() != 1) return std::nullopt;
+  auto t = j.find("t"), op = j.find("op");
   if (t == j.end() || !t->is_array() || t->size() != 2 || !(*t)[0].is_number_integer() || !(*t)[1].is_number_integer())
     return std::nullopt;
   if (op == j.end() || !op->is_string() || !OPS.contains(op->get<std::string>())) return std::nullopt;
@@ -62,11 +79,12 @@ std::optional<Line> parse(const std::string &s) {
   l.kind = str(j, "kind"), l.lang = str(j, "lang"), l.meaning = str(j, "meaning"), l.base = str(j, "base");
   l.c = num(j, "c"), l.ver = num(j, "ver");
   l.section = str(j, "section"), l.model = str(j, "model"), l.answer = str(j, "answer");
+  l.raw = s;
   return l;
 }
 
 std::string format(const Line &l) {
-  ojson j = {{"v", 1}, {"t", {l.t.ms, l.t.n}}, {"d", l.d}, {"op", op_name(l.op)}, {"text", l.text}};
+  ojson j = {{"t", {l.t.ms, l.t.n}}, {"d", l.d}, {"op", op_name(l.op)}, {"text", l.text}};
   switch (l.op) {
     case Op::saved_put:
       j["kind"] = l.kind, j["lang"] = l.lang, j["meaning"] = l.meaning;
@@ -82,37 +100,82 @@ std::string format(const Line &l) {
     default:
       break;
   }
-  return j.dump(-1, ' ', false, json::error_handler_t::replace);
+  return dump(j);
+}
+
+std::string month_file(std::int64_t ms) {
+  auto secs = static_cast<std::time_t>(ms >= 0 ? ms / 1000 : (ms - 999) / 1000);
+  std::tm tm{};
+#ifdef _WIN32
+  gmtime_s(&tm, &secs);
+#else
+  gmtime_r(&secs, &tm);
+#endif
+  char buf[32];
+  std::snprintf(buf, sizeof buf, "%04d-%02d.jsonl", tm.tm_year + 1900, tm.tm_mon + 1);
+  return buf;
 }
 
 std::vector<std::string> lines_of(const fs::path &file) {
-  std::ifstream in(file, std::ios::binary);
-  std::stringstream ss;
-  ss << in.rdbuf();
-  auto s = ss.str();
+  auto s = slurp(file);
   std::vector<std::string> out;
   for (size_t at = 0, nl; (nl = s.find('\n', at)) != std::string::npos; at = nl + 1) out.push_back(s.substr(at, nl - at));
   return out;
 }
 
-std::vector<Line> read_folder(const fs::path &folder) {
-  std::vector<fs::path> files;
+std::vector<fs::path> log_files(const fs::path &folder) {
+  std::vector<fs::path> out;
   std::error_code ec;
-  for (auto &e : fs::directory_iterator(folder, ec))
-    if (e.path().extension() == ".jsonl" && e.is_regular_file(ec)) files.push_back(e.path());
-  std::sort(files.begin(), files.end());
-  std::set<std::string> raw;
-  std::vector<Line> out;
-  for (auto &f : files)
-    for (auto &s : lines_of(f))
-      if (raw.insert(s).second)
-        if (auto l = parse(s)) out.push_back(std::move(*l));
-  std::stable_sort(out.begin(), out.end(), before);
+  for (auto &e : fs::directory_iterator(folder, ec)) {
+    auto name = text::utf8_of(e.path().filename());
+    if (name.ends_with(".jsonl") && !name.starts_with(".") && e.is_regular_file(ec)) out.push_back(e.path());
+  }
+  std::sort(out.begin(), out.end());
   return out;
+}
+
+std::vector<fs::path> device_folders(const fs::path &root) {
+  std::vector<fs::path> out;
+  std::error_code ec;
+  for (auto &e : fs::directory_iterator(root / "inkpeek-log", ec))
+    if (e.is_directory(ec)) out.push_back(e.path());
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+namespace {
+
+std::vector<Line> parsed(const std::set<std::string> &raw) {
+  std::vector<Line> out;
+  for (auto &s : raw)
+    if (auto l = parse(s)) out.push_back(std::move(*l));
+  std::sort(out.begin(), out.end(), before);
+  return out;
+}
+
+void collect(const fs::path &folder, std::set<std::string> &raw) {
+  for (auto &f : log_files(folder))
+    for (auto &s : lines_of(f)) raw.insert(std::move(s));
+}
+
+}  // namespace
+
+std::vector<Line> read_roots(const std::vector<fs::path> &roots) {
+  std::set<std::string> raw;
+  for (auto &r : roots)
+    for (auto &d : device_folders(r)) collect(d, raw);
+  return parsed(raw);
+}
+
+std::vector<Line> read_device(const fs::path &folder) {
+  std::set<std::string> raw;
+  collect(folder, raw);
+  return parsed(raw);
 }
 
 std::string append(const fs::path &file, const std::string &line) {
   std::error_code ec;
+  fs::create_directories(file.parent_path(), ec);
   if (auto size = fs::file_size(file, ec); !ec && size > 0) {
     std::ifstream in(file, std::ios::binary);
     in.seekg(-1, std::ios::end);
@@ -122,13 +185,65 @@ std::string append(const fs::path &file, const std::string &line) {
       auto nl = s.rfind('\n');
       in.close();
       fs::resize_file(file, nl == std::string::npos ? 0 : nl + 1, ec);
-      if (ec) return "cannot cut " + file.string() + ": " + ec.message();
+      if (ec) return "cannot cut " + text::utf8_of(file) + ": " + ec.message();
     }
   }
   std::ofstream out(file, std::ios::binary | std::ios::app);
   out << line << '\n';
   out.flush();
-  return out ? "" : "cannot write " + file.string();
+  return out ? "" : "cannot write " + text::utf8_of(file);
+}
+
+std::string write_whole(const fs::path &file, const std::string &bytes) {
+  std::error_code ec;
+  fs::create_directories(file.parent_path(), ec);
+  auto tmp = fs::path(file).concat(".tmp");
+  {
+    std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+    f << bytes;
+    f.flush();
+    if (!f) return "cannot write " + text::utf8_of(tmp);
+  }
+  fs::rename(tmp, file, ec);
+  if (ec) fs::remove(tmp, ec);
+  return ec ? "cannot write " + text::utf8_of(file) : "";
+}
+
+std::optional<DeviceFile> read_device_file(const fs::path &file) {
+  auto j = json::parse(slurp(file), nullptr, false);
+  if (!j.is_object()) return std::nullopt;
+  DeviceFile d{str(j, "device"), str(j, "app"), str(j, "name"), num(j, "created")};
+  if (d.device.empty()) return std::nullopt;
+  return d;
+}
+
+std::string format(const DeviceFile &d) {
+  return dump(ojson{{"device", d.device}, {"app", d.app}, {"name", d.name}, {"created", d.created}}) + "\n";
+}
+
+bool keep_id(const std::vector<Line> &own, const std::set<std::string> &known) {
+  if (own.empty()) return true;
+  auto top = own.back().t;
+  for (auto i = own.rbegin(); i != own.rend() && i->t == top; ++i)
+    if (!known.contains(i->raw)) return false;
+  return true;
+}
+
+std::vector<Candidate> candidates(const fs::path &root, const std::string &app, std::int64_t now) {
+  std::vector<Candidate> out;
+  for (auto &folder : device_folders(root)) {
+    auto id = text::utf8_of(folder.filename());
+    auto d = read_device_file(folder / "device.json");
+    if (!d || d->device != id || d->app != app) continue;
+    Candidate c{*d, d->created};
+    for (auto &l : read_device(folder))
+      if (l.d == id) c.active = l.t.ms;  // in order: the newest last
+    if (c.active <= now - 86'400'000) out.push_back(c);
+  }
+  std::sort(out.begin(), out.end(), [](const Candidate &a, const Candidate &b) {
+    return std::tie(b.active, a.device.device) < std::tie(a.active, b.device.device);
+  });
+  return out;
 }
 
 std::vector<Line> compact(const std::vector<Line> &lines) {
@@ -136,19 +251,20 @@ std::vector<Line> compact(const std::vector<Line> &lines) {
   for (size_t i = 0; i < lines.size(); i++) by_text[lines[i].text].push_back(i);
   std::vector<size_t> keep;
   for (auto &[text, is] : by_text) {
-    std::optional<size_t> saved, del;
-    std::map<std::string, size_t> seen;
+    std::optional<size_t> sdel, hdel, seen;
+    std::vector<size_t> puts;
     std::map<std::tuple<std::string, std::string, std::int64_t>, size_t> ai;
     for (auto i : is) {
       auto &l = lines[i];
-      if (l.op == Op::saved_put || l.op == Op::saved_del) saved = i;
-      else if (l.op == Op::history_del) del = i, seen.clear();
-      else if (l.op == Op::history_seen) seen[l.d] = i;
+      if (l.op == Op::saved_del) sdel = i, puts.clear();
+      else if (l.op == Op::saved_put) puts.push_back(i);
+      else if (l.op == Op::history_del) hdel = i, seen.reset();
+      else if (l.op == Op::history_seen) seen = i;
       else ai[{l.lang, l.section, l.ver}] = i;
     }
-    for (auto i : {saved, del})
+    for (auto i : {sdel, hdel, seen})
       if (i) keep.push_back(*i);
-    for (auto &[d, i] : seen) keep.push_back(i);
+    keep.insert(keep.end(), puts.begin(), puts.end());
     for (auto &[k, i] : ai) keep.push_back(i);
   }
   std::sort(keep.begin(), keep.end());
@@ -157,27 +273,29 @@ std::vector<Line> compact(const std::vector<Line> &lines) {
   return out;
 }
 
-std::string compact_file(const fs::path &file, size_t min) {
-  auto raw = lines_of(file);
-  if (raw.size() < min) return "";
-  std::set<std::string> once;
-  std::vector<Line> lines;
-  for (auto &s : raw)
-    if (once.insert(s).second)
-      if (auto l = parse(s)) lines.push_back(std::move(*l));
-  std::stable_sort(lines.begin(), lines.end(), before);
-  auto out = compact(lines);
-  if (out.size() * 2 > raw.size()) return "";
-  auto tmp = fs::path(file).concat(".tmp");
-  {
-    std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
-    for (auto &l : out) f << format(l) << '\n';
-    f.flush();
-    if (!f) return "cannot write " + tmp.string();
+std::string compact_folder(const fs::path &folder, size_t min) {
+  auto files = log_files(folder);
+  std::set<std::string> raw;
+  size_t total = 0;
+  for (auto &f : files)
+    for (auto &s : lines_of(f)) total++, raw.insert(std::move(s));
+  if (total < min) return "";
+  auto kept = compact(parsed(raw));
+  if (kept.size() * 2 > total) return "";
+  std::set<std::string> keep;
+  for (auto &l : kept) keep.insert(l.raw);
+  for (auto &f : files) {
+    auto lines = lines_of(f);
+    std::string out;
+    std::set<std::string> once;
+    for (auto &s : lines)
+      if (keep.contains(s) && once.insert(s).second) out += s + "\n";
+    std::error_code ec;
+    if (out.empty()) fs::remove(f, ec);
+    else if (out.size() != fs::file_size(f, ec))
+      if (auto e = write_whole(f, out); !e.empty()) return e;
   }
-  std::error_code ec;
-  fs::rename(tmp, file, ec);
-  return ec ? "cannot rename " + tmp.string() + ": " + ec.message() : "";
+  return "";
 }
 
 Records merge(const std::vector<Line> &lines) {
@@ -185,12 +303,19 @@ Records merge(const std::vector<Line> &lines) {
   for (auto &l : lines) by_text[l.text].push_back(&l);
   Records r;
   for (auto &[text, ls] : by_text) {
-    const Line *saved = nullptr, *del = nullptr, *seen = nullptr;
+    const Line *saved = nullptr, *origin = nullptr, *del = nullptr, *seen = nullptr;
     std::map<std::tuple<std::string, std::string, std::int64_t>, const Line *> ai;
     for (auto *l : ls) {
-      if (l->op == Op::saved_put || l->op == Op::saved_del) saved = l;
-      else if (l->op == Op::history_del) del = l;
-      else if (l->op == Op::ai_put) ai[{l->lang, l->section, l->ver}] = l;
+      if (l->op == Op::saved_put) {
+        saved = l;
+        if (!origin) origin = l;
+      } else if (l->op == Op::saved_del) {
+        saved = l, origin = nullptr;
+      } else if (l->op == Op::history_del) {
+        del = l;
+      } else if (l->op == Op::ai_put) {
+        ai[{l->lang, l->section, l->ver}] = l;
+      }
     }
     std::map<std::string, std::int64_t> counts;
     for (auto *l : ls)
@@ -200,13 +325,15 @@ Records merge(const std::vector<Line> &lines) {
       }
     bool kept = false;
     if (saved && saved->op == Op::saved_put) {
-      r.saved.push_back({text, saved->kind, saved->lang, saved->meaning, saved->t.ms});
+      auto id = origin->d + ":" + std::to_string(origin->t.ms) + ":" + std::to_string(origin->t.n);
+      r.saved.push_back({text, saved->kind, saved->lang, saved->meaning, saved->t.ms, id, origin->d, saved->d});
       kept = true;
     }
     if (seen) {
       std::int64_t count = 0;
-      for (auto &[d, c] : counts) count += c;
-      r.history.push_back({text, seen->kind, seen->lang, seen->meaning, seen->base, seen->t.ms, count});
+      std::vector<std::string> devices;
+      for (auto &[d, c] : counts) count += c, devices.push_back(d);
+      r.history.push_back({text, seen->kind, seen->lang, seen->meaning, seen->base, seen->t.ms, count, devices});
       kept = true;
     }
     if (kept)
@@ -227,17 +354,18 @@ std::int64_t own_count(const std::vector<Line> &lines, const std::string &device
 
 namespace lexipeek {
 
-Records merge_folder(const std::filesystem::path &folder) { return store::merge(store::read_folder(folder)); }
+Records merge_folder(const std::filesystem::path &folder) { return store::merge(store::read_roots({folder})); }
 
 std::string records_json(const Records &r) {
   using nlohmann::ordered_json;
   ordered_json j = {{"saved", ordered_json::array()}, {"history", ordered_json::array()}, {"ai", ordered_json::array()}};
   for (auto &s : r.saved)
-    j["saved"].push_back({{"text", s.text}, {"kind", s.kind}, {"lang", s.lang}, {"meaning", s.meaning}, {"created", s.created}});
+    j["saved"].push_back({{"text", s.text}, {"kind", s.kind}, {"lang", s.lang}, {"meaning", s.meaning}, {"created", s.created},
+                          {"id", s.id}, {"origin", s.origin}, {"updated_by", s.updated_by}});
   for (auto &h : r.history)
     j["history"].push_back({{"text", h.text}, {"kind", h.kind}, {"lang", h.lang},
                             {"base", h.base.empty() ? ordered_json() : ordered_json(h.base)}, {"meaning", h.meaning},
-                            {"seen", h.seen}, {"count", h.count}});
+                            {"seen", h.seen}, {"count", h.count}, {"devices", h.devices}});
   for (auto &a : r.ai)
     j["ai"].push_back({{"text", a.text}, {"lang", a.lang}, {"section", a.section}, {"ver", a.ver}, {"model", a.model},
                        {"answer", a.answer}, {"created", a.created}});

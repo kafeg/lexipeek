@@ -116,6 +116,7 @@ Settings load_settings(const fs::path &data) {
     s.card = card(j.value("card", json()));
     s.ui_lang = j.value("ui_lang", s.ui_lang);
     s.theme = j.value("theme", s.theme);
+    s.sync = j.value("sync", s.sync);
     s.ai = ai(j.value("ai", json()));
     if (auto st = j.value("study", json::object()); st.is_object())
       for (auto &[answer, langs] : st.items())
@@ -162,6 +163,7 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["card"] = to_json(s.card);
   j["ui_lang"] = s.ui_lang;
   j["theme"] = s.theme;
+  j["sync"] = s.sync;
   j["ai"] = to_json(s.ai);
   j["study"] = json::object();
   for (auto &[answer, langs] : s.study)

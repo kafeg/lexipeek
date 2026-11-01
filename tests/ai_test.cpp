@@ -264,7 +264,7 @@ TEST_CASE("ai: answers kept through the store (ai.put), so they come back offlin
   auto d = fs::temp_directory_path() / "lexipeek-ai-store";
   wipe(d);
   fs::create_directories(d);
-  Store st({d, {}, {}});
+  Store st({d, {}, {}, {}});
   REQUIRE(st.error().empty());
   st.seen("Häusern", "word", "ru", "дом", "Haus");  // the card's look: the view keeps answers of looked-up texts
   std::map<std::string, int> recall;

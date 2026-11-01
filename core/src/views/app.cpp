@@ -82,6 +82,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.card = s.card;
   o.ai = s.ai;
   o.study = s.study;
+  o.sync = text::path_of(s.sync);
   o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   o.card.read = s.speech.on;
@@ -140,8 +141,22 @@ std::string Engine::export_tsv(NotesTab tab, const std::string &file) const {
 }
 // At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five).
 void Engine::prepare() const {
+  core->store().sync(true);
   core->prepare();
   core->store().daily_backup(core->data() / "backup");
+}
+bool Engine::sync(bool force) const { return core->store().sync(force); }
+SyncInfo Engine::sync_info() const { return core->store().sync_info(); }
+SyncAsk Engine::sync_ask(const std::string &folder) const { return sync_ask_view(core->store().ask(text::path_of(folder))); }
+std::string Engine::set_sync_folder(const std::string &data, const std::string &folder, const std::string &as) const {
+  auto e = core->store().set_folder(text::path_of(folder), as);
+  if (!e.empty()) return tr("failed", {e});
+  e = update_settings(dir(data), [&](Settings &s) { s.sync = folder; });
+  return e.empty() ? "" : tr("failed", {e});
+}
+std::string Engine::set_device_name(const std::string &name) const { return core->store().set_name(name); }
+void Engine::name_device(const std::string &computer) const {
+  if (core->store().own_name().empty() && !computer.empty()) core->store().set_name(computer);
 }
 void Engine::reload() const { core->reload(); }
 std::string Engine::remove_dict(const std::string &data, const std::string &id) const {

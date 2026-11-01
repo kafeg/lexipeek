@@ -7,6 +7,7 @@
 #include <fstream>
 #include "lexipeek/app.hpp"
 #include "lexipeek/views.hpp"
+#include "text/text.hpp"
 
 using namespace lexipeek;
 namespace fs = std::filesystem;
@@ -81,7 +82,7 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
   CHECK(p.pane == "packs");
   CHECK(settings_view(SettingsSection::languages, 2, s, st).pane == "other");
   CHECK(settings_view(SettingsSection::card, 9, s, st).tab == 2);  // clamped
-  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs == std::vector<std::string>{"System", "Hotkeys"});
+  CHECK(settings_view(SettingsSection::general, 0, s, st).tabs == std::vector<std::string>{"System", "Hotkeys", "Sync"});
   // Every row has a title and a one-line description, but headings.
   s.ai.provider = "custom";
   for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general})
@@ -90,6 +91,42 @@ TEST_CASE("settings: sections and tabs as InkPeek's, a pane each") {
         CHECK(!r.title.empty());
         if (r.kind != Kind::heading) CHECK_MESSAGE(!r.about.empty(), r.title);
       }
+}
+
+TEST_CASE("settings: General → Sync — the folder, its state, this device, the devices; the question") {
+  Settings s;
+  auto st = state();
+  st.sync.self = {"mac-k3fw2xqa", "lexipeek", "Mac", 1793145600000, 0, true};
+  st.sync.devices = {st.sync.self, {"boox-7hq2mzta", "inkpeek", "Boox Note Air4 C", 1790553600000, 1793491200000, false}};
+  auto p = settings_view(SettingsSection::general, 2, s, st);
+  REQUIRE(row(p, "sync_folder"));
+  CHECK(row(p, "sync_folder")->value == "Choose…");
+  CHECK(row(p, "sync_folder")->about.starts_with("None"));
+  CHECK(!row(p, "sync_off"));
+  CHECK(row(p, "sync_name")->value == "Mac");
+  CHECK(row(p, "sync_id")->value == "mac-k3fw2xqa");
+  std::vector<std::string> devices;
+  for (auto &r : p.rows)
+    if (r.key == "sync_device") devices.push_back(r.title + " | " + r.value + " | " + r.about.substr(0, r.about.find(" · Last")));
+  CHECK(devices == std::vector<std::string>{"Mac | This device | LexiPeek · mac-k3fw2xqa · Added " + text::local_time(1793145600000),
+                                            "Boox Note Air4 C |  | InkPeek · boox-7hq2mzta"});
+  st.sync.folder = "/Volumes/Sync", st.sync.reachable = true, st.sync.read = 1793491200000;
+  p = settings_view(SettingsSection::general, 2, s, st);
+  CHECK(row(p, "sync_folder")->value == "Change…");
+  CHECK(row(p, "sync_folder")->about == "/Volumes/Sync");
+  CHECK(row(p, "sync_state")->value == "Read at " + text::local_time(1793491200000));
+  CHECK(row(p, "sync_state")->on);
+  CHECK(row(p, "sync_off"));
+  st.sync.reachable = false;
+  CHECK(!row(settings_view(SettingsSection::general, 2, s, st), "sync_state")->on);
+
+  auto a = sync_ask_view({st.sync.devices[1]});
+  REQUIRE(a.offers.size() == 1);
+  CHECK(a.offers[0].id == "boox-7hq2mzta");
+  CHECK(a.offers[0].label == "Continue as Boox Note Air4 C");
+  CHECK(a.offers[0].detail == "Last active " + text::local_time(1793491200000) + " · boox-7hq2mzta");
+  CHECK(a.new_device == "New device");
+  CHECK(sync_ask_view({}).offers.empty());
 }
 
 TEST_CASE("settings: Translation — answer, method, the English, Set Up while no pair") {

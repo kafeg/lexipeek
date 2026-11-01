@@ -1,4 +1,4 @@
-// The store: InkPeek's sync cases, the clock, the log's last line, the store's API.
+// The store: InkPeek's sync cases (reader, identity, writer), the clock, the sync folder, the store's API.
 #include <doctest/doctest.h>
 #include "temp.hpp"
 #include <algorithm>
@@ -15,6 +15,8 @@ using nlohmann::json;
 
 namespace {
 
+const fs::path SYNC = fs::path(LEXIPEEK_INKPEEK) / "tests" / "sync";
+
 fs::path fresh(const std::string &name) {
   auto d = fs::temp_directory_path() / name;
   wipe(d);
@@ -26,6 +28,13 @@ std::string slurp(const fs::path &f) {
   std::ifstream in(f, std::ios::binary);
   return {std::istreambuf_iterator<char>(in), {}};
 }
+
+// The wall clock fixed for a test, the real one again after it.
+struct Now {
+  explicit Now(std::int64_t ms) { store::fixed_now = ms; }
+  ~Now() { store::fixed_now = 0; }
+  void operator=(std::int64_t ms) const { store::fixed_now = ms; }
+};
 
 // The lists sorted by their keys: compared as sets.
 json by_key(json j) {
@@ -45,41 +54,163 @@ void check_case(const fs::path &dir, const json &got) {
   }
 }
 
-std::vector<fs::path> cases() {
+std::vector<fs::path> cases(const char *kind) {
   std::vector<fs::path> out;
-  for (auto &e : fs::directory_iterator(fs::path(LEXIPEEK_INKPEEK) / "tests" / "sync"))
-    if (fs::exists(e.path() / "expected.json")) out.push_back(e.path());
+  for (auto &e : fs::directory_iterator(SYNC / kind))
+    if (e.is_directory()) out.push_back(e.path());
   std::sort(out.begin(), out.end());
   return out;
 }
 
-// Every *.jsonl in [from] copied to a new folder.
-fs::path copy_logs(const fs::path &from, const std::string &name) {
+// A case folder copied as it is (names with spaces, brackets, leading dots).
+fs::path copy_of(const fs::path &from, const std::string &name) {
   auto to = fresh(name);
-  for (auto &e : fs::directory_iterator(from))
-    if (e.path().extension() == ".jsonl") fs::copy_file(e.path(), to / e.path().filename());
+  fs::copy(from, to, fs::copy_options::recursive);
   return to;
 }
 
 std::string state(const fs::path &folder) { return records_json(merge_folder(folder)); }
 
-}  // namespace
-
-TEST_CASE("sync cases: the merge") {
-  auto all = cases();
-  REQUIRE(all.size() >= 7);
-  for (auto &d : all) check_case(d, json::parse(records_json(merge_folder(d))));
+// Every file of a folder: name → bytes.
+std::map<std::string, std::string> files(const fs::path &dir) {
+  std::map<std::string, std::string> out;
+  std::error_code ec;
+  for (auto &e : fs::directory_iterator(dir, ec)) out[e.path().filename().string()] = slurp(e.path());
+  return out;
 }
 
-TEST_CASE("sync cases: the store's SQLite view") {
-  for (auto &d : cases()) {
+// What an install keeps of itself: <data>/device.json.
+void local_device(const fs::path &data, const std::string &id, const std::string &name, std::int64_t created) {
+  fs::create_directories(data);
+  std::ofstream(data / "device.json") << json{{"device", id}, {"name", name}, {"created", created}, {"joined", true}}.dump();
+}
+
+std::vector<std::string> own_lines(const fs::path &folder) {
+  std::vector<std::string> out;
+  for (auto &f : store::log_files(folder))
+    for (auto &s : store::lines_of(f)) out.push_back(s);
+  return out;
+}
+
+}  // namespace
+
+TEST_CASE("sync cases: reader — the merge") {
+  auto all = cases("reader");
+  REQUIRE(all.size() >= 14);
+  for (auto &d : all) check_case(d, json::parse(state(d)));
+}
+
+TEST_CASE("sync cases: reader — the store's SQLite view of the folder") {
+  for (auto &d : cases("reader")) {
     auto data = fresh("lexipeek-store-case");
-    fs::create_directories(data / "log");
-    for (auto &e : fs::directory_iterator(d))
-      if (e.path().extension() == ".jsonl") fs::copy_file(e.path(), data / "log" / e.path().filename());
-    Store st({data, {}, "test-0000"});
+    auto folder = copy_of(d, "lexipeek-store-case-folder");
+    Store st({data, folder, "mac-test0000", ""});
     REQUIRE(st.error() == "");
+    st.sync();
+    INFO(d.filename().string());
+    CHECK(st.sync_info().error == "");
     check_case(d, json::parse(records_json(st.records())));
+    // The folder as the cache has it: the same without the folder.
+    Store again({data, {}, "mac-test0000", ""});
+    check_case(d, json::parse(records_json(again.records())));
+  }
+}
+
+TEST_CASE("sync cases: identity — keep, new, ask") {
+  auto all = cases("identity");
+  REQUIRE(all.size() >= 8);
+  for (auto &d : all) {
+    auto local = json::parse(slurp(d / "local.json"));
+    auto want = json::parse(slurp(d / "expected.json"));
+    INFO(d.filename().string());
+    json got;
+    if (local["device"].is_string()) {
+      auto id = local["device"].get<std::string>();
+      std::vector<store::Line> own;
+      for (auto &l : store::read_device(d / "inkpeek-log" / id))
+        if (l.d == id) own.push_back(l);
+      std::set<std::string> known;
+      if (local["last"].is_string()) known.insert(local["last"].get<std::string>());
+      got = {{"decision", store::keep_id(own, known) ? "keep" : "new"}};
+    } else {
+      json offer = json::array();
+      for (auto &c : store::candidates(d, local["app"], local["now"])) offer.push_back(c.device.device);
+      got = offer.empty() ? json{{"decision", "new"}} : json{{"decision", "ask"}, {"offer", offer}};
+    }
+    CHECK(got == want);
+  }
+}
+
+TEST_CASE("sync cases: identity — the store's check at start and its question") {
+  for (auto &d : cases("identity")) {
+    auto local = json::parse(slurp(d / "local.json"));
+    auto want = json::parse(slurp(d / "expected.json"));
+    INFO(d.filename().string());
+    Now now(local["now"].get<std::int64_t>());
+    auto data = fresh("lexipeek-store-identity");
+    auto folder = copy_of(d, "lexipeek-store-identity-folder");
+    if (local["device"].is_string()) {
+      // The install's own log: its last line only.
+      auto id = local["device"].get<std::string>();
+      local_device(data, id, "Test", 1790553600000);
+      if (local["last"].is_string()) {
+        auto last = local["last"].get<std::string>();
+        store::append(data / "inkpeek-log" / id / store::month_file(store::parse(last)->t.ms), last);
+      }
+      Store st({data, folder, "", ""});
+      REQUIRE(st.error() == "");
+      st.sync();
+      CHECK((st.device() == id) == (want["decision"] == "keep"));
+    } else if (local["app"] == "lexipeek") {
+      Store st({data, {}, "", ""});
+      json offer = json::array();
+      for (auto &c : st.ask(folder)) offer.push_back(c.id);
+      CHECK(offer == want.value("offer", json::array()));
+    }
+  }
+}
+
+TEST_CASE("sync cases: writer — the device's files byte for byte") {
+  auto all = cases("writer");
+  REQUIRE(all.size() >= 2);
+  for (auto &d : all) {
+    auto sc = json::parse(slurp(d / "scenario.json"));
+    std::string id = sc["device"];
+    INFO(d.filename().string());
+    auto data = fresh("lexipeek-store-writer");
+    auto folder = fresh("lexipeek-store-writer-folder");
+    if (fs::exists(d / "before")) {
+      fs::copy(d / "before", folder, fs::copy_options::recursive);
+      // The install's own log is what it wrote to the folder.
+      fs::create_directories(data / "inkpeek-log" / id);
+      fs::copy(d / "before" / "inkpeek-log" / id, data / "inkpeek-log" / id, fs::copy_options::recursive);
+    }
+    local_device(data, id, sc["name"], sc["created"]);
+    Now now(sc["steps"][0]["now"].get<std::int64_t>());
+    Store st({data, folder, "", ""});
+    REQUIRE(st.error() == "");
+    st.sync();
+    REQUIRE(st.device() == id);
+    for (auto &s : sc["steps"]) {
+      now = s["now"].get<std::int64_t>();
+      std::string op = s["op"], text = s["text"];
+      if (op == "saved.put") CHECK(st.save(text, s["kind"], s["lang"], s["meaning"]) == "");
+      else if (op == "saved.del") CHECK(st.unsave(text) == "");
+      else if (op == "history.seen") CHECK(st.seen(text, s["kind"], s["lang"], s["meaning"], s.value("base", "")) == "");
+      else if (op == "history.del") CHECK(st.forget(text) == "");
+      else if (op == "ai.put") CHECK(st.put_answer(text, s["lang"], s["section"], s["ver"], s["model"], s["answer"]) == "");
+      else FAIL("unknown op " << op);
+    }
+    auto want = files(d / "after" / "inkpeek-log" / id), there = files(folder / "inkpeek-log" / id);
+    CHECK(store::format(store::DeviceFile{id, sc["app"], sc["name"], sc["created"]}) == want["device.json"]);
+    if (sc["app"] != "lexipeek") there.erase("device.json"), want.erase("device.json");  // this app writes its own name
+    CHECK(there == want);
+    auto local = files(data / "inkpeek-log" / id);
+    want.erase("device.json"), local.erase("device.json");
+    CHECK(local == want);
+    if (fs::exists(d / "before"))
+      for (auto &other : store::device_folders(d / "before"))
+        if (other.filename() != id) CHECK(files(folder / "inkpeek-log" / other.filename()) == files(other));
   }
 }
 
@@ -95,25 +226,29 @@ TEST_CASE("clock: grows when the wall clock goes back, follows a newer one read"
   CHECK(c.tick(6000) == store::Time{6000, 0});
 }
 
-TEST_CASE("lines: what is skipped") {
-  CHECK(store::parse(R"({"v":1,"t":[1,2],"d":"a","op":"saved.del","text":"x"})"));
-  CHECK(!store::parse(R"({"v":2,"t":[1,2],"d":"a","op":"saved.del","text":"x"})"));
-  CHECK(!store::parse(R"({"v":1,"t":[1],"d":"a","op":"saved.del","text":"x"})"));
-  CHECK(!store::parse(R"({"v":1,"t":[1,2.5],"d":"a","op":"saved.del","text":"x"})"));
-  CHECK(!store::parse(R"({"v":1,"t":[1,2],"op":"saved.del","text":"x"})"));
-  CHECK(!store::parse(R"({"v":1,"t":[1,2],"d":"a","op":"note.put","text":"x"})"));
-  CHECK(!store::parse(R"({"v":1,"t":[1,2],"d":"a","op":"saved.del"})"));
+TEST_CASE("lines: what is skipped, the canonical form, the month file") {
+  CHECK(store::parse(R"({"t":[1,2],"d":"a","op":"saved.del","text":"x"})"));
+  CHECK(store::parse(R"({"t":[1,2],"d":"a","op":"saved.del","text":"x","page":3})"));
+  CHECK(!store::parse(R"({"t":[1],"d":"a","op":"saved.del","text":"x"})"));
+  CHECK(!store::parse(R"({"t":[1,2.5],"d":"a","op":"saved.del","text":"x"})"));
+  CHECK(!store::parse(R"({"t":[1,2],"op":"saved.del","text":"x"})"));
+  CHECK(!store::parse(R"({"t":[1,2],"d":"a","op":"note.put","text":"x"})"));
+  CHECK(!store::parse(R"({"t":[1,2],"d":"a","op":"saved.del"})"));
   CHECK(!store::parse(R"([1,2])"));
-  CHECK(!store::parse(R"({"v":1,"t":[1,2)"));
+  CHECK(!store::parse(R"({"t":[1,2)"));
   store::Line l;
-  l.t = {5, 1}, l.d = "mac-0001", l.op = store::Op::history_seen, l.text = "Häuser", l.kind = "word", l.lang = "ru";
-  l.meaning = "дома", l.base = "Haus", l.c = 3;
+  l.t = {5, 1}, l.d = "mac-k3fw2xqa", l.op = store::Op::history_seen, l.text = "Häuser", l.kind = "word", l.lang = "ru";
+  l.meaning = "дома\t\"x\"\x1f/", l.base = "Haus", l.c = 3;
   auto s = store::format(l);
-  CHECK(s == R"({"v":1,"t":[5,1],"d":"mac-0001","op":"history.seen","text":"Häuser","kind":"word","lang":"ru","meaning":"дома","base":"Haus","c":3})");
+  CHECK(s == R"({"t":[5,1],"d":"mac-k3fw2xqa","op":"history.seen","text":"Häuser","kind":"word","lang":"ru","meaning":"дома\t\"x\"\u001f/","base":"Haus","c":3})");
   auto back = store::parse(s);
   REQUIRE(back);
   CHECK(back->base == "Haus");
   CHECK(back->c == 3);
+  CHECK(store::month_file(1793491199999) == "2026-10.jsonl");
+  CHECK(store::month_file(1793491200000) == "2026-11.jsonl");
+  CHECK(store::format(store::DeviceFile{"mac-k3fw2xqa", "lexipeek", "MacBook Air", 1793145600000}) ==
+        "{\"device\":\"mac-k3fw2xqa\",\"app\":\"lexipeek\",\"name\":\"MacBook Air\",\"created\":1793145600000}\n");
 }
 
 TEST_CASE("append cuts a broken last line") {
@@ -131,11 +266,12 @@ TEST_CASE("append cuts a broken last line") {
 
 TEST_CASE("store: looks, saved, answers") {
   auto data = fresh("lexipeek-store-api");
-  Store st({data, {}, {}});
+  Store st({data, {}, {}, {}});
   REQUIRE(st.error() == "");
   auto device = st.device();
-  CHECK(device.find('-') != std::string::npos);
-  CHECK(slurp(data / "device") == device + "\n");
+  CHECK(device.starts_with("mac-") + device.starts_with("win-") + device.starts_with("linux-") == 1);
+  CHECK(device.size() == device.find('-') + 9);
+  CHECK(json::parse(slurp(data / "device.json"))["device"] == device);
 
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
@@ -145,11 +281,12 @@ TEST_CASE("store: looks, saved, answers") {
   CHECK(h[0].text == "Häuser");
   CHECK(h[0].base == "Haus");
   CHECK(h[1].count == 2);
+  CHECK(h[1].devices == std::vector<std::string>{device});
   CHECK(st.looks("Haus") == 3);
   auto r = st.recents(5);
   REQUIRE(r.size() == 1);
   CHECK(r[0].text == "Häuser");
-  auto log = store::lines_of(data / "log" / (device + ".jsonl"));
+  auto log = own_lines(data / "inkpeek-log" / device);
   REQUIRE(log.size() == 3);
   CHECK(store::parse(log[1])->c == 2);
 
@@ -162,6 +299,9 @@ TEST_CASE("store: looks, saved, answers") {
   CHECK(st.put_answer("Häuser", "ru", "analysis", 1, "m", "{}") == "");
   CHECK(st.answer("Haus", "ru", "analysis", 1) == "{}");
   REQUIRE(st.saved().size() == 1);
+  CHECK(st.saved()[0].origin == device);
+  CHECK(st.saved()[0].updated_by == device);
+  CHECK(st.saved()[0].id.starts_with(device + ":"));
 
   CHECK(st.forget("Häuser") == "");
   CHECK(!st.answer("Häuser", "ru", "quick", 3));
@@ -173,7 +313,7 @@ TEST_CASE("store: looks, saved, answers") {
   CHECK(st.answer("Haus", "ru", "quick", 3));  // Haus is still in the history
 
   auto before = st.records();
-  Store again({data, {}, {}});
+  Store again({data, {}, {}, {}});
   CHECK(again.device() == device);
   CHECK(json::parse(records_json(again.records())) == json::parse(records_json(before)));
 
@@ -184,13 +324,14 @@ TEST_CASE("store: looks, saved, answers") {
 
 TEST_CASE("store: another device's newer change, then ours") {
   auto data = fresh("lexipeek-store-merge");
-  Store st({data, {}, "mac-0001"});
+  Store st({data, {}, "mac-00000001", {}});
   REQUIRE(st.error() == "");
   CHECK(st.save("Haus", "word", "ru", "дом") == "");
   // Another device, its clock far ahead: its delete is newer than our save.
-  std::ofstream(data / "log" / "boox-0002.jsonl")
-      << R"({"v":1,"t":[99999999999999,4],"d":"boox-0002","op":"saved.del","text":"Haus"})" << "\n"
-      << R"({"v":1,"t":[99999999999999,5],"d":"boox-0002","op":"history.seen","text":"Haus","kind":"word","lang":"en","meaning":"house","c":4})"
+  fs::create_directories(data / "inkpeek-log" / "boox-00000002");
+  std::ofstream(data / "inkpeek-log" / "boox-00000002" / "5138-11.jsonl")
+      << R"({"t":[99999999999999,4],"d":"boox-00000002","op":"saved.del","text":"Haus"})" << "\n"
+      << R"({"t":[99999999999999,5],"d":"boox-00000002","op":"history.seen","text":"Haus","kind":"word","lang":"en","meaning":"house","c":4})"
       << "\n";
   CHECK(st.is_saved("Haus"));
   CHECK(st.merge() == "");
@@ -198,17 +339,19 @@ TEST_CASE("store: another device's newer change, then ours") {
   CHECK(st.looks("Haus") == 4);
   CHECK(st.save("Haus", "word", "ru", "дом") == "");  // made after reading it: wins
   CHECK(st.is_saved("Haus"));
+  CHECK(st.saved()[0].origin == "mac-00000001");  // saved again after a delete: a new entry
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
   CHECK(st.looks("Haus") == 5);
   CHECK(st.history()[0].lang == "ru");
-  auto own = store::lines_of(data / "log" / "mac-0001.jsonl");
+  CHECK(st.history()[0].devices == std::vector<std::string>{"boox-00000002", "mac-00000001"});
+  auto own = own_lines(data / "inkpeek-log" / "mac-00000001");
   REQUIRE(own.size() == 3);
   CHECK(store::parse(own[1])->t == store::Time{99999999999999, 6});
 }
 
 TEST_CASE("store: the history keeps the newest entries") {
   auto data = fresh("lexipeek-store-limit");
-  Store st({data, {}, "mac-0001"});
+  Store st({data, {}, "mac-00000001", {}});
   REQUIRE(st.error() == "");
   CHECK(st.seen("w0", "word", "ru", "") == "");
   CHECK(st.put_answer("w0", "ru", "quick", 1, "m", "a") == "");
@@ -219,37 +362,134 @@ TEST_CASE("store: the history keeps the newest entries") {
   CHECK(st.looks("w0") == 0);
   CHECK(st.looks("w1") == 1);
   CHECK(!st.answer("w0", "ru", "quick", 1));
-  Store again({data, {}, "mac-0001"});
+  Store again({data, {}, "mac-00000001", {}});
   CHECK(again.history().size() == size_t(Store::history_limit));
 }
 
-TEST_CASE("compaction: the sync cases merge the same with any one file compacted") {
-  for (auto &d : cases())
-    for (auto &f : fs::directory_iterator(d)) {
-      if (f.path().extension() != ".jsonl") continue;
-      auto logs = copy_logs(d, "lexipeek-store-compact-case");
-      auto file = logs / f.path().filename();
-      std::vector<store::Line> own;
-      for (auto &s : store::lines_of(file))
-        if (auto l = store::parse(s)) own.push_back(*l);
-      std::stable_sort(own.begin(), own.end(), store::before);
-      std::ofstream out(file, std::ios::trunc);
-      for (auto &l : store::compact(own)) out << store::format(l) << "\n";
-      out.close();
-      INFO(d.filename().string(), " ", f.path().filename().string());
-      check_case(d, json::parse(state(logs)));
+TEST_CASE("sync folder: two computers, one folder; stopped, the records stay; the device's name") {
+  auto root = fresh("lexipeek-sync-two");
+  auto folder = root / "Sync";
+  fs::create_directories(folder);
+  Store a({root / "a", folder, "mac-0000000a", "MacBook Air"}), b({root / "b", {}, "win-0000000b", "Desktop"});
+  REQUIRE(a.error() == "");
+  REQUIRE(b.error() == "");
+  CHECK(a.save("Haus", "word", "ru", "дом") == "");  // before the first read of the folder: written there by it
+  CHECK(!fs::exists(folder / "inkpeek-log" / "mac-0000000a"));
+  CHECK(a.sync());
+  CHECK(own_lines(folder / "inkpeek-log" / "mac-0000000a").size() == 1);
+  CHECK(slurp(folder / "inkpeek-log" / "mac-0000000a" / "device.json").find("\"name\":\"MacBook Air\"") != std::string::npos);
+
+  CHECK(b.seen("Baum", "word", "ru", "дерево") == "");  // before b had a folder: its own log takes it there
+  CHECK(b.ask(folder).empty());                          // a is active: nothing to continue as
+  CHECK(b.set_folder(folder) == "");
+  CHECK(b.is_saved("Haus"));
+  CHECK(b.saved()[0].origin == "mac-0000000a");
+  CHECK(b.device_name("mac-0000000a") == "MacBook Air");
+  CHECK(a.sync(false));  // the folder changed
+  CHECK(a.looks("Baum") == 1);
+  CHECK(!a.sync(false));  // nothing new
+  CHECK(fs::exists(root / "a" / "sync-cache" / "inkpeek-log" / "win-0000000b" / "device.json"));
+
+  CHECK(b.save("Haus", "word", "ru", "дом, здание") == "");
+  CHECK(a.sync(false));
+  CHECK(a.saved()[0].origin == "mac-0000000a");
+  CHECK(a.saved()[0].updated_by == "win-0000000b");
+  auto info = a.sync_info();
+  CHECK(info.folder == folder.string());
+  CHECK(info.reachable);
+  REQUIRE(info.devices.size() == 2);
+  CHECK(info.self.id == "mac-0000000a");
+  CHECK(info.self.own);
+  CHECK(info.devices[1].name == "Desktop");
+  CHECK(info.devices[1].app == "lexipeek");
+
+  CHECK(a.set_name("Work Mac") == "");
+  CHECK(b.sync(false));
+  CHECK(b.device_name("mac-0000000a") == "Work Mac");
+
+  // The folder gone (an unmounted share): the records stay, writes wait for it.
+  fs::rename(folder, root / "away");
+  CHECK(a.sync());
+  CHECK(!a.sync_info().reachable);
+  CHECK(a.looks("Baum") == 1);
+  CHECK(a.seen("Baum", "word", "ru", "дерево") == "");
+  fs::rename(root / "away", folder);
+  CHECK(a.sync(false));
+  CHECK(b.sync(false));
+  CHECK(b.looks("Baum") == 2);
+
+  CHECK(b.set_folder({}) == "");
+  CHECK(b.sync_info().folder == "");
+  CHECK(b.is_saved("Haus"));
+  CHECK(b.looks("Baum") == 2);
+}
+
+TEST_CASE("sync folder: a copied install takes a new id; continue as a device after a reinstall") {
+  auto root = fresh("lexipeek-sync-copy");
+  auto folder = root / "Sync";
+  fs::create_directories(folder);
+  Now now(1793491200000);
+  {
+    Store a({root / "a", folder, "mac-0000000a", "MacBook Air"});
+    a.sync();
+    CHECK(a.save("Haus", "word", "ru", "дом") == "");
+  }
+  fs::copy(root / "a", root / "copy", fs::copy_options::recursive);
+  {
+    Store a({root / "a", folder, "", ""});
+    a.sync();
+    CHECK(a.seen("Haus", "word", "ru", "дом") == "");
+  }
+  now = 1793491200000 + 1000;
+  Store copy({root / "copy", folder, "", ""});
+  copy.sync();
+  CHECK(copy.device() != "mac-0000000a");
+  CHECK(copy.sync_info().self.name == "MacBook Air");
+  CHECK(copy.looks("Haus") == 1);
+
+  // Data deleted, a day later: the folder offers the inactive one; continuing takes its id, name and log.
+  now = 1793491200000 + 2 * 86'400'000;
+  Store fresh_install({root / "new", {}, "", ""});
+  CHECK(fresh_install.seen("Baum", "word", "ru", "дерево") == "");
+  auto offer = fresh_install.ask(folder);
+  REQUIRE(offer.size() == 2);
+  CHECK(offer[0].id == copy.device());  // newest first
+  CHECK(offer[1].id == "mac-0000000a");
+  auto before = fresh_install.device();
+  CHECK(fresh_install.set_folder(folder, "mac-0000000a") == "");
+  CHECK(fresh_install.device() == "mac-0000000a");
+  CHECK(fresh_install.sync_info().self.name == "MacBook Air");
+  CHECK(fresh_install.looks("Haus") == 1);
+  CHECK(fresh_install.looks("Baum") == 1);
+  CHECK(fs::exists(folder / "inkpeek-log" / before / "device.json"));  // its lines before: under its own id
+  CHECK(fresh_install.seen("Haus", "word", "ru", "дом") == "");
+  CHECK(fresh_install.sync());
+  CHECK(fresh_install.device() == "mac-0000000a");  // its own install, not a copy
+  CHECK(fresh_install.ask(folder).empty());         // joined: no question any more
+}
+
+TEST_CASE("compaction: the reader cases merge the same with any one device compacted") {
+  for (auto &d : cases("reader"))
+    for (auto &dev : store::device_folders(d)) {
+      auto folder = copy_of(d, "lexipeek-store-compact-case");
+      auto own = folder / "inkpeek-log" / dev.filename();
+      REQUIRE(store::compact_folder(own, 0) == "");
+      INFO(d.filename().string(), " ", dev.filename().string());
+      check_case(d, json::parse(state(folder)));
     }
 }
 
 TEST_CASE("compaction: a long log of two devices merges the same, the clock goes on") {
-  auto data = fresh("lexipeek-store-compact");
-  auto logs = data / "log";
+  auto root = fresh("lexipeek-store-compact");
+  auto folder = root / "Sync";
+  fs::create_directories(folder);
   std::mt19937 rnd(7);
   const std::vector<std::string> words = {"Haus", "Häuser", "Baum", "gehen", "ging", "das Haus", "Weg", "alt"};
   {
-    Store a({data / "a", logs, "mac-0001"}), b({data / "b", logs, "boox-0002"});
+    Store a({root / "a", folder, "mac-00000001", ""}), b({root / "b", folder, "boox-00000002", ""});
     REQUIRE(a.error() == "");
     REQUIRE(b.error() == "");
+    a.sync(), b.sync();
     for (int i = 0; i < 3000; i++) {
       auto &st = rnd() % 3 ? a : b;
       auto &w = words[rnd() % words.size()];
@@ -263,30 +503,31 @@ TEST_CASE("compaction: a long log of two devices merges the same, the clock goes
       if (rnd() % 20 == 0) REQUIRE((rnd() % 2 ? a : b).merge() == "");
     }
   }
-  auto own = logs / "mac-0001.jsonl", other = logs / "boox-0002.jsonl";
-  auto before = state(logs);
-  auto other_bytes = slurp(other);
-  auto old_lines = store::lines_of(own).size();
+  auto own = folder / "inkpeek-log" / "mac-00000001", other = folder / "inkpeek-log" / "boox-00000002";
+  auto before = state(folder);
+  auto other_files = files(other);
+  auto old_lines = own_lines(own).size();
   store::Time last;
-  for (auto &l : store::read_folder(logs)) last = std::max(last, l.t);
+  for (auto &l : store::read_roots({folder})) last = std::max(last, l.t);
 
-  Store st({data, logs, "mac-0001"});
+  Store st({root / "a", folder, "mac-00000001", ""});
   REQUIRE(st.error() == "");
-  auto new_lines = store::lines_of(own).size();
+  st.sync();
+  auto new_lines = own_lines(own).size();
   MESSAGE(old_lines, " lines compacted to ", new_lines);
   CHECK(new_lines * 2 <= old_lines);
-  CHECK(slurp(other) == other_bytes);
-  CHECK(!fs::exists(fs::path(own).concat(".tmp")));
-  CHECK(state(logs) == before);
+  CHECK(own_lines(root / "a" / "inkpeek-log" / "mac-00000001") == own_lines(own));
+  CHECK(files(other) == other_files);
+  CHECK(state(folder) == before);
   CHECK(by_key(json::parse(records_json(st.records()))) == by_key(json::parse(before)));
 
-  CHECK(store::compact_file(other, 0) == "");
-  CHECK(state(logs) == before);
-  CHECK(store::compact_file(own, 0) == "");  // twice: nothing left to drop, the file stays
-  CHECK(store::lines_of(own).size() == new_lines);
+  CHECK(store::compact_folder(other, 0) == "");
+  CHECK(state(folder) == before);
+  CHECK(store::compact_folder(own, 0) == "");  // twice: nothing left to drop
+  CHECK(own_lines(own).size() == new_lines);
 
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
-  auto tail = store::parse(store::lines_of(own).back());
+  auto tail = store::parse(own_lines(own).back());
   REQUIRE(tail);
   CHECK(last < tail->t);
 }
@@ -294,23 +535,23 @@ TEST_CASE("compaction: a long log of two devices merges the same, the clock goes
 TEST_CASE("compaction: a small log stays as it is") {
   auto data = fresh("lexipeek-store-compact-small");
   {
-    Store st({data, {}, "mac-0001"});
+    Store st({data, {}, "mac-00000001", ""});
     for (int i = 0; i < 500; i++) REQUIRE(st.seen("Haus", "word", "ru", "дом") == "");
   }
-  auto own = data / "log" / "mac-0001.jsonl";
-  auto bytes = slurp(own);
-  Store st({data, {}, "mac-0001"});
-  CHECK(slurp(own) == bytes);
+  auto own = data / "inkpeek-log" / "mac-00000001";
+  auto bytes = files(own);
+  Store st({data, {}, "mac-00000001", ""});
+  CHECK(files(own) == bytes);
   CHECK(st.looks("Haus") == 500);
-  CHECK(store::compact_file(own, 0) == "");
-  CHECK(store::lines_of(own).size() == 1);
-  CHECK(Store({data, {}, "mac-0001"}).looks("Haus") == 500);
+  CHECK(store::compact_folder(own, 0) == "");
+  CHECK(own_lines(own).size() == 1);
+  CHECK(Store({data, {}, "mac-00000001", ""}).looks("Haus") == 500);
 }
 
 TEST_CASE("backup: export, then import into another store adds what it lacks, with the dates") {
   auto a = fresh("lexipeek-backup-a"), b = fresh("lexipeek-backup-b");
   {
-    Store s(StoreOptions{a, {}, "mac-a"});
+    Store s(StoreOptions{a, {}, "mac-0000000a", ""});
     s.save("Haus", "word", "ru", "дом");
     s.seen("Haus", "word", "ru", "дом");
     s.seen("Haus", "word", "ru", "дом");
@@ -319,7 +560,7 @@ TEST_CASE("backup: export, then import into another store adds what it lacks, wi
   }
   REQUIRE(fs::exists(a / "copy.db"));
   CHECK(!fs::exists(a / "copy.db.tmp"));
-  Store t(StoreOptions{b, {}, "mac-b"});
+  Store t(StoreOptions{b, {}, "mac-0000000b", ""});
   t.save("Baum", "word", "ru", "дерево");
   auto r = t.restore(a / "copy.db");
   CHECK(r.error.empty());
@@ -351,7 +592,7 @@ TEST_CASE("backup: an older backup without some columns, a removed word comes ba
                "INSERT INTO history VALUES('Tür', 'word', 1000, 4);",
                nullptr, nullptr, nullptr);
   sqlite3_close(db);
-  Store s(StoreOptions{a / "store", {}, "mac-c"});
+  Store s(StoreOptions{a / "store", {}, "mac-0000000c", ""});
   s.save("Tür", "word", "ru", "дверь");
   s.unsave("Tür");
   auto r = s.restore(a / "old.db");
@@ -363,7 +604,7 @@ TEST_CASE("backup: an older backup without some columns, a removed word comes ba
 
 TEST_CASE("backup: a copy a day, the last five kept, none while empty") {
   auto a = fresh("lexipeek-daily");
-  Store s(StoreOptions{a, {}, "mac-d"});
+  Store s(StoreOptions{a, {}, "mac-0000000d", ""});
   CHECK(s.daily_backup(a / "backup").empty());
   CHECK((!fs::exists(a / "backup") || fs::is_empty(a / "backup")));
   s.seen("Haus", "word", "ru", "дом");

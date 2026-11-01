@@ -81,6 +81,7 @@ struct Settings {
   AiSettings ai;
   std::map<std::string, std::vector<std::string>> study;  // languages you learn per answer language: "ru" → de, en (two at most)
   SpeechSettings speech;
+  std::string sync;  // the sync folder (UTF-8), "" = none: Settings → General → Sync
 };
 
 // Missing or broken file: the defaults.

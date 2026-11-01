@@ -173,7 +173,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   o.translator.data = o.data;
   impl_->tr = std::make_unique<Translator>(o.translator);
   impl_->lib = std::make_unique<dict::Library>(o.data / "dicts", o.data / "index", own(o.data, o.dicts));
-  impl_->store = std::make_unique<Store>(StoreOptions{o.data, {}, {}});
+  impl_->store = std::make_unique<Store>(StoreOptions{o.data, o.sync, {}, {}});
   impl_->speaker = std::make_unique<speech::Speaker>(o.data);
   impl_->notes_answer = o.answer;
   impl_->transport = o.ai_replies.empty() ? ai::default_transport() : ai::file_transport(o.ai_replies);

@@ -302,9 +302,41 @@ std::vector<SettingRow> appearance(const Settings &s) {
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
+// General → Sync: the folder (picked by the shell), its state, this device (its name), every device of the logs.
+std::vector<SettingRow> sync_rows(const SettingsState &st) {
+  auto &s = st.sync;
+  std::vector<SettingRow> rows;
+  rows.push_back(valued(Kind::button, "sync_folder", tr("sync_folder_t"), s.folder.empty() ? tr("sync_folder_none") : s.folder,
+                        tr(s.folder.empty() ? "sync_choose" : "sync_change")));
+  if (!s.folder.empty()) {
+    auto state = !s.reachable ? tr("sync_away") : !s.error.empty() ? tr("failed", {s.error})
+                 : s.read ? tr("sync_read", {text::local_time(s.read)}) : tr("sync_not_read");
+    auto r = valued(Kind::status, "sync_state", tr("sync_state_t"), tr("sync_state_d"), state);
+    r.on = s.reachable && s.error.empty();
+    rows.push_back(r);
+    rows.push_back(valued(Kind::button, "sync_off", tr("sync_off_t"), tr("sync_off_d"), tr("sync_off_btn")));
+  }
+  rows.push_back(heading(tr("sync_self_t"), tr("sync_self_d")));
+  auto name = valued(Kind::text, "sync_name", tr("sync_name_t"), tr("sync_name_d"), s.self.name);
+  name.placeholder = s.self.id;
+  rows.push_back(name);
+  rows.push_back(valued(Kind::status, "sync_id", tr("sync_id_t"), tr("sync_added", {text::local_time(s.self.created)}), s.self.id));
+  rows.push_back(heading(tr("sync_devices_t"), tr("sync_devices_d")));
+  for (auto &d : s.devices) {
+    std::vector<std::string> about{d.app == "inkpeek" ? "InkPeek" : d.app == "lexipeek" ? "LexiPeek" : d.app, d.id};
+    if (d.app.empty()) about.erase(about.begin());
+    about.push_back(d.active ? tr("sync_active", {text::local_time(d.active)}) : tr("sync_added", {text::local_time(d.created)}));
+    auto r = valued(Kind::status, "sync_device", d.name, text::join(about, " · "), d.own ? tr("sync_this") : "");
+    r.on = d.own;
+    rows.push_back(r);
+  }
+  return rows;
+}
+
 // General (InkPeek's ⚙ page in desktop form): System (Accessibility, login, the app's language, the model in memory)
-// · Hotkeys (the keys, per-app rules).
+// · Hotkeys (the keys, per-app rules) · Sync.
 std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int tab) {
+  if (tab == 2) return sync_rows(st);
   if (tab == 1)
     return {valued(Kind::hotkey, "lookup", tr("hk_lookup_t"), tr("hk_lookup_d"), ""),
             valued(Kind::hotkey, "input", tr("hk_input_t"), tr("hk_input_d"), ""),
@@ -371,7 +403,7 @@ std::vector<std::string> settings_tab_keys(SettingsSection section) {
     case SettingsSection::languages: return {"packs", "translation", "other-dictionaries"};
     case SettingsSection::card: return {"opening", "article", "appearance"};
     case SettingsSection::ai: return {"connection", "modules"};
-    case SettingsSection::general: return {"system", "keys"};
+    case SettingsSection::general: return {"system", "keys", "sync"};
     case SettingsSection::speech: return {};
   }
   return {};
@@ -382,7 +414,7 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::languages: return names({"lang_packs", "lang_translation", "lang_own"});
     case SettingsSection::card: return names({"card_open", "lang_article", "card_look"});
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
-    case SettingsSection::general: return names({"system_t", "hotkeys_t"});
+    case SettingsSection::general: return names({"system_t", "hotkeys_t", "sync_t"});
     case SettingsSection::speech: return {};
   }
   return {};

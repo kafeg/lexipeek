@@ -3,6 +3,7 @@
 #include "temp.hpp"
 #include <fstream>
 #include <thread>
+#include "text/text.hpp"
 #include "lexipeek/app.hpp"
 #include "lexipeek/session.hpp"
 #include "lexipeek/core.hpp"
@@ -116,7 +117,7 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
   auto d = fs::temp_directory_path() / "lexipeek-notes-view";
   wipe(d);
   {
-    Store st({d, {}, {}});
+    Store st({d, {}, {}, {}});
     auto v = notes_view(st, NotesTab::words, "ru");
     CHECK(v.tabs == std::vector<std::string>{"Words (0)", "Phrases (0)", "History (0)"});
     CHECK(v.rows.empty());
@@ -143,6 +144,7 @@ TEST_CASE("notes: three lists, newest first, a line for each; remove and clear")
     CHECK(v.rows[0].text == "Baum");
     CHECK(v.rows[0].line == "der Baum — дерево");
     CHECK(v.rows[0].looks.empty());
+    CHECK(v.rows[0].where == st.device_name(st.device()) + " · " + text::local_day(st.saved()[0].created));
     CHECK(v.rows[1].text == "Haus");
     CHECK(v.empty.empty());
     CHECK(!v.clear);
@@ -194,7 +196,7 @@ TEST_CASE("app: notes through the engine") {
 TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date; cells on one line") {
   auto d = fs::temp_directory_path() / "lexipeek-tsv";
   wipe(d);
-  Store s(StoreOptions{d, {}, "mac-t"});
+  Store s(StoreOptions{d, {}, "mac-t", {}});
   s.save("Haus", "word", "ru", "дом,\tздание");
   s.put_answer("Haus", "Russian", "quick", 1, "m", "{\"translation\":\"дом\\nи двор\"}");
   s.save("Ich mache die Tür zu", "phrase", "ru", "");
@@ -212,7 +214,7 @@ TEST_CASE("notes: TSV for Anki — text, meaning, AI translation, language, date
 TEST_CASE("notes: 50 a page, the pager; TSV takes them all") {
   auto d = fs::temp_directory_path() / "lexipeek-notes-pages";
   wipe(d);
-  Store s(StoreOptions{d, {}, "mac-p"});
+  Store s(StoreOptions{d, {}, "mac-p", {}});
   for (int i = 0; i < 120; i++) s.seen("w" + std::to_string(i), "word", "ru", "m");
   auto v = notes_view(s, NotesTab::history, "ru");
   CHECK(v.rows.size() == 50);

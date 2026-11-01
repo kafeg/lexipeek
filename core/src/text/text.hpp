@@ -63,5 +63,6 @@ std::FILE *open_file(const std::filesystem::path &p, const char *mode);
 std::string trim(std::string_view s);
 std::string join(const std::vector<std::string> &items, std::string_view sep = ", ");
 std::string local_day(std::int64_t ms);
+std::string local_time(std::int64_t ms);  // "2026-10-28 14:02"
 
 }  // namespace lexipeek::text

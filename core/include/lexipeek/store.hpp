@@ -13,6 +13,7 @@ namespace lexipeek {
 struct Saved {
   std::string text, kind, lang, meaning;  // kind: "word" / "phrase"; lang: the language of meaning
   std::int64_t created = 0;               // ms
+  std::string id, origin, updated_by;     // the entry's first put ("<device>:<ms>:<n>"), its device, the last put's device
 };
 
 struct Seen {
@@ -20,6 +21,7 @@ struct Seen {
   std::string base;        // the base form of a looked-up form, "" = none
   std::int64_t seen = 0;   // ms of the last look
   std::int64_t count = 0;  // looks, all devices
+  std::vector<std::string> devices;  // the devices whose looks count, sorted
 };
 
 struct Answer {
@@ -36,15 +38,33 @@ struct Records {
   std::vector<Answer> ai;
 };
 
-struct StoreOptions {
-  std::filesystem::path data;  // <data>/device, <data>/lexipeek.db
-  std::filesystem::path logs;  // the folder of *.jsonl; "" = <data>/log
-  std::string device;          // "" = <data>/device, made once ("mac-91c0")
+// A device in the sync folder (or this one): its device.json and its newest line.
+struct SyncDevice {
+  std::string id, app, name;
+  std::int64_t created = 0, active = 0;  // ms; active: its newest line's (0: none)
+  bool own = false;
 };
 
-// The merged state of the logs in [folder] (every *.jsonl in it).
+// Settings → General → Sync and the "Continue as" question.
+struct SyncInfo {
+  std::string folder;           // "" = none: the logs stay in the data dir
+  bool reachable = false;       // the folder is there now
+  std::int64_t read = 0;        // ms of the last read of the folder (0: not yet)
+  std::string error;            // the last read's or write's problem
+  SyncDevice self;              // this device
+  std::vector<SyncDevice> devices;  // every device of the logs, this one too, the newest active first
+};
+
+struct StoreOptions {
+  std::filesystem::path data;  // <data>/device.json (this device), <data>/inkpeek-log/<device>/, <data>/lexipeek.db
+  std::filesystem::path sync;  // the sync folder ("" = none)
+  std::string device;          // "" = <data>/device.json's, made once ("mac-k3fw2xqa")
+  std::string name;            // a new device's name ("" = the platform's)
+};
+
+// The merged state of a sync folder ([folder]/inkpeek-log/<device>/).
 Records merge_folder(const std::filesystem::path &folder);
-// The state as InkPeek's tests/sync/*/expected.json.
+// The state as InkPeek's tests/sync/reader/*/expected.json.
 std::string records_json(const Records &r);
 
 class Store {
@@ -70,8 +90,19 @@ class Store {
                          const std::string &model, const std::string &answer);
   std::string forget(const std::string &text);  // one history entry
   std::string clear_history();
-  // Re-reads the folder (other devices' logs), rebuilds the view.
-  std::string merge();
+  // Re-reads the logs (the sync folder: the two-installs check, this device's lines written there, the other devices'
+  // kept in <data>/sync-cache), rebuilds the view. Not forced: only when the folder changed. → whether the view changed.
+  bool sync(bool force = true);
+  std::string merge() { return sync(true), error(); }
+  // Another sync folder ("" = none). With [as]: continue as that device of the folder ("" = this one). The question
+  // first: ask() lists the devices to continue as (empty: none, no question).
+  std::vector<SyncDevice> ask(const std::filesystem::path &folder) const;
+  std::string set_folder(const std::filesystem::path &folder, const std::string &as = "");
+  std::string set_name(const std::string &name);
+  std::string own_name() const;  // "" = never named
+  SyncInfo sync_info() const;
+  // A device's name (its id when none is known).
+  std::string device_name(const std::string &id) const;
 
   std::optional<std::string> answer(const std::string &text, const std::string &lang, const std::string &section,
                                     std::int64_t ver) const;

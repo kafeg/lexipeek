@@ -87,6 +87,16 @@ struct Engine {
   void release_speech() const;
   std::string add_voice(const std::string &wav, const std::string &text, const std::string &lang) const;
   void remove_voice(const std::string &id) const;
+  // Sync (General → Sync). The folder read again (not forced: only when it changed; a timer's) → whether Notes changed.
+  bool sync(bool force) const;
+  SyncInfo sync_info() const;
+  // A folder picked: the question first (no offers: none), then the folder set ("" = none; as: the device to continue
+  // as, "" = this one) and kept in settings.json. "" or the error's text.
+  SyncAsk sync_ask(const std::string &folder) const;
+  std::string set_sync_folder(const std::string &data, const std::string &folder, const std::string &as) const;
+  std::string set_device_name(const std::string &name) const;
+  // At launch, before prepare(): this computer's name for a device never named.
+  void name_device(const std::string &computer) const;
 };
 
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).

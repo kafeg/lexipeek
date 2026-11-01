@@ -725,18 +725,25 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer, i
     return a.empty() ? std::string("—") : a;
   };
   struct Item {
-    std::string text, meaning, lang, looks;
+    std::string text, meaning, lang, looks, where;
+  };
+  auto where = [&](const std::vector<std::string> &devices, std::int64_t ms) {
+    std::vector<std::string> names;
+    for (auto &d : devices) names.push_back(st.device_name(d));
+    names.push_back(text::local_day(ms));
+    return text::join(names, " · ");
   };
   std::vector<Item> items;
   std::size_t words = 0, phrases = 0;
   for (auto &e : st.saved()) {
     bool word = e.kind == "word";
     (word ? words : phrases)++;
-    if ((tab == NotesTab::words) == word && tab != NotesTab::history) items.push_back({e.text, e.meaning, e.lang, ""});
+    if ((tab == NotesTab::words) == word && tab != NotesTab::history)
+      items.push_back({e.text, e.meaning, e.lang, "", where({e.origin}, e.created)});
   }
   auto history = st.history();
   if (tab == NotesTab::history)
-    for (auto &e : history) items.push_back({e.text, e.meaning, e.lang, std::to_string(e.count) + "×"});
+    for (auto &e : history) items.push_back({e.text, e.meaning, e.lang, std::to_string(e.count) + "×", where(e.devices, e.seen)});
   auto count = [](const char *key, std::size_t n) { return tr(key) + " (" + digits(static_cast<long long>(n)) + ")"; };
   v.tabs = {count("list_words", words), count("list_phrases", phrases), count("list_history", history.size())};
   if (items.empty()) v.empty = tr(tab == NotesTab::history ? "notes_empty_history" : "notes_empty_saved");
@@ -752,7 +759,7 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer, i
   }
   for (int i = first; i < last; i++) {
     auto &e = items[static_cast<size_t>(i)];
-    v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), e.looks});
+    v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), e.looks, e.where});
   }
   return v;
 }
@@ -776,6 +783,14 @@ std::string notes_tsv(const Store &st, NotesTab tab, const std::string &answer) 
     out.back() = '\n';
   }
   return out;
+}
+
+SyncAsk sync_ask_view(const std::vector<SyncDevice> &devices) {
+  SyncAsk a{tr("sync_ask_t"), tr("sync_ask_d"), {}, tr("sync_new")};
+  for (auto &d : devices)
+    a.offers.push_back({d.id, tr("sync_continue", {d.name.empty() ? d.id : d.name}),
+                        tr("sync_active", {text::local_time(d.active)}) + " · " + d.id});
+  return a;
 }
 
 std::string remove_note(Store &st, NotesTab tab, const std::string &text) {

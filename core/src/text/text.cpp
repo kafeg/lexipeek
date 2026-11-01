@@ -247,7 +247,8 @@ std::string join(const std::vector<std::string> &items, std::string_view sep) {
   return out;
 }
 
-std::string local_day(std::int64_t ms) {
+namespace {
+std::string local(std::int64_t ms, const char *format) {
   auto t = static_cast<std::time_t>(ms / 1000);
   std::tm tm{};
 #ifdef _WIN32
@@ -255,9 +256,13 @@ std::string local_day(std::int64_t ms) {
 #else
   localtime_r(&t, &tm);
 #endif
-  char b[16];
-  std::strftime(b, sizeof b, "%Y-%m-%d", &tm);
+  char b[32];
+  std::strftime(b, sizeof b, format, &tm);
   return b;
 }
+}  // namespace
+
+std::string local_day(std::int64_t ms) { return local(ms, "%Y-%m-%d"); }
+std::string local_time(std::int64_t ms) { return local(ms, "%Y-%m-%d %H:%M"); }
 
 }  // namespace lexipeek::text

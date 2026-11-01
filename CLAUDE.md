@@ -58,7 +58,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Read aloud from the CLI: `lexipeek-cli tts status|download|remove` (the model into `<data>/tts/`), `say [--lang de]
   [--voice male] [--cpu] [--out F] TEXT` (a reading, its time), `say-bench --lang de < words.txt` (load, each reading, kept),
   `voices [add WAV --lang de TEXT | remove ID]`.
-- CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER`, `history`,
+- CLI: `build/cli/lexipeek-cli translate --from de --to ru [--method fast|direct|llm] TEXT`, `langid TEXT`, `bench`, `merge FOLDER` (a sync folder), `history`,
   `ai quick|analysis|context TEXT | models` (Settings → AI of the data dir; the key from `LEXIPEEK_AI_KEY`).
 - AI without a network or a key (tests, snapshots, the CLI): `LEXIPEEK_AI_REPLIES=<dir>` — `<dir>/<quick|analysis|context>.json`
   is the model's answer for every provider, `<dir>/status` (e.g. `401`) fails every request, `<dir>/models.json` the list.
@@ -144,12 +144,24 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (qt's cancel callback), the model in its own `ModelHost` with Settings → Read aloud's time (3 min), `GGML_BACKEND=CPU` for
   "On the GPU" off, seed 42. Views: `card_read` / `views/read.cpp` (▶ by context, rows' ▶, loading and error lines),
   `CardState::reading`, `CardSession::read / take_play / played / reading` (the shell plays the WAV: `Player.swift`).
-- `core/src/store/`: `log` (lines, HLC, read, append, merge — pure, InkPeek's `tests/sync` cases), `store` (`Store`:
-  own lines to `<data>/log/<device>.jsonl`, `<data>/lexipeek.db` is a view: rebuilt from the logs on open and
-  `merge()`, a text's rows re-merged from its lines on each write; the 1,000-entry limit only in the view).
-  Backup (`Store::backup` / `restore` / `daily_backup`): the view as InkPeek's backup file; an import writes own log
-  lines (`Line::t` kept for texts the logs do not know). Compaction (`log` `compact_file`): only the own file, on open, when it has ≥ 1,000 lines and ≥ 2× what it compacts
-  to, so a rewrite always at least halves it and small logs are never rewritten; `<device>.jsonl.tmp`, then renamed.
+- `core/src/store/`: InkPeek's one sync log format (`docs/formats.md` "Sync log", cases `tests/sync/{reader,identity,writer}`).
+  `log` — pure: lines (canonical bytes, `raw` kept), HLC, device folders, read, append, `device.json`, `keep_id` (two
+  installs with one id), `candidates` (continue as), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
+  `store` (`Store`): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created, `joined`); own
+  lines always to `<data>/inkpeek-log/<id>/<YYYY-MM>.jsonl` first (the whole own log stays local), then to
+  `<sync>/inkpeek-log/<id>/` (settings.json `sync`): month files made equal (append, or whole after compaction),
+  `device.json`. `sync(force)` (launch: `Engine::prepare`; the shells' timer, not forced: only when the folder's files
+  changed or own lines wait): the two-installs check once per folder (keep when the folder's newest own lines are lines
+  of the local own log, else a new id, the same name), push, other devices' folders mirrored into `<data>/sync-cache/`
+  (read while the folder is away or after it is dropped), the view rebuilt from data + cache + folder. `ask(folder)`:
+  "Continue as" only for a device never joined to a folder (`joined`); `set_folder(folder, as)` takes that device's id,
+  name, created and log, its own earlier lines going to the folder under its old id. No sync folder: the data dir only.
+  `<data>/lexipeek.db` is a view: rebuilt from the logs on open and `sync()`, a text's rows re-merged from its lines on
+  each write; the 1,000-entry limit only in the view. Backup (`Store::backup` / `restore` / `daily_backup`): the view as
+  InkPeek's backup file; an import writes own log lines (`Line::t` kept for texts the logs do not know). Compaction: the
+  own folder on open, when it has ≥ 1,000 lines and ≥ 2× what it keeps (kept lines byte-equal, in their month files).
+  `store::fixed_now` fixes the wall clock in tests. Views: General → Sync (`sync_rows`, `SettingsState::sync` from
+  `Engine::sync_info`), `sync_ask_view` (the dialog), Notes' `where` (device · date), help topic Sync.
 - Marian's headers do not compile as C++20 (`std::result_of`): `bergamot.cpp` is its own C++17 target.
 - Bergamot's `BlockingService` is never destroyed: at exit it would outlive marian's statics and abort.
 - Marian needs BLAS and LAPACK: Accelerate on macOS, OpenBLAS + clapack (vcpkg, no Fortran) elsewhere. Windows: static CRT (`/MT`, Bergamot's
