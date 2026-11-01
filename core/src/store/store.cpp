@@ -440,20 +440,11 @@ struct Store::Impl {
     return ms;
   }
 
-  // [text]'s lines this view merges: the history stays on each device (the owner's decision), so other devices'
-  // history lines are left out; they stay in the logs, merged as the format says by those who read them.
-  std::vector<Line> shown(const std::vector<Line> &ls) const {
-    std::vector<Line> out;
-    for (auto &l : ls)
-      if ((l.op != Op::history_seen && l.op != Op::history_del) || l.d == self.device) out.push_back(l);
-    return out;
-  }
-
   // The rows of [text]: its lines merged.
   std::string rows(const std::string &text) {
     for (auto sql : {"DELETE FROM saved WHERE text=?", "DELETE FROM history WHERE text=?", "DELETE FROM ai WHERE text=?"})
       if (!Stmt(db, sql).bind(text).run()) return db_error();
-    auto r = store::merge(shown(lines[text]));
+    auto r = store::merge(lines[text]);
     for (auto &s : r.saved)
       if (!Stmt(db, "INSERT INTO saved(text, kind, meaning, created, lang, id, origin, updated_by) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
                .bind(s.text).bind(s.kind).bind(s.meaning).bind(s.created).bind(s.lang).bind(s.id).bind(s.origin).bind(s.updated_by).run())
@@ -625,7 +616,7 @@ std::string Store::clear_history() {
   std::lock_guard g(impl_->m);
   std::vector<Line> ls;
   for (auto &[text, lines] : impl_->lines)
-    if (!store::merge(impl_->shown(lines)).history.empty()) {
+    if (!store::merge(lines).history.empty()) {
       Line l;
       l.op = Op::history_del, l.text = text;
       ls.push_back(l);

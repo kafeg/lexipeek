@@ -172,8 +172,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   (`<data>/log/*.jsonl`, `"v":1` lines): imported once at open (`import_old`) as this device's own lines with their
   times, the folder then renamed `log.imported`; a line already there is never written twice.
   `<data>/lexipeek.db` is a view: rebuilt from the logs on open and `sync()`, a text's rows re-merged from its lines on
-  each write; the history stays on each device (the owner's decision): the view leaves out other devices'
-  `history.seen` / `history.del` (`Impl::shown`), the logs and the format's merge keep them; the 1,000-entry limit only in the view. Backup (`Store::backup` / `restore` / `daily_backup`): the view as
+  each write; the 1,000-entry limit only in the view. Backup (`Store::backup` / `restore` / `daily_backup`): the view as
   InkPeek's backup file; an import writes own log lines (`Line::t` kept for texts the logs do not know). Compaction: the
   own folder on open, when it has ≥ 1,000 lines and ≥ 2× what it keeps (kept lines byte-equal, in their month files).
   `store::fixed_now` fixes the wall clock in tests. Views: the Settings section Sync (`SettingsSection::sync`, its tabs

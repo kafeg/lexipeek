@@ -641,7 +641,7 @@
 {"sync_not_read", "Ainda não lida"},
 {"sync_away", "Inacessível agora: as alterações esperam aqui"},
 {"hy_what_t", "O que é sincronizado"},
-{"hy_what", "As palavras e frases guardadas e as suas respostas, entre o InkPeek e o LexiPeek em qualquer número de dispositivos. O histórico fica em cada dispositivo, tal como as definições, pacotes e vozes. Sem servidores: as apps só escrevem ficheiros numa pasta."},
+{"hy_what", "As palavras e frases guardadas, o histórico e as respostas, entre o InkPeek e o LexiPeek em qualquer número de dispositivos. Definições, pacotes e vozes ficam em cada dispositivo. Sem servidores: as apps só escrevem ficheiros numa pasta."},
 {"hy_folder_t", "A pasta"},
 {"hy_folder", "Escolha uma pasta que outra ferramenta mantenha igual em todo o lado: Syncthing, Synology Drive, Nextcloud, Dropbox, OneDrive, iCloud Drive. No Android, o InkPeek chega à mesma pasta através de uma app de sincronização: Syncthing-Fork, uma tarefa de sincronização do Synology Drive, Nextcloud. Cada dispositivo escreve só a sua própria pasta lá dentro (inkpeek-log/<dispositivo>), um ficheiro por mês; as dos outros apenas lê."},
 {"sec_sync", "Sincronização"},

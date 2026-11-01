@@ -109,16 +109,10 @@ TEST_CASE("sync cases: reader — the store's SQLite view of the folder") {
     st.sync();
     INFO(d.filename().string());
     CHECK(st.sync_info().error == "");
-    // Saved words as the case says; the history stays on each device (this one has none), answers of saved texts only.
-    std::vector<store::Line> shown;
-    for (auto &l : store::read_roots({folder}))
-      if (l.op != store::Op::history_seen && l.op != store::Op::history_del) shown.push_back(l);
-    auto want = by_key(json::parse(records_json(store::merge(shown))));
-    CHECK(want["saved"] == by_key(json::parse(slurp(d / "expected.json")))["saved"]);
-    CHECK(by_key(json::parse(records_json(st.records()))) == want);
+    check_case(d, json::parse(records_json(st.records())));
     // The folder as the cache has it: the same without the folder.
     Store again({data, {}, "mac-test0000", ""});
-    CHECK(by_key(json::parse(records_json(again.records()))) == want);
+    check_case(d, json::parse(records_json(again.records())));
   }
 }
 
@@ -324,14 +318,14 @@ TEST_CASE("store: another device's newer change, then ours") {
   CHECK(st.is_saved("Haus"));
   CHECK(st.merge() == "");
   CHECK(!st.is_saved("Haus"));
-  CHECK(st.looks("Haus") == 0);  // its look: its own history
+  CHECK(st.looks("Haus") == 4);
   CHECK(st.save("Haus", "word", "ru", "дом") == "");  // made after reading it: wins
   CHECK(st.is_saved("Haus"));
   CHECK(st.saved()[0].origin == "mac-00000001");  // saved again after a delete: a new entry
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
-  CHECK(st.looks("Haus") == 1);
+  CHECK(st.looks("Haus") == 5);
   CHECK(st.history()[0].lang == "ru");
-  CHECK(st.history()[0].devices == std::vector<std::string>{"mac-00000001"});
+  CHECK(st.history()[0].devices == std::vector<std::string>{"boox-00000002", "mac-00000001"});
   auto own = own_lines(data / "inkpeek-log" / "mac-00000001");
   REQUIRE(own.size() == 3);
   CHECK(store::parse(own[1])->t == store::Time{99999999999999, 6});
@@ -381,24 +375,6 @@ TEST_CASE("store: the local log before the sync format is imported once, with it
   CHECK(fs::exists(data / "log.imported"));
 }
 
-TEST_CASE("store: the history stays on each device — another device's looks in the folder are not shown") {
-  auto root = fresh("lexipeek-store-own-history");
-  auto data = root / "data", folder = root / "Sync";
-  fs::create_directories(folder / "inkpeek-log" / "boox-7hq2mzta");
-  std::ofstream(folder / "inkpeek-log" / "boox-7hq2mzta" / "2026-11.jsonl")
-      << R"({"t":[1793491200000,0],"d":"boox-7hq2mzta","op":"history.seen","text":"Zug","kind":"word","lang":"ru","meaning":"поезд","c":3})" "\n"
-      << R"({"t":[1793491201000,0],"d":"boox-7hq2mzta","op":"saved.put","text":"Zug","kind":"word","lang":"ru","meaning":"поезд"})" "\n"
-      << R"({"t":[1793491202000,0],"d":"boox-7hq2mzta","op":"history.del","text":"Haus"})" "\n";
-  Store st({data, folder, "mac-0000000a", ""});
-  CHECK(st.seen("Haus", "word", "ru", "дом") == "");
-  st.sync();
-  CHECK(st.is_saved("Zug"));            // saved words sync
-  CHECK(st.looks("Zug") == 0);          // its looks do not
-  CHECK(st.history().size() == 1);
-  CHECK(st.history()[0].text == "Haus");  // its history.del does not touch this device's history either
-  CHECK(st.answer("Zug", "ru", "quick", 1) == std::nullopt);
-}
-
 TEST_CASE("store: the history keeps the newest entries") {
   auto data = fresh("lexipeek-store-limit");
   Store st({data, {}, "mac-00000001", {}});
@@ -439,7 +415,7 @@ TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the r
   CHECK(b.is_saved("Haus"));
   CHECK(b.saved()[0].origin == "mac-0000000a");
   CHECK(a.sync(false));  // the folder changed
-  CHECK(a.looks("Baum") == 0);  // b's history stays on b
+  CHECK(a.looks("Baum") == 1);
   CHECK(!a.sync(false));  // nothing new
   CHECK(fs::exists(root / "a" / "sync-cache" / "inkpeek-log" / "win-0000000b" / "device.json"));
 
@@ -458,18 +434,18 @@ TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the r
   fs::rename(folder, root / "away");
   CHECK(a.sync());
   CHECK(!a.sync_info().reachable);
-  CHECK(a.is_saved("Haus"));
+  CHECK(a.looks("Baum") == 1);
   CHECK(a.seen("Baum", "word", "ru", "дерево") == "");
   fs::rename(root / "away", folder);
   CHECK_FALSE(a.sync(false));  // the waiting line written there; a's view was already so
   CHECK(own_lines(folder / "inkpeek-log" / "mac-0000000a") == own_lines(root / "a" / "inkpeek-log" / "mac-0000000a"));
   CHECK(b.sync(false));
-  CHECK(b.looks("Baum") == 1);
+  CHECK(b.looks("Baum") == 2);
 
   CHECK(b.set_folder({}) == "");
   CHECK(b.sync_info().folder == "");
   CHECK(b.is_saved("Haus"));
-  CHECK(b.looks("Baum") == 1);
+  CHECK(b.looks("Baum") == 2);
 }
 
 TEST_CASE("sync folder: a write goes there by itself, never waiting for it; a device folder that cannot be read keeps its copy") {
@@ -516,7 +492,7 @@ TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id 
   copy.sync();
   CHECK(copy.device() != "mac-0000000a");
   CHECK(copy.own_name() == "MacBook Air");
-  CHECK(copy.is_saved("Haus"));
+  CHECK(copy.looks("Haus") == 1);
   CHECK(copy.seen("Haus", "word", "ru", "дом") == "");
   copy.sync(false);
   CHECK(own_lines(folder / "inkpeek-log" / copy.device()).size() == 1);
@@ -528,7 +504,7 @@ TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id 
   CHECK(fresh_install.device() != copy.device());
   CHECK(fresh_install.is_saved("Haus"));
   CHECK(fresh_install.saved()[0].origin == "mac-0000000a");
-  CHECK(fresh_install.looks("Haus") == 0);  // the history stays on each device
+  CHECK(fresh_install.looks("Haus") == 2);
 }
 
 TEST_CASE("compaction: the reader cases merge the same with any one device compacted") {
@@ -582,7 +558,7 @@ TEST_CASE("compaction: a long log of two devices merges the same, the clock goes
   CHECK(own_lines(root / "a" / "inkpeek-log" / "mac-00000001") == own_lines(own));
   CHECK(files(other) == other_files);
   CHECK(state(folder) == before);
-  CHECK(by_key(json::parse(records_json(st.records())))["saved"] == by_key(json::parse(before))["saved"]);
+  CHECK(by_key(json::parse(records_json(st.records()))) == by_key(json::parse(before)));
 
   CHECK(store::compact_folder(other, 0) == "");
   CHECK(state(folder) == before);

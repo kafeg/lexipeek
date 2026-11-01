@@ -141,9 +141,6 @@ two installs with one id) is InkPeek's
 [`docs/formats.md`](https://github.com/kafeg/inkpeek/blob/main/docs/formats.md), "Sync log" — one format, no versions;
 its cases are `tests/sync/` there, run here through `tests/inkpeek`. No servers of ours: a folder another tool keeps the
 same everywhere (Syncthing, a cloud drive, a NAS share).
-- **What syncs:** saved words and phrases and their answers. The history stays on each device (the owner's decision):
-  every device writes its looks to its own log as the format says, but LexiPeek's view, counts, Recents, Anki's
-  History deck and the 1,000 limit use only this device's history lines.
 - **Where the log is.** The whole own log stays in the data dir (`<data>/inkpeek-log/<id>/`): no sync folder, nothing
   else. With one, each own line goes there too at once; lines written while it is away (an unmounted share) go when it is
   back. Other devices' folders are copied into `<data>/sync-cache/`, so the records stay while the folder is away. The
