@@ -345,7 +345,7 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   picked out of 2–6 candidates by 20 single words read and transcribed (whisper large-v3-turbo; the word and nothing
   after it): en 20/20 both, it 20/20 both, ru 19 and 20, es 20 and 19, de 18 and 19 (the misses homophones: Stadt →
   "statt"), pt 19 and 17, fr 17 and 15 (plurals and hyphens counted as right), pl 9 and 9 — the model does not speak
-  Polish: its words come out mangled (open: keep pl or drop it). One switch Female · Male for every language; the voice is the text's language's. **A voice from
+  Polish: its words come out mangled (kept: the owner's decision). One switch Female · Male for every language; the voice is the text's language's. **A voice from
   a recording** ("Voice from a recording…": a WAV and what it says, its language): encoded on this computer into
   `<data>/voices/` (latents and text; the WAV is not kept), listed first for its language and used for it while on;
   Such a voice is never shipped or synced (a recording is someone's voice).
