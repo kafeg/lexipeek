@@ -54,10 +54,19 @@ fs::path temp(const char *name) {
 TEST_CASE("read aloud: a text in another language is read itself; the answer language only with a language you learn") {
   auto c = german();
   auto s = first_state(c);
-  CHECK(card_read(c, s, CardTab::dictionary) == Read{"Häusern", "de"});
-  CHECK(card_read(c, s, CardTab::translate) == Read{"Häusern", "de"});
+  // A word: its headword without the grammar, not the form selected.
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"das Haus", "de"});
+  CHECK(card_read(c, s, CardTab::translate) == Read{"das Haus", "de"});
   auto v = card_view(c, s);
-  CHECK(v.read == Read{"Häusern", "de"});
+  CHECK(v.read == Read{"das Haus", "de"});
+  c.header = "", c.base = "scheitern", c.text = "gescheitert";
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"scheitern", "de"});
+  c.base = "";
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"gescheitert", "de"});
+  c = german();
+  c.kind = Card::Kind::phrase, c.text = "Ich mache die Tür zu";
+  CHECK(card_read(c, s, CardTab::translate) == Read{"Ich mache die Tür zu", "de"});  // a phrase: itself
+  c = german();
   CHECK(!v.reading);
   CHECK(v.read_help == "Read aloud (⌘.)");
   c.prefs.read = false;
@@ -82,31 +91,37 @@ TEST_CASE("read aloud: a language you learn — the translation on Translate, th
   s.by_ai = true;
   CHECK(card_read(c, s, CardTab::translate).text.empty());
   s.by_ai = false;
-  CHECK(card_read(c, s, CardTab::dictionary) == Read{"Haus", "de"});
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"das Haus", "de"});
   s.tab = CardTab::dictionary;
-  s.reading = {"Gebäude", "de"};
+  s.reading = {"Gebäude", "de"}, s.read_phase = Phase::making;
   auto v = card_view(c, s);
   std::vector<Read> rows;
   for (auto &r : v.rows)
     if (!r.read.text.empty()) rows.push_back(r.read);
-  CHECK(rows == std::vector<Read>{{"Haus", "de"}, {"Gebäude", "de"}});
+  CHECK(rows == std::vector<Read>{{"das Haus", "de"}, {"Gebäude", "de"}});
   CHECK(!v.reading);
   for (auto &r : v.rows)
-    if (r.read.text == "Gebäude") CHECK(r.reading);
-  s.reading = {"Haus", "de"};
+    if (r.read.text == "Gebäude") CHECK((r.reading && r.read_phase == Phase::making));
+  s.reading = {"das Haus", "de"};
   CHECK(card_view(c, s).reading);
-  CHECK(card_view(c, s).read_help == "Stop (⌘.)");
+  CHECK(card_view(c, s).read_help == "Making the reading…");
 }
 
-TEST_CASE("read aloud: the card says the model is loading, and what failed with the way to Settings → Read aloud") {
+TEST_CASE("read aloud: ▶ itself shows loading the model, making the reading, ■ while it plays; no line in the body; a failure's line") {
   auto c = german();
   auto s = first_state(c);
-  s.read_loading = true;
+  auto rows = card_view(c, s).rows.size();
+  s.reading = {"das Haus", "de"};
+  for (auto [phase, help] : {std::pair{Phase::loading, "Loading the voice model…"}, {Phase::making, "Making the reading…"}, {Phase::ready, "Stop (⌘.)"}}) {
+    s.read_phase = phase;
+    auto v = card_view(c, s);
+    CHECK(v.reading);
+    CHECK(v.read_phase == phase);
+    CHECK(v.read_help == help);
+    CHECK(v.rows.size() == rows);  // the card keeps its size
+  }
+  s.reading = {}, s.read_phase = Phase::idle;
   auto v = card_view(c, s);
-  REQUIRE(!v.rows.empty());
-  CHECK(v.rows.back().style == CardRow::Style::progress);
-  CHECK(v.rows.back().text == "Loading the voice model…");
-  s.read_loading = false;
   s.read_error = "The voice model is not downloaded yet: Settings → Read aloud.", s.read_fix = true;
   v = card_view(c, s);
   CHECK(v.rows.back().style == CardRow::Style::error);
@@ -227,6 +242,43 @@ TEST_CASE("read aloud: a reading kept is played again without the model; off and
   sp.stop();
   CHECK(sp.state().phase == Phase::idle);
   wipe(d);
+}
+
+TEST_CASE("read aloud: a saved note's reading is kept apart, never pruned, and read from there") {
+  auto d = temp("lexipeek-saved");
+  Speaker sp(d);
+  SpeechSettings s;
+  s.on = true;
+  sp.configure(s);
+  Read r{"das Haus", "de"};
+  auto v = voice_for({}, s, "de");
+  if (v.id.empty()) return wipe(d);
+  put(reading_file(d, v, r), wav_bytes(std::vector<float>(100, 0), 24000));
+  sp.keep(r, true);
+  auto saved = saved_reading(d, v, r);
+  CHECK(fs::exists(saved));
+  prune_readings(d, 0);
+  CHECK(!fs::exists(reading_file(d, v, r)));
+  CHECK(fs::exists(saved));
+  int t = sp.read(r);
+  for (int i = 0; i < 500 && sp.state().phase == Phase::making; i++) std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  CHECK(sp.state().ticket == t);
+  CHECK(sp.state().phase == Phase::ready);
+  CHECK(sp.state().wav == saved.string());
+  sp.keep(r, false);
+  CHECK(!fs::exists(saved));
+  wipe(d);
+}
+
+TEST_CASE("read aloud: the menu's line about the voice model in memory") {
+  CHECK(!speech_memory_view(false, 0).held);
+  CHECK(speech_memory_view(false, 0).line.empty());
+  auto m = speech_memory_view(true, 170);
+  CHECK(m.held);
+  CHECK(m.line.starts_with("In memory: Qwen3-TTS Base 1.7B · 2.4"));
+  CHECK(m.detail == "unloads in 3 min");
+  CHECK(m.unload == "Unload Now");
+  CHECK(speech_memory_view(true, -1).detail == "stays until LexiPeek quits");
 }
 
 TEST_CASE("read aloud: the newest readings kept") {

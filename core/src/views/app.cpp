@@ -271,6 +271,16 @@ Status download_speech(const std::string &data, const Download &dl) {
   return speech::download_model(dir(data), [&](std::int64_t done, std::int64_t) { *dl.done = done; }, [&] { return dl.stop->load(); });
 }
 
+MemoryView Engine::speech_memory() const {
+  auto &s = core->speaker();
+  auto until = s.until();
+  long long left = until == std::chrono::steady_clock::time_point::max()
+                       ? -1
+                       : std::chrono::duration_cast<std::chrono::seconds>(until - std::chrono::steady_clock::now()).count();
+  return speech_memory_view(s.held(), left < 0 && until != std::chrono::steady_clock::time_point::max() ? 0 : left);
+}
+void Engine::release_speech() const { core->speaker().release(); }
+
 void Engine::remove_speech() const {
   core->speaker().release();
   speech::remove_model(core->data());

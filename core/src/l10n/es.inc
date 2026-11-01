@@ -181,6 +181,7 @@
 {"read_no_voice", "Aún no hay voz para: {1}."},
 {"read_failed", "No se pudo leer en voz alta: {1}"},
 {"read_loading", "Cargando el modelo de voz…"},
+{"read_making", "Preparando la lectura…"},
 {"read_help", "Leer en voz alta (⌘.)"},
 {"read_help@win", "Leer en voz alta (Ctrl+.)"},
 {"read_stop", "Detener (⌘.)"},

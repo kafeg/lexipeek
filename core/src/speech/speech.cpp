@@ -300,6 +300,11 @@ fs::path reading_file(const fs::path &data, const Voice &v, const Read &r) {
   return data / "readings" / (h(key) + ".wav");
 }
 
+fs::path saved_reading(const fs::path &data, const Voice &v, const Read &r) {
+  auto f = reading_file(data, v, r);
+  return f.parent_path() / "saved" / f.filename();
+}
+
 void prune_readings(const fs::path &data, std::size_t keep) {
   std::error_code ec;
   std::vector<std::pair<fs::file_time_type, fs::path>> all;

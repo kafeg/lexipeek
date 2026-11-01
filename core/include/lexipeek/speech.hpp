@@ -71,8 +71,10 @@ struct Audio {
 Audio read_wav(const std::string &bytes);
 std::string wav_bytes(const std::vector<float> &samples, int rate);
 
-// A reading's file: <data>/readings/<sha256 of the model, voice, language and text>.wav; the newest 2,000 kept.
+// A reading's file: <data>/readings/<sha256 of the model, voice, language and text>.wav; the newest 2,000 kept. A saved
+// note's reading (☆) is kept apart, in <data>/readings/saved/, never pruned.
 std::filesystem::path reading_file(const std::filesystem::path &data, const Voice &v, const Read &r);
+std::filesystem::path saved_reading(const std::filesystem::path &data, const Voice &v, const Read &r);
 void prune_readings(const std::filesystem::path &data, std::size_t keep = 2000);
 
 // A reading's state, polled by the shells (through app::CardSession).
@@ -102,6 +104,8 @@ class Speaker {
   // Blocking: a voice from a recording (a WAV and what it says) into <data>/voices/; "" or the error.
   std::string add_voice(const std::string &wav, const std::string &text, const std::string &lang);
   std::string remove_voice(const std::string &id);
+  // ☆: a reading kept with its note (on: copied from the readings when made; off: let go).
+  void keep(const Read &r, bool on);
   void release();
   bool held() const;
   std::chrono::steady_clock::time_point until() const;

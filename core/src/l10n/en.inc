@@ -181,6 +181,7 @@
 {"read_no_voice", "No voice for {1} yet."},
 {"read_failed", "Could not read aloud: {1}"},
 {"read_loading", "Loading the voice model…"},
+{"read_making", "Making the reading…"},
 {"read_help", "Read aloud (⌘.)"},
 {"read_help@win", "Read aloud (Ctrl+.)"},
 {"read_stop", "Stop (⌘.)"},

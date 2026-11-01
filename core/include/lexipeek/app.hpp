@@ -78,6 +78,9 @@ struct Engine {
   static int new_tag();
   // Read aloud (M9): the voice model removed (freed first); a voice from a recording (blocking: "" or the error), removed.
   void remove_speech() const;
+  // The menu's lines about the voice model in memory (line "": not loaded) and its "Unload".
+  MemoryView speech_memory() const;
+  void release_speech() const;
   std::string add_voice(const std::string &wav, const std::string &text, const std::string &lang) const;
   void remove_voice(const std::string &id) const;
 };

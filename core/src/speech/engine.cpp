@@ -161,6 +161,7 @@ struct Speaker::Impl {
     if (v.id.empty()) return set(ticket, Phase::failed, "", tr("read_no_voice", {language_name(r.lang)}), true);
     auto file = reading_file(data, v, r);
     std::error_code ec;
+    if (auto saved = saved_reading(data, v, r); fs::exists(saved, ec)) return set(ticket, Phase::ready, text::utf8_of(saved));
     if (fs::exists(file, ec)) {
       fs::last_write_time(file, fs::file_time_type::clock::now(), ec);  // the newest kept
       return set(ticket, Phase::ready, text::utf8_of(file));
@@ -298,6 +299,21 @@ std::string Speaker::remove_voice(const std::string &id) {
   std::error_code ec;
   for (auto ext : {".json", ".spk", ".rvq"}) fs::remove(impl_->data / "voices" / (id + ext), ec);
   return "";
+}
+
+void Speaker::keep(const Read &r, bool on) {
+  SpeechSettings st;
+  {
+    std::lock_guard g(impl_->mu);
+    st = impl_->s;
+  }
+  auto v = voice_for(own_voices(impl_->data), st, r.lang);
+  if (v.id.empty() || r.text.empty()) return;
+  auto from = reading_file(impl_->data, v, r), to = saved_reading(impl_->data, v, r);
+  std::error_code ec;
+  if (!on) return void(fs::remove(to, ec));
+  fs::create_directories(to.parent_path(), ec);
+  if (fs::exists(from, ec)) fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
 }
 
 void Speaker::release() { impl_->host.release(); }

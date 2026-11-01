@@ -102,8 +102,8 @@ struct CardState {
   bool by_ai = false;  // Translate shows the AI translation (a method picked in the card, or Card → Opening)
   AiState quick, analysis, context;
   std::vector<Translation> learned;  // the translations into the languages you learn, as they arrive (Card::study's order)
-  speech::Read reading;       // read aloud now (its ▶ is ■), from the press until the shell has played it
-  bool read_loading = false;  // the voice model is loading: a line says so
+  speech::Read reading;       // read aloud now, from the press until the shell has played it
+  speech::Phase read_phase = speech::Phase::idle;  // its ▶ shows it: loading the model, making, ready (playing: ■)
   std::string read_error;     // the last reading failed: a line, and Settings → Read aloud when read_fix
   bool read_fix = false;
 };
@@ -131,7 +131,8 @@ struct CardRow {
   int entry = 0;     // the entry the section belongs to
   std::string copy = "";  // what its copy button copies ("" = none): a translation, a dictionary's line
   speech::Read read = {};  // its own small ▶ (a translated word of a language you learn); text "": none
-  bool reading = false;    // ■: being read
+  bool reading = false;    // being read: read_phase says how far
+  speech::Phase read_phase = speech::Phase::idle;
 };
 
 struct MethodItem {
@@ -185,12 +186,14 @@ struct CardView {
   std::string font;       // "" the system's, "serif", "rounded", "mono"
   int height = 45;        // % of the screen at most
   speech::Read read;      // ▶ in the bottom row reads this (text "": no ▶)
-  bool reading = false;   // ■: it is being read, a press stops it
-  std::string read_help;  // its tooltip: "Read aloud (⌘.)", "Stop (⌘.)"
+  bool reading = false;   // it is being read, a press stops it; read_phase: loading the model, making, ready (playing: ■)
+  speech::Phase read_phase = speech::Phase::idle;
+  std::string read_help;  // its tooltip: "Read aloud (⌘.)", "Loading the voice model…", "Making the reading…", "Stop (⌘.)"
 };
 
-// What ▶ reads (spec M9): a text in another language than the answer, itself; a text in the answer language with a
-// language you learn, on Translate its translation, on Dictionary the first translated word; else nothing.
+// What ▶ reads (spec M9): a text in another language than the answer, itself (a word: its headword without the grammar
+// in brackets, "gescheitert" → "scheitern"); a text in the answer language with a language you learn, on Translate its
+// translation, on Dictionary the first translated word's headword; else nothing.
 speech::Read card_read(const Card &c, const CardState &s, CardTab tab);
 
 // The tab a new card opens on: Dictionary for a word with entries or a phrase set to open word by word, else Translate.
@@ -471,6 +474,8 @@ struct MemoryView {
   std::string text;                  // line and detail in one line (the LexiPeek window)
 };
 MemoryView memory_view(const Translator::Memory &m);
+// The same for Read aloud's voice model (held: loaded; seconds until it goes, -1 kept until quit): line "" when not held.
+MemoryView speech_memory_view(bool held, long long seconds);
 
 // Help (InkPeek's ? page in desktop form): topics, each a few items, and the settings pane it is about.
 struct HelpItem {

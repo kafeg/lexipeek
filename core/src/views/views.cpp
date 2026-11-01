@@ -133,6 +133,16 @@ MemoryView memory_view(const Translator::Memory &m) {
   return v;
 }
 
+MemoryView speech_memory_view(bool held, long long seconds) {
+  MemoryView v;
+  if (!(v.held = held)) return v;
+  v.line = tr("mem_line", {tr("read_model_t"), size_text(speech::model_bytes())});
+  v.detail = seconds < 0 ? tr("mem_kept") : seconds < 60 ? tr("mem_soon") : tr("mem_until", {tr("keep_min", {digits((seconds + 59) / 60)})});
+  v.unload = tr("mem_unload");
+  v.text = v.line + " · " + v.detail;
+  return v;
+}
+
 CardTab first_tab(const Card &c) {
   if (c.kind == Card::Kind::word) return c.entries.empty() ? CardTab::translate : CardTab::dictionary;
   bool words = !c.gloss.empty() || !c.separable.empty() ||

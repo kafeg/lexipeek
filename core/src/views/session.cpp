@@ -85,7 +85,7 @@ struct CardSession::Impl {
   void stop_reading() {
     if (read_ticket && !playing && e.core->speaker().state().ticket == read_ticket) e.core->speaker().stop();
     read_ticket = 0, playing = false, play.clear();
-    nav.state.reading = {}, nav.state.read_loading = false;
+    nav.state.reading = {}, nav.state.read_phase = speech::Phase::idle;
     dirty = true;
   }
 
@@ -94,11 +94,16 @@ struct CardSession::Impl {
     if (!read_ticket || playing) return;
     auto st = e.core->speaker().state();
     auto &cs = nav.state;
-    if (st.ticket != read_ticket || st.phase == speech::Phase::idle) return void((read_ticket = 0, cs.reading = {}, cs.read_loading = false, dirty = true));
-    if (bool loading = st.phase == speech::Phase::loading; loading != cs.read_loading) cs.read_loading = loading, dirty = true;
-    if (st.phase == speech::Phase::ready) play = st.wav, playing = true, cs.read_loading = false, dirty = true;
+    if (st.ticket != read_ticket || st.phase == speech::Phase::idle)
+      return void((read_ticket = 0, cs.reading = {}, cs.read_phase = speech::Phase::idle, dirty = true));
+    if (st.phase == speech::Phase::loading || st.phase == speech::Phase::making)
+      if (st.phase != cs.read_phase) cs.read_phase = st.phase, dirty = true;
+    if (st.phase == speech::Phase::ready) {
+      play = st.wav, playing = true, cs.read_phase = speech::Phase::ready, dirty = true;
+      if (cs.saved) e.core->speaker().keep(cs.reading, true);  // a saved card's reading stays with its note
+    }
     if (st.phase == speech::Phase::failed) {
-      cs.reading = {}, cs.read_loading = false, cs.read_error = st.error, cs.read_fix = st.fix;
+      cs.reading = {}, cs.read_phase = speech::Phase::idle, cs.read_error = st.error, cs.read_fix = st.fix;
       read_ticket = 0, dirty = true;
     }
   }
@@ -282,6 +287,10 @@ void CardSession::toggle_saved() {
   auto &i = *impl_;
   if (!i.nav.has_card() || !card_view(i.nav.card(), i.nav.state).can_save) return;
   i.nav.state.saved = i.e.toggle_saved(i.nav.card(), shown_translation(i.nav.state));
+  // Its reading goes with the note (the word's headword; a phrase, a text: itself).
+  auto r = card_read(i.nav.card(), i.nav.state, CardTab::dictionary);
+  if (r.text.empty()) r = card_read(i.nav.card(), i.nav.state, i.nav.state.tab);
+  if (!r.text.empty()) i.e.core->speaker().keep(r, i.nav.state.saved);
   i.dirty = i.notes = true;
 }
 
@@ -314,7 +323,7 @@ void CardSession::read(int row) {
   i.nav.state.read_error.clear(), i.nav.state.read_fix = false;
   if (r.text.empty() || same) return;
   i.read_ticket = i.e.core->speaker().read(r);
-  i.nav.state.reading = r;
+  i.nav.state.reading = r, i.nav.state.read_phase = speech::Phase::making;
 }
 
 void CardSession::stop_reading() { impl_->stop_reading(); }

@@ -4,6 +4,23 @@
 
 namespace lexipeek {
 
+namespace {
+
+// A headword without its grammar: "das Haus (Hauses, pl. Häuser)" → "das Haus"; none: the word.
+std::string spoken(const std::string &header, const std::string &word) {
+  auto h = header.substr(0, header.find(" ("));
+  while (!h.empty() && h.back() == ' ') h.pop_back();
+  return h.empty() ? word : h;
+}
+
+// The tooltip of ▶ by the phase of its reading.
+std::string help(bool reading, speech::Phase p) {
+  if (!reading) return tr("read_help");
+  return tr(p == speech::Phase::loading ? "read_loading" : p == speech::Phase::ready ? "read_stop" : "read_making");
+}
+
+}  // namespace
+
 speech::Read card_read(const Card &c, const CardState &s, CardTab tab) {
   if (!c.prefs.read || c.text.empty()) return {};
   if (!c.study.empty()) {
@@ -12,27 +29,28 @@ speech::Read card_read(const Card &c, const CardState &s, CardTab tab) {
     if (tab == CardTab::translate && !s.by_ai && !s.learned.empty() && s.learned.front().ok() && !s.learned.front().text.empty())
       return {s.learned.front().text, l.lang};
     if (tab == CardTab::dictionary && c.kind == Card::Kind::word && !l.words.empty() && s.section.key.empty() && s.entry_open < 0)
-      return {l.words.front().base, l.lang};
+      return {spoken(l.words.front().header, l.words.front().base), l.lang};
     return {};
   }
   if (c.lang.empty() || c.lang == c.answer || !speech::speaks(c.lang)) return {};
-  return {c.text, c.lang};
+  return {c.kind == Card::Kind::word ? spoken(c.header, c.base.empty() ? c.text : c.base) : c.text, c.lang};
 }
 
 void read_view(const Card &c, const CardState &s, CardView &v) {
   v.read = card_read(c, s, v.tab);
   v.reading = !v.read.text.empty() && s.reading == v.read;
-  if (!v.read.text.empty()) v.read_help = tr(v.reading ? "read_stop" : "read_help");
+  v.read_phase = v.reading ? s.read_phase : speech::Phase::idle;
+  if (!v.read.text.empty()) v.read_help = help(v.reading, v.read_phase);
   // A language you learn: each translated word of a word's card has its own ▶.
   if (c.prefs.read && v.tab == CardTab::dictionary && c.kind == Card::Kind::word && !c.study.empty() && speech::speaks(c.study.front().lang))
     for (auto &r : v.rows)
       if (r.style == CardRow::Style::gloss && !r.link.empty())
         for (auto &w : c.study.front().words)
           if (w.base == r.link) {
-            r.read = {w.base, c.study.front().lang};
+            r.read = {spoken(w.header, w.base), c.study.front().lang};
             r.reading = s.reading == r.read;
+            r.read_phase = r.reading ? s.read_phase : speech::Phase::idle;
           }
-  if (s.read_loading) v.rows.push_back({CardRow::Style::progress, "", tr("read_loading"), ""});
   if (!s.read_error.empty()) {
     v.rows.push_back({CardRow::Style::error, "", s.read_error, ""});
     if (s.read_fix) v.fix = tr("read_open_settings"), v.fix_section = SettingsSection::speech, v.fix_tab = 0;

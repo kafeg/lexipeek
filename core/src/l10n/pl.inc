@@ -183,6 +183,7 @@
 {"read_no_voice", "Brak jeszcze głosu dla: {1}."},
 {"read_failed", "Nie udało się przeczytać na głos: {1}"},
 {"read_loading", "Ładowanie modelu głosu…"},
+{"read_making", "Przygotowanie odczytu…"},
 {"read_help", "Czytaj na głos (⌘.)"},
 {"read_help@win", "Czytaj na głos (Ctrl+.)"},
 {"read_stop", "Zatrzymaj (⌘.)"},

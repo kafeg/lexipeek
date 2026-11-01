@@ -181,6 +181,7 @@
 {"read_no_voice", "Noch keine Stimme für {1}."},
 {"read_failed", "Vorlesen fehlgeschlagen: {1}"},
 {"read_loading", "Sprachmodell wird geladen…"},
+{"read_making", "Vorlesung wird erzeugt…"},
 {"read_help", "Vorlesen (⌘.)"},
 {"read_help@win", "Vorlesen (Strg+.)"},
 {"read_stop", "Stopp (⌘.)"},
