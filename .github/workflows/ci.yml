@@ -116,6 +116,7 @@ jobs:
         run: |
           git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
           git submodule update --init --recursive engines/bergamot
+          git submodule update --init --recursive --depth 1 engines/qwentts || git submodule update --init --recursive engines/qwentts
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
       - uses: actions/cache@v4
