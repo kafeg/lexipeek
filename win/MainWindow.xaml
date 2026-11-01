@@ -97,12 +97,6 @@
             </StackPanel>
             <Button x:Name="Clear" Grid.Column="2" HorizontalAlignment="Right" />
           </Grid>
-              <Button x:Name="Export" Grid.Column="2" MinWidth="96" VerticalAlignment="Center" />
-              <Button x:Name="Import" Grid.Column="3" MinWidth="96" VerticalAlignment="Center" />
-            </Grid>
-            <TextBlock x:Name="Said" Margin="4,0,0,0" TextWrapping="Wrap" IsTextSelectionEnabled="True" Style="{StaticResource CaptionTextBlockStyle}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-          </StackPanel>
         </Grid>
         <!-- Help: every topic on one page, each with the Settings pane it is about. -->
         <ScrollViewer x:Name="HelpPage" Grid.Row="1" Visibility="Collapsed">
