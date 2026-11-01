@@ -159,22 +159,23 @@ Answer ensure_model(const AnkiSettings &s, const std::string &key, const Transpo
 
 }  // namespace
 
-std::string key_of(const std::string &text, const std::string &lang, bool history) {
+std::string key_of(const std::string &text, const std::string &lang, bool history, const std::string &answer) {
   SHA256 h;
-  return (history ? "h-" : "") + text::lower(lang) + "-" + h(text::norm_key(text)).substr(0, 32);
+  return (history ? "h-" : "") + text::lower(lang.empty() ? answer : lang) + "-" + h(text::norm_key(text)).substr(0, 32);
 }
 
 std::vector<Note> notes(const Store &store, const AnkiSettings &s, const fs::path &data) {
   std::vector<Note> out;
+  auto answer = load_settings(data).answer;
   for (auto &x : store.saved()) {
     bool word = x.kind == "word";
     if (word ? !s.words_on : !s.phrases_on) continue;
-    out.push_back({key_of(x.text, x.lang), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
+    out.push_back({key_of(x.text, x.lang, false, answer), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
                    word ? "word" : "phrase", x.text, x.lang});
   }
   if (s.history_on)
     for (auto &x : store.history())
-      out.push_back({key_of(x.text, x.lang, true), s.history, html(x.text), back_of(x.meaning), "", reading_of(data, x.text), "history", x.text,
+      out.push_back({key_of(x.text, x.lang, true, answer), s.history, html(x.text), back_of(x.meaning), "", reading_of(data, x.text), "history", x.text,
                      x.lang});
   return out;
 }

@@ -105,6 +105,7 @@ TEST_CASE("settings: Sync → Sync — the folder, the hint, one status line") {
   REQUIRE(p.rows.size() == 2);
   CHECK(p.rows[1].kind == Kind::heading);
   CHECK(p.rows[1].about.find("Syncthing works best") != std::string::npos);
+  CHECK(p.rows[1].about.find("Synology Drive") != std::string::npos);
   st.sync = {"/Volumes/Sync", true, 1793491200000, 0, ""};
   p = settings_view(SettingsSection::sync, 0, s, st);
   CHECK(row(p, "sync_folder")->value == "Change…");

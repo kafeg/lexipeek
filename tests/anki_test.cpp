@@ -248,6 +248,10 @@ TEST_CASE("anki: the Key — the answer language and sha256 of InkPeek's lookup 
   SHA256 h;
   CHECK(k == "ru-" + h("haus").substr(0, 32));
   CHECK(std::regex_match(anki::key_of("Ich mache die Tür zu!", "ru"), std::regex("[a-z0-9-]+")));
+  // An entry without its language (InkPeek's rows before its schema 3): the answer language, as InkPeek's Anki.key.
+  CHECK(anki::key_of("Haus", "", false, "ru") == k);
+  CHECK(anki::key_of("Haus", "", true, "ru") == "h-" + k);
+  CHECK(anki::key_of("Haus", "en", false, "ru") != k);
 }
 
 TEST_CASE("anki: the notes — saved words and phrases into their decks, the history when on, a word's header apart") {

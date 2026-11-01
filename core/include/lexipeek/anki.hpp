@@ -34,9 +34,10 @@ struct Note {
 
 // The Key field: the answer language, then the first 32 hex digits of sha256 of InkPeek's lookup key (normKey) of the
 // text; "h-" before a history note's ("ru-3fa9…", "h-ru-3fa9…"): letters, digits and "-" only, searched as they are.
-std::string key_of(const std::string &text, const std::string &lang, bool history = false);
+// An entry without its language (InkPeek's rows before its schema 3): [answer], the app's answer language, as InkPeek.
+std::string key_of(const std::string &text, const std::string &lang, bool history = false, const std::string &answer = "");
 // What the binding sends from the store: saved words, saved phrases, the history, each when on (its reading: the
-// note's kept one under <data>/readings/saved/, if any).
+// note's kept one under <data>/readings/saved/, if any); an entry without its language keys by settings.json's answer.
 std::vector<Note> notes(const Store &store, const AnkiSettings &s, const std::filesystem::path &data);
 // A note's fields as sent: a change sends it again (the deck is not in it: a renamed deck takes only new notes).
 std::string digest(const Note &n);
