@@ -63,6 +63,8 @@ Time Clock::tick(std::int64_t now) {
 bool before(const Line &a, const Line &b) { return std::tie(a.t, a.d, a.raw) < std::tie(b.t, b.d, b.raw); }
 
 std::optional<Line> parse(const std::string &s) {
+  // An object: nlohmann would also take a UTF-8 BOM before it, which is not JSON's whitespace.
+  if (auto at = s.find_first_not_of(" \t\r"); at == std::string::npos || s[at] != '{') return std::nullopt;
   auto j = json::parse(s, nullptr, false);
   if (!j.is_object()) return std::nullopt;
   auto t = j.find("t"), op = j.find("op");
