@@ -370,7 +370,7 @@ Status Packs::install(const Component &c, const Progress &progress, const Cancel
   if (c.file.empty() || c.file.find_first_of("/\\") != std::string::npos) return {"Bad file name " + c.file};
   std::error_code ec;
   fs::create_directories(data_, ec);
-  auto tmp = data_ / "tmp";
+  auto tmp = data_ / "tmp" / "packs";  // tmp/ itself holds the catalog's downloads and the imports too
   // Left by an unpack that did not finish (one install at a time: none is running).
   fs::remove_all(tmp, ec);
   auto part = data_ / (c.file + ".part");
@@ -419,6 +419,7 @@ Status Packs::install(const Component &c, const Progress &progress, const Cancel
   }
   fs::remove(part, ec);
   fs::remove_all(tmp, ec);
+  fs::remove(tmp.parent_path(), ec);  // when nothing else waits there
   if (!err.empty()) return {err};
   auto now = installed();
   now[c.id] = c.sha256;
