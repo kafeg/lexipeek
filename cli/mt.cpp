@@ -20,7 +20,6 @@ TranslatorOptions options(const Args &a) {
   TranslatorOptions o;
   o.data = a.data;
   if (a.has("--idle-ms")) o.idle_bergamot = o.idle_llm = std::chrono::milliseconds(std::stoll(a.opt("--idle-ms")));
-  if (a.has("--threads")) o.direct_threads = std::stoi(a.opt("--threads"));
   return o;
 }
 
@@ -65,7 +64,7 @@ int bench_one(Translator &tr, const std::string &from, const std::string &to, Me
   return 0;
 }
 
-const Register translate{{"translate", "--from de --to ru [--method fast|direct|llm] [--english] [--threads N] [TEXT...]   (no TEXT: stdin; N: Direct's)",
+const Register translate{{"translate", "--from de --to ru [--method fast|direct|llm] [--english] [TEXT...]   (no TEXT: stdin)",
                           {"--english"}, [](const Args &a) {
                             auto m = method_from(a.opt("--method", "fast"));
                             if (!m) return std::cerr << "unknown method\n", 2;

@@ -127,10 +127,8 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
     Silicon (marian with ruy, `gemm-precision: int8shiftAll`) and on x86-64 (intgemm; CI job `linux-x64` translates
     de → ru with `opus-deu_eng_fra_por_spa-sla` and runs the model tests).
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
-  Direct runs one copy of its model (the owner's decision: memory). The core can load more copies of a multi-target
-  model and translate the text's pieces side by side, each piece alone as one copy would (word for word the same,
-  about twice as fast with two, each ~1.1 GB more while it translates): `TranslatorOptions::direct_threads`, the CLI's
-  `translate --threads N`; more than one by default only by the owner's decision.
+  Direct runs one copy of its model, its pieces one after another (copies side by side were not word for word the same
+  on Linux: removed).
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
   is a setting (M8). Windows: `%LOCALAPPDATA%\\LexiPeek` (not the roaming profile: packs are large), Linux: XDG dirs.
 - **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8
