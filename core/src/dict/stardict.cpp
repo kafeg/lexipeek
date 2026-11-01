@@ -265,6 +265,7 @@ void StarDict::build() {
     if (e == std::string::npos) break;
     W w{p, e - p, 0, 0};
     p = e + 1;
+    if (p + (offset64_ ? 12 : 8) > idx.size()) break;  // a cut .idx
     if (offset64_) {
       w.off = (uint64_t(be32(idx, p)) << 32) | be32(idx, p + 4);
       p += 8;

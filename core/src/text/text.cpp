@@ -16,7 +16,7 @@ struct Regex::Impl {
 Regex::Regex(std::string_view pattern, bool ignore_case, bool dotall) : impl_(std::make_unique<Impl>()) {
   int err = 0;
   PCRE2_SIZE at = 0;
-  uint32_t flags = PCRE2_UTF | (ignore_case ? PCRE2_CASELESS : 0) | (dotall ? PCRE2_DOTALL : 0);
+  uint32_t flags = PCRE2_UTF | PCRE2_MATCH_INVALID_UTF | (ignore_case ? PCRE2_CASELESS : 0) | (dotall ? PCRE2_DOTALL : 0);
   impl_->code = pcre2_compile(reinterpret_cast<PCRE2_SPTR>(pattern.data()), pattern.size(), flags, &err, &at, nullptr);
   if (!impl_->code) throw std::runtime_error("Bad regex: " + std::string(pattern));
   pcre2_jit_compile(impl_->code, PCRE2_JIT_COMPLETE);
