@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <sha256.h>
 #include "lexipeek/anki.hpp"
+#include "lexipeek/app.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/speech.hpp"
 #include "lexipeek/store.hpp"
@@ -556,6 +557,44 @@ TEST_CASE("anki: Notes' rows carry their Key") {
     st.seen("Haus", "word", "ru", "дом");
     CHECK(notes_view(st, NotesTab::words, "ru").rows.at(0).key == anki::key_of("Haus", "ru"));
     CHECK(notes_view(st, NotesTab::history, "ru").rows.at(0).key == anki::key_of("Haus", "ru", true));
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: on at launch — the engine applies settings.json's binding, not only a change in Settings") {
+  auto d = fresh("lexipeek-anki-launch");
+  std::ofstream(d / "settings.json") << R"({"anki": {"on": true}})";
+  {
+    auto e = app::Engine::make(d.string(), app::device(16000, {}, "arm64"));
+    CHECK(e.anki_status().on);
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: a reading that cannot be made now does not hold its note: it goes without after one try") {
+  auto d = fresh("lexipeek-anki-later");
+  FakeAnki anki;
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    st.save("Baum", "word", "ru", "дерево");
+    int tries = 0;
+    anki::Reader reader{[&](const anki::Note &) {
+                          tries++;
+                          return speech::Made{"", true};
+                        },
+                        [] { return true; }};
+    anki::Sender snd(st, d, anki::default_transport(), reader);
+    snd.configure(on(srv.url()));
+    snd.run_once();  // one tried: it goes, the other waits for its try
+    CHECK(tries == 1);
+    CHECK(anki.notes.size() == 1);
+    auto r = snd.run_once();
+    CHECK(tries == 2);
+    CHECK(anki.notes.size() == 2);
+    CHECK(r.waiting == 0);
+    CHECK(r.words.audio == 2);  // still tried later
   }
   wipe(d);
 }

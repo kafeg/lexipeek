@@ -350,6 +350,7 @@ struct Sender::Impl {
   Sent failed;  // Key → the digest that failed: not tried again until it changes or "Send now"
   std::map<std::string, std::string> audio;  // Key → its reading made for Anki
   std::set<std::string> no_audio;            // Keys whose reading cannot be made (no voice for the language)
+  std::set<std::string> tried;               // Keys whose reading was tried: their note goes, without one if need be
   Status st;
   std::chrono::steady_clock::time_point retry{}, probed{};
   bool now = false, stop = false, more = false;
@@ -364,7 +365,9 @@ struct Sender::Impl {
       if (auto i = audio.find(n.key); n.audio.empty() && i != audio.end()) n.audio = i->second;
     for (auto &n : all)
       if (n.audio.empty() && !no_audio.count(n.key)) missing.push_back(n);
+    // Not tried yet first, then not sent yet: one that cannot be made now does not block the others.
     std::stable_partition(missing.begin(), missing.end(), [&](const Note &n) { return !sent.count(n.key); });
+    std::stable_partition(missing.begin(), missing.end(), [&](const Note &n) { return !tried.count(n.key); });
     return all;
   }
 
@@ -414,16 +417,19 @@ struct Sender::Impl {
       auto m = reader.make(n);
       g.lock();
       st.making = false;
+      tried.insert(n.key);
       if (!m.file.empty()) audio[n.key] = m.file;
       else if (!m.later) no_audio.insert(n.key);
       missing.clear();
       all = all_notes(set, missing);
-      more = !missing.empty() && (!m.file.empty() || !m.later);
+      more = std::any_of(missing.begin(), missing.end(), [&](const Note &x) { return !tried.count(x.key); });
     }
     auto wait = backlog(all, sent);
     std::set<std::string> held;
+    // A note waits for its reading until it was tried once; then it goes without and gets it later.
     if (ready)
-      for (auto &n : missing) held.insert(n.key);
+      for (auto &n : missing)
+        if (!tried.count(n.key)) held.insert(n.key);
     count(all, wait, missing);
     std::erase_if(wait, [&](const Note &n) {
       auto i = failed.find(n.key);

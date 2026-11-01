@@ -90,6 +90,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.card.read = s.speech.on;
   auto core = std::make_shared<Core>(std::move(o));
   core->speaker().configure(s.speech);
+  core->anki().configure(s.anki);  // on at launch, not only after a change in Settings
   return {core};
 }
 
