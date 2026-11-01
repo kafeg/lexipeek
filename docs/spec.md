@@ -229,8 +229,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   right under the text; no height limit, the page scrolls): a pasted
   paragraph is a passage card with its translation. Notes (`notes_view`): newest first, 50 a page with a pager (InkPeek's); a row is the text and one line (the saved
   line, else the newest kept answer, else "—"), History also its looks; an open card's ★ follows Notes; a click opens it in Look up, ✕ removes, "Clear history…"
-  (asks) under History. Under each list (InkPeek's Notes): **TSV…** — the open list for Anki or a spreadsheet (text,
-  meaning, AI translation, language, date; `notes_tsv`); **Export…** — the whole store (saved, history, AI answers) as
+  (asks) under History; a row that went to Anki has a small mark. Under the lists (no TSV: Anki is Settings → Sync →
+  Anki's binding): **Export…** — the whole store (saved, history, AI answers) as
   one SQLite file with InkPeek's tables and columns (`lexipeek-backup-<date>.db`, `VACUUM INTO`); **Import…** — a
   backup of ours or InkPeek's (an older one too: the columns both have) adds what this computer does not have, as this
   device's log lines (a text the logs do not know keeps its dates, another one gets now). A copy a day in
@@ -260,19 +260,25 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
   answers in it (an existing settings.json keeps its answer). Every text of the core's `views` and of a shell comes from
   the core's table; dictionaries and the card's articles are data, not translated.
-- **Anki** (Settings → Sync → Anki; the Sync tab is the sync folder's): a binding, not a button — nothing in the card.
-  Through Anki's add-on AnkiConnect (its API version 6 at `http://127.0.0.1:8765`, any AnkiConnect speaks it). Once on,
-  saved words, saved phrases (passages too) and, when on, the history go to Anki by themselves while it runs, each into
-  its deck — `Vocabulary::Words`, `Vocabulary::Phrases`, `Vocabulary::History` (each on or off, its name editable; the
-  history off by default) —, as notes of the note type **Vocabulary** (Front · Back · Audio · Example · Key; neutral names:
-  InkPeek shares the binding through AnkiDroid later). Key = the answer language + the first 32 hex digits of sha256 of
-  InkPeek's lookup key of the text (`h-` before a history note's): a change of an entry updates its note (found by Key),
-  a note deleted in Anki is added again, never a duplicate. What could not go waits and goes when Anki answers (tried
-  again every 15 s; a note Anki refused waits for a change or **Send now**). Audio: the note's kept reading (☆) when Read
-  aloud made one, as `lexipeek_<Key>.wav` in Anki's media — nothing is read for Anki. "Sync after sending" (off) asks Anki
-  to sync with AnkiWeb. The record of what went is `<data>/anki.json` (Key → a digest of the fields; per computer, like
-  Anki's collection); Notes marks a row that went. **Check** reads only (version, decks, note types). AnkiConnect's
-  `apiKey`, when set, is kept in the Keychain / Credential Manager. A snapshot run never sends.
+- **Anki** (Settings → Sync → Anki, next to the sync folder's tab): a binding, not a button — nothing in the card.
+  Through Anki's add-on AnkiConnect (its API version 6 at `http://127.0.0.1:8765`; any AnkiConnect speaks it); the tab
+  says how to set it up (install Anki, Tools → Add-ons → Get Add-ons, code 2055492159, restart, keep it running; on
+  Android InkPeek sends to AnkiDroid) and its connection line names the step that fails (Anki not running, the add-on
+  missing — Anki runs but nothing answers —, an API key wanted). Once on, saved words, saved phrases (passages too) and,
+  when on, the history go to Anki by themselves while it runs, each into its deck — `Peek::Words`, `Peek::Phrases`,
+  `Peek::History` (each on or off, picked from Anki's decks or typed, made on the first send; the history off by
+  default) —, as notes of the note type **Peek** (Front · Back · Audio · Example · Key; "Peek": InkPeek shares the
+  binding through AnkiDroid later). Key = the answer language + the first 32 hex digits of sha256 of InkPeek's lookup
+  key of the text (`h-` before a history note's): a change of an entry updates its note (found by Key), a note deleted
+  in Anki is added again, never a duplicate. **Audio for every note**: its kept reading, else Read aloud makes one for
+  it (one at a time in the background, the text's language and the voice setting, a ▶ reading first; the model goes by
+  its idle time), as `lexipeek_<Key>.wav` in Anki's media; without the voice model notes go without audio (the tab says
+  so, with a way to Read aloud) and get it once the model is there. What could not go waits and goes when Anki answers
+  (tried again every 15 s; a note Anki refused waits for a change or **Send now**). The tab shows per deck how many
+  are in Anki, wait, wait for audio. "Sync after sending" (off) asks Anki to sync with AnkiWeb. The record of what went
+  is `<data>/anki.json` (Key → a digest of the fields; per computer, like Anki's collection); Notes marks a row that
+  went. **Check** reads only (version, decks, note types). AnkiConnect's `apiKey`, when set, is kept in the Keychain /
+  Credential Manager. A snapshot run never sends. No TSV export: this binding replaces it.
 - **About and updates** (the About window): version, MIT, links to the repo and InkPeek, the packs' licenses (Wiktionary
   CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0). "Check now" asks GitHub's Releases API for LexiPeek's
   latest release — only on that click; none yet → "No releases yet", a newer one → a link to its page.

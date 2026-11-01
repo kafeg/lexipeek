@@ -304,9 +304,6 @@ struct NotesView {
 };
 
 NotesView notes_view(const Store &s, NotesTab tab, const std::string &answer, int page = 0);
-// The tab as TSV for Anki or a spreadsheet (InkPeek's): text, meaning (the line shown), the AI translation, the answer
-// language, the date (local, yyyy-mm-dd); one row per line, tabs and line breaks inside a cell made spaces.
-std::string notes_tsv(const Store &s, NotesTab tab, const std::string &answer);
 // ✕ of a row: unsave, or forget the look.
 std::string remove_note(Store &s, NotesTab tab, const std::string &text);
 
@@ -398,6 +395,7 @@ struct SettingsState {
   // Sync → Anki: AnkiConnect's key is kept (Keychain / Credential Manager), the Check running and its last answer, the
   // binding's state (Engine::anki_status).
   bool anki_key = false, anki_checking = false;
+  bool anki_app = false;  // Anki itself runs (the shell asks the OS): nothing answering then means the add-on is missing
   anki::Check anki_check;
   bool anki_checked = false;
   anki::Status anki;
@@ -426,7 +424,7 @@ struct SettingRow {
   std::vector<std::string> choices = {};
   int selected = 0;
   std::string value = "";
-  std::string placeholder = "";
+  std::string placeholder = "";  // text: shown while empty; choices on a text row: values to pick (Anki's decks)
   std::string edit = "";  // a prompt id: ✎ opens its editor (prompt_editor)
   std::string detail = "";
   std::vector<std::string> ids = {};

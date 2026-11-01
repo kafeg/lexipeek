@@ -1,7 +1,8 @@
 // Anki through its add-on AnkiConnect (its API version 6 at the root, which every AnkiConnect speaks): once the binding is
-// on, saved words and phrases (and the history when set so) go to their decks by themselves while Anki runs; what could
-// not go waits and goes when Anki answers. One note per entry by its Key field: sending again updates it, a note deleted
-// in Anki is added again. Only to the address in the settings (Anki on this computer).
+// on, saved words and phrases (and the history when set so) go to their decks by themselves while Anki runs, each with
+// its reading (made by Read aloud when none is kept, one at a time); what could not go waits and goes when Anki answers.
+// One note per entry by its Key field: sending again updates it, a note deleted in Anki is added again. Only to the
+// address in the settings (Anki on this computer).
 #pragma once
 #include <chrono>
 #include <filesystem>
@@ -11,6 +12,7 @@
 #include <string>
 #include <vector>
 #include "lexipeek/settings.hpp"
+#include "lexipeek/speech.hpp"
 
 namespace lexipeek {
 class Store;
@@ -19,21 +21,22 @@ class Store;
 namespace lexipeek::anki {
 
 // The note type, shared with InkPeek: its name and fields (Key in no template).
-inline constexpr const char *model_name = "Vocabulary";
+inline constexpr const char *model_name = "Peek";
 inline const std::vector<std::string> fields{"Front", "Back", "Audio", "Example", "Key"};
 
 // One entry as a note.
 struct Note {
   std::string key, deck, front, back, example;
-  std::string audio;  // a reading's file ("" = none)
+  std::string audio;  // a reading's file ("" = none yet)
   std::string kind;   // "word", "phrase", "history"
+  std::string text, lang;  // the entry as stored: its text, the answer language
 };
 
 // The Key field: the answer language, then the first 32 hex digits of sha256 of InkPeek's lookup key (normKey) of the
 // text; "h-" before a history note's ("ru-3fa9…", "h-ru-3fa9…"): letters, digits and "-" only, searched as they are.
 std::string key_of(const std::string &text, const std::string &lang, bool history = false);
 // What the binding sends from the store: saved words, saved phrases, the history, each when on (its reading: the
-// note's kept one under <data>/readings/saved/, when audio is on).
+// note's kept one under <data>/readings/saved/, if any).
 std::vector<Note> notes(const Store &store, const AnkiSettings &s, const std::filesystem::path &data);
 // A note's fields as sent: a change sends it again (the deck is not in it: a renamed deck takes only new notes).
 std::string digest(const Note &n);
@@ -51,7 +54,7 @@ enum class Code {
   not_running,  // nothing answers at the address: Anki is not running, or AnkiConnect is not installed
   need_key,     // AnkiConnect wants its key
   old,          // AnkiConnect older than API version 6
-  model,        // the note type "Vocabulary" lacks a field
+  model,        // the note type "Peek" lacks a field
   refused,      // Anki refused something (its message)
 };
 
@@ -66,7 +69,9 @@ Transport default_transport();  // libcurl
 // Settings → Anki's Check: only reads (version, decks, note types), creates nothing.
 struct Check {
   Code code = Code::ok;
-  std::string text;  // "Connected: AnkiConnect 6 · 14 decks", or what is wrong and what to do
+  std::string text;  // "Connected: AnkiConnect 6 · 14 decks", or what is wrong
+  int version = 0;
+  std::vector<std::string> decks = {};  // Anki's decks
 };
 Check check(const AnkiSettings &s, const std::string &key, const Transport &t);
 
@@ -79,13 +84,27 @@ struct Result {
 };
 Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::string &key, const Transport &t, Sent &sent);
 
+// Per deck: in Anki, waiting (not sent or changed since), without their reading yet.
+struct Count {
+  int sent = 0, waiting = 0, audio = 0;
+};
+
 // What Settings → Anki shows of the binding.
 struct Status {
   bool on = false;
-  int waiting = 0;       // entries not in Anki yet (or changed)
-  bool sending = false;
-  Code code = Code::ok;  // the last attempt's
-  std::string text;      // its line: "Sent: 3 added, 1 updated", the error; "" before any
+  Count words, phrases, history;
+  int waiting = 0;       // all decks'
+  bool sending = false, making = false;  // a send, a reading being made
+  bool voice = true;     // Read aloud's voice model is there (else notes go without audio, and get it later)
+  bool probed = false;   // Anki was asked: code says how it went
+  Check check;           // the last time Anki was asked (every 30 s while on): its code, version, decks
+  std::string text;      // the last send's line: "last time: 3 added, 1 updated", the error; "" before any
+};
+
+// A note's reading for the sender, from the core's Read aloud: found or made now (blocking); ready: the model is there.
+struct Reader {
+  std::function<speech::Made(const Note &)> make;
+  std::function<bool()> ready;
 };
 
 // The binding at work: one thread that looks at the store every few seconds and sends what waits; Anki not answering
@@ -93,7 +112,8 @@ struct Status {
 class Sender {
  public:
   // every: how often it looks at the store.
-  Sender(Store &store, std::filesystem::path data, Transport t = default_transport(), std::chrono::milliseconds every = std::chrono::seconds(3));
+  Sender(Store &store, std::filesystem::path data, Transport t = default_transport(), Reader reader = {},
+         std::chrono::milliseconds every = std::chrono::seconds(3));
   ~Sender();
   Sender(const Sender &) = delete;
   Sender &operator=(const Sender &) = delete;

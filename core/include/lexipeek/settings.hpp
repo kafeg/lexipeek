@@ -62,14 +62,13 @@ struct SpeechSettings {
   std::vector<std::string> off;  // voices from a recording not used (ids)
 };
 
-// Anki through its add-on AnkiConnect: saved words, phrases and (when on) the history go to their decks while Anki runs.
-// The names are neutral: InkPeek shares the binding (the note type "Vocabulary", its Key field). AnkiConnect's key is not here.
+// Anki through its add-on AnkiConnect: saved words, phrases and (when on) the history go to their decks while Anki runs,
+// each with its reading. "Peek": InkPeek shares the binding (the note type, its Key field). AnkiConnect's key is not here.
 struct AnkiSettings {
   bool on = false;
   std::string url = "http://127.0.0.1:8765";
-  std::string words = "Vocabulary::Words", phrases = "Vocabulary::Phrases", history = "Vocabulary::History";  // decks
+  std::string words = "Peek::Words", phrases = "Peek::Phrases", history = "Peek::History";  // decks
   bool words_on = true, phrases_on = true, history_on = false;
-  bool audio = true;  // a note's reading when Read aloud has made one
   bool sync = false;  // Anki syncs with AnkiWeb after a send
 };
 

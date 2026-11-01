@@ -192,7 +192,7 @@ void MainWindow::refresh() {
   if (pages_->currentIndex() == 1) draw_notes();
 }
 
-// The open list's page: a click opens the card, ✕ removes; TSV, the pager, "Clear history"; the backup under it.
+// The open list's page: a click opens the card, ✕ removes; the pager, "Clear history"; the backup under it.
 void MainWindow::draw_notes() {
   auto said = said_ ? said_->text() : QString();
   auto *l = static_cast<QVBoxLayout *>(notes_->layout());
@@ -244,18 +244,6 @@ void MainWindow::draw_notes() {
     l->addLayout(row);
   }
   auto *bar = new QHBoxLayout;
-  if (!v.rows.empty()) {
-    auto *tsv = new QPushButton(t("tsv_btn"));
-    tsv->setToolTip(t("tsv_d"));
-    connect(tsv, &QPushButton::clicked, this, [this] {
-      auto f = QFileDialog::getSaveFileName(this, {}, downloads(q(app::notes_file(tab_))));
-      if (f.isEmpty()) return;
-      auto e = c_.engine;
-      c_.run<std::string>(c_.worker, [e, tab = tab_, f] { return e.export_tsv(tab, f.toStdString()); },
-                          [this](std::string said) { if (said_) said_->setText(q(said)); }, this);
-    });
-    bar->addWidget(tsv);
-  }
   bar->addStretch();
   if (!v.pager.empty()) {
     auto *prev = new QToolButton;

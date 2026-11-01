@@ -91,7 +91,6 @@
               <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button x:Name="Tsv" MinWidth="96" AutomationProperties.AutomationId="Tsv" />
             <StackPanel x:Name="Pager" Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
               <TextBlock x:Name="PagerText" VerticalAlignment="Center" Margin="4,0,4,0" Style="{StaticResource CaptionTextBlockStyle}"
                          Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

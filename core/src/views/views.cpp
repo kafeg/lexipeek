@@ -758,27 +758,6 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer, i
   return v;
 }
 
-std::string notes_tsv(const Store &st, NotesTab tab, const std::string &answer) {
-  static const text::Regex breaks("[\\t\\r\\n]+");
-  auto cell = [](const std::string &s) { return text::trim(breaks.replace(s, " ")); };
-  auto day = [](std::int64_t ms) { return text::local_day(ms); };
-  auto ai_line = [&](const std::string &text) { return ai::brief(st.newest_answer(text, catalog_language(answer), "quick")); };
-  auto rows = notes_view(st, tab, answer, -1).rows;
-  std::map<std::string, std::int64_t> times;
-  if (tab == NotesTab::history)
-    for (auto &e : st.history()) times[e.text] = e.seen;
-  else
-    for (auto &e : st.saved()) times[e.text] = e.created;
-  std::string out;
-  for (auto &r : rows) {
-    auto meaning = r.line == "—" ? std::string() : r.line;
-    for (auto &c : {cell(r.text), cell(meaning), cell(ai_line(r.text)), answer, day(times[r.text])})
-      out += c + "\t";
-    out.back() = '\n';
-  }
-  return out;
-}
-
 std::string remove_note(Store &st, NotesTab tab, const std::string &text) {
   return tab == NotesTab::history ? st.forget(text) : st.unsave(text);
 }

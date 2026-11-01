@@ -634,7 +634,6 @@ TEST_CASE("app: hotkey labels, lexipeek:// links, menu lines, Notes' file names"
   auto cut = app::menu_line(std::string(50, 'x'));
   CHECK(cut.size() == 39 + std::string("…").size());
   CHECK(app::menu_line(std::string(40, 'y')).size() == 40);
-  CHECK(app::notes_file(NotesTab::phrases).starts_with("lexipeek-phrases-"));
   CHECK(app::backup_file().ends_with(".db"));
 }
 

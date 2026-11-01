@@ -179,7 +179,17 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->speaker = std::make_unique<speech::Speaker>(o.data);
   impl_->notes_answer = o.answer;
   impl_->transport = o.ai_replies.empty() ? ai::default_transport() : ai::file_transport(o.ai_replies);
-  impl_->anki = std::make_unique<anki::Sender>(*impl_->store, o.data);
+  // A note's reading for Anki: the text in its language (as the card finds it), by Read aloud's voices.
+  anki::Reader reader{[i = impl_.get()](const anki::Note &n) {
+                        std::string lang;
+                        {
+                          std::lock_guard g(i->mu);
+                          lang = i->source(n.text, n.lang).first;
+                        }
+                        return lang.empty() ? speech::Made{} : i->speaker->make_now({n.text, lang});
+                      },
+                      [d = o.data] { return speech::built() && speech::model_installed(d); }};
+  impl_->anki = std::make_unique<anki::Sender>(*impl_->store, o.data, anki::default_transport(), reader);
   impl_->o = std::move(o);
 }
 

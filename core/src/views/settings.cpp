@@ -381,40 +381,62 @@ std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) 
   return rows;
 }
 
-// Sync → Anki: the binding on, the connection's check, what waits and "Send now", the three decks (each on or off, its
-// name), audio and AnkiWeb, the note type; the address and AnkiConnect's key last.
+// Sync → Anki: how it works, the binding on, the connection (the step that fails), the voice model for audio, what waits
+// and "Send now", the three decks (each on or off, its counts, picked from Anki's or typed), the note type, AnkiWeb; the
+// address and AnkiConnect's key last.
 std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
   auto &a = s.anki;
-  std::vector<SettingRow> rows{toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
-  auto check = valued(Kind::button, "anki_check", tr("anki_check_t"),
-                      st.anki_checking ? tr("anki_checking") : st.anki_checked ? st.anki_check.text : tr("anki_check_d"), tr("anki_check_btn"));
+  auto &k = st.anki;
+  std::vector<SettingRow> rows{heading(tr("anki_how_t"), tr("anki_how_d")), toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
+  // The connection: the Check's answer, else the binding's last one.
+  bool known = st.anki_checked || k.probed;
+  auto c = st.anki_checked ? st.anki_check : k.check;
+  std::string title = tr("anki_check_t"), about = tr("anki_check_d");
+  if (st.anki_checking) about = tr("anki_checking");
+  else if (known) switch (c.code) {
+      case anki::Code::ok: title = c.text; break;
+      case anki::Code::not_running:
+        title = tr(st.anki_app ? "anki_no_addon_t" : "anki_not_running_t"), about = tr(st.anki_app ? "anki_no_addon_d" : "anki_not_running_d");
+        break;
+      case anki::Code::need_key: title = tr("anki_need_key_t"), about = tr("anki_need_key_d"); break;
+      default: title = c.text; break;
+    }
+  auto check = valued(Kind::button, "anki_check", title, about, tr("anki_check_btn"));
   check.enabled = !st.anki_checking;
   rows.push_back(check);
+  if (a.on && !k.voice) {
+    auto voice = valued(Kind::button, "anki_voice", tr("anki_voice_t"), tr("anki_voice_d"), tr("open_btn"));
+    voice.go_section = SettingsSection::speech, voice.go_tab = 0;
+    rows.push_back(voice);
+  }
   if (a.on) {
-    std::string state = st.anki.sending ? tr("anki_sending")
-                        : st.anki.waiting > 0 ? trn("anki_waiting", st.anki.waiting)
-                                              : tr("anki_all_sent");
-    if (!st.anki.text.empty()) state += " · " + st.anki.text;
+    int audio = k.words.audio + k.phrases.audio + k.history.audio;
+    std::string state = k.sending ? tr("anki_sending") : k.waiting > 0 ? tr("anki_waiting", {digits(k.waiting)}) : tr("anki_all_sent");
+    if (k.voice && audio > 0) state += " · " + tr("anki_making", {digits(audio)});
+    if (!k.text.empty()) state += " · " + k.text;
     auto now = valued(Kind::button, "anki_send", tr("anki_send_t"), state, tr("anki_send_btn"));
-    now.enabled = !st.anki.sending && st.anki.waiting > 0;
+    now.enabled = !k.sending && k.waiting > 0;
     rows.push_back(now);
   }
   rows.push_back(heading(tr("anki_decks_t"), tr("anki_decks_d")));
-  auto deck = [&](const std::string &id, bool on, const std::string &name, const std::string &def) {
-    rows.push_back(toggle("anki_" + id + "_on", tr("anki_" + id + "_t"), tr("anki_" + id + "_d"), on));
+  auto decks = c.decks;
+  auto deck = [&](const std::string &id, bool on, const std::string &name, const std::string &def, const anki::Count &n) {
+    auto counts = tr("anki_counts", {digits(n.sent), digits(n.waiting), digits(n.audio)});
+    rows.push_back(toggle("anki_" + id + "_on", tr("anki_" + id + "_t"), on && a.on ? counts : tr("anki_" + id + "_d"), on));
     if (!on) return;
     auto r = valued(Kind::text, "anki_" + id, tr("anki_deck_t"), tr("anki_deck_d"), name);
     r.placeholder = def;
+    r.choices = decks;  // Anki's decks to pick from; a new name is typed
+    if (std::find(r.choices.begin(), r.choices.end(), name) == r.choices.end()) r.choices.insert(r.choices.begin(), name);
     rows.push_back(r);
   };
   AnkiSettings d;
-  deck("words", a.words_on, a.words, d.words);
-  deck("phrases", a.phrases_on, a.phrases, d.phrases);
-  deck("history", a.history_on, a.history, d.history);
+  deck("words", a.words_on, a.words, d.words, k.words);
+  deck("phrases", a.phrases_on, a.phrases, d.phrases, k.phrases);
+  deck("history", a.history_on, a.history, d.history, k.history);
   rows.push_back(heading(tr("anki_notes_t")));
   rows.push_back(valued(Kind::status, "anki_model", tr("anki_model_t"), tr("anki_model_d", {text::join(anki::fields, " · ")}), anki::model_name));
   rows.back().on = true;
-  rows.push_back(toggle("anki_audio", tr("anki_audio_t"), tr("anki_audio_d"), a.audio));
   rows.push_back(toggle("anki_sync", tr("anki_sync_t"), tr("anki_sync_d"), a.sync));
   rows.push_back(heading(tr("anki_conn_t")));
   auto url = valued(Kind::text, "anki_url", tr("anki_url_t"), tr("anki_url_d"), a.url);
@@ -519,7 +541,6 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
   else if (key == "anki_words_on") s.anki.words_on = on;
   else if (key == "anki_phrases_on") s.anki.phrases_on = on;
   else if (key == "anki_history_on") s.anki.history_on = on;
-  else if (key == "anki_audio") s.anki.audio = on;
   else if (key == "anki_sync") s.anki.sync = on;
   else if (key.starts_with("voice.")) {
     auto &off = s.speech.off;

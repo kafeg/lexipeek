@@ -92,6 +92,13 @@ struct Reading {
   bool fix = false;   // failed: Settings → Read aloud fixes it (off, no model)
 };
 
+// A reading made for another use (Anki): its file, or none — later: it can be made later (no model yet, a reading asked
+// meanwhile).
+struct Made {
+  std::string file = "";
+  bool later = false;
+};
+
 // The engine: the model loaded on the first reading, freed after the idle time; one reading at a time, a newer one
 // cancels the one being made.
 class Speaker {
@@ -111,6 +118,9 @@ class Speaker {
   // ☆: a reading kept with its note (copied from the readings once made); forget: the note's readings let go.
   void keep(const std::string &note, const Read &r);
   void forget(const std::string &note);
+  // Blocking: r's reading found or made now (Read aloud's on / off does not matter), the model kept by its idle time;
+  // a ▶ reading asked meanwhile stops it.
+  Made make_now(const Read &r);
   void release();
   bool held() const;
   std::chrono::steady_clock::time_point until() const;

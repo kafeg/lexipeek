@@ -139,15 +139,6 @@ void MainWindow::start(MainKeep &keep) {
     if (k.Key() != VirtualKey::Delete) return;
     if (auto item = Rows().SelectedItem().try_as<xaml::FrameworkElement>()) k.Handled(true), remove(winrt::to_string(unbox_value_or<hstring>(item.Tag(), L"")));
   });
-  Tsv().Click([this](auto &&, auto &&) {
-    auto tab = tabs[page_ - words];
-    auto f = save_to(hwnd(*this), app::notes_file(tab));
-    if (f.empty()) return;
-    auto e = keep_->client.engine;
-    page::run<std::string>(keep_->client, [e, tab, f] { return e.export_tsv(tab, f); }, [this, alive = alive_](std::string s) {
-      if (*alive) said(s);
-    });
-  });
   Clear().Click([this](auto &&, auto &&) {
     page::confirm(Root(), app::text("clear_history_q"), app::text("notes_clear_d"), app::text("clear_history"), [this] {
       keep_->client.engine.clear_history();
@@ -214,8 +205,6 @@ void MainWindow::refresh(xaml::ElementTheme theme) {
       if (open_first_run) open_first_run();
     }));
   }
-  Tsv().Content(box_value(tr("tsv_btn")));
-  controls::ToolTipService::SetToolTip(Tsv(), box_value(tr("tsv_d")));
   Clear().Content(box_value(tr("clear_history_more")));
   BackupTitle().Text(tr("hw_backup_t"));
   BackupAbout().Text(tr("backup_d"));
@@ -256,7 +245,7 @@ void MainWindow::said(const std::string &s) {
   Said().Visibility(s.empty() ? xaml::Visibility::Collapsed : xaml::Visibility::Visible);
 }
 
-// The open list's page: a click (or Return) opens the card, ✕ (or Delete) removes; TSV…, the pager, Clear History….
+// The open list's page: a click (or Return) opens the card, ✕ (or Delete) removes; the pager, Clear History….
 void MainWindow::draw_notes() {
   auto tab = tabs[page_ - words];
   auto v = keep_->client.engine.notes(tab, notes_page_);
@@ -305,7 +294,6 @@ void MainWindow::draw_notes() {
   bool empty = v.rows.empty();
   Empty().Text(h(v.empty));
   Empty().Visibility(empty ? xaml::Visibility::Visible : xaml::Visibility::Collapsed);
-  Tsv().Visibility(empty ? xaml::Visibility::Collapsed : xaml::Visibility::Visible);
   Clear().Visibility(v.clear ? xaml::Visibility::Visible : xaml::Visibility::Collapsed);
   // The pager: ‹ "51–100 of 412" ›, only when there is more than a page.
   auto pager = Pager();

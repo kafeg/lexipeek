@@ -81,7 +81,7 @@ final class NotesModel: ObservableObject {
         refresh()
     }
 
-    // What the last Export / Import / TSV said.
+    // What the last Export / Import said.
     @Published var said = ""
 
     // A save panel in Downloads with the file's name; nil when cancelled.
@@ -90,11 +90,6 @@ final class NotesModel: ObservableObject {
         p.nameFieldStringValue = name
         p.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
         return p.runModal() == .OK ? p.url?.path : nil
-    }
-
-    func exportTSV() {
-        guard let f = saveTo(String(lexipeek.app.notes_file(tab))) else { return }
-        client.exportTSV(tab, f) { [weak self] in self?.said = $0 }
     }
 
     func backup() {
@@ -131,7 +126,6 @@ struct NotesList: View {
                     .listStyle(.inset)
             }
             HStack {
-                if !model.look.rows.isEmpty { Button(L.t("tsv_btn")) { model.exportTSV() }.help(L.t("tsv_d")) }
                 Spacer()
                 if !model.look.pager.isEmpty {
                     Button("◀") { model.turn(-1) }.buttonStyle(.borderless).disabled(model.look.page == 0)

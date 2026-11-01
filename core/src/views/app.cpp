@@ -149,13 +149,6 @@ std::string Engine::restore(const std::string &file) const {
   return r.error.empty() ? tr("restore_done", {digits(r.added)}) : tr("failed", {r.error});
 }
 
-std::string Engine::export_tsv(NotesTab tab, const std::string &file) const {
-  auto tsv = notes_tsv(core->store(), tab, core->answer());
-  std::ofstream f(text::path_of(file), std::ios::binary);
-  f << tsv;
-  if (!f) return tr("failed", {file});
-  return tr("exported", {file, digits(static_cast<long long>(std::count(tsv.begin(), tsv.end(), '\n')))});
-}
 // At launch: the dictionaries' indexes, langid, and the day's copy of the notes (<data>/backup, the last five).
 void Engine::prepare() const {
   core->store().sync(false);  // the first read of the sync folder, unless the shell did it
@@ -504,10 +497,6 @@ std::string today() {
 }
 }  // namespace
 
-std::string notes_file(NotesTab tab) {
-  const char *kinds[] = {"words", "phrases", "history"};
-  return std::string("lexipeek-") + kinds[static_cast<int>(tab)] + "-" + today() + ".tsv";
-}
 std::string backup_file() { return "lexipeek-backup-" + today() + ".db"; }
 
 }  // namespace lexipeek::app

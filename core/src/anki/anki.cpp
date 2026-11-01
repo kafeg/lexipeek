@@ -132,8 +132,8 @@ std::string text_of(Code c, const std::string &error) {
   switch (c) {
     case Code::ok: return "";
     case Code::off: return tr("anki_off");
-    case Code::not_running: return tr("anki_not_running");
-    case Code::need_key: return tr("anki_need_key");
+    case Code::not_running: return tr("anki_not_running_t");
+    case Code::need_key: return tr("anki_need_key_t");
     case Code::old: return tr("anki_old");
     case Code::model: return tr("anki_model_changed", {model_name, error});
     case Code::refused: return tr("anki_refused", {error});
@@ -141,7 +141,7 @@ std::string text_of(Code c, const std::string &error) {
   return error;
 }
 
-// The note type made when missing; a "Vocabulary" without our fields is not touched.
+// The note type made when missing; a "Peek" without our fields is not touched.
 Answer ensure_model(const AnkiSettings &s, const std::string &key, const Transport &t) {
   auto names = post(s, key, t, "modelNames");
   if (names.code != Code::ok) return names;
@@ -166,15 +166,16 @@ std::string key_of(const std::string &text, const std::string &lang, bool histor
 
 std::vector<Note> notes(const Store &store, const AnkiSettings &s, const fs::path &data) {
   std::vector<Note> out;
-  auto audio = [&](const std::string &text) { return s.audio ? reading_of(data, text) : ""; };
   for (auto &x : store.saved()) {
     bool word = x.kind == "word";
     if (word ? !s.words_on : !s.phrases_on) continue;
-    out.push_back({key_of(x.text, x.lang), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", audio(x.text), word ? "word" : "phrase"});
+    out.push_back({key_of(x.text, x.lang), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
+                   word ? "word" : "phrase", x.text, x.lang});
   }
   if (s.history_on)
     for (auto &x : store.history())
-      out.push_back({key_of(x.text, x.lang, true), s.history, html(x.text), back_of(x.meaning), "", audio(x.text), "history"});
+      out.push_back({key_of(x.text, x.lang, true), s.history, html(x.text), back_of(x.meaning), "", reading_of(data, x.text), "history", x.text,
+                     x.lang});
   return out;
 }
 
@@ -227,19 +228,22 @@ Check check(const AnkiSettings &s, const std::string &key, const Transport &t) {
   auto v = post(s, key, t, "version");
   if (v.code != Code::ok) return {v.code, text_of(v.code, v.error)};
   int version = v.result.is_number_integer() ? v.result.get<int>() : 0;
-  if (version < 6) return {Code::old, text_of(Code::old, "")};
+  if (version < 6) return {Code::old, text_of(Code::old, ""), version};
   auto decks = post(s, key, t, "deckNames");
-  if (decks.code != Code::ok) return {decks.code, text_of(decks.code, decks.error)};
+  if (decks.code != Code::ok) return {decks.code, text_of(decks.code, decks.error), version};
+  std::vector<std::string> names;
+  for (auto &d : decks.result)
+    if (d.is_string()) names.push_back(d.get<std::string>());
   auto models = post(s, key, t, "modelNames");
-  if (models.code != Code::ok) return {models.code, text_of(models.code, models.error)};
+  if (models.code != Code::ok) return {models.code, text_of(models.code, models.error), version, names};
   bool have = std::find(models.result.begin(), models.result.end(), json(model_name)) != models.result.end();
   if (have) {
     auto got = post(s, key, t, "modelFieldNames", {{"modelName", model_name}});
     for (auto &f : fields)
       if (got.code == Code::ok && std::find(got.result.begin(), got.result.end(), json(f)) == got.result.end())
-        return {Code::model, text_of(Code::model, f)};
+        return {Code::model, text_of(Code::model, f), version, names};
   }
-  return {Code::ok, tr("anki_connected", {std::to_string(version), trn("anki_decks", static_cast<long long>(decks.result.size()))})};
+  return {Code::ok, tr("anki_connected", {std::to_string(version), trn("anki_decks", static_cast<long long>(names.size()))}), version, names};
 }
 
 Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::string &key, const Transport &t, Sent &sent) {
@@ -331,10 +335,12 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
 }
 
 struct Sender::Impl {
-  Impl(Store &st, fs::path d, Transport tr, std::chrono::milliseconds e) : store(st), data(std::move(d)), t(std::move(tr)), every(e), sent(read_sent(data)) {}
+  Impl(Store &the_store, fs::path dir, Transport to, Reader rd, std::chrono::milliseconds e)
+      : store(the_store), data(std::move(dir)), t(std::move(to)), reader(std::move(rd)), every(e), sent(read_sent(data)) {}
   Store &store;
   fs::path data;
   Transport t;
+  Reader reader;
   std::chrono::milliseconds every;
   mutable std::mutex mu;
   std::condition_variable cv;
@@ -342,30 +348,86 @@ struct Sender::Impl {
   std::string key;
   Sent sent;
   Sent failed;  // Key → the digest that failed: not tried again until it changes or "Send now"
+  std::map<std::string, std::string> audio;  // Key → its reading made for Anki
+  std::set<std::string> no_audio;            // Keys whose reading cannot be made (no voice for the language)
   Status st;
-  std::chrono::steady_clock::time_point retry{};
-  bool now = false, stop = false;
+  std::chrono::steady_clock::time_point retry{}, probed{};
+  bool now = false, stop = false, more = false;
   std::thread worker;
+
+  bool voice() const { return reader.ready && reader.ready(); }
+
+  // The store's notes with the readings made so far; those still without one, unsent first.
+  std::vector<Note> all_notes(const AnkiSettings &set, std::vector<Note> &missing) {
+    auto all = notes(store, set, data);
+    for (auto &n : all)
+      if (auto i = audio.find(n.key); n.audio.empty() && i != audio.end()) n.audio = i->second;
+    for (auto &n : all)
+      if (n.audio.empty() && !no_audio.count(n.key)) missing.push_back(n);
+    std::stable_partition(missing.begin(), missing.end(), [&](const Note &n) { return !sent.count(n.key); });
+    return all;
+  }
+
+  void count(const std::vector<Note> &all, const std::vector<Note> &wait, const std::vector<Note> &missing) {
+    st.words = st.phrases = st.history = {};
+    auto of = [&](const std::string &kind) -> Count & { return kind == "word" ? st.words : kind == "phrase" ? st.phrases : st.history; };
+    std::set<std::string> waits, mute;
+    for (auto &n : wait) waits.insert(n.key);
+    for (auto &n : missing) mute.insert(n.key);
+    for (auto &n : all) {
+      auto &c = of(n.kind);
+      c.sent += sent.count(n.key) > 0, c.waiting += waits.count(n.key) > 0, c.audio += mute.count(n.key) > 0;
+    }
+    st.waiting = st.words.waiting + st.phrases.waiting + st.history.waiting;
+  }
 
   Status round() {
     std::unique_lock g(mu);
     auto set = s;
     auto k = key;
     bool forced = std::exchange(now, false);
-    if (forced) failed.clear(), retry = {};
+    more = false;
+    if (forced) failed.clear(), retry = {}, probed = {};
     st.on = set.on;
     if (!set.on) {
       st.waiting = 0;
       return st;
     }
     g.unlock();
-    auto all = notes(store, set, data);
+    bool ready = voice();
+    // Anki asked every 30 s: the tab's connection line and its decks.
+    if (std::chrono::steady_clock::now() >= probed) {
+      auto c = check(set, k, t);
+      g.lock();
+      st.check = c, st.probed = true, probed = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+      g.unlock();
+    }
+    std::vector<Note> missing;
     g.lock();
+    st.voice = ready;
+    auto all = all_notes(set, missing);
+    // One reading at a time, made before its note goes (notes go without one while the voice model is missing).
+    if (ready && !missing.empty()) {
+      auto n = missing.front();
+      st.making = true;
+      g.unlock();
+      auto m = reader.make(n);
+      g.lock();
+      st.making = false;
+      if (!m.file.empty()) audio[n.key] = m.file;
+      else if (!m.later) no_audio.insert(n.key);
+      missing.clear();
+      all = all_notes(set, missing);
+      more = !missing.empty() && (!m.file.empty() || !m.later);
+    }
     auto wait = backlog(all, sent);
-    st.waiting = static_cast<int>(wait.size());
+    std::set<std::string> held;
+    if (ready)
+      for (auto &n : missing) held.insert(n.key);
+    count(all, wait, missing);
     std::erase_if(wait, [&](const Note &n) {
       auto i = failed.find(n.key);
-      return i != failed.end() && i->second == digest(n);
+      return held.count(n.key) || (i != failed.end() && i->second == digest(n));
     });
     if (wait.empty() || std::chrono::steady_clock::now() < retry) return st;
     st.sending = true;
@@ -381,18 +443,20 @@ struct Sender::Impl {
     if (r.code == Code::not_running || r.code == Code::need_key || r.code == Code::old || r.code == Code::model) {
       for (auto &n : wait) failed.erase(n.key);
       retry = std::chrono::steady_clock::now() + std::chrono::seconds(r.code == Code::not_running ? 15 : 60);
+      st.check.code = r.code, st.check.text = r.error, st.probed = true;
     }
+    // A send that went: Anki answers (its line asked again next round).
+    if (r.added + r.updated > 0 && st.check.code != Code::ok) st.check.code = Code::ok, probed = {};
     st.sending = false;
-    st.code = r.code;
     st.text = r.added + r.updated > 0 || r.failed == 0 ? tr("anki_sent_line", {digits(r.added), digits(r.updated)}) : "";
     if (r.failed > 0) st.text += (st.text.empty() ? "" : " · ") + r.error;
-    st.waiting = static_cast<int>(backlog(all, sent).size());
+    count(all, backlog(all, sent), missing);
     return st;
   }
 };
 
-Sender::Sender(Store &store, fs::path data, Transport t, std::chrono::milliseconds every)
-    : impl_(std::make_unique<Impl>(store, std::move(data), std::move(t), every)) {}
+Sender::Sender(Store &store, fs::path data, Transport t, Reader reader, std::chrono::milliseconds every)
+    : impl_(std::make_unique<Impl>(store, std::move(data), std::move(t), std::move(reader), every)) {}
 
 Sender::~Sender() {
   {
@@ -408,7 +472,7 @@ void Sender::configure(const AnkiSettings &s) {
     std::lock_guard g(impl_->mu);
     bool again = s.url != impl_->s.url || (s.on && !impl_->s.on);
     impl_->s = s;
-    if (again) impl_->retry = {}, impl_->failed.clear();
+    if (again) impl_->retry = {}, impl_->probed = {}, impl_->failed.clear();
   }
   impl_->cv.notify_all();
 }
@@ -431,7 +495,7 @@ void Sender::start() {
       g.unlock();
       i->round();
       g.lock();
-      i->cv.wait_for(g, i->every, [i] { return i->stop || i->now; });
+      if (!i->more) i->cv.wait_for(g, i->every, [i] { return i->stop || i->now; });
     }
   });
 }
@@ -446,10 +510,14 @@ void Sender::send_now() {
 
 Status Sender::status() const {
   std::lock_guard g(impl_->mu);
-  auto st = impl_->st;
-  // Not started (snapshots): what waits, worked out here.
-  if (!impl_->worker.joinable() && impl_->s.on) st.on = true, st.waiting = static_cast<int>(backlog(notes(impl_->store, impl_->s, impl_->data), impl_->sent).size());
-  return st;
+  // Not started (snapshots): what waits, worked out here; Anki not asked.
+  if (!impl_->worker.joinable() && impl_->s.on) {
+    std::vector<Note> missing;
+    auto all = impl_->all_notes(impl_->s, missing);
+    impl_->st.on = true, impl_->st.voice = impl_->voice();
+    impl_->count(all, backlog(all, impl_->sent), missing);
+  }
+  return impl_->st;
 }
 
 bool Sender::sent(const std::string &key) const {

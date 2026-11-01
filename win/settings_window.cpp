@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 #include <optional>
+#include <tlhelp32.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include "lexipeek/os.hpp"
 #include "resource.h"
@@ -16,6 +17,18 @@ namespace controls = xaml::Controls;
 using winrt::Windows::Foundation::IInspectable;
 
 std::string version() { return LEXIPEEK_VERSION; }
+
+// Anki itself runs (anki.exe): nothing answering at AnkiConnect's address then means the add-on is missing.
+static bool anki_running() {
+  HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+  if (snap == INVALID_HANDLE_VALUE) return false;
+  PROCESSENTRY32W e{};
+  e.dwSize = sizeof e;
+  bool found = false;
+  for (BOOL ok = Process32FirstW(snap, &e); ok && !found; ok = Process32NextW(snap, &e)) found = _wcsicmp(e.szExeFile, L"anki.exe") == 0;
+  CloseHandle(snap);
+  return found;
+}
 
 SettingsState SettingsShell::state() const {
   SettingsState s;
@@ -35,6 +48,7 @@ SettingsState SettingsShell::state() const {
   s.ai_test = test;
   if (!keys.contains("anki")) keys["anki"] = !os::secret("anki").empty();
   s.anki_key = keys["anki"];
+  s.anki_app = anki_running();
   s.anki_checking = anki_checking;
   s.anki_checked = anki_check.has_value();
   if (anki_check) s.anki_check = *anki_check;
@@ -62,7 +76,7 @@ wchar_t glyph(const std::string &key) {
       {"updates", 0xE895},       {"release", 0xE896},       {"source", 0xE943},     {"inkpeek", 0xE71B},    {"license", 0xE8A5},
       {"sync_folder", 0xE8B7},   {"sync_state", 0xE895},
       {"anki_on", 0xE724},       {"anki_check", 0xE703},    {"anki_send", 0xE898},  {"anki_url", 0xE71B},   {"anki_key", 0xE8D7},
-      {"anki_audio", 0xE767},    {"anki_sync", 0xE895},     {"anki_model", 0xE8A1}};
+      {"anki_voice", 0xE767},    {"anki_sync", 0xE895},     {"anki_model", 0xE8A1}};
   auto i = glyphs.find(key);
   return static_cast<wchar_t>(i == glyphs.end() ? 0 : i->second);
 }
@@ -385,6 +399,22 @@ xaml::UIElement SettingsWindow::row(const SettingRow &r) {
         auto choose = page::button(tr("model_choose"), [this, key] { choose_model(key); });
         controls::Grid::SetColumn(choose, 1);
         line.Children().Append(choose);
+      }
+      if (r.kind == K::text && !r.choices.empty()) {
+        // Values to pick (Anki's decks); another one is typed.
+        controls::MenuFlyout menu;
+        for (auto &c : r.choices) {
+          controls::MenuFlyoutItem i;
+          i.Text(h(c));
+          i.Click([this, key, dir, c](auto &&, auto &&) { after(app::set_text(dir, key, c)); });
+          menu.Items().Append(i);
+        }
+        controls::DropDownButton pick;
+        pick.Content(page::icon(0xE70D, 12));
+        pick.Flyout(menu);
+        xaml::Automation::AutomationProperties::SetName(pick, h(r.title));
+        controls::Grid::SetColumn(pick, 1);
+        line.Children().Append(pick);
       }
       return page::card(g, r.title, r.about, nullptr, line);
     }

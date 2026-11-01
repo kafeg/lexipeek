@@ -128,6 +128,7 @@ final class SettingsModel: ObservableObject {
         s.ai_testing = aiTesting
         s.ai_test = std.string(aiTest)
         s.anki_key = ankiKey
+        s.anki_app = !NSRunningApplication.runningApplications(withBundleIdentifier: "net.ankiweb.dtop").isEmpty
         s.anki_checking = ankiChecking
         if let c = ankiCheck { s.anki_check = c }
         s.anki_checked = ankiCheck != nil
@@ -520,7 +521,18 @@ struct RowsView: View {
         case .text:
             VStack(alignment: .leading, spacing: 6) {
                 label(r)
-                LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
+                HStack {
+                    LineField(value: r.value, placeholder: r.placeholder) { model.setText(r.key, $0) }
+                    // Values to pick (Anki's decks); another one is typed.
+                    if !r.choices.isEmpty {
+                        Menu {
+                            ForEach(r.choices, id: \.self) { c in Button(c) { model.setText(r.key, c) } }
+                        } label: { Image(systemName: "chevron.down") }
+                            .menuStyle(.borderlessButton)
+                            .menuIndicator(.hidden)
+                            .fixedSize()
+                    }
+                }
             }
         case .secret:
             VStack(alignment: .leading, spacing: 6) {

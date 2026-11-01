@@ -129,11 +129,13 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   another); AI: `ai::study_prompt` + `version(a, s, study)` (InkPeek's `Ai.STUDY`; `study_test` checks its numbers);
   Settings row kind `checks` (`study.<code>` toggles). Empty list: the old paths.
 - `core/src/anki/` (facade `lexipeek/anki.hpp`): the Anki binding through AnkiConnect v6 — `notes` (the store's saved words,
-  phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Vocabulary` and decks made when
+  phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Peek` and decks made when
   missing, notes found by their Key field, then updated or added, by `multi`), `Sender` (in `Core`: one thread looks at the
-  store every 3 s, sends what waits; started by the shell, never in snapshot mode). Views: Settings → Sync → Anki rows
-  (`anki_rows`, picked by the tab's key), `NotesRow::key` / `anki`. Tests: `anki_test`'s fake AnkiConnect on 127.0.0.1.
-  AnkiConnect's key: Keychain account `anki` (Mac), Credential Manager's `anki` (Windows).
+  store every 3 s, asks Anki every 30 s, makes one missing reading at a time through `Reader` — the core's
+  `Speaker::make_now`, the text's language by `source()` —, sends what waits; started by the shell, never in snapshot mode).
+  Views: Settings → Sync → Anki rows (`anki_rows`, picked by the tab's key; a text row's `choices` are Anki's decks to
+  pick), `NotesRow::key` / `anki`. Tests: `anki_test`'s fake AnkiConnect on 127.0.0.1 and a fake `Reader`. AnkiConnect's
+  key: Keychain account `anki` (Mac), Credential Manager's `anki` (Windows); `SettingsState::anki_app` (Anki runs) by the shell.
 - `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
   progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
@@ -216,7 +218,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
-  `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
+  `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and the backup's file name come from the core (`app::hotkey_label`, `link`, `menu_line`, `backup_file`). `CoreClient` — the
   engine and queues for the rest (Notes, settings, packs; the sync folder's own queue: at launch `name_device` (the
   computer's name) and `sync(true)` before `prepare`, then `sync(false)` every 30 s, `.notesChanged` on a change).
   Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line from `sync_info`.

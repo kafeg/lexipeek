@@ -170,37 +170,43 @@ struct Speaker::Impl {
     try {
       with_model(ticket, st.gpu, [&](mt::Held &held) {
         set(ticket, Phase::making);
-#ifdef LEXIPEEK_TTS
-        auto *q = static_cast<Model &>(held).q;
-        std::function<bool()> stale = [&] { return wanted != ticket; };
-        auto lang = model_language(r.lang);
-        qt_tts_params p;
-        qt_tts_default_params(&p);
-        p.text = r.text.c_str(), p.lang = lang.c_str(), p.ref_text = v.text.c_str();
-        p.ref_spk_emb = v.spk.data(), p.ref_spk_dim = static_cast<int>(v.spk.size());
-        p.ref_codes = v.codes.data(), p.ref_T = v.frames;
-        p.seed = 42;  // the same text and voice: the same reading
-        p.max_new_tokens = max_tokens(r.text);
-        p.cancel = cancelled, p.cancel_user_data = &stale;
-        qt_audio out{};
-        auto status = qt_synthesize(q, &p, &out);
-        if (status == QT_STATUS_CANCELLED || stale()) {
-          qt_audio_free(&out);
-          return set(ticket, Phase::idle);
-        }
-        if (status != QT_STATUS_OK) throw std::runtime_error(qt_last_error());
-        std::vector<float> samples(out.samples, out.samples + out.n_samples);
-        qt_audio_free(&out);
-        if (!write_file(file, wav_bytes(samples, 24000))) throw std::runtime_error(tr("err_write", {text::utf8_of(file.parent_path())}));
-        prune_readings(data);
-        set(ticket, Phase::ready, text::utf8_of(file));
-#else
-        (void)held;
-#endif
+        if (synth(held, v, r, file, [&] { return wanted != ticket; })) set(ticket, Phase::ready, text::utf8_of(file));
+        else set(ticket, Phase::idle);
       });
     } catch (const std::exception &e) {
       set(ticket, Phase::failed, "", tr("read_failed", {e.what()}), true);
     }
+  }
+
+  // The reading made into file with the held model; false when stale() stopped it.
+  bool synth(mt::Held &held, const Voice &v, const Read &r, const fs::path &file, std::function<bool()> stale) {
+#ifdef LEXIPEEK_TTS
+    auto *q = static_cast<Model &>(held).q;
+    auto lang = model_language(r.lang);
+    qt_tts_params p;
+    qt_tts_default_params(&p);
+    p.text = r.text.c_str(), p.lang = lang.c_str(), p.ref_text = v.text.c_str();
+    p.ref_spk_emb = v.spk.data(), p.ref_spk_dim = static_cast<int>(v.spk.size());
+    p.ref_codes = v.codes.data(), p.ref_T = v.frames;
+    p.seed = 42;  // the same text and voice: the same reading
+    p.max_new_tokens = max_tokens(r.text);
+    p.cancel = cancelled, p.cancel_user_data = &stale;
+    qt_audio out{};
+    auto status = qt_synthesize(q, &p, &out);
+    if (status == QT_STATUS_CANCELLED || stale()) {
+      qt_audio_free(&out);
+      return false;
+    }
+    if (status != QT_STATUS_OK) throw std::runtime_error(qt_last_error());
+    std::vector<float> samples(out.samples, out.samples + out.n_samples);
+    qt_audio_free(&out);
+    if (!write_file(file, wav_bytes(samples, 24000))) throw std::runtime_error(tr("err_write", {text::utf8_of(file.parent_path())}));
+    prune_readings(data);
+    return true;
+#else
+    (void)held, (void)v, (void)r, (void)file, (void)stale;
+    return false;
+#endif
   }
 
   void run() {
@@ -315,6 +321,33 @@ void Speaker::keep(const std::string &note, const Read &r) {
   if (from.empty() || !fs::exists(from, ec) || fs::exists(to, ec)) return;
   fs::create_directories(to.parent_path(), ec);
   fs::copy_file(from, to, ec);
+}
+
+Made Speaker::make_now(const Read &r) {
+  SpeechSettings st;
+  int seen;
+  {
+    std::lock_guard g(impl_->mu);
+    st = impl_->s;
+    seen = impl_->wanted;
+  }
+  auto v = voice_for(own_voices(impl_->data), st, r.lang);
+  if (v.id.empty() || r.text.empty()) return {};
+  auto file = reading_file(impl_->data, v, r);
+  std::error_code ec;
+  if (auto saved = find_saved(impl_->data, v, r); !saved.empty()) return {text::utf8_of(saved)};
+  if (fs::exists(file, ec)) return {text::utf8_of(file)};
+  if (!built()) return {};
+  if (!model_installed(impl_->data)) return {"", true};
+  try {
+    bool ok = false;
+    // A reading asked meanwhile (▶) stops this one: it is made again later.
+    impl_->with_model(-1, st.gpu, [&](mt::Held &held) { ok = impl_->synth(held, v, r, file, [&] { return impl_->wanted != seen; }); });
+    if (ok) return {text::utf8_of(file)};
+    return {"", true};
+  } catch (const std::exception &) {
+    return {};
+  }
 }
 
 void Speaker::forget(const std::string &note) {
