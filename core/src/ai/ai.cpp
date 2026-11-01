@@ -622,15 +622,22 @@ std::string brief(const std::string &answer) {
   if (!j.is_object()) return "";
   auto str = [&](const char *k) { return j.contains(k) && j[k].is_string() ? j[k].get<std::string>() : std::string(); };
   auto t = str("translation");
-  if (t.empty()) {
-    std::string m;
+  if (text::blank(t)) {
+    std::string m, head;
     if (j.contains("meanings") && j["meanings"].is_array())
       for (auto &x : j["meanings"])
         if (x.is_string()) m += (m.empty() ? "" : ", ") + x.get<std::string>();
-    auto head = str("article") + (str("article").empty() || str("base").empty() ? "" : " ") + str("base");
-    t = head + (!head.empty() && !m.empty() ? " — " : "") + m;
+    for (auto &x : {str("article"), str("base")})
+      if (!text::blank(x)) head += (head.empty() ? "" : " ") + x;
+    t.clear();
+    for (auto &x : {head, m})
+      if (!text::blank(x)) t += (t.empty() ? "" : " — ") + x;
   }
-  return cut(t, 280);
+  // 140 characters (code points) at most, as InkPeek's.
+  size_t at = 0;
+  for (int n = 0; at < t.size() && n < 140; n++)
+    for (at++; at < t.size() && (static_cast<unsigned char>(t[at]) & 0xC0) == 0x80;) at++;
+  return t.substr(0, at);
 }
 
 }  // namespace lexipeek::ai

@@ -69,7 +69,8 @@ struct Answer {
 std::string error_text(const Answer &a, const AiSettings &s);
 // A tab's light Markdown from its answer, under the app's headings (InkPeek's AiPage.render).
 std::string render(Ask a, const std::string &json, bool word);
-// One line of a quick answer for Notes: the translation, else "das Haus — house, home".
+// One line of a quick answer (Notes, Anki's Back): the translation, else "das Haus — house, home"; 140 characters at most
+// (InkPeek's Store.brief, docs/formats.md "Anki notes").
 std::string brief(const std::string &json);
 
 // A model from the provider's list; prices in USD per million tokens (-1 = unknown).

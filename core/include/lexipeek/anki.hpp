@@ -36,6 +36,11 @@ struct Note {
 // text; "h-" before a history note's ("ru-3fa9…", "h-ru-3fa9…"): letters, digits and "-" only, searched as they are.
 // An entry without its language (InkPeek's rows before its schema 3): [answer], the app's answer language, as InkPeek.
 std::string key_of(const std::string &text, const std::string &lang, bool history = false, const std::string &answer = "");
+// An entry as the log keeps it ([lang]: a code, "" in old rows: [answer]) as a note (Front, Back, Example, Key, kind,
+// text, lang; no deck, no audio): the line shown, else (blank) [quick]'s line, its newest quick AI answer (docs/formats.md
+// "Anki notes", tests/inkpeek/tests/anki/fields.json).
+Note note_of(const std::string &text, const std::string &kind, const std::string &meaning, const std::string &lang,
+             const std::string &quick, bool history, const std::string &answer);
 // What the binding sends from the store: saved words, saved phrases, the history, each when on (its reading: the
 // note's kept one under <data>/readings/saved/, if any); an entry without its language keys and reads by settings.json's
 // answer (with none its reading found no language: never made).
@@ -89,6 +94,16 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
 // Two notes with one Key (LexiPeek and InkPeek sent before AnkiWeb synced: its merge goes by a GUID neither can set):
 // among the "Peek" notes of [keys], the oldest (smallest id) is kept, with another's Audio when its own is empty; the
 // others are deleted. InkPeek's rule, word for word. [log] gets a line per merge; the count of notes deleted.
+struct Found {
+  long long id = 0;
+  std::string key, audio;
+};
+struct Plan {
+  std::map<long long, std::string> audio;  // the kept note → the Audio it takes
+  std::vector<long long> deleted;          // in order
+};
+// The rule alone: per Key (not empty) the smallest id stays, with the first other Audio by id when its own is empty.
+Plan dedupe_plan(const std::vector<Found> &notes);
 int dedupe(const std::vector<std::string> &keys, const AnkiSettings &s, const std::string &key, const Transport &t,
            const std::function<void(const std::string &)> &log);
 

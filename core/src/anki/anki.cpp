@@ -9,6 +9,8 @@
 #include <thread>
 #include <nlohmann/json.hpp>
 #include <sha256.h>
+#include "lexipeek/ai.hpp"
+#include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/speech.hpp"
 #include "lexipeek/store.hpp"
@@ -164,20 +166,30 @@ std::string key_of(const std::string &text, const std::string &lang, bool histor
   return (history ? "h-" : "") + text::lower(lang.empty() ? answer : lang) + "-" + h(text::norm_key(text)).substr(0, 32);
 }
 
+Note note_of(const std::string &text, const std::string &kind, const std::string &meaning, const std::string &lang,
+             const std::string &quick, bool history, const std::string &answer) {
+  auto line = text::blank(meaning) ? ai::brief(quick) : meaning;
+  return {key_of(text, lang, history, answer), "", html(text), back_of(line), "", "", history ? "history" : kind, text, lang.empty() ? answer : lang};
+}
+
 std::vector<Note> notes(const Store &store, const AnkiSettings &s, const fs::path &data) {
   std::vector<Note> out;
   auto answer = load_settings(data).answer;
+  // A blank line: the newest quick AI answer, kept under the language's English name (as InkPeek's).
+  auto note = [&](const std::string &text, const std::string &kind, const std::string &meaning, const std::string &lang, bool history,
+                  const std::string &deck) {
+    auto quick = text::blank(meaning) ? store.newest_answer(text, catalog_language(lang.empty() ? answer : lang), "quick") : "";
+    auto n = note_of(text, kind, meaning, lang, quick, history, answer);
+    n.deck = deck, n.audio = reading_of(data, text);
+    out.push_back(std::move(n));
+  };
   for (auto &x : store.saved()) {
     bool word = x.kind == "word";
     if (word ? !s.words_on : !s.phrases_on) continue;
-    auto lang = x.lang.empty() ? answer : x.lang;
-    out.push_back({key_of(x.text, lang), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
-                   word ? "word" : "phrase", x.text, lang});
+    note(x.text, word ? "word" : "phrase", x.meaning, x.lang, false, word ? s.words : s.phrases);
   }
   if (s.history_on)
-    for (auto &x : store.history())
-      out.push_back({key_of(x.text, x.lang, true, answer), s.history, html(x.text), back_of(x.meaning), "", reading_of(data, x.text), "history", x.text,
-                     x.lang.empty() ? answer : x.lang});
+    for (auto &x : store.history()) note(x.text, x.kind, x.meaning, x.lang, true, s.history);
   return out;
 }
 
@@ -336,6 +348,26 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
   return r;
 }
 
+Plan dedupe_plan(const std::vector<Found> &notes) {
+  std::map<std::string, std::vector<Found>> by_key;
+  for (auto &n : notes)
+    if (!n.key.empty()) by_key[n.key].push_back(n);
+  Plan p;
+  for (auto &[k, ns] : by_key) {
+    if (ns.size() < 2) continue;
+    std::sort(ns.begin(), ns.end(), [](const Found &a, const Found &b) { return a.id < b.id; });
+    if (ns[0].audio.empty())
+      for (auto &n : ns)
+        if (!n.audio.empty()) {
+          p.audio[ns[0].id] = n.audio;
+          break;
+        }
+    for (std::size_t i = 1; i < ns.size(); i++) p.deleted.push_back(ns[i].id);
+  }
+  std::sort(p.deleted.begin(), p.deleted.end());
+  return p;
+}
+
 int dedupe(const std::vector<std::string> &keys, const AnkiSettings &s, const std::string &key, const Transport &t,
            const std::function<void(const std::string &)> &log) {
   std::set<std::string> ours(keys.begin(), keys.end());
@@ -343,32 +375,28 @@ int dedupe(const std::vector<std::string> &keys, const AnkiSettings &s, const st
   if (found.code != Code::ok || !found.result.is_array() || found.result.empty()) return 0;
   auto info = post(s, key, t, "notesInfo", {{"notes", found.result}});
   if (info.code != Code::ok || !info.result.is_array()) return 0;
-  struct Rec {
-    long long id;
-    std::string audio;
-  };
-  std::map<std::string, std::vector<Rec>> by_key;
+  std::vector<Found> notes;
+  std::map<long long, std::string> key_of_id;
+  std::map<std::string, long long> kept;
   for (auto &n : info.result) {
     if (!n.is_object() || !n.contains("fields") || !n["noteId"].is_number_integer()) continue;
     auto field = [&](const char *f) { return n["fields"].value(f, json::object()).value("value", std::string()); };
-    if (auto k = field("Key"); ours.count(k)) by_key[k].push_back({n["noteId"].get<long long>(), field("Audio")});
+    auto k = field("Key");
+    if (!ours.count(k)) continue;
+    auto id = n["noteId"].get<long long>();
+    notes.push_back({id, k, field("Audio")});
+    key_of_id[id] = k;
+    kept[k] = kept.count(k) ? std::min(kept[k], id) : id;
   }
+  auto plan = dedupe_plan(notes);
+  for (auto &[id, audio] : plan.audio) post(s, key, t, "updateNoteFields", {{"note", {{"id", id}, {"fields", {{"Audio", audio}}}}}});
+  std::map<std::string, json> gone;
+  for (auto id : plan.deleted) gone[key_of_id[id]].push_back(id);
   int removed = 0;
-  for (auto &[k, recs] : by_key) {
-    if (recs.size() < 2) continue;
-    std::sort(recs.begin(), recs.end(), [](const Rec &a, const Rec &b) { return a.id < b.id; });
-    auto &kept = recs.front();
-    if (kept.audio.empty())
-      for (auto &r : recs)
-        if (!r.audio.empty()) {
-          post(s, key, t, "updateNoteFields", {{"note", {{"id", kept.id}, {"fields", {{"Audio", r.audio}}}}}});
-          break;
-        }
-    json gone = json::array();
-    for (std::size_t i = 1; i < recs.size(); i++) gone.push_back(recs[i].id);
-    if (post(s, key, t, "deleteNotes", {{"notes", gone}}).code != Code::ok) continue;
-    removed += static_cast<int>(gone.size());
-    log("merged " + k + ": kept " + std::to_string(kept.id) + ", deleted " + gone.dump());
+  for (auto &[k, ids] : gone) {
+    if (post(s, key, t, "deleteNotes", {{"notes", ids}}).code != Code::ok) continue;
+    removed += static_cast<int>(ids.size());
+    log("merged " + k + ": kept " + std::to_string(kept[k]) + ", deleted " + ids.dump());
   }
   return removed;
 }
