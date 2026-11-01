@@ -147,8 +147,10 @@ same everywhere (Syncthing, a cloud drive, a NAS share).
   device is made at the first start (`<data>/device.json`, survives a reinstall), named as the computer.
 - **Reading.** At launch, then whenever the folder's files change: the shells' timer asks the core every 30 s, which
   compares the files' names, sizes and times and reads nothing when nothing changed; a change shows in Notes.
-- **Two installs with one id.** The check runs once per folder before the first write there: the folder's newest own
-  lines must be lines of the local own log (the format's `last`, with the whole own log kept), else a new id.
+- **Two installs with one id.** The check runs once per folder before the first write there, and again before every
+  write there (two installs started before either wrote both pass the first): the folder's newest own lines must be
+  lines of the local own log (the format's `last`, with the whole own log kept), else a new id; this install's lines the
+  folder lacks go there as the new id's, with their times.
 - **A new install** with its data folder deleted makes a new device; its earlier logs are read as any other device's.
 - **Screens** (the owner's cut, 01.11): one Settings section, Sync, with tabs (Sync here; Anki joins it). The Sync tab:
   the folder (Choose… / Change…: the system's folder picker), a hint how to keep it the same everywhere (Syncthing,

@@ -507,6 +507,41 @@ TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id 
   CHECK(fresh_install.looks("Haus") == 2);
 }
 
+TEST_CASE("sync folder: two installs with one id at once — none writes over the other's lines, none is lost") {
+  for (bool checked_first : {false, true}) {
+    auto root = fresh("lexipeek-sync-twins");
+    auto folder = root / "Sync";
+    fs::create_directories(folder);
+    Now now(1793491200000);
+    {
+      Store a({root / "a", folder, "mac-0000000a", "MacBook Air"});
+      a.sync();
+      CHECK(a.save("Haus", "word", "ru", "дом") == "");
+    }
+    fs::copy(root / "a", root / "b", fs::copy_options::recursive);
+    Store a({root / "a", folder, "", ""}), b({root / "b", folder, "", ""});
+    // Both checked before either writes: both keep the id. Else b writes before its check.
+    if (checked_first) a.sync(), b.sync();
+    now = 1793491200000 + 1000;
+    CHECK(a.save("Tisch", "word", "ru", "стол") == "");
+    CHECK(b.save("Stuhl", "word", "ru", "стул") == "");
+    a.sync(), b.sync();
+    now = 1793491200000 + 2000;
+    CHECK(a.save("Lampe", "word", "ru", "лампа") == "");
+    CHECK(b.save("Sofa", "word", "ru", "диван") == "");
+    a.sync(), b.sync(), a.sync();
+    INFO("checked first: ", checked_first);
+    CHECK(a.device() == "mac-0000000a");
+    CHECK(b.device() != "mac-0000000a");
+    std::set<std::string> words;
+    for (auto &x : merge_folder(folder).saved) words.insert(x.text);
+    CHECK(words == std::set<std::string>{"Haus", "Lampe", "Sofa", "Stuhl", "Tisch"});
+    for (auto w : {"Tisch", "Stuhl", "Lampe", "Sofa"}) CHECK((a.is_saved(w) && b.is_saved(w)));
+    for (auto &d : store::device_folders(folder))
+      for (auto &l : store::read_device(d)) CHECK(l.d == d.filename().string());
+  }
+}
+
 TEST_CASE("compaction: the reader cases merge the same with any one device compacted") {
   for (auto &d : cases("reader"))
     for (auto &dev : store::device_folders(d)) {

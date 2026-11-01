@@ -149,6 +149,16 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
   return "";
 }
 
+// The two-installs check against the folder's own folder [remote]: its newest lines of [id] are in [local] (this
+// install's log). [there]: those lines of the folder.
+bool keeps_id(const fs::path &remote, const fs::path &local, const std::string &id, std::vector<Line> &there) {
+  for (auto &l : store::read_device(remote))
+    if (l.d == id) there.push_back(l);
+  std::set<std::string> known;
+  for (auto &l : store::read_device(local)) known.insert(l.raw);
+  return store::keep_id(there, known);
+}
+
 // [src]'s logs and device.json copied to [dst] where they differ, files gone from [src] gone from [dst]. A folder that
 // cannot be listed or read (the share gone meanwhile) leaves [dst] as it is.
 std::string mirror_folder(const fs::path &src, const fs::path &dst) {
@@ -348,17 +358,22 @@ struct Store::Impl {
     auto own_dir = own();
     g.unlock();
     if (!was_checked) {
-      std::vector<Line> own_there;
-      for (auto &l : store::read_device(remote_dir))
-        if (l.d == id) own_there.push_back(l);
-      std::set<std::string> known;
-      for (auto &l : store::read_device(own_dir)) known.insert(l.raw);
-      bool keep = store::keep_id(own_there, known);
+      std::vector<Line> own_there, unsent;
+      bool keep = keeps_id(remote_dir, own_dir, id, own_there);
+      if (!keep) {
+        std::set<std::string> in_folder;
+        for (auto &l : own_there) in_folder.insert(l.raw);
+        for (auto &l : store::read_device(own_dir))
+          if (l.d == id && !in_folder.contains(l.raw)) unsent.push_back(l);
+      }
       g.lock();
       if (!keep) {
-        // Another install writes as this device (copied data, a cloned machine): a new one, the same name.
+        // Another install writes as this device (copied data, a cloned machine): a new one, the same name; this
+        // install's lines the folder lacks (written before the check, or while the other one wrote) go as the new one's.
         self = {new_id(), APP, self.name, now_ms()};
         fs::create_directories(own(), ec);
+        if (!unsent.empty())
+          if (auto we = write(unsent); !we.empty()) sync_error = we;
       }
       checked = true;
       g.unlock();
@@ -391,10 +406,18 @@ struct Store::Impl {
     pending = false;  // lines written from now on go with the next push
     auto folder = o.sync;
     auto own_dir = own(), remote_dir = remote();
+    auto id = self.device;
     auto dev = store::format(shared());
     g.unlock();
     std::error_code ec;
     std::string e = fs::is_directory(folder / "inkpeek-log", ec) ? "" : "unreachable";
+    // Another install has written as this device since the check (both started before either wrote): its lines are
+    // not written over; the next sync checks again.
+    if (std::vector<Line> there; e.empty() && !keeps_id(remote_dir, own_dir, id, there)) {
+      g.lock();
+      checked = false, pending = true;
+      return;
+    }
     if (e.empty()) e = push_folder(own_dir, remote_dir);
     if (e.empty() && slurp(remote_dir / "device.json") != dev) e = store::write_whole(remote_dir / "device.json", dev, true);
     g.lock();
