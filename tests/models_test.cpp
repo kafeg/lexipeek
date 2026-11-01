@@ -99,6 +99,23 @@ TEST_CASE("direct: a long sentence and a lower-case one keep the target language
   CHECK(!r.text.starts_with(","));
 }
 
+TEST_CASE("fast and direct: a passage's lines, none starting with the \", \" a model may put first") {
+  const char *text = "Erste Zeile.\nZweite Zeile, etwas länger als die erste.\n\nEin neuer Absatz nach einer Leerzeile.";
+  for (auto [m, needs] : {std::pair{Method::fast, "models/enru/set"}, {Method::direct, "opus/opus-deu_eng_fra_por_spa-sla"}}) {
+    if (!has(needs) || (m == Method::fast && !has("models/deen/set"))) continue;
+    Translator tr({models()});
+    auto r = tr.translate("de", "ru", text, m);
+    INFO(r.text);
+    REQUIRE(r.ok());
+    CHECK(std::count(r.text.begin(), r.text.end(), '\n') == 3);
+    for (size_t at = 0; at != std::string::npos; at = r.text.find('\n', at + 1)) {
+      auto line = r.text.substr(at == 0 ? 0 : at + 1, 2);
+      CHECK(!line.starts_with(","));
+      CHECK(!line.starts_with(";"));
+    }
+  }
+}
+
 TEST_CASE("llm: Hy-MT2 de → ru") {
   if (!has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
   Translator tr({models()});

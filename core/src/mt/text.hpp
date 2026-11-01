@@ -31,6 +31,8 @@ std::vector<std::string> clauses(const std::string &sentence, size_t max = 300);
 
 // A model's answer without the ", " it puts before a piece that starts in lower case (when the piece has none).
 std::string unlead(const std::string &source, const std::string &out);
+// The same line by line (a translation keeps the text's lines); other line counts: as a whole.
+std::string unlead_lines(const std::string &source, const std::string &out);
 
 // Length in UTF-16 units, as Kotlin's String.length: InkPeek's limits are in these.
 size_t utf16_length(const std::string &s);

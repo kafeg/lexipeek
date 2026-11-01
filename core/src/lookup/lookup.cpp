@@ -145,14 +145,14 @@ struct Core::Impl {
     auto en_ver = pivot ? answer_version(manifest, installed, from, "en", Method::fast) : 0;
     std::string en;
     if (pivot)
-      if (auto a = store->answer(card.text, "en", section, en_ver)) en = *a;
+      if (auto a = store->answer(card.text, "en", section, en_ver)) en = mt::unlead_lines(card.text, *a);
     auto keep_english = [&](const std::string &e) {
       en = e;
       if (keep) store->put_answer(card.text, "en", section, en_ver, answer_model(Method::fast), e);
     };
     Translation t;
     if (auto a = store->answer(card.text, to, section, ver)) {
-      t = {*a, "", method_title(method), ""};
+      t = {mt::unlead_lines(card.text, *a), "", method_title(method), ""};  // kept by an older build: its ", " too
       t.kept = true;
     } else {
       auto start = std::chrono::steady_clock::now();

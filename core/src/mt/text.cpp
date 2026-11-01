@@ -100,6 +100,23 @@ std::string unlead(const std::string &source, const std::string &out) {
   return lead(out) && !lead(source) ? trim(trim(out).substr(1)) : out;
 }
 
+std::string unlead_lines(const std::string &source, const std::string &out) {
+  auto lines = [](const std::string &s) {
+    std::vector<std::string> v;
+    for (size_t at = 0;;) {
+      auto end = s.find('\n', at);
+      v.push_back(s.substr(at, end == std::string::npos ? std::string::npos : end - at));
+      if (end == std::string::npos) return v;
+      at = end + 1;
+    }
+  };
+  auto a = lines(source), b = lines(out);
+  if (a.size() != b.size()) return unlead(source, out);
+  std::string r;
+  for (size_t i = 0; i < b.size(); i++) r += (i ? "\n" : "") + unlead(a[i], b[i]);
+  return r;
+}
+
 std::string fill(std::string prompt, const std::string &from, const std::string &to, const std::string &text) {
   auto replace = [&](const std::string &key, const std::string &value) {
     for (size_t at = 0; (at = prompt.find(key, at)) != std::string::npos; at += value.size()) prompt.replace(at, key.size(), value);

@@ -57,6 +57,9 @@ TEST_CASE("a long sentence's pieces for OPUS-MT; its ', ' before a lower-case pi
   CHECK(mt::unlead("явно", " ; so") == "so");
   CHECK(mt::unlead(", а потом", ", und dann") == ", und dann");
   CHECK(mt::unlead("Das Haus", "Дом") == "Дом");
+  CHECK(mt::unlead_lines("Erste Zeile.\n\nEin neuer Absatz.", "Первая строка.\n\n, Новый абзац.") == "Первая строка.\n\nНовый абзац.");
+  CHECK(mt::unlead_lines("Eins.\n, und dann", "Один.\n, а потом") == "Один.\n, а потом");
+  CHECK(mt::unlead_lines("Eins.\nZwei.", ", Один и два.") == "Один и два.");
 }
 
 TEST_CASE("sentences and chunks") {

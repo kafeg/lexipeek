@@ -227,6 +227,23 @@ TEST_CASE("core: the English in between is kept as the text's English, shown whe
   wipe(d);
 }
 
+TEST_CASE("core: a translation kept by an older build loses the \", \" a line's model answer started with") {
+  auto d = fs::temp_directory_path() / "lexipeek-unlead";
+  wipe(d);
+  {
+    CoreOptions o;
+    o.data = d;
+    Core core(o);
+    auto c = german("Erste Zeile.\nZweite Zeile, etwas länger als die erste.\nEin neuer Absatz nach einer Leerzeile.");
+    auto ver = answer_version({}, {}, "de", "ru", Method::fast);
+    core.store().seen(c.text, "phrase", "ru", "", "");
+    core.store().put_answer(c.text, "ru", "offline-de", ver, "bergamot",
+                            "Первая строка.\nВторая строка, немного длиннее первой.\n, Новый абзац после пустой строки.");
+    CHECK(core.translate(c).text == "Первая строка.\nВторая строка, немного длиннее первой.\nНовый абзац после пустой строки.");
+  }
+  wipe(d);
+}
+
 TEST_CASE("core with models: a fast translation keeps its English; the step alone when kept before") {
   auto src = models();
   if (src.empty() || !fs::exists(src / "models/deen/set") || !fs::exists(src / "models/enru/set")) {

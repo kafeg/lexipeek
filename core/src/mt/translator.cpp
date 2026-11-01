@@ -230,7 +230,7 @@ Translation Translator::translate(const std::string &from, const std::string &to
         };
         std::string out;
         for (auto &piece : chunks(text)) {
-          auto t = trim(model.generate(fill(p.c.prompt, name(from), name(to), piece), static_cast<int>(utf16_length(piece) * 2 + 32), &impl_->stop));
+          auto t = unlead(piece, trim(model.generate(fill(p.c.prompt, name(from), name(to), piece), static_cast<int>(utf16_length(piece) * 2 + 32), &impl_->stop)));
           out += (out.empty() ? "" : " ") + t;
         }
         r.text = out;
@@ -261,7 +261,7 @@ Translation Translator::translate(const std::string &from, const std::string &to
       }
       std::string t = text;
       for (size_t i = 0; i < steps.size(); i++) {
-        t = steps[i]->translate(t);
+        t = unlead(t, steps[i]->translate(t));
         if (steps.size() > 1 && i == 0) r.english = t;
       }
       r.text = t;
