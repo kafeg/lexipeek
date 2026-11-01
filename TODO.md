@@ -84,7 +84,12 @@ per-user install and uninstall.
 - Memory, MB (loaded / translating / peak RSS): Fast 102 / 428 / 872, Direct 252 / 1161 / 2326, Hy-MT2 199 / 223 / 282
   (+ its Metal buffers).
 - AI by `claude -p` (quick, a word): ~9 s; again from the store.
-- Open: Direct on long passages (more threads or a worker pool).
+- Direct side by side (copies of the model, a sentence each; word for word the same: `models_test`), warm, median of
+  3, ms, on a busy machine (load ~13): ru → de 96 words — 1 copy 4771, 2: 3230, 3: 2921, 4: 3823; 192 words — 12809 /
+  7004 / 6173 / 7031; de → ru 54 words — 5271 / 1940 / 1470 / 1915; 108 words — 6782 / 3795 / 2508 / 2101. `bench`
+  (idle): 100 words 4977 → 2638 (2) → 2404 (3) → 2369 (4). Each copy costs ~1.1 GB more while translating (loaded /
+  translating MB: 1 copy 252 / 1173, 2: 493 / 2227, 3: 737 / 3335, 4: 976 / 4454; peak 2.3 / 3.4 / 5.3 / 6.6 GB),
+  `workspace` does not change it. Default 2 (a core in 4, at most 2); `translate --threads N`. Open: the owner's choice.
 
 ## Kept as InkPeek, by decision
 - Unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language when no dictionary knows a word:

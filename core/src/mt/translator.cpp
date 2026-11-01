@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <map>
 #include <mutex>
@@ -36,7 +37,7 @@ namespace {
 using namespace mt;
 
 struct Bergamots : Held {
-  std::vector<std::unique_ptr<BergamotModel>> steps;
+  std::vector<std::unique_ptr<BergamotModel>> steps;  // Fast's steps in order; Direct's copies of its one model
 };
 
 struct Llm : Held {
@@ -134,7 +135,7 @@ struct Translator::Impl {
     if (p.llm) add(p.gguf);
     {
       std::lock_guard g(about_mu);
-      about[p.key].second = bytes;
+      about[p.key].second = bytes * static_cast<std::int64_t>(copies(p));
     }
     if (p.llm) {
       auto h = std::make_unique<Llm>();
@@ -146,9 +147,16 @@ struct Translator::Impl {
     for (auto &d : p.dirs) {
       auto cfg = bergamot_config(d, !p.tag.empty());
       if (cfg.empty()) throw std::runtime_error(tr("mt_cannot_load"));
-      h->steps.push_back(std::make_unique<BergamotModel>(cfg));
+      for (size_t i = 0; i < copies(p); i++) h->steps.push_back(std::make_unique<BergamotModel>(cfg));
     }
     return h;
+  }
+
+  // Direct's copies of a multi-target model: its sentences side by side, each one translated alone as before.
+  size_t copies(const Plan &p) const {
+    if (p.tag.empty() || p.llm || p.dirs.size() != 1) return 1;
+    int n = o.direct_threads > 0 ? o.direct_threads : std::clamp(static_cast<int>(std::thread::hardware_concurrency()) / 4, 1, 2);
+    return static_cast<size_t>(n);
   }
 
   std::chrono::milliseconds idle(const Plan &p) const {
@@ -239,20 +247,41 @@ Translation Translator::translate(const std::string &from, const std::string &to
       auto &steps = static_cast<Bergamots &>(h).steps;
       if (m == Method::direct) {
         // A multi-target model needs its tag before every sentence, a long one's every piece.
-        auto &model = *steps[0];
         if (p.tag.empty()) {
-          r.text = unlead(text, model.translate(text));
+          r.text = unlead(text, steps[0]->translate(text));
+          return;
+        }
+        std::vector<std::string> pieces;
+        for (auto &s : sentences(text)) {
+          if (trim(s).empty()) pieces.push_back(s);
+          else
+            for (auto &c : clauses(s)) pieces.push_back(c);
+        }
+        // Each copy takes the next piece: the same pieces, each alone, as one model one after another.
+        std::vector<std::string> outs(pieces.size());
+        std::atomic<size_t> next{0};
+        std::exception_ptr failed;
+        std::mutex failed_mu;
+        auto work = [&](size_t w) {
+          try {
+            for (size_t i = next++; i < pieces.size() && !impl_->stop; i = next++)
+              outs[i] = trim(pieces[i]).empty() ? pieces[i] : unlead(pieces[i], steps[w]->translate(p.tag + " " + pieces[i]));
+          } catch (...) {
+            std::lock_guard g(failed_mu);
+            if (!failed) failed = std::current_exception();
+          }
+        };
+        std::vector<std::thread> threads;
+        for (size_t w = 1; w < std::min(steps.size(), pieces.size()); w++) threads.emplace_back(work, w);
+        work(0);
+        for (auto &t : threads) t.join();
+        if (failed) std::rethrow_exception(failed);
+        if (impl_->stop) {
+          r.error = "Cancelled";
           return;
         }
         std::string out;
-        bool first = true;
-        for (auto &s : sentences(text)) {
-          std::string t = trim(s).empty() ? s : "";
-          for (auto &c : t.empty() ? clauses(s) : std::vector<std::string>{})
-            t += (t.empty() ? "" : " ") + unlead(c, model.translate(p.tag + " " + c));
-          out += (first ? "" : " ") + t;
-          first = false;
-        }
+        for (size_t i = 0; i < outs.size(); i++) out += (i ? " " : "") + outs[i];
         r.text = trim(out);
         return;
       }

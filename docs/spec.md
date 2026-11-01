@@ -30,7 +30,7 @@ Linux, sync — see Milestones. No browser extension: the hotkey and the icon at
 ## Principles
 - The core works offline and without AI. AI is an optional, marked tab, asked only on the person's action.
 - No guessing heuristics in data: forms, genders, lemmas come only from the packs.
-- One heavy model in memory; it is unloaded when idle (the voice model of M9 may stay beside it).
+- One heavy model in memory (Direct's in two copies, see Threads); it is unloaded when idle (the voice model of M9 may stay beside it).
 - No telemetry, no accounts. Network: the pack list, downloads, the update check, AI when it is on.
 
 ## Platform
@@ -127,6 +127,9 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
     Silicon (marian with ruy, `gemm-precision: int8shiftAll`) and on x86-64 (intgemm; CI job `linux-x64` translates
     de → ru with `opus-deu_eng_fra_por_spa-sla` and runs the model tests).
 - **Threads:** core calls are synchronous; the app runs them on one worker; a new request cancels the previous one.
+  Direct with a multi-target model loads two copies of it (a core in 4, at most 2; each ~1.1 GB more while it
+  translates) and translates the text's pieces side by side, each piece alone as one copy would: word for word the
+  same text, about twice as fast on a long one.
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `log/`, SQLite); the sync folder
   is a setting (M8). Windows: `%LOCALAPPDATA%\\LexiPeek` (not the roaming profile: packs are large), Linux: XDG dirs.
 - **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8

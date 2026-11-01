@@ -99,6 +99,31 @@ TEST_CASE("direct: a long sentence and a lower-case one keep the target language
   CHECK(!r.text.starts_with(","));
 }
 
+TEST_CASE("direct: copies side by side give word for word the one model's translation") {
+  if (!has("opus/opus-deu_eng_fra_por_spa-sla")) return;
+  const char *texts[] = {
+      "Das Haus ist groß.",
+      "Am nächsten Morgen stand er früh auf und ging zum Bahnhof. Der Zug war voll, und er musste die ganze Fahrt stehen. "
+      "In der Stadt angekommen, suchte er das kleine Café, von dem ihm seine Schwester erzählt hatte. Es war geschlossen. "
+      "Er wartete eine Stunde, dann ging er nach Hause. Warum? Niemand wusste es.",
+      "Erster Absatz mit zwei Sätzen. Noch einer.\n\nZweiter Absatz: eine Liste\n- Brot\n- Milch und Butter\n",
+      "Ja. Nein. Vielleicht. Doch, das ist so, und wenn du willst, erkläre ich es dir morgen, übermorgen oder nächste Woche, "
+      "je nachdem, wann du Zeit hast, wann ich Zeit habe und ob das Wetter mitspielt, denn bei Regen bleibe ich lieber zu "
+      "Hause, lese ein Buch, trinke Tee und denke über das Leben nach, statt durch die nassen Straßen der Stadt zu laufen."};
+  Translator one({.data = models(), .direct_threads = 1}), two({.data = models(), .direct_threads = 2});
+  double ms1 = 0, ms2 = 0;
+  for (auto *t : texts) {
+    Translation a, b;
+    ms1 += ms([&] { a = one.translate("de", "ru", t, Method::direct); });
+    ms2 += ms([&] { b = two.translate("de", "ru", t, Method::direct); });
+    INFO(t);
+    REQUIRE(a.ok());
+    REQUIRE(b.ok());
+    CHECK(a.text == b.text);
+  }
+  MESSAGE("one model " << ms1 << " ms, two copies " << ms2 << " ms (a copy's first piece is slow)");
+}
+
 TEST_CASE("llm: Hy-MT2 de → ru") {
   if (!has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
   Translator tr({models()});
