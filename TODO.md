@@ -1,7 +1,7 @@
 # TODO
 
-Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes
-with Export / Import (TSV replaced by the Anki binding). Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
+Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes,
+sync with InkPeek and Anki (Settings → Sync, with Export / Import). Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
 
 ## M8 Native Windows shell (`win/`, WinUI 3), by phases
 Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e2e.ps1`) and is committed.
@@ -17,7 +17,7 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
    VM: acrylic falls back to its colour); the card's ▶ once Read aloud runs on Windows.
 3. Done: the LexiPeek window (`MainWindow.xaml*`: a `NavigationView` with the memory line and Settings · About at its
    foot; Look up — a query box, Return / Shift+Return, the embedded card; Words · Phrases · History — `notes_view` in a
-   `ListView` with the counts in the nav, ✕ / Delete, the pager, Clear History, backup and restore; Help — `help_view`
+   `ListView` with the counts in the nav, ✕ / Delete, the pager, Clear History; Help — `help_view`
    with its "Open …" links; the no-pack `InfoBar`, F1; the card and query kept in the shell's `MainKeep`, its work stopped
    on close); `window-*` / `notes-*` snapshots; win-e2e.ps1 drives it (a look-up, History, F1, close).
 4. Done: Settings as Windows 11's (sections in a `NavigationView`, sub-tabs in a `SelectorBar`, the core's rows as setting
@@ -27,9 +27,7 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 5. Done: the first run (`first_run`: qt/first_run's steps as Windows' setup pages, its `firstrun-*` snapshots); CI's Windows
    job builds the core by Ninja with `-DLEXIPEEK_QT=OFF`, then the WinUI shell (`build-win.cmd build`, the folder as an
    artifact; the Qt shell only in a run by hand); release.yml ships `LexiPeek-Windows.zip` (the folder), release.sh checks
-   it; `LEXIPEEK_QT` is off by default on Windows too. Open: THIRD_PARTY_NOTICES.txt still names Qt for the Windows app
-   and not the Windows App SDK (MIT) and C++/WinRT
-   it ships now.
+   it; `LEXIPEEK_QT` is off by default on Windows too.
 - Open: the tray menu on Windows 11 and by a real click on the icon (tried on Windows 10 with Explorer's messages to the
   icon's window: items, invoked items, light dismiss, Quit; the icon is in the taskbar); WinUI windows on a VM's
   basic display adapter come out blank in screen captures (`--snapshots` renders them by XAML instead); the host window is
