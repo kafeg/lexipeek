@@ -160,11 +160,14 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   installs with one id), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
   `store` (`Store`): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created; none: a new id); own
   lines always to `<data>/inkpeek-log/<id>/<YYYY-MM>.jsonl` first (the whole own log stays local), then to
-  `<sync>/inkpeek-log/<id>/` (settings.json `sync`): month files made equal (append, or whole after compaction),
-  `device.json`. `sync(force)` (launch: `Engine::prepare`; the shells' timer, not forced: only when the folder's files
+  `<sync>/inkpeek-log/<id>/` (settings.json `sync`) at once by the store's own thread once the folder was checked
+  (`push_files`): month files made equal (append, or whole after compaction), `device.json`. The folder's files are read
+  and written only outside the store's lock (`sync_m`, one sync at a time): a stalled share never holds a look-up, ☆ or
+  Notes. `sync(force)` (launch: `Engine::prepare`; the shells' timer, not forced: only when the folder's files
   changed or own lines wait): the two-installs check once per folder (keep when the folder's newest own lines are lines
   of the local own log, else a new id, the same name), push, other devices' folders mirrored into `<data>/sync-cache/`
-  (read while the folder is away or after it is dropped), the view rebuilt from data + cache + folder. `set_folder`:
+  (read while the folder is away or after it is dropped; a device folder that cannot be read keeps its copy), the view
+  rebuilt from data + cache (never the folder itself); → whether the view changed. `set_folder`:
   another folder, read at once. No sync folder: the data dir only. The local log before the sync format
   (`<data>/log/*.jsonl`, `"v":1` lines): imported once at open (`import_old`) as this device's own lines with their
   times, the folder then renamed `log.imported`; a line already there is never written twice.

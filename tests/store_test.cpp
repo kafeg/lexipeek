@@ -177,6 +177,7 @@ TEST_CASE("sync cases: writer — the device's files byte for byte") {
       else if (op == "ai.put") CHECK(st.put_answer(text, s["lang"], s["section"], s["ver"], s["model"], s["answer"]) == "");
       else FAIL("unknown op " << op);
     }
+    st.sync(false);
     auto want = files(d / "after" / "inkpeek-log" / id), there = files(folder / "inkpeek-log" / id);
     CHECK(store::format(store::DeviceFile{id, sc["app"], sc["name"], sc["created"]}) == want["device.json"]);
     if (sc["app"] != "lexipeek") there.erase("device.json"), want.erase("device.json");  // this app writes its own name
@@ -419,11 +420,13 @@ TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the r
   CHECK(fs::exists(root / "a" / "sync-cache" / "inkpeek-log" / "win-0000000b" / "device.json"));
 
   CHECK(b.save("Haus", "word", "ru", "дом, здание") == "");
+  b.sync(false);  // b's line pushed (its pusher writes it at once, in its own thread)
   CHECK(a.sync(false));
   CHECK(a.saved()[0].origin == "mac-0000000a");
   CHECK(a.saved()[0].updated_by == "win-0000000b");
 
   CHECK(a.set_name("Work Mac") == "");
+  a.sync(false);
   CHECK(slurp(folder / "inkpeek-log" / "mac-0000000a" / "device.json").find("\"name\":\"Work Mac\"") != std::string::npos);
   CHECK(a.own_name() == "Work Mac");
 
@@ -434,7 +437,8 @@ TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the r
   CHECK(a.looks("Baum") == 1);
   CHECK(a.seen("Baum", "word", "ru", "дерево") == "");
   fs::rename(root / "away", folder);
-  CHECK(a.sync(false));
+  CHECK_FALSE(a.sync(false));  // the waiting line written there; a's view was already so
+  CHECK(own_lines(folder / "inkpeek-log" / "mac-0000000a") == own_lines(root / "a" / "inkpeek-log" / "mac-0000000a"));
   CHECK(b.sync(false));
   CHECK(b.looks("Baum") == 2);
 
@@ -442,6 +446,29 @@ TEST_CASE("sync folder: two computers, one folder; away and back; stopped, the r
   CHECK(b.sync_info().folder == "");
   CHECK(b.is_saved("Haus"));
   CHECK(b.looks("Baum") == 2);
+}
+
+TEST_CASE("sync folder: a write goes there by itself, never waiting for it; a device folder that cannot be read keeps its copy") {
+  auto root = fresh("lexipeek-sync-io");
+  auto folder = root / "Sync";
+  fs::create_directories(folder);
+  Store a({root / "a", folder, "mac-0000000a", ""}), b({root / "b", folder, "win-0000000b", ""});
+  a.sync(), b.sync();
+  CHECK(b.save("Haus", "word", "ru", "дом") == "");
+  CHECK(until([&] { return own_lines(folder / "inkpeek-log" / "win-0000000b").size() == 1; }));  // no sync() called
+  CHECK(a.sync(false));
+  CHECK(a.is_saved("Haus"));
+#ifndef _WIN32
+  // The share half gone (a folder it cannot list): the copy and the view stay as they were.
+  fs::permissions(folder / "inkpeek-log" / "win-0000000b", fs::perms::none);
+  CHECK(a.sync());
+  fs::permissions(folder / "inkpeek-log" / "win-0000000b", fs::perms::owner_all);
+  CHECK(a.is_saved("Haus"));
+  CHECK(!a.sync_info().error.empty());
+  CHECK(fs::exists(root / "a" / "sync-cache" / "inkpeek-log" / "win-0000000b" / store::month_file(a.saved()[0].created)));
+  CHECK(a.sync(false));  // read again
+  CHECK(a.sync_info().error.empty());
+#endif
 }
 
 TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id reads the earlier logs") {
@@ -467,6 +494,7 @@ TEST_CASE("sync folder: a copied install takes a new id; data deleted, a new id 
   CHECK(copy.own_name() == "MacBook Air");
   CHECK(copy.looks("Haus") == 1);
   CHECK(copy.seen("Haus", "word", "ru", "дом") == "");
+  copy.sync(false);
   CHECK(own_lines(folder / "inkpeek-log" / copy.device()).size() == 1);
 
   // Its data deleted: a new device; the old id's logs are read as any other device's.
@@ -538,6 +566,7 @@ TEST_CASE("compaction: a long log of two devices merges the same, the clock goes
   CHECK(own_lines(own).size() == new_lines);
 
   CHECK(st.seen("Haus", "word", "ru", "дом") == "");
+  st.sync(false);
   auto tail = store::parse(own_lines(own).back());
   REQUIRE(tail);
   CHECK(last < tail->t);

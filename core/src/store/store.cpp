@@ -9,9 +9,11 @@
 #include <set>
 #include <fstream>
 #include <map>
+#include <condition_variable>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <random>
+#include <thread>
 #include <regex>
 #include <sstream>
 #include "store/log.hpp"
@@ -50,6 +52,16 @@ std::string slurp(const fs::path &f) {
   std::stringstream ss;
   ss << in.rdbuf();
   return ss.str();
+}
+
+// false: the file could not be read (a share gone meanwhile).
+bool read_file(const fs::path &f, std::string &out) {
+  std::ifstream in(f, std::ios::binary);
+  if (!in) return false;
+  std::stringstream ss;
+  ss << in.rdbuf();
+  out = ss.str();
+  return !in.bad();
 }
 
 // <platform>-<8 of lower-case base32>.
@@ -111,13 +123,14 @@ bool is_month(const std::string &name) {
 // from [local] (compaction) deleted. "" or the error.
 std::string push_folder(const fs::path &local, const fs::path &remote) {
   std::error_code ec;
-  fs::create_directories(remote, ec);
+  fs::create_directory(remote, ec);  // only the device's own: a share gone meanwhile is not made again here
   std::set<std::string> names;
   for (auto &f : store::log_files(local)) {
     auto name = text::utf8_of(f.filename());
     names.insert(name);
     auto to = remote / f.filename();
-    auto l = slurp(f), r = fs::exists(to, ec) ? slurp(to) : std::string();
+    std::string l = slurp(f), r;
+    if (fs::exists(to, ec) && !read_file(to, r)) return "cannot read " + text::utf8_of(to);
     if (l == r) continue;
     auto rc = r.substr(0, r.rfind('\n') == std::string::npos ? 0 : r.rfind('\n') + 1);
     if (!rc.empty() && l.starts_with(rc)) {
@@ -126,7 +139,7 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
       out << l.substr(rc.size());
       out.flush();
       if (!out) return "cannot write " + text::utf8_of(to);
-    } else if (auto e = store::write_whole(to, l); !e.empty()) {
+    } else if (auto e = store::write_whole(to, l, true); !e.empty()) {
       return e;
     }
   }
@@ -135,15 +148,18 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
   return "";
 }
 
-// [src]'s logs and device.json copied to [dst] where they differ, files gone from [src] gone from [dst].
+// [src]'s logs and device.json copied to [dst] where they differ, files gone from [src] gone from [dst]. A folder that
+// cannot be listed or read (the share gone meanwhile) leaves [dst] as it is.
 std::string mirror_folder(const fs::path &src, const fs::path &dst) {
   std::error_code ec;
+  if (fs::directory_iterator probe(src, ec); ec) return "cannot read " + text::utf8_of(src) + ": " + ec.message();
   auto files = store::log_files(src);
   if (fs::exists(src / "device.json", ec)) files.push_back(src / "device.json");
   std::set<fs::path> names;
   for (auto &f : files) {
     names.insert(f.filename());
-    auto bytes = slurp(f);
+    std::string bytes;
+    if (!read_file(f, bytes)) return "cannot read " + text::utf8_of(f);
     if (fs::exists(dst / f.filename(), ec) && slurp(dst / f.filename()) == bytes) continue;
     if (auto e = store::write_whole(dst / f.filename(), bytes); !e.empty()) return e;
   }
@@ -152,16 +168,18 @@ std::string mirror_folder(const fs::path &src, const fs::path &dst) {
   return "";
 }
 
-// What changed in a sync folder shows here: every device file's name, size and time.
-std::string signature(const fs::path &root) {
+// What other devices changed in a sync folder shows here: every file's name, size and time but [self]'s.
+std::string signature(const fs::path &root, const std::string &self) {
   std::string out;
   std::error_code ec;
-  for (auto &d : store::device_folders(root))
+  for (auto &d : store::device_folders(root)) {
+    if (d.filename() == text::path_of(self)) continue;
     for (auto &e : fs::directory_iterator(d, ec)) {
       auto size = e.is_regular_file(ec) ? fs::file_size(e.path(), ec) : 0;
       auto time = fs::last_write_time(e.path(), ec).time_since_epoch().count();
       out += text::utf8_of(e.path().lexically_relative(root)) + "\t" + std::to_string(static_cast<unsigned long long>(size)) + "\t" + std::to_string(static_cast<long long>(time)) + "\n";
     }
+  }
   return out;
 }
 
@@ -172,7 +190,7 @@ struct Store::Impl {
   std::string error, sync_error;
   store::DeviceFile self;
   bool checked = false;   // the two-installs check passed for the folder: own lines go there
-  bool pending = false;   // own lines not written to the folder yet
+  bool pending = false;   // own lines not written to the folder yet (sync writes them)
   bool reachable = false;
   std::int64_t read_ms = 0, wrote_ms = 0;
   std::string sig;
@@ -180,8 +198,28 @@ struct Store::Impl {
   store::Clock clock;
   std::map<std::string, std::vector<Line>> lines;  // per text, in order
   mutable std::mutex m;
+  // One sync at a time; taken before m. The folder's files are read and written without m: a share that stalls keeps
+  // no look-up, ☆ or Notes waiting.
+  std::mutex sync_m;
+  // Own lines go to the folder at once, from this thread (started by the first write after the folder's check).
+  std::thread pusher;
+  std::mutex kick_m;
+  std::condition_variable kicked;
+  bool kick = false, stop = false;
 
-  ~Impl() { sqlite3_close(db); }
+  ~Impl() {
+    {
+      std::lock_guard k(kick_m);
+      stop = true;
+    }
+    kicked.notify_all();
+    if (pusher.joinable()) pusher.join();
+    if (pending) {
+      std::lock_guard s(sync_m);
+      push_files();  // the last lines before closing
+    }
+    sqlite3_close(db);
+  }
 
   bool exec(const char *sql) { return sqlite3_exec(db, sql, nullptr, nullptr, nullptr) == SQLITE_OK; }
   std::string db_error() { return std::string("sqlite: ") + sqlite3_errmsg(db); }
@@ -269,66 +307,127 @@ struct Store::Impl {
     return commit();
   }
 
-  std::vector<fs::path> roots() const {
-    std::vector<fs::path> out{o.data, cache()};
-    if (!o.sync.empty() && reachable) out.push_back(o.sync);
-    return out;
-  }
+  // The view's logs: the data dir's and the other devices' copied from the folder (never the folder itself).
+  std::vector<fs::path> roots() const { return {o.data, cache()}; }
 
-  // The folder: the two-installs check, own lines written there, other devices' kept in the cache, the view again.
+  // The folder (sync_m held, m not): the two-installs check, own lines written there, other devices' kept in the cache,
+  // the view again.
   bool sync(bool force) {
+    std::unique_lock g(m);
     if (!db) return false;
+    auto folder = o.sync;
+    bool was_checked = checked, waits = pending;
+    auto old_sig = sig, id = self.device;
+    g.unlock();
     std::error_code ec;
-    reachable = !o.sync.empty() && fs::is_directory(o.sync / "inkpeek-log", ec);
-    if (!o.sync.empty() && !reachable && fs::is_directory(o.sync, ec)) {
-      fs::create_directories(o.sync / "inkpeek-log", ec);
-      reachable = !ec;
+    bool there = !folder.empty() && fs::is_directory(folder / "inkpeek-log", ec);
+    if (!folder.empty() && !there && fs::is_directory(folder, ec)) {
+      fs::create_directories(folder / "inkpeek-log", ec);
+      there = !ec;
     }
-    if (o.sync.empty() || !reachable) {
-      sync_error = o.sync.empty() ? "" : "unreachable";
+    if (folder.empty() || !there) {
+      g.lock();
+      reachable = false;
+      sync_error = folder.empty() ? "" : "unreachable";
       if (!force) return false;
       if (auto e = reread(roots()); !e.empty()) sync_error = e;
       return true;
     }
-    auto now = signature(o.sync);
-    if (!force && !pending && now == sig) return false;
+    auto now_sig = signature(folder, id);
+    if (!force && was_checked && !waits && now_sig == old_sig) {
+      g.lock();
+      reachable = true;
+      return false;
+    }
+    g.lock();
+    reachable = true;
     sync_error.clear();
-    if (!checked) {
+    auto remote_dir = remote();
+    auto own_dir = own();
+    g.unlock();
+    if (!was_checked) {
       std::vector<Line> own_there;
-      for (auto &l : store::read_device(remote()))
-        if (l.d == self.device) own_there.push_back(l);
+      for (auto &l : store::read_device(remote_dir))
+        if (l.d == id) own_there.push_back(l);
       std::set<std::string> known;
-      for (auto &l : store::read_device(own())) known.insert(l.raw);
-      if (!store::keep_id(own_there, known)) {
+      for (auto &l : store::read_device(own_dir)) known.insert(l.raw);
+      bool keep = store::keep_id(own_there, known);
+      g.lock();
+      if (!keep) {
         // Another install writes as this device (copied data, a cloned machine): a new one, the same name.
         self = {new_id(), APP, self.name, now_ms()};
         fs::create_directories(own(), ec);
       }
       checked = true;
+      g.unlock();
     }
+    g.lock();
     save_self();
-    push();
-    for (auto &d : store::device_folders(o.sync))
-      if (d.filename() != text::path_of(self.device))
-        if (auto e = mirror_folder(d, cache() / "inkpeek-log" / d.filename()); !e.empty()) sync_error = e;
-    if (auto e = reread(roots()); !e.empty()) sync_error = e;
-    sig = signature(o.sync);
+    auto self_id = self.device;
+    g.unlock();
+    push_files();
+    bool others = force || !was_checked || now_sig != old_sig;
+    std::string mirrored;
+    if (others)
+      for (auto &d : store::device_folders(folder))
+        if (d.filename() != text::path_of(self_id))
+          if (auto me = mirror_folder(d, cache() / "inkpeek-log" / d.filename()); !me.empty()) mirrored = me;
+    g.lock();
+    if (!mirrored.empty()) sync_error = mirrored;
+    if (others)
+      if (auto re = reread(roots()); !re.empty()) sync_error = re;
+    // As it was before the copies (a change meanwhile is copied next time); a failed read is tried again.
+    if (others) sig = mirrored.empty() ? now_sig : "\x01";
     read_ms = now_ms();
-    return true;
+    return others;
   }
 
-  // Own lines and device.json into the folder (after the check).
-  void push() {
-    if (o.sync.empty() || !reachable || !checked) {
-      pending = !o.sync.empty();
-      return;
-    }
-    auto e = push_folder(own(), remote());
+  // Own lines and device.json into the folder (sync_m held, m not), once it was checked; a failure waits for the next.
+  void push_files(bool waiting_only = false) {
+    std::unique_lock g(m);
+    if (o.sync.empty() || !checked || (waiting_only && !pending)) return;
+    pending = false;  // lines written from now on go with the next push
+    auto folder = o.sync;
+    auto own_dir = own(), remote_dir = remote();
     auto dev = store::format(shared());
-    if (e.empty() && slurp(remote() / "device.json") != dev) e = store::write_whole(remote() / "device.json", dev);
-    pending = !e.empty();
+    g.unlock();
+    std::error_code ec;
+    std::string e = fs::is_directory(folder / "inkpeek-log", ec) ? "" : "unreachable";
+    if (e.empty()) e = push_folder(own_dir, remote_dir);
+    if (e.empty() && slurp(remote_dir / "device.json") != dev) e = store::write_whole(remote_dir / "device.json", dev, true);
+    g.lock();
+    if (!e.empty()) pending = true;
+    if (e == "unreachable") reachable = false;
     if (!e.empty()) sync_error = e;
     else wrote_ms = own_newest();
+  }
+
+  // Own lines written (m held): to the folder at once, by the pusher; before the folder's check, by the next sync.
+  void push() {
+    if (o.sync.empty()) return;
+    pending = true;
+    if (!checked) return;
+    {
+      std::lock_guard k(kick_m);
+      kick = true;
+      if (!pusher.joinable()) pusher = std::thread([this] { push_loop(); });
+    }
+    kicked.notify_one();
+  }
+
+  void push_loop() {
+    std::unique_lock k(kick_m);
+    while (!stop) {
+      kicked.wait(k, [this] { return stop || kick; });
+      if (stop) break;
+      kick = false;
+      k.unlock();
+      {
+        std::lock_guard s(sync_m);
+        push_files(true);
+      }
+      k.lock();
+    }
   }
 
   std::int64_t own_newest() const {
@@ -419,16 +518,20 @@ std::string Store::device() const {
 }
 
 bool Store::sync(bool force) {
-  std::lock_guard g(impl_->m);
+  std::lock_guard s(impl_->sync_m);
   return impl_->sync(force);
 }
 
 std::string Store::set_folder(const std::filesystem::path &folder) {
-  std::lock_guard g(impl_->m);
+  std::lock_guard s(impl_->sync_m);
   auto &im = *impl_;
-  if (!im.db) return im.error;
-  im.o.sync = folder;
-  im.checked = false, im.sig.clear(), im.wrote_ms = 0;
+  {
+    std::lock_guard g(im.m);
+    if (!im.db) return im.error;
+    im.o.sync = folder;
+    im.checked = false, im.sig.clear(), im.wrote_ms = 0;
+    im.pending = !folder.empty();
+  }
   im.sync(true);
   return "";  // the folder's own problems: sync_info().error
 }

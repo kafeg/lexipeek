@@ -196,9 +196,9 @@ std::string append(const fs::path &file, const std::string &line) {
   return out ? "" : "cannot write " + text::utf8_of(file);
 }
 
-std::string write_whole(const fs::path &file, const std::string &bytes) {
+std::string write_whole(const fs::path &file, const std::string &bytes, bool into_existing) {
   std::error_code ec;
-  fs::create_directories(file.parent_path(), ec);
+  if (!into_existing) fs::create_directories(file.parent_path(), ec);
   auto tmp = fs::path(file).concat(".tmp");
   {
     std::ofstream f(tmp, std::ios::binary | std::ios::trunc);

@@ -63,8 +63,9 @@ std::vector<Line> read_roots(const std::vector<std::filesystem::path> &roots);
 std::vector<Line> read_device(const std::filesystem::path &folder);
 // Appends [line] + "\n"; a file that does not end with "\n" is cut back to its last "\n" first.
 std::string append(const std::filesystem::path &file, const std::string &line);
-// Written whole: <file>.tmp, then renamed.
-std::string write_whole(const std::filesystem::path &file, const std::string &bytes);
+// Written whole: <file>.tmp, then renamed; its folder made first unless [into_existing] (a share's folder gone meanwhile
+// is not made again).
+std::string write_whole(const std::filesystem::path &file, const std::string &bytes, bool into_existing = false);
 
 // A device folder's device.json.
 struct DeviceFile {
