@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <fstream>
 #include "dict/library.hpp"
+#include "text/text.hpp"
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/dicts.hpp"
@@ -226,7 +227,7 @@ TEST_CASE("a folder read in place") {
 // A folder reached through a link: a Windows junction (mklink /J, no rights needed), elsewhere a symlink.
 void link_folder(const fs::path &link, const fs::path &target) {
 #ifdef _WIN32
-  std::system(("cmd /c mklink /J \"" + link.string() + "\" \"" + target.string() + "\" >nul").c_str());
+  REQUIRE(_wsystem((L"cmd /c mklink /J \"" + link.wstring() + L"\" \"" + target.wstring() + L"\" >nul").c_str()) == 0);
 #else
   fs::create_directory_symlink(target, link);
 #endif
@@ -241,9 +242,9 @@ TEST_CASE("a folder's dictionaries behind a junction or a symlink") {
   REQUIRE(fs::exists(shelf / "books" / "Mueller" / "mueller.ifo"));
   auto s = load_settings(d);
   std::string note;
-  CHECK(add_folder(s.dicts, shelf.string(), note).empty());
+  CHECK(add_folder(s.dicts, text::utf8_of(shelf), note).empty());
   CHECK(note.empty());
-  CHECK(add_folder(s.dicts, (shelf / "books").string(), note).empty());
+  CHECK(add_folder(s.dicts, text::utf8_of(shelf / "books"), note).empty());
   save_settings(d, s);
   auto titles = ids(dicts_view(d));
   CHECK(titles.size() == 3);  // the pack, the own one, Mueller once (two folders reach it)
@@ -258,7 +259,7 @@ TEST_CASE("a folder's dictionaries behind a junction or a symlink") {
 
 TEST_CASE("a dictionary deleted while the engine has its files open") {
   auto d = library_data("delete-open");
-  auto e = app::Engine::make(d.string(), app::device(8192, {}, "x86_64"));
+  auto e = app::Engine::make(text::utf8_of(d), app::device(8192, {}, "x86_64"));
   auto c = e.lookup("Baum", Source::cli);  // reads the own dictionary's .dict: its file is open now
   REQUIRE(!c.entries.empty());
   auto v = dicts_view(d);
@@ -266,7 +267,7 @@ TEST_CASE("a dictionary deleted while the engine has its files open") {
   for (auto &r : v.rows)
     if (r.title == "WikDict de-en") id = r.id;
   REQUIRE(!id.empty());
-  CHECK(e.remove_dict(d.string(), id).empty());
+  CHECK(e.remove_dict(text::utf8_of(d), id).empty());
   CHECK(!fs::exists(d / "dicts-own" / "WikDict de-en" / "de-en.dict"));
   CHECK(!fs::exists(d / "dicts-own" / "WikDict de-en"));
   CHECK(e.lookup("Baum", Source::cli).entries.empty());
