@@ -210,7 +210,7 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
   }
   std::vector<Shot> panes;
   if (o.settings) {
-    static const char *keys[] = {"languages", "card", "ai", "general"};
+    static const char *keys[] = {"languages", "card", "ai", "general", "read", "sync"};
     for (auto s : shown_sections) {
       auto tabs = settings_tab_keys(s);
       auto base = QString("settings-") + keys[static_cast<int>(s)];
