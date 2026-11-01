@@ -334,6 +334,12 @@ void CardSession::played() {
   if (impl_->playing) impl_->stop_reading();
 }
 
+void CardSession::show_reading(speech::Phase p) {
+  auto &i = *impl_;
+  i.nav.state.reading = view().read, i.nav.state.read_phase = p;
+  i.dirty = true;
+}
+
 bool CardSession::reading() const { return !impl_->nav.state.reading.text.empty(); }
 
 bool CardSession::poll() {

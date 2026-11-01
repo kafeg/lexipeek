@@ -193,6 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showSettings() { openSettings(nil) }
 
     @objc private func unload() { client.release() }
+    @objc private func unloadSpeech() { client.engine.release_speech() }
 
     @objc private func showAbout() {
         if aboutWindow == nil { aboutWindow = AboutWindow.make(model: settings) }
@@ -404,6 +405,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if mem.held {
             menu.addItem(NSMenuItem(title: String(mem.detail), action: nil, keyEquivalent: ""))
             let u = NSMenuItem(title: String(mem.unload), action: #selector(unload), keyEquivalent: "")
+            u.target = self
+            menu.addItem(u)
+        }
+        // Read aloud's voice model, when it is loaded: the same lines and its own Unload.
+        let speech = client.engine.speech_memory()
+        if speech.held {
+            menu.addItem(NSMenuItem(title: String(speech.line), action: nil, keyEquivalent: ""))
+            menu.addItem(NSMenuItem(title: String(speech.detail), action: nil, keyEquivalent: ""))
+            let u = NSMenuItem(title: String(speech.unload), action: #selector(unloadSpeech), keyEquivalent: "")
             u.target = self
             menu.addItem(u)
         }

@@ -38,6 +38,8 @@ class CardSession {
   std::string take_play();
   void played();
   bool reading() const;
+  // Snapshots only: the card's ▶ drawn in a phase (loading, making, ready) with nothing read.
+  void show_reading(speech::Phase p);
 
   // What arrived since the last poll is applied; true when the card changed (draw it again).
   bool poll();

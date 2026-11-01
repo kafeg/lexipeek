@@ -98,6 +98,9 @@ ai-phrase-context|lookup?text=Ich mache die Tür zu&tab=context|phrase
 ai-error|lookup?text=Bäume&tab=analysis|error
 read-word|lookup?text=Häusern&tab=dictionary|word
 read-phrase|lookup?text=Ich mache die Tür zu&tab=translate|phrase
+read-loading|lookup?text=gescheitert&tab=dictionary&read=loading|word
+read-making|lookup?text=Häusern&tab=dictionary&read=making|word
+read-playing|lookup?text=Häusern&tab=dictionary&read=ready|word
 study-word|lookup?text=дом&tab=dictionary|word
 study-word-translate|lookup?text=дом&tab=translate|word
 study-phrase|lookup?text=Мы идём домой&tab=translate|phrase

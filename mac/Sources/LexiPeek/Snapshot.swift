@@ -9,10 +9,11 @@ enum Snapshot {
     // [&section=<key>][&page=1][&entry=<n>][&back=1][&answer=<code>][&method=fast|ai][&whole=1][&pin=1] — save: ☆ once it is
     // final; open: that word clicked in the card; section: the first entry's section opened, page: its next page;
     // entry: that dictionary's line clicked; back: ← once; answer: the badge's other answer language; tab=analysis|context:
-    // that AI tab clicked; method=ai: AI translation picked; whole: a cut title opened; pin: the card pinned.
+    // that AI tab clicked; method=ai: AI translation picked; whole: a cut title opened; pin: the card pinned; read=loading|
+    // making|ready: ▶ drawn in that phase of a reading.
     private struct Request {
         var name: String, tab: lexipeek.CardTab?, full: Bool, save: Bool, open: String?, section: String?, method: lexipeek.Method?, ai: Bool, whole: Bool, entry: Int?,
-            back: Bool, page: Bool, answer: String?, pin: Bool
+            back: Bool, page: Bool, answer: String?, pin: Bool, read: lexipeek.speech.Phase?
     }
     private static var request: Request?
     private static var pending: DispatchWorkItem?
@@ -57,7 +58,8 @@ enum Snapshot {
                     section: v("section"),
                     method: v("method").flatMap { m in [lexipeek.Method.fast, .direct, .llm].first { String(lexipeek.app.method_id($0)) == m } },
                     ai: v("method") == "ai", whole: v("whole") == "1", entry: v("entry").flatMap { Int($0) },
-                    back: v("back") == "1", page: v("page") == "1", answer: v("answer"), pin: v("pin") == "1")
+                    back: v("back") == "1", page: v("page") == "1", answer: v("answer"), pin: v("pin") == "1",
+                    read: v("read").flatMap { ["loading": lexipeek.speech.Phase.loading, "making": .making, "ready": .ready][$0] })
         }
         return url.host == "unread" || url.host == "noaccess"
     }
@@ -138,6 +140,7 @@ enum Snapshot {
             }
             if r.save && !model.state.saved && model.card != nil { model.toggleSaved(); return }
             if r.pin && !model.pinned { model.pinned = true; return }
+            if let p = r.read, model.card != nil { request?.read = nil; model.showReading(p); return }
             request = nil
             write(view, "\(r.name).png")
             writeEnd(view, "\(r.name)-end.png")

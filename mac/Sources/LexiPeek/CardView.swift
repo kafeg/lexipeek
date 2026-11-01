@@ -321,7 +321,7 @@ struct CardView: View {
             }
             Spacer(minLength: 4)
             if look.read {
-                Button { model.read() } label: { Image(systemName: look.reading ? "stop.fill" : "play.fill") }
+                Button { model.read() } label: { ReadIcon(phase: look.readPhase) }
                     .buttonStyle(.borderless)
                     .help(look.readHelp)
             }
@@ -351,10 +351,10 @@ struct CardView: View {
         if r.read {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 row(r)
-                Button { model.read(i) } label: { Image(systemName: r.reading ? "stop.fill" : "play.fill").font(font(-3)) }
+                Button { model.read(i) } label: { ReadIcon(phase: r.readPhase).font(font(-3)) }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
-                    .help(L.t(r.reading ? "read_stop" : "read_help"))
+                    .help(L.t(r.readPhase == .loading ? "read_loading" : r.readPhase == .making ? "read_making" : r.reading ? "read_stop" : "read_help"))
             }
         } else {
             row(r)
@@ -506,4 +506,22 @@ private struct CutKey: PreferenceKey {
 private struct HeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+// ▶ and its reading's phases in its own place, one size for all (the card does not move): the model loading (an hourglass),
+// the reading being made (a sound wave, pulsing), ■ while it plays.
+private struct ReadIcon: View {
+    var phase: lexipeek.speech.Phase
+
+    var body: some View {
+        Group {
+            switch phase {
+            case .loading: Image(systemName: "hourglass").symbolEffect(.pulse)
+            case .making: Image(systemName: "waveform").symbolEffect(.variableColor.iterative)
+            case .ready: Image(systemName: "stop.fill")
+            default: Image(systemName: "play.fill")
+            }
+        }
+        .frame(width: 16, height: 16)
+    }
 }

@@ -15,6 +15,7 @@ struct CardLook {
         var copy: String
         var read: Bool  // its own ▶
         var reading: Bool
+        var readPhase: lexipeek.speech.Phase
     }
 
     struct Lang: Identifiable {
@@ -67,6 +68,7 @@ struct CardLook {
     var height = 45
     var read = false  // ▶ in the bottom row
     var reading = false
+    var readPhase = lexipeek.speech.Phase.idle
     var readHelp = ""
 
     init(_ v: lexipeek.CardView) {
@@ -82,7 +84,8 @@ struct CardLook {
         tab = v.tab
         rows = v.rows.map {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
-                open: String($0.open), entry: Int($0.entry), copy: String($0.copy), read: !$0.read.text.empty(), reading: $0.reading)
+                open: String($0.open), entry: Int($0.entry), copy: String($0.copy), read: !$0.read.text.empty(), reading: $0.reading,
+                readPhase: $0.read_phase)
         }
         menu = v.menu
         menuTitle = String(v.menu_title)
@@ -104,6 +107,7 @@ struct CardLook {
         height = Int(v.height)
         read = !v.read.text.empty()
         reading = v.reading
+        readPhase = v.read_phase
         readHelp = String(v.read_help)
     }
 }
@@ -243,4 +247,7 @@ final class CardModel: ObservableObject {
 
     // ▶ / ■: the card's (row -1) or a row's; the core says what it reads.
     func read(_ row: Int = -1) { act { $0.read(Int32(row)) } }
+
+    // Snapshots: ▶ in a phase of a reading.
+    func showReading(_ p: lexipeek.speech.Phase) { act { $0.show_reading(p) } }
 }
