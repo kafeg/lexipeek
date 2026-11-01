@@ -148,8 +148,11 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
+          SIGNED: ${{ secrets.MACOS_CERTIFICATE_P12 != '' && secrets.NOTARY_API_KEY != '' }}
         run: |
           cp THIRD_PARTY_NOTICES.txt dist/
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
-          NOTE=$'macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.\n\nWindows 10/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
+          MAC=$'This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.'
+          [ "$SIGNED" = true ] && MAC='Signed and notarised.'
+          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
           gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

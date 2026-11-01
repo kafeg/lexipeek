@@ -6,7 +6,7 @@ GEN := $(shell command -v ninja >/dev/null 2>&1 && echo "-G Ninja")
 .PHONY: deps build test bench asan clean app app-test install snapshots
 # The app's signing identity. macOS ties the Accessibility grant (and the Keychain's AI keys) to it: an ad-hoc build is
 # a new app each time. With the local certificate (scripts/create-dev-certificate.sh, once) builds keep the grant;
-# without it (CI) ad-hoc. SIGN=<identity> picks another.
+# without it (CI) ad-hoc. SIGN=<identity> picks another; a Developer ID one gets the secure timestamp notarisation needs.
 DEV_IDENTITY ?= LexiPeek Dev
 SIGN ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q "$(DEV_IDENTITY)" && echo "$(DEV_IDENTITY)" || echo "-")
 APP := mac/build/Build/Products/Release/LexiPeek.app
@@ -15,7 +15,8 @@ LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/Launc
 VERSION := 0.1
 COMMITS := $(shell git rev-list --count HEAD 2>/dev/null || echo 0)
 XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDataPath mac/build CODE_SIGN_IDENTITY="$(SIGN)" \
-	MARKETING_VERSION=$(VERSION).$(COMMITS) CURRENT_PROJECT_VERSION=$(COMMITS)
+	MARKETING_VERSION=$(VERSION).$(COMMITS) CURRENT_PROJECT_VERSION=$(COMMITS) \
+	$(if $(findstring Developer ID,$(SIGN)),OTHER_CODE_SIGN_FLAGS=--timestamp)
 
 deps:
 	git submodule update --init vcpkg tests/inkpeek engines/fasttext engines/llama engines/pcre2
