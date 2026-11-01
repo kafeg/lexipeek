@@ -110,7 +110,8 @@ int run(int argc, char **argv) {
   // One LexiPeek per user: a second launch hands its arguments (a lexipeek:// link) over and quits.
   if (!tool && platform::hand_over(args.mid(1))) return 0;
   platform::remove_old();  // left by an update
-  CoreClient client(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
+  // Never destroyed: its pools would wait at the way out for a running AI call or download (app::leave ends them).
+  auto &client = *new CoreClient(data, app::device(platform::ram_mb(), cpu_features(), cpu_arch()));
   auto opt = [&](const char *name) {
     auto i = args.indexOf(name);
     return i > 0 && i + 1 < args.size() ? args[i + 1] : QString();
