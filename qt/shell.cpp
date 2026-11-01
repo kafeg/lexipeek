@@ -216,7 +216,7 @@ void Shell::fill_menu() {
   menu_.addAction(q(m.line))->setEnabled(false);
   if (m.held) {
     menu_.addAction(q(m.detail))->setEnabled(false);
-    menu_.addAction(q(m.unload), this, [this] { c_.engine.release(); });
+    menu_.addAction(q(m.unload), this, [this] { c_.worker.start([e = c_.engine] { e.release(); }); });
   }
   menu_.addSeparator();
   menu_.addAction(t("menu_answer", app::language(s_.answer)))->setEnabled(false);

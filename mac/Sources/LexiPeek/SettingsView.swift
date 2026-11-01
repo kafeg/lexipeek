@@ -248,8 +248,11 @@ final class SettingsModel: ObservableObject {
         case "backup_import": restore()
         case "speech_add": addingVoice = true
         case "speech_remove":
-            client.engine.remove_speech()
-            refresh()
+            // Waits for a reading in progress, then deletes the model's files: off the main thread.
+            DispatchQueue.global(qos: .userInitiated).async { [weak self, engine = client.engine] in
+                engine.remove_speech()
+                DispatchQueue.main.async { self?.refresh() }
+            }
         case _ where key.hasPrefix("voice_remove."):
             client.engine.remove_voice(std.string(String(key.dropFirst("voice_remove.".count))))
             refresh()

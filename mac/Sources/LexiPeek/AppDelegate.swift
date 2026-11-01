@@ -193,7 +193,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showSettings() { openSettings(nil) }
 
     @objc private func unload() { client.release() }
-    @objc private func unloadSpeech() { client.engine.release_speech() }
+    @objc private func unloadSpeech() { client.releaseSpeech() }
 
     @objc private func showAbout() {
         if aboutWindow == nil { aboutWindow = AboutWindow.make(model: settings) }

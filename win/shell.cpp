@@ -286,13 +286,13 @@ controls::MenuFlyout Shell::fill_menu() {
   items.Append(item(h(mem.line), nullptr));
   if (mem.held) {
     items.Append(item(h(mem.detail), nullptr));
-    items.Append(item(h(mem.unload), [this] { c_.engine.release(); }));
+    items.Append(item(h(mem.unload), [this] { c_.worker.start([e = c_.engine] { e.release(); }); }));
   }
   // Read aloud's voice model, when it is loaded: the same lines and its own Unload.
   if (auto speech = c_.engine.speech_memory(); speech.held) {
     items.Append(item(h(speech.line), nullptr));
     items.Append(item(h(speech.detail), nullptr));
-    items.Append(item(h(speech.unload), [this] { c_.engine.release_speech(); }));
+    items.Append(item(h(speech.unload), [this] { c_.worker.start([e = c_.engine] { e.release_speech(); }); }));
   }
   items.Append(line());
   items.Append(item(tr("menu_answer", app::language(s_.answer)), nullptr));

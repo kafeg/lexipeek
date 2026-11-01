@@ -671,7 +671,10 @@ void SettingsWindow::press(const SettingRow &r) {
     return;
   }
   if (r.key == "speech_add") return add_voice();
-  if (r.key == "speech_remove") return sh_.client.engine.remove_speech(), draw();
+  if (r.key == "speech_remove") {
+    auto e = sh_.client.engine;  // waits for a reading in progress, then deletes the model: off the UI thread
+    return page::run<bool>(sh_.client, [e] { return e.remove_speech(), true; }, [this](bool) { draw(); });
+  }
   if (r.key.starts_with("voice_remove.")) return sh_.client.engine.remove_voice(r.key.substr(13)), draw();
   if (r.key == "anki_send") return sh_.client.engine.anki_send_now(), draw();
   if (r.key == "anki_check" && !sh_.anki_checking) {

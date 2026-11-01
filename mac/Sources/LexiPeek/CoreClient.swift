@@ -106,4 +106,8 @@ final class CoreClient {
     func release() {
         DispatchQueue.global(qos: .utility).async { [engine] in engine.release() }
     }
+
+    func releaseSpeech() {
+        DispatchQueue.global(qos: .utility).async { [engine] in engine.release_speech() }
+    }
 }
