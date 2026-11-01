@@ -64,6 +64,10 @@ final class SettingsModel: ObservableObject {
 
     init(client: CoreClient) {
         self.client = client
+        // Snapshots: the Anki tab's Check once, at its address (a closed port or the script's fake, never a real Anki).
+        if Snapshot.dir != nil && lexipeek.app.settings(std.string()).anki.on {
+            ankiCheck = lexipeek.app.anki_check(std.string(), std.string())
+        }
         refresh()
         notesObserver = NotificationCenter.default.addObserver(forName: .notesChanged, object: nil, queue: .main) { [weak self] _ in
             self?.refreshSync()
@@ -466,6 +470,7 @@ struct SettingLine: Identifiable {
     var placeholder, edit: String
     var goSection: lexipeek.SettingsSection
     var goTab: Int
+    var tone: lexipeek.SettingRow.Tone
     var detail, button: String
     var ids: [String]
     var progress: Double
@@ -485,6 +490,7 @@ struct SettingLine: Identifiable {
         edit = String(r.edit)
         goSection = r.go_section
         goTab = Int(r.go_tab)
+        tone = r.tone
         detail = String(r.detail)
         button = String(r.button)
         ids = r.ids.map { String($0) }
@@ -528,9 +534,19 @@ struct RowsView: View {
     private func label(_ r: SettingLine) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(r.title).lineLimit(1)
-            Text(r.about).font(.caption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            Text(r.about).font(.caption).foregroundStyle(Self.color(r.tone)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
         }
         .help(r.about)
+    }
+
+    // The core's tone of a state: the system's green, orange, red (dark mode too).
+    private static func color(_ t: lexipeek.SettingRow.Tone) -> Color {
+        switch t {
+        case .good: .green
+        case .warn: .orange
+        case .bad: .red
+        default: .secondary
+        }
     }
 
     @ViewBuilder

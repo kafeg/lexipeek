@@ -561,13 +561,24 @@ TEST_CASE("anki: Sync → Anki — the rows, their changes, an empty deck name i
   CHECK(row("anki_words_on").about == tr("anki_counts", {"120", "3", "2"}));
   CHECK(row("anki_words").choices == std::vector<std::string>{"Peek::Words", "Default", "Deutsch"});
   // Nothing answers: Anki not running, or (Anki runs) the add-on missing; a key wanted.
-  CHECK(row("anki_check").title == tr("anki_not_running_t"));
+  CHECK(row("anki_check").about.starts_with(tr("anki_not_running_t")));
+  CHECK(row("anki_check").tone == SettingRow::Tone::bad);
+  CHECK(row("anki_words_on").tone == SettingRow::Tone::bad);  // waiting while Anki does not answer
   st.anki_app = true;
   page = settings_view(SettingsSection::sync, at, s, st);
-  CHECK(row("anki_check").title == tr("anki_no_addon_t"));
+  CHECK(row("anki_check").about.starts_with(tr("anki_no_addon_t")));
   st.anki.check.code = anki::Code::need_key;
   page = settings_view(SettingsSection::sync, at, s, st);
-  CHECK(row("anki_check").title == tr("anki_need_key_t"));
+  CHECK(row("anki_check").about.starts_with(tr("anki_need_key_t")));
+  st.anki.check = {anki::Code::ok, "Connected"};
+  st.anki.words = {120, 0, 0};
+  page = settings_view(SettingsSection::sync, at, s, st);
+  CHECK(row("anki_check").about == "✓ Connected");
+  CHECK(row("anki_check").tone == SettingRow::Tone::good);
+  CHECK(row("anki_words_on").tone == SettingRow::Tone::good);
+  st.anki.words = {120, 3, 0};
+  page = settings_view(SettingsSection::sync, at, s, st);
+  CHECK(row("anki_words_on").tone == SettingRow::Tone::warn);
   auto d = fresh("lexipeek-anki-settings");
   CHECK(save_settings(d, s).empty());
   auto back = load_settings(d);

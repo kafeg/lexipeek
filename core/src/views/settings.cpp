@@ -395,22 +395,26 @@ std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
   auto &a = s.anki;
   auto &k = st.anki;
   std::vector<SettingRow> rows{heading(tr("anki_how_t"), tr("anki_how_d") + "\n" + tr("anki_inkpeek")), toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
-  // The connection: the Check's answer, else the binding's last one.
+  // The connection under its title: the Check's answer, else the binding's last one; green, red, grey while checking.
   bool known = st.anki_checked || k.probed;
   auto c = st.anki_checked ? st.anki_check : k.check;
-  std::string title = tr("anki_check_t"), about = tr("anki_check_d");
-  if (st.anki_checking) about = tr("anki_checking");
+  bool down = known && c.code != anki::Code::ok;
+  using Tone = SettingRow::Tone;
+  auto check = valued(Kind::button, "anki_check", tr("anki_check_t"), tr("anki_check_d"), tr("anki_check_btn"));
+  auto step = [&](const char *t, const char *d) { check.about = tr(t) + " — " + tr(d), check.tone = Tone::bad; };
+  if (st.anki_checking) check.about = tr("anki_checking");
   else if (known) switch (c.code) {
-      case anki::Code::ok: title = c.text; break;
+      case anki::Code::ok: check.about = "✓ " + c.text, check.tone = Tone::good; break;
       case anki::Code::not_running:
-        title = tr(st.anki_app ? "anki_no_addon_t" : "anki_not_running_t"), about = tr(st.anki_app ? "anki_no_addon_d" : "anki_not_running_d");
+        st.anki_app ? step("anki_no_addon_t", "anki_no_addon_d") : step("anki_not_running_t", "anki_not_running_d");
         break;
-      case anki::Code::need_key: title = tr("anki_need_key_t"), about = tr("anki_need_key_d"); break;
-      default: title = c.text; break;
+      case anki::Code::need_key: step("anki_need_key_t", "anki_need_key_d"); break;
+      default: check.about = c.text, check.tone = Tone::bad; break;
     }
-  auto check = valued(Kind::button, "anki_check", title, about, tr("anki_check_btn"));
   check.enabled = !st.anki_checking;
   rows.push_back(check);
+  // What waits: orange, red while Anki does not take it; green when nothing does.
+  auto waits = [&](int waiting) { return waiting == 0 ? Tone::good : down || k.refused > 0 ? Tone::bad : Tone::warn; };
   if (a.on && !k.voice) {
     auto voice = valued(Kind::button, "anki_voice", tr("anki_voice_t"), tr("anki_voice_d"), tr("open_btn"));
     voice.go_section = SettingsSection::speech, voice.go_tab = 0;
@@ -423,6 +427,7 @@ std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
     if (!k.text.empty()) state += " · " + k.text;
     auto now = valued(Kind::button, "anki_send", tr("anki_send_t"), state, tr("anki_send_btn"));
     now.enabled = !k.sending && k.waiting > 0;
+    now.tone = k.sending ? Tone::none : waits(k.waiting);
     rows.push_back(now);
   }
   rows.push_back(heading(tr("anki_decks_t"), tr("anki_decks_d")));
@@ -430,6 +435,7 @@ std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
   auto deck = [&](const std::string &id, bool on, const std::string &name, const std::string &def, const anki::Count &n) {
     auto counts = tr("anki_counts", {digits(n.sent), digits(n.waiting), digits(n.audio)});
     rows.push_back(toggle("anki_" + id + "_on", tr("anki_" + id + "_t"), on && a.on ? counts : tr("anki_" + id + "_d"), on));
+    if (on && a.on && n.sent + n.waiting > 0) rows.back().tone = waits(n.waiting);
     if (!on) return;
     auto r = valued(Kind::text, "anki_" + id, tr("anki_deck_t"), tr("anki_deck_d"), name);
     r.placeholder = def;

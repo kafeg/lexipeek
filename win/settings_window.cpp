@@ -84,6 +84,23 @@ wchar_t glyph(const std::string &key) {
 
 xaml::FrameworkElement root(const xaml::Window &w) { return w.Content().as<xaml::FrameworkElement>(); }
 
+// The core's tone of a state on a card's about line: the system's success, caution, critical text (dark mode too).
+xaml::UIElement toned(const xaml::UIElement &card, SettingRow::Tone tone) {
+  using T = SettingRow::Tone;
+  auto g = card.try_as<controls::Grid>();
+  if (tone == T::none || !g) return card;
+  auto about = g.FindName(L"About").try_as<controls::TextBlock>();
+  if (!about) return card;
+  std::wstring brush = tone == T::good ? L"SystemFillColorSuccessBrush" : tone == T::warn ? L"SystemFillColorCautionBrush" : L"SystemFillColorCriticalBrush";
+  auto colored = load(LR"(<TextBlock Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="Wrap" Foreground="{ThemeResource )" + brush + L"}\"/>")
+                     .as<controls::TextBlock>();
+  colored.Text(about.Text());
+  auto panel = about.Parent().as<controls::Panel>();
+  uint32_t at = 0;
+  if (panel.Children().IndexOf(about, at)) panel.Children().SetAt(at, colored);
+  return card;
+}
+
 // Closed by its title bar: hidden (a download or a check goes on), shown again as it was.
 void hide_on_close(const xaml::Window &w) {
   w.AppWindow().Closing([](winrt::Microsoft::UI::Windowing::AppWindow const &aw, winrt::Microsoft::UI::Windowing::AppWindowClosingEventArgs const &e) {
@@ -303,7 +320,7 @@ void SettingsWindow::draw_now() {
   else
     for (auto &r : view.rows) {
       if (r.kind == SettingRow::Kind::heading) body.Children().Append(page::heading(r.title, r.about, body.Children().Size() == 0));
-      else body.Children().Append(row(r));
+      else body.Children().Append(toned(row(r), r.tone));
     }
   scroll_.Content(body);
   scroll_.UpdateLayout();

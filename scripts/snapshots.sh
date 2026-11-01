@@ -15,7 +15,17 @@ OUT=$(cd "$OUT" && pwd)
 
 # The packs of the data dir, but an empty history: the shots do not depend on it and do not add to it.
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+# A fake AnkiConnect for the AI instance's Anki tab (its Check answers green); the main instance's address is closed (red).
+python3 -c 'import http.server, json, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def do_POST(self):
+        r = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        b = json.dumps({"result": {"version": 6, "deckNames": ["Default", "Peek::Words"], "modelNames": ["Basic"]}.get(r["action"]), "error": None}).encode()
+        self.send_response(200); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", 18765), H).serve_forever()' &
+ANKI_PID=$!
+trap 'rm -rf "$TMP"; kill $ANKI_PID 2>/dev/null' EXIT
 mkdir "$TMP/data"
 for f in "$DATA"/*; do
   case "${f##*/}" in log | device | device.json | inkpeek-log | sync-cache | lexipeek.db* | settings.json | anki.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
@@ -29,7 +39,7 @@ except OSError: s = {}
 s["mt_english"] = True
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
 s["sync"] = sys.argv[4]
-s["anki"] = {"on": True}
+s["anki"] = {"on": True, "url": "http://127.0.0.1:9"}
 json.dump(s, open(sys.argv[2], "w"))
 key = lambda t: s.get("answer", "ru") + "-" + hashlib.sha256(t.lower().encode()).hexdigest()[:32]
 json.dump({"sent": {key(t): "-" for t in ("Haus", "Ich mache die Tür zu")}}, open(sys.argv[5], "w"))' \
@@ -65,6 +75,7 @@ s = json.load(open(sys.argv[1]))
 s["ai"] = {"provider": "anthropic"}
 s["study"] = {"ru": ["de", "en"]}
 s["speech"] = {"on": True}
+s["anki"]["url"] = "http://127.0.0.1:18765"
 s.pop("sync", None)
 json.dump(s, open(sys.argv[2], "w"))' "$TMP/data/settings.json" "$TMP/aidata/settings.json"
 fail=0
@@ -108,7 +119,7 @@ for look in light dark; do
     "$APP/Contents/MacOS/LexiPeek" >"$ai/app.log" 2>&1 &
   pid=$!
   wait_for "$ai/settings.done" 60 || { echo "$look: AI settings timed out" >&2; fail=1; }
-  for s in settings-ai-connection settings-ai-modules settings-card-opening settings-languages-translation settings-read; do
+  for s in settings-ai-connection settings-ai-modules settings-card-opening settings-languages-translation settings-read settings-sync-anki; do
     mv "$ai/$s.png" "$dir/$s-on.png" 2>/dev/null || true
     [ ! -e "$ai/$s-end.png" ] || mv "$ai/$s-end.png" "$dir/$s-on-end.png"
   done

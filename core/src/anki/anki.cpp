@@ -522,6 +522,7 @@ struct Sender::Impl {
     if (r.added + r.updated > 0) unsynced = true;
     for (auto &n : wait)
       if (auto i = sent.find(n.key); i == sent.end() || i->second != digest(n)) failed[n.key] = digest(n);
+    st.refused = static_cast<int>(failed.size());
     if (!failed.empty()) refused_until = std::chrono::steady_clock::now() + std::chrono::minutes(2);
     // Anki not answering (or not set up) is tried again soon; a note it refused, in 2 minutes (at once when it changes).
     if (r.code == Code::not_running || r.code == Code::need_key || r.code == Code::old || r.code == Code::model) {

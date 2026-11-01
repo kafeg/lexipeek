@@ -434,6 +434,9 @@ struct SettingRow {
   // A button that opens another pane: its section and tab (go_tab -1: none).
   SettingsSection go_section = SettingsSection::general;
   int go_tab = -1;
+  // The about line's colour, the system's: a state that is fine, waits, fails (Anki's connection, its decks).
+  enum class Tone { none, good, warn, bad };
+  Tone tone = Tone::none;
 };
 
 struct SettingsPage {

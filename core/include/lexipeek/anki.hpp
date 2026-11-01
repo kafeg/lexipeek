@@ -102,6 +102,7 @@ struct Status {
   bool on = false;
   Count words, phrases, history;
   int waiting = 0;       // all decks'
+  int refused = 0;       // notes Anki did not take last time (tried again in 2 minutes)
   bool sending = false, making = false;  // a send, a reading being made
   bool voice = true;     // Read aloud's voice model is there (else notes go without audio, and get it later)
   bool probed = false;   // Anki was asked: code says how it went

@@ -144,7 +144,7 @@ settings_shots() {
     settings-languages-other-dictionaries settings-card-opening settings-card-opening-on settings-card-article \
     settings-card-appearance settings-ai-connection settings-ai-connection-on settings-ai-modules settings-ai-modules-on \
     settings-general-system settings-general-keys settings-read settings-read-on settings-sync-sync settings-sync-anki \
-    settings-sync-anki-off about catalog
+    settings-sync-anki-on settings-sync-anki-off about catalog
 }
 
 
