@@ -71,6 +71,6 @@ build-qt qt` builds the Qt shell instead (`build-qt\qt\LexiPeek.exe`, Qt statica
 ## License
 
 MIT (see [LICENSE](LICENSE)). The bundled engines and libraries keep their own licenses — Bergamot / Marian,
-fastText, llama.cpp, PCRE2, SQLite, curl, libarchive, Qt (LGPLv3, Windows) and more: see
-[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). The language packs keep theirs: Wiktionary CC BY-SA, Mozilla
+fastText, llama.cpp, PCRE2, SQLite, curl, libarchive, on Windows the Windows App SDK and C++/WinRT, and more: see
+[THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt) (what each zip holds). The language packs keep theirs: Wiktionary CC BY-SA, Mozilla
 models MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0, fastText's language identification CC BY-SA 3.0.
