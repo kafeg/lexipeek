@@ -1,7 +1,7 @@
 # TODO
 
 Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes
-with TSV / Export / Import. Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
+with Export / Import (TSV replaced by the Anki binding). Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
 
 ## M8 Native Windows shell (`win/`, WinUI 3), by phases
 Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e2e.ps1`) and is committed.
@@ -17,9 +17,9 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
    VM: acrylic falls back to its colour); the card's ▶ once Read aloud runs on Windows.
 3. Done: the LexiPeek window (`MainWindow.xaml*`: a `NavigationView` with the memory line and Settings · About at its
    foot; Look up — a query box, Return / Shift+Return, the embedded card; Words · Phrases · History — `notes_view` in a
-   `ListView` with the counts in the nav, ✕ / Delete, TSV, the pager, Clear History, backup and restore; Help — `help_view`
+   `ListView` with the counts in the nav, ✕ / Delete, the pager, Clear History, backup and restore; Help — `help_view`
    with its "Open …" links; the no-pack `InfoBar`, F1; the card and query kept in the shell's `MainKeep`, its work stopped
-   on close); `window-*` / `notes-*` snapshots; win-e2e.ps1 drives it (a look-up, History, TSV, F1, close).
+   on close); `window-*` / `notes-*` snapshots; win-e2e.ps1 drives it (a look-up, History, F1, close).
 4. Done: Settings as Windows 11's (sections in a `NavigationView`, sub-tabs in a `SelectorBar`, the core's rows as setting
    cards, Packs, Other dictionaries and the catalog, AI with the key in the Credential Manager, hotkeys recorded in a
    dialog, the prompt editor and "Choose…" as `ContentDialog`s) and About; closing hides them (downloads go on). Open:

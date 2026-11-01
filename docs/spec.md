@@ -130,7 +130,7 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
   Direct runs one copy of its model, its pieces one after another (copies side by side were not word for word the same
   on Linux: removed).
 - **Data:** `~/Library/Application Support/LexiPeek/` (packs, `settings.json`, `device.json`, `inkpeek-log/`,
-  `sync-cache/`, SQLite); the sync folder is a setting (Settings → General → Sync). Windows: `%LOCALAPPDATA%\\LexiPeek` (not the roaming profile: packs are large), Linux: XDG dirs.
+  `sync-cache/`, SQLite); the sync folder is a setting (Settings → Sync). Windows: `%LOCALAPPDATA%\\LexiPeek` (not the roaming profile: packs are large), Linux: XDG dirs.
 - **Platform parts** stay in the shells; the core never includes OS headers. Paths: `std::filesystem` with UTF-8
   (`u8path` care on Windows).
 - **History from v1:** every card writes `history.seen`; the menu's Recents reads it (M2), Notes shows it (M3).

@@ -11,5 +11,6 @@ The first release: macOS 14+ (Apple Silicon) and Windows 10/11 (x64).
 - Languages you learn: text already in your own language opens in up to two languages you learn — their dictionary
   lines with each word's own grammar and frequency, one language per page, their translations.
 - Optional AI with your own key or a local server: AI translation, Analysis, Context.
-- Notes: ☆ words and phrases, History, export for Anki, backup and restore.
+- Notes: ☆ words and phrases, History, backup and restore; synced with InkPeek through a folder, and into Anki by
+  themselves through AnkiConnect, each note with its reading (Settings → Sync).
 - The interface in English, Russian, German, French, Spanish, Italian, Portuguese and Polish.

@@ -421,10 +421,10 @@ struct SettingRow {
   Kind kind = Kind::heading;
   std::string key = "", title = "", about = "";
   bool on = false, enabled = true;
-  std::vector<std::string> choices = {};
+  std::vector<std::string> choices = {};  // a choice row's; a text row's: values to pick (Anki's decks)
   int selected = 0;
   std::string value = "";
-  std::string placeholder = "";  // text: shown while empty; choices on a text row: values to pick (Anki's decks)
+  std::string placeholder = "";  // text: shown while empty
   std::string edit = "";  // a prompt id: ✎ opens its editor (prompt_editor)
   std::string detail = "";
   std::vector<std::string> ids = {};

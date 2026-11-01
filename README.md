@@ -21,7 +21,8 @@ and a translation made on your computer — no server, no account, no telemetry.
 - **AI is optional.** Off by default. Turn it on in Settings → AI with your own key (Anthropic, OpenAI-compatible,
   OpenRouter), a local server (Ollama, LM Studio) or the `claude` / `codex` command line: it adds Analysis and Context
   tabs and an AI translation. Only the text you look up and the prompt are sent, and only when you ask.
-- **Notes.** ☆ keeps a word or a phrase; History, export for Anki (TSV), backup and restore.
+- **Notes.** ☆ keeps a word or a phrase; History, backup and restore. Settings → Sync: the notes the same as InkPeek's
+  through a folder any sync tool keeps (Syncthing, a cloud drive, a NAS), and into Anki by themselves (AnkiConnect).
 - **Eight languages** of the interface: English, Russian, German, French, Spanish, Italian, Portuguese, Polish.
 
 Dictionaries, grammar and models come from the language packs of [InkPeek](https://github.com/kafeg/inkpeek), the
