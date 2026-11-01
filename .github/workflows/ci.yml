@@ -18,10 +18,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
-          - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla" }
-          - { name: windows-x64, os: windows-2025, models: "", cmake: "-DLEXIPEEK_QT=OFF" }
-          - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
+          # models: pack components for LEXIPEEK_MODELS (scripts/fetch-models.sh, before the build); packs: the same by
+          # lexipeek-cli after the build (Windows: no python3 / unzip / zstd in its shell). Cached by their ids.
+          - { name: macos-arm64, os: macos-15, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en" }
+          - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en" }
+          - { name: windows-x64, os: windows-2025, packs: "langid dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en", cmake: "-DLEXIPEEK_QT=OFF" }
+          - { name: linux-x64-asan, os: ubuntu-24.04, models: "langid model-de-en dict-de-en dict-de-ru", cmake: "-DLEXIPEEK_SANITIZE=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++", type: RelWithDebInfo }
     runs-on: ${{ matrix.os }}
     env:
       TYPE: ${{ matrix.type || 'Release' }}
@@ -36,12 +38,14 @@ jobs:
           [ "$RUNNER_OS" = Linux ] || git submodule update --init --recursive --depth 1 engines/qwentts || git submodule update --init --recursive engines/qwentts
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
+      # vcpkg's binaries: the newest cache of this vcpkg and manifest; saved again after Configure when it built something
+      # (a runner image with another compiler gives other ABI hashes: restored 0 packages, all built again).
       - uses: actions/cache/restore@v4
         id: vcpkg
         with:
           path: .vcpkg-cache
-          key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
-          restore-keys: vcpkg-${{ matrix.name }}-
+          key: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
+          restore-keys: vcpkg-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
       - name: Tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
@@ -49,10 +53,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja zstd xcodegen || true
       - uses: actions/cache@v4
-        if: matrix.models != ''
+        if: matrix.models != '' || matrix.packs != ''
         with:
           path: models
-          key: models-${{ hashFiles('scripts/fetch-models.sh') }}-${{ matrix.models }}
+          key: models-${{ runner.os }}-${{ hashFiles('scripts/fetch-models.sh') }}-${{ matrix.models }}${{ matrix.packs }}
       - name: Models
         if: matrix.models != ''
         run: scripts/fetch-models.sh models ${{ matrix.models }} && echo "LEXIPEEK_MODELS=$PWD/models" >> "$GITHUB_ENV"
@@ -62,18 +66,54 @@ jobs:
       - name: Configure
         shell: bash
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
+      # Zips of neither this build's ABIs nor the last 21 days go (another image's set ages out); the key names the rest.
+      - name: vcpkg cache
+        id: vcpkg-set
+        shell: bash
+        run: |
+          abis=$(grep -h '^Abi:' build/vcpkg_installed/vcpkg/status | cut -d' ' -f2 | sort -u)
+          find .vcpkg-cache -name '*.zip' -mtime +21 | while read -r f; do echo "$abis" | grep -qx "$(basename "$f" .zip)" || rm "$f"; done
+          echo "key=${{ steps.vcpkg.outputs.cache-primary-key }}$(find .vcpkg-cache -name '*.zip' | sed 's|.*/||' | sort | sha1sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: steps.vcpkg.outputs.cache-hit != 'true'
+        if: steps.vcpkg-set.outputs.key != steps.vcpkg.outputs.cache-matched-key
         with:
           path: .vcpkg-cache
-          key: ${{ steps.vcpkg.outputs.cache-primary-key }}
+          key: ${{ steps.vcpkg-set.outputs.key }}
       - name: Build
         run: cmake --build build --config ${{ env.TYPE }} --parallel
+      - name: Packs (Windows)
+        if: matrix.packs != ''
+        shell: bash
+        run: |
+          [ -f models/installed.json ] || build/cli/lexipeek-cli --data models packs install ${{ matrix.packs }}
+          echo "LEXIPEEK_MODELS=$(cygpath -m "$PWD/models")" >> "$GITHUB_ENV"
+      # -V: each test case's time and what was skipped (no model here) in the log.
       - name: Test
-        run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure
+        run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure -V
       - name: Swift tests (macOS)
         if: runner.os == 'macOS'
         run: make app-test SIGN=-
+      # The app draws every snapshot case (scripts/snapshots.sh, invisible: off screen, never activated) on the packs above;
+      # a case that never finished (a crash, a hang) fails. Not compared with anything: the images are an artifact.
+      - name: App snapshots (macOS)
+        if: runner.os == 'macOS'
+        timeout-minutes: 25
+        run: make app SIGN=- && LEXIPEEK_DATA=$PWD/models scripts/snapshots.sh build/snapshots
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'macOS'
+        with:
+          name: snapshots-macos
+          path: build/snapshots
+          retention-days: 7
+      # The web views' selection read by the hotkey's code (scripts/selection-test.sh): needs Accessibility, granted here
+      # through TCC's database (a hosted runner's SIP is off).
+      - name: Selection test (macOS)
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAccessibility', 'dev.kafeg.lexipeek', 0, 2, 4, 1, 'UNUSED', 0, CAST(strftime('%s','now') AS INTEGER));"
+          scripts/selection-test.sh build/selection-test
       - uses: actions/cache@v4
         if: runner.os == 'Windows'
         with:
@@ -88,6 +128,23 @@ jobs:
         with:
           name: LexiPeek-Windows
           path: build/win/LexiPeek
+          retention-days: 7
+      # The WinUI shell on the runner's desktop: --self-test (the OS parts), --snapshots of the card cases on the packs
+      # above (RenderTargetBitmap, light and dark; a case not drawn goes to failed.txt and the exit code). Not compared.
+      - name: WinUI shell checks (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          mkdir -p build/win-checks && . scripts/snapshot-cases.sh && cases >build/win-checks/cases.txt
+          export LEXIPEEK_CATALOG=$(cygpath -m "$LEXIPEEK_CATALOG")
+          cp -r models build/win-data
+          pwsh -NoProfile -File scripts/win-checks.ps1 -Exe build/win/LexiPeek/LexiPeek.exe -Data build/win-data -Out build/win-checks
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: snapshots-windows
+          path: build/win-checks
           retention-days: 7
       - name: Backtrace
         if: failure() && runner.os == 'Linux'

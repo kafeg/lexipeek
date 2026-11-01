@@ -1,5 +1,6 @@
 #!/bin/sh
-# Downloads pack components by id from InkPeek's `packs` release into a data dir, checks sha256, unpacks (M0: by hand; M1: the pack manager).
+# Downloads pack components by id from InkPeek's `packs` release into a data dir, checks sha256, unpacks and marks them in
+# installed.json as the pack manager does (CI: before the build, so the dir is cached by this script's hash).
 # Usage: scripts/fetch-models.sh <data-dir> <id>...   e.g. langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla llm-hy-mt2-1.8b-q4
 set -eu
 BASE=https://github.com/kafeg/inkpeek/releases/download/packs
@@ -12,7 +13,8 @@ for id in "$@"; do
   set -- $meta; kind=$1
   name=$4; want=$5
   case $kind in model) dest="$dir/models/$2$3" ;; dict) dest="$dir/dicts/$id" ;; langid) dest="$dir/langid.ftz" ;; llm) dest="$dir/llm/$id.gguf" ;; *) dest="$dir/$kind/$id" ;; esac
-  if [ -e "$dest" ]; then echo "$id: there"; continue; fi
+  mark() { python3 -I -c "import json,sys,os; p=sys.argv[1]; d=json.load(open(p)) if os.path.exists(p) else {}; d[sys.argv[2]]=sys.argv[3]; json.dump(d, open(p,'w'), indent=1, sort_keys=True)" "$dir/installed.json" "$id" "$want"; }
+  if [ -e "$dest" ]; then echo "$id: there"; mark; continue; fi
   echo "$id: $name"
   curl -fL --retry 3 -C - -o "$dir/$name.part" "$BASE/$name"
   [ "$(sha "$dir/$name.part")" = "$want" ] || { echo "$id: sha256 mismatch" >&2; exit 1; }
@@ -24,4 +26,5 @@ for id in "$@"; do
        find "$dest.tmp" -type f -mindepth 2 -exec mv {} "$dest.tmp/" \; ; find "$dest.tmp" -mindepth 1 -type d -empty -delete
        rm "$dir/$name.part"; mv "$dest.tmp" "$dest" ;;
   esac
+  mark
 done
