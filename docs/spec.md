@@ -371,6 +371,8 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   **Measured** (Apple M2 Pro, 32 GB, Metal, model files in the file cache): the first load 15.7 s; a word 1.2–1.7 s (0.9 s
   of audio), a sentence of 50 letters 2.9 s (3.4 s of audio); a kept reading 6 ms; the process's peak 4.0 GB while it
   reads (5.4 GB with the load of the first reading). The first reading after a build ~3 s more (Metal's pipelines).
+  Windows 10 VM, 4 cores, no GPU (the CPU, qwen.dll's Vulkan finds no driver): load 2.3 s from the file cache; a word
+  8.5–10 s, a sentence 15 s; peak 5.7 GB.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·

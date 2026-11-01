@@ -40,9 +40,9 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 ## M9 Read aloud (spec M9)
 Done on macOS: the engine (qwentts.cpp as `libqwen.dylib`), the model's download, the voices in the app, voices from a
 recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept readings, snapshots.
-- Windows (built, not yet run): `qwen.dll` beside each program (its Vulkan delay-loaded with the core's hook), the card's
-  ▶ / ■ and Ctrl+., `PlaySound` and a timer by the WAV's length, Settings → Read aloud with the WAV picker. Run it on
-  Windows: the download, a reading, Ctrl+., a voice from a recording, `--snapshots`. "On the GPU" off does nothing there yet
+- Windows: the engine runs (lexipeek-cli on a VM without a GPU: the download, readings on the CPU). Not yet tried in a
+  signed-in desktop: the card's ▶ / ■ and Ctrl+., `PlaySound`, Settings → Read aloud with the WAV picker, `--snapshots`;
+  Vulkan on a real GPU. "On the GPU" off does nothing there yet
   (`GGML_BACKEND` is read by qwen.dll's own C runtime, which does not see the exe's `_putenv`).
 - Measure on Windows (Vulkan, a real GPU and the CPU): load, a word, a sentence.
 - Polish: the model does not name it (read with "auto"); check its words by native speakers.

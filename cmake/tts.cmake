@@ -45,6 +45,10 @@ if(LEXIPEEK_TTS OR LEXIPEEK_TTS_LIBRARY)
     INSTALL_COMMAND ""
     BUILD_BYPRODUCTS ${QWENTTS_LIB} ${QWENTTS_DIR}/qwen.lib
     USES_TERMINAL_BUILD ON)
+  if(WIN32)  # its configure runs again when the Vulkan hook it adds changes
+    ExternalProject_Add_StepDependencies(qwentts_build configure ${PROJECT_SOURCE_DIR}/cmake/qwentts_win.cmake
+                                         ${PROJECT_SOURCE_DIR}/cmake/qwentts_vulkan_win.cpp)
+  endif()
   add_library(qwentts SHARED IMPORTED GLOBAL)
   set_target_properties(qwentts PROPERTIES IMPORTED_LOCATION ${QWENTTS_LIB} IMPORTED_IMPLIB ${QWENTTS_DIR}/qwen.lib
                         INTERFACE_INCLUDE_DIRECTORIES ${PROJECT_SOURCE_DIR}/engines/qwentts/src)
@@ -55,10 +59,12 @@ if(LEXIPEEK_TTS OR LEXIPEEK_TTS_LIBRARY)
   endif()
 endif()
 
-# Windows has no rpath: qwen.dll is copied beside a program that links the core.
+# Windows has no rpath: qwen.dll is copied beside a program that links the core (on every build: a new DLL with an
+# unchanged program too).
 function(lexipeek_qwentts_dll target)
   if(WIN32 AND LEXIPEEK_TTS)
-    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${QWENTTS_LIB} $<TARGET_FILE_DIR:${target}>)
+    add_custom_target(${target}-qwen ALL COMMAND ${CMAKE_COMMAND} -E copy_if_different ${QWENTTS_LIB} $<TARGET_FILE_DIR:${target}>)
+    add_dependencies(${target}-qwen qwentts_build ${target})
   endif()
 endfunction()
 
