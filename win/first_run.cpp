@@ -84,14 +84,10 @@ void FirstRunWindow::draw() {
     add(answers);
     add(page::text(look_.book_label));
     // The language on the left, its level and size on the right (Settings' list look: a card with rows).
-    controls::ListView books;
-    books.SelectionMode(controls::ListViewSelectionMode::Single);
-    books.Height(232);
-    books.Padding({0, 4, 0, 4});
-    books.CornerRadius({8, 8, 8, 8});
-    books.BorderThickness({1, 1, 1, 1});
-    books.Background(xaml::Application::Current().Resources().Lookup(winrt::box_value(L"CardBackgroundFillColorDefaultBrush")).as<xaml::Media::Brush>());
-    books.BorderBrush(xaml::Application::Current().Resources().Lookup(winrt::box_value(L"CardStrokeColorDefaultBrush")).as<xaml::Media::Brush>());
+    // Theme resources in XAML: they follow the window's light or dark (a lookup in code gets the app's).
+    auto books = load(LR"(<ListView SelectionMode="Single" Height="232" Padding="0,4" CornerRadius="8" BorderThickness="1"
+  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"/>)")
+                     .as<controls::ListView>();
     controls::ListViewItem picked{nullptr};
     for (auto &b : look_.books) {
       controls::Grid line;
