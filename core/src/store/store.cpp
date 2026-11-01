@@ -134,8 +134,9 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
     if (fs::exists(to, ec) && !read_file(to, r)) return "cannot read " + text::utf8_of(to);
     if (l == r) continue;
     auto rc = r.substr(0, r.rfind('\n') == std::string::npos ? 0 : r.rfind('\n') + 1);
-    if (!rc.empty() && l.starts_with(rc)) {
-      if (rc.size() != r.size()) fs::resize_file(to, rc.size(), ec);
+    bool append = !rc.empty() && l.starts_with(rc);
+    if (append && rc.size() != r.size()) fs::resize_file(to, rc.size(), ec), append = !ec;  // a cut that fails: whole
+    if (append) {
       std::ofstream out(to, std::ios::binary | std::ios::app);
       out << l.substr(rc.size());
       out.flush();
@@ -289,9 +290,8 @@ struct Store::Impl {
 
   // <data>/device.json: this device, made once (no file: a new id; its earlier logs are read as any other device's).
   std::string load_self() {
-    auto j = nlohmann::json::parse(slurp(o.data / "device.json"), nullptr, false);
-    if (j.is_object() && j.value("device", "") != "" && (o.device.empty() || j.value("device", "") == o.device)) {
-      self = {j.value("device", ""), APP, j.value("name", ""), j.value("created", std::int64_t(0))};
+    if (auto d = store::read_device_file(o.data / "device.json"); d && (o.device.empty() || d->device == o.device)) {
+      self = {d->device, APP, d->name, d->created};
       return "";
     }
     self = {o.device.empty() ? new_id() : o.device, APP, o.name, now_ms()};
@@ -371,6 +371,7 @@ struct Store::Impl {
         // Another install writes as this device (copied data, a cloned machine): a new one, the same name; this
         // install's lines the folder lacks (written before the check, or while the other one wrote) go as the new one's.
         self = {new_id(), APP, self.name, now_ms()};
+        save_self();  // before its lines: a quit meanwhile must not take yet another id next time
         fs::create_directories(own(), ec);
         if (!unsent.empty())
           if (auto we = write(unsent); !we.empty()) sync_error = we;
@@ -730,9 +731,9 @@ std::string Store::backup(const std::filesystem::path &file) const {
   tmp += ".tmp";
   std::error_code ec;
   fs::remove(tmp, ec);
-  if (!Stmt(impl_->db, "VACUUM INTO ?").bind(tmp.string()).run()) return fs::remove(tmp, ec), impl_->db_error();
+  if (!Stmt(impl_->db, "VACUUM INTO ?").bind(text::utf8_of(tmp)).run()) return fs::remove(tmp, ec), impl_->db_error();
   fs::rename(tmp, file, ec);
-  return ec ? (fs::remove(tmp, ec), "cannot write " + file.string()) : "";
+  return ec ? (fs::remove(tmp, ec), "cannot write " + text::utf8_of(file)) : "";
 }
 
 Store::Restored Store::restore(const std::filesystem::path &file) {
@@ -822,7 +823,7 @@ std::string Store::daily_backup(const std::filesystem::path &dir, int keep) cons
   if (auto e = backup(file); !e.empty()) return e;
   std::vector<fs::path> all;
   for (auto &f : fs::directory_iterator(dir, ec)) {
-    auto n = f.path().filename().string();
+    auto n = text::utf8_of(f.path().filename());
     if (n.size() == 22 && n.starts_with("lexipeek-") && n.ends_with(".db")) all.push_back(f.path());
   }
   std::sort(all.rbegin(), all.rend());
