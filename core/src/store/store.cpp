@@ -197,6 +197,7 @@ struct Store::Impl {
     if (auto e = load_self(); !e.empty()) return e;
     fs::create_directories(own(), ec);
     if (ec) return "cannot make " + text::utf8_of(own()) + ": " + ec.message();
+    if (auto e = import_old(); !e.empty()) return e;
     store::compact_folder(own());  // on open only: a failure leaves the files as they were
     auto file = o.data / "lexipeek.db";
     for (int attempt = 0; attempt < 2; attempt++) {
@@ -208,6 +209,32 @@ struct Store::Impl {
       fs::remove(file, ec);  // a view only: a damaged file is made again from the logs
     }
     return "cannot open " + text::utf8_of(file);
+  }
+
+  // The local log before the sync format (<data>/log/<device>.jsonl, lines with "v":1): once, as this device's own
+  // lines with their times, into its month files (so to the sync folder too); then the folder is renamed log.imported.
+  // A line already there is not written again: a crash before the rename imports nothing twice.
+  std::string import_old() {
+    std::error_code ec;
+    auto old = o.data / "log";
+    if (!fs::is_directory(old, ec)) return "";
+    std::set<std::string> have;
+    for (auto &l : store::read_device(own())) have.insert(l.raw);
+    std::vector<Line> ls;
+    for (auto &f : store::log_files(old))
+      for (auto &raw : store::lines_of(f))
+        if (auto l = store::parse(raw)) {
+          l->d = self.device;
+          l->raw = store::format(*l);
+          if (have.insert(l->raw).second) ls.push_back(std::move(*l));
+        }
+    std::sort(ls.begin(), ls.end(), store::before);
+    for (auto &l : ls)
+      if (auto e = store::append(own() / store::month_file(l.t.ms), l.raw); !e.empty()) return e;
+    auto to = o.data / "log.imported";
+    for (int i = 2; fs::exists(to, ec); i++) to = o.data / ("log.imported-" + std::to_string(i));
+    fs::rename(old, to, ec);
+    return ec ? "cannot rename " + text::utf8_of(old) + ": " + ec.message() : "";
   }
 
   // <data>/device.json: this device, made once (no file: a new id; its earlier logs are read as any other device's).

@@ -165,7 +165,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   changed or own lines wait): the two-installs check once per folder (keep when the folder's newest own lines are lines
   of the local own log, else a new id, the same name), push, other devices' folders mirrored into `<data>/sync-cache/`
   (read while the folder is away or after it is dropped), the view rebuilt from data + cache + folder. `set_folder`:
-  another folder, read at once. No sync folder: the data dir only.
+  another folder, read at once. No sync folder: the data dir only. The local log before the sync format
+  (`<data>/log/*.jsonl`, `"v":1` lines): imported once at open (`import_old`) as this device's own lines with their
+  times, the folder then renamed `log.imported`; a line already there is never written twice.
   `<data>/lexipeek.db` is a view: rebuilt from the logs on open and `sync()`, a text's rows re-merged from its lines on
   each write; the 1,000-entry limit only in the view. Backup (`Store::backup` / `restore` / `daily_backup`): the view as
   InkPeek's backup file; an import writes own log lines (`Line::t` kept for texts the logs do not know). Compaction: the

@@ -330,6 +330,50 @@ TEST_CASE("store: another device's newer change, then ours") {
   CHECK(store::parse(own[1])->t == store::Time{99999999999999, 6});
 }
 
+TEST_CASE("store: the local log before the sync format is imported once, with its times; then to the folder") {
+  auto root = fresh("lexipeek-store-old-log");
+  auto data = root / "data", folder = root / "Sync";
+  fs::create_directories(data / "log");
+  fs::create_directories(folder);
+  std::ofstream(data / "log" / "mac-4be3.jsonl")
+      << R"({"v":1,"t":[1761400000000,0],"d":"mac-4be3","op":"history.seen","text":"Haus","kind":"word","lang":"ru","meaning":"дом","c":1})" "\n"
+      << R"({"v":1,"t":[1761400001000,0],"d":"mac-4be3","op":"saved.put","text":"Haus","kind":"word","lang":"ru","meaning":"дом"})" "\n"
+      << R"({"v":1,"t":[1761400002000,0],"d":"mac-4be3","op":"ai.put","text":"Haus","lang":"ru","section":"quick","ver":3,"model":"m","answer":"{}"})" "\n"
+      << R"({"v":1,"t":[1761400003000,0],"d":"mac-4be3","op":"saved.put","text":"Baum","kind":"word","lang":"ru","meaning":"дерево"})" "\n"
+      << R"({"v":1,"t":[1761400004000,0],"d":"mac-4be3","op":"saved.del","text":"Baum"})" "\n"
+      << R"({"v":1,"t":[1764000000000,0],"d":"mac-4be3","op":"history.seen","text":"Haus","kind":"word","lang":"ru","meaning":"дом","c":2})" "\n"
+      << R"({"v":1,"t":[1764000001000,0],"d":"mac-4be3","op":"history.se)";  // a cut last line
+  std::string id;
+  {
+    Store st({data, folder, "", ""});
+    REQUIRE(st.error() == "");
+    id = st.device();
+    CHECK(st.is_saved("Haus"));
+    CHECK(!st.is_saved("Baum"));
+    CHECK(st.saved()[0].created == 1761400001000);
+    CHECK(st.saved()[0].origin == id);
+    CHECK(st.looks("Haus") == 2);
+    CHECK(st.answer("Haus", "ru", "quick", 3) == "{}");
+    CHECK(!fs::exists(data / "log"));
+    CHECK(fs::exists(data / "log.imported" / "mac-4be3.jsonl"));
+    auto own = data / "inkpeek-log" / id;
+    CHECK(store::lines_of(own / "2025-10.jsonl").size() == 5);
+    CHECK(store::lines_of(own / "2025-11.jsonl").size() == 1);
+    CHECK(slurp(own / "2025-10.jsonl").find("\"v\"") == std::string::npos);
+    st.sync();
+    CHECK(own_lines(folder / "inkpeek-log" / id).size() == 6);
+    CHECK(st.seen("Haus", "word", "ru", "дом") == "");
+    CHECK(st.looks("Haus") == 3);
+  }
+  // A crash before the rename: the old folder again — nothing written twice.
+  fs::rename(data / "log.imported", data / "log");
+  Store again({data, folder, "", ""});
+  CHECK(again.device() == id);
+  CHECK(own_lines(data / "inkpeek-log" / id).size() == 7);
+  CHECK(again.looks("Haus") == 3);
+  CHECK(fs::exists(data / "log.imported"));
+}
+
 TEST_CASE("store: the history keeps the newest entries") {
   auto data = fresh("lexipeek-store-limit");
   Store st({data, {}, "mac-00000001", {}});
