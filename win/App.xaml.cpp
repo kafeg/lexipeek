@@ -58,6 +58,13 @@ int self_test(const std::string &file) {
 
 // The tray app on its data dir: a second launch's arguments come to it, this launch's lexipeek:// link opens.
 void run() {
+  // A snapshot run never touches the person's data: its own data dir, only the packs linked; why not in <dir>/failed.txt.
+  if (auto dir = opt("--snapshots"); !dir.empty())
+    if (auto why = app::isolated(data, ""); !why.empty()) {
+      std::filesystem::create_directories(path(dir));
+      std::ofstream(path(dir) / "failed.txt") << "refused: " << why << "\n";
+      app::leave(2);
+    }
   client = new win::CoreClient(data, app::device(os::ram_mb(), cpu_features(), cpu_arch()));
   if (auto dir = opt("--snapshots"); !dir.empty()) {
     shell = new win::Shell(*client, false);

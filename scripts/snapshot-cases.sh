@@ -1,5 +1,13 @@
 # The snapshot cases, shared by the Mac app's (snapshots.sh) and the Qt shell's (qt-snapshots.sh): sourced, not run.
 # shellcheck shell=sh
+
+# Links the packs of data dir $1 into the run's data dir $2: only them, read as they are. The store, logs, device, settings,
+# readings and the rest are the run's own; the app refuses a snapshot run that links anything else (app::isolated).
+link_packs() {
+  for f in dicts dicts-own index installed.json langid.ftz llm models opus packs.json tts voices; do
+    if [ -e "$1/$f" ]; then ln -s "$1/$f" "$2/"; fi
+  done
+}
 # The dictionary catalog's listings (Settings → Other dictionaries → its sheet): a fixture, no network.
 export LEXIPEEK_CATALOG="$PWD/tests/data/catalog"
 LONG="Am nächsten Morgen stand Anna früh auf, weil sie den ersten Zug in die Stadt nicht verpassen wollte. \

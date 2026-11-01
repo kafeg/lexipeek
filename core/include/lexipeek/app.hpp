@@ -16,6 +16,9 @@
 namespace lexipeek::app {
 
 std::string data_dir();
+// A snapshot or test run's data dir: "" when it is its own, else why not — it is the person's data dir ([person], "" = the
+// platform's), links into it something but the packs (dicts, models, …), or its settings name the person's sync folder.
+std::string isolated(const std::string &data, const std::string &person);
 // This machine for the packs' requirements: memory and the int8 dot product (Apple Silicon: "asimddp").
 Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch);
 // Quit now, the shell's windows and tray gone: no static destructors under a translation or an AI answer still running.

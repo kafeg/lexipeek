@@ -201,6 +201,14 @@ std::filesystem::path default_data_dir() {
     return v && *v ? std::filesystem::path(reinterpret_cast<const char8_t *>(v)) : std::filesystem::path();
   };
   if (auto d = env("LEXIPEEK_DATA"); !d.empty()) return d;
+  return person_data_dir();
+}
+
+std::filesystem::path person_data_dir() {
+  auto env = [](const char *k) -> std::filesystem::path {
+    const char *v = std::getenv(k);  // NOLINT(concurrency-mt-unsafe)
+    return v && *v ? std::filesystem::path(reinterpret_cast<const char8_t *>(v)) : std::filesystem::path();
+  };
 #if defined(_WIN32)
   return env("LOCALAPPDATA") / "LexiPeek";  // packs and models: hundreds of MB, not for a roaming profile
 #elif defined(__APPLE__)

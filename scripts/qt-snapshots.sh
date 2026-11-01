@@ -24,12 +24,12 @@ trap 'rm -rf "$TMP"' EXIT
 # A data dir with the packs of DATA and an empty store; extra: a Python line changing the settings s.
 data() {
   mkdir "$1"
-  for f in "$DATA"/*; do
-    case "${f##*/}" in log | device | lexipeek.db* | settings.json | backup) ;; *) ln -s "$f" "$1/" ;; esac
-  done
+  link_packs "$DATA" "$1"
   python3 -c 'import json, sys
 try: s = json.load(open(sys.argv[1]))
 except (OSError, ValueError): s = {}
+s.pop("sync", None)  # never their sync folder or Anki
+s.pop("anki", None)
 s["mt_english"] = True
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
 exec(sys.argv[4])

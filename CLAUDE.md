@@ -50,7 +50,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `lexipeek://window?page=lookup|words|phrases|history[&look=…]&snap=<name>` shoots the LexiPeek window; no Esc/⌘P/outside-click closing; packs symlinked from
   `lexipeek://firstrun?step=<access|list|list-error|pair|download|error|done|done-later>&snap=<name>` draws that first-run
   step (a second instance on an empty data dir, packs.json / installed.json copied in as the steps go);
-  the data dir, history empty (its own logs, `device.json` and `sync-cache` never linked: the run's are its own). The
+  the data dir — **only the packs** (`link_packs` in `snapshot-cases.sh`, an allow-list; never the store, logs, device,
+  settings, readings, the person's sync folder or Anki), history empty; the app refuses a snapshot run whose data dir is
+  the person's, links anything else or names their sync folder (`app::isolated`, at start in all three shells). The
   main instance's sync folder is a fixture made for each look (`sync_fixture` in `snapshot-cases.sh`: an InkPeek reader,
   LexiPeek on Windows, an earlier Mac): Notes show their words, `settings-sync-sync` the folder's status line.
   Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.

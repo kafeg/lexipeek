@@ -74,6 +74,11 @@ int run(int argc, char **argv) {
   std::string data;
   if (auto i = args.indexOf("--data"); i > 0 && i + 1 < args.size()) data = args[i + 1].toStdString();
   else if (auto *env = std::getenv("LEXIPEEK_DATA")) data = env;
+  // A snapshot run never touches the person's data: its own data dir, only the packs linked (scripts/qt-snapshots.sh).
+  if (auto why = args.contains("--snapshots") ? app::isolated(data, "") : ""; !why.empty()) {
+    QTextStream(stderr) << "refused: " << q(why) << "\n";
+    return 2;
+  }
   set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
   if (auto run = platform::cli_runner()) ai::set_cli_runner(run);
   // The system's UI language ("ru" of "ru-RU"), not its formats' locale.

@@ -20,6 +20,26 @@ std::filesystem::path dir(const std::string &data) { return data.empty() ? defau
 }  // namespace
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
+
+std::string isolated(const std::string &data, const std::string &person) {
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  auto same = [&](const fs::path &a, const fs::path &b) {
+    auto x = fs::weakly_canonical(a, ec), y = fs::weakly_canonical(b, ec);
+    return !x.empty() && x == y;
+  };
+  auto d = dir(data), p = person.empty() ? person_data_dir() : text::path_of(person);
+  if (same(d, p)) return "the data dir is the person's own: " + text::utf8_of(d);
+  // Only the packs, read as they are; the store, logs, device, settings and the rest are the run's own.
+  static const std::vector<std::string> packs{"dicts", "dicts-own", "index", "installed.json", "langid.ftz", "llm", "models", "opus", "packs.json", "tts", "voices"};
+  for (auto it = fs::directory_iterator(d, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
+    auto name = text::utf8_of(it->path().filename());
+    if (it->is_symlink(ec) && std::find(packs.begin(), packs.end(), name) == packs.end()) return name + " links outside the run's data dir";
+  }
+  auto sync = load_settings(d).sync;
+  if (!sync.empty() && fs::exists(p / "settings.json") && load_settings(p).sync == sync) return "the sync folder is the person's own: " + sync;
+  return "";
+}
 Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) {
   return {ram_mb, features, arch, llm_gpu()};
 }

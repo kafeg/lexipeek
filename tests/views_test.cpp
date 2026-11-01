@@ -397,6 +397,29 @@ TEST_CASE("app: settings by data dir, method ids") {
   wipe(d);
 }
 
+TEST_CASE("app: a snapshot run's data dir is its own — not the person's, no links but the packs, not their sync folder") {
+  auto root = fs::temp_directory_path() / "lexipeek-isolated";
+  wipe(root);
+  auto person = root / "person", run = root / "run";
+  fs::create_directories(person / "models");
+  fs::create_directories(run);
+  std::ofstream(person / "settings.json") << R"({"sync": "/Volumes/share/sync"})";
+  std::ofstream(person / "device.json") << "{}";
+  auto p = person.string(), r = run.string();
+  CHECK(app::isolated(r, p).empty());
+  CHECK(app::isolated(p, p).starts_with("the data dir is the person's own"));
+  fs::create_directory_symlink(person / "models", run / "models");
+  CHECK(app::isolated(r, p).empty());
+  fs::create_symlink(person / "device.json", run / "device.json");
+  CHECK(app::isolated(r, p) == "device.json links outside the run's data dir");
+  fs::remove(run / "device.json");
+  std::ofstream(run / "settings.json") << R"({"sync": "/Volumes/share/sync"})";
+  CHECK(app::isolated(r, p).starts_with("the sync folder is the person's own"));
+  std::ofstream(run / "settings.json") << R"({"sync": "/tmp/fixture"})";
+  CHECK(app::isolated(r, p).empty());
+  wipe(root);
+}
+
 TEST_CASE("views: the menu's line about the held model") {
   CHECK(!memory_view({}).held);
   CHECK(memory_view({}).line == "No model in memory");

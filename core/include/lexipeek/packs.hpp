@@ -50,6 +50,8 @@ struct Layout {
 
 // The platform's data dir for LexiPeek; LEXIPEEK_DATA overrides it.
 std::filesystem::path default_data_dir();
+// The platform's data dir whatever LEXIPEEK_DATA says: the person's own.
+std::filesystem::path person_data_dir();
 
 // InkPeek's release with the packs, the only source of downloads.
 inline constexpr const char *PACKS_BASE = "https://github.com/kafeg/inkpeek/releases/download/packs/";

@@ -26,10 +26,9 @@ class H(http.server.BaseHTTPRequestHandler):
 http.server.HTTPServer(("127.0.0.1", 18765), H).serve_forever()' &
 ANKI_PID=$!
 trap 'rm -rf "$TMP"; kill $ANKI_PID 2>/dev/null' EXIT
+. scripts/snapshot-cases.sh
 mkdir "$TMP/data"
-for f in "$DATA"/*; do
-  case "${f##*/}" in log | device | device.json | inkpeek-log | sync-cache | lexipeek.db* | settings.json | anki.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
-done
+link_packs "$DATA" "$TMP/data"
 # The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English),
 # the run's app language, a sync folder of its own (sync_fixture: other devices' logs; made again for each look) and Anki
 # on (never sending in a snapshot run): Haus and a phrase in its record, Notes' mark.
@@ -44,8 +43,6 @@ json.dump(s, open(sys.argv[2], "w"))
 key = lambda t: s.get("answer", "ru") + "-" + hashlib.sha256(t.lower().encode()).hexdigest()[:32]
 json.dump({"sent": {key(t): "-" for t in ("Haus", "Ich mache die Tür zu")}}, open(sys.argv[5], "w"))' \
   "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG" "$TMP/sync" "$TMP/data/anki.json"
-
-. scripts/snapshot-cases.sh
 
 # Percent-encodes everything but unreserved characters and the query's own = and &; \n is a line break.
 enc() { python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1].replace("\\n", "\n"), safe="=&?"))' "$1"; }
@@ -67,9 +64,7 @@ ai_fixtures "$TMP/fixtures"
 # The AI instance's data dir: the same packs, AI on with Claude's default model, Russian → German, English learned, Read
 # aloud on (its ▶; no voice model needed to draw it).
 mkdir "$TMP/aidata"
-for f in "$TMP/data"/*; do
-  case "${f##*/}" in settings.json | anki.json) ;; *) ln -s "$(readlink "$f")" "$TMP/aidata/" ;; esac
-done
+link_packs "$DATA" "$TMP/aidata"
 python3 -c 'import json, sys
 s = json.load(open(sys.argv[1]))
 s["ai"] = {"provider": "anthropic"}
