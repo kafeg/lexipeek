@@ -341,8 +341,11 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   **Voices:** in the app (kilobytes; no recording ships): per language the packs answer in (de, en, ru, fr, es, it, pl,
   pt) one female and one male native speaker — a clip of 5–12 s pre-encoded by qwentts.cpp (`qwen-codec --talker`) into
   its speaker embedding (`.spk`) and codec codes (`.rvq`), with its exact text: M-AILABS (LibriVox readings, its free
-  licence), pt from LibriVox (public domain); each in THIRD_PARTY_NOTICES.txt, each checked on 20 single words (the word
-  and nothing after it). One switch Female · Male for every language; the voice is the text's language's. **A voice from
+  licence), pt from Mozilla Common Voice (CC0); `core/src/speech/voices/SOURCES.md` and THIRD_PARTY_NOTICES.txt. Each
+  picked out of 2–6 candidates by 20 single words read and transcribed (whisper large-v3-turbo; the word and nothing
+  after it): en 20/20 both, it 20/20 both, ru 19 and 20, es 20 and 19, de 18 and 19 (the misses homophones: Stadt →
+  "statt"), pt 19 and 17, fr 17 and 15 (plurals and hyphens counted as right), pl 9 and 9 — the model does not speak
+  Polish: its words come out mangled (open: keep pl or drop it). One switch Female · Male for every language; the voice is the text's language's. **A voice from
   a recording** ("Voice from a recording…": a WAV and what it says, its language): encoded on this computer into
   `<data>/voices/` (latents and text; the WAV is not kept), listed first for its language and used for it while on;
   Such a voice is never shipped or synced (a recording is someone's voice).
@@ -363,8 +366,11 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   language and text: the same reading is never made twice (the newest 2,000 kept).
   **Settings → Read aloud** (a toolbar section of its own): Read aloud on / off; the model (its size, the memory it
   needs, downloaded or Download with progress, Remove); On the GPU; how long it stays in memory; Voice: Female · Male; own voices (language, what it
-  says; on / off, ✕) and "Voice from a recording…". Shells: macOS plays the WAV (AVAudioPlayer); Windows after M8's
-  card; the Qt shell (Linux) none.
+  says; on / off, ✕) and "Voice from a recording…". Shells: macOS plays the WAV (AVAudioPlayer); Windows by PlaySound
+  (built in CI, not yet run on a desktop); the Qt shell (Linux) none.
+  **Measured** (Apple M2 Pro, 32 GB, Metal, model files in the file cache): the first load 15.7 s; a word 1.2–1.7 s (0.9 s
+  of audio), a sentence of 50 letters 2.9 s (3.4 s of audio); a kept reading 6 ms; the process's peak 4.0 GB while it
+  reads (5.4 GB with the load of the first reading). The first reading after a build ~3 s more (Metal's pipelines).
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
