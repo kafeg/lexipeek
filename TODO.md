@@ -89,7 +89,7 @@ per-user install and uninstall.
   7004 / 6173 / 7031; de → ru 54 words — 5271 / 1940 / 1470 / 1915; 108 words — 6782 / 3795 / 2508 / 2101. `bench`
   (idle): 100 words 4977 → 2638 (2) → 2404 (3) → 2369 (4). Each copy costs ~1.1 GB more while translating (loaded /
   translating MB: 1 copy 252 / 1173, 2: 493 / 2227, 3: 737 / 3335, 4: 976 / 4454; peak 2.3 / 3.4 / 5.3 / 6.6 GB),
-  `workspace` does not change it. Default 2 (a core in 4, at most 2); `translate --threads N`. Open: the owner's choice.
+  `workspace` does not change it. Default 1 (the owner's decision: memory); more only by the owner's decision; `translate --threads N`.
 
 ## Kept as InkPeek, by decision
 - Unknown text ("+++ 42 ### 17", made-up words) gets fastText's best book language when no dictionary knows a word:

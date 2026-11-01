@@ -155,8 +155,7 @@ struct Translator::Impl {
   // Direct's copies of a multi-target model: its sentences side by side, each one translated alone as before.
   size_t copies(const Plan &p) const {
     if (p.tag.empty() || p.llm || p.dirs.size() != 1) return 1;
-    int n = o.direct_threads > 0 ? o.direct_threads : std::clamp(static_cast<int>(std::thread::hardware_concurrency()) / 4, 1, 2);
-    return static_cast<size_t>(n);
+    return static_cast<size_t>(std::max(1, o.direct_threads));
   }
 
   std::chrono::milliseconds idle(const Plan &p) const {

@@ -35,7 +35,7 @@ struct TranslatorOptions {
   std::chrono::milliseconds idle_bergamot{std::chrono::minutes(5)};
   std::chrono::milliseconds idle_llm{std::chrono::minutes(2)};
   int threads = 0;  // llama.cpp CPU threads; 0: half the cores, at most 4
-  int direct_threads = 0;  // Direct's copies of a multi-target OPUS-MT model, a sentence each at a time; 0: a core in 4, at most 2
+  int direct_threads = 1;  // Direct's copies of a multi-target OPUS-MT model, a sentence each at a time (each ~1.1 GB more)
 };
 
 class Translator {
