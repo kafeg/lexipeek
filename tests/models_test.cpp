@@ -1,5 +1,7 @@
 // Tests on real models from InkPeek's packs: run when LEXIPEEK_MODELS names a data dir that has them, else skipped.
 #include <doctest/doctest.h>
+#include <algorithm>
+#include <cctype>
 #include <chrono>
 #include <cstdlib>
 #include <functional>
@@ -76,6 +78,25 @@ TEST_CASE("direct: OPUS-MT int8 de → ru, the target tag per sentence") {
   CHECK(r.by == "OPUS-MT");
   CHECK(cyrillic(r.text));
   CHECK(r.text.find(">>") == std::string::npos);
+}
+
+TEST_CASE("direct: a long sentence and a lower-case one keep the target language to the end") {
+  if (!has("opus/opus-deu_eng_fra_por_spa-sla")) return;
+  Translator tr({models()});
+  // Past Marian's 128 tokens its own cut lost the tag: the rest came out in another language.
+  auto r = tr.translate("de", "ru",
+                        "gestern habe ich das Programm geöffnet und versucht, einen langen Text zu übersetzen, zuerst funktionierte alles "
+                        "gut, aber dann wurde die Karte langsam, und ich verstand nicht, warum das so ist, deshalb beschloss ich, die "
+                        "Einstellungen zu prüfen, wo es mehrere Reiter gibt, und jeder ist für seinen Teil des Programms zuständig, dann "
+                        "schloss ich das Fenster, öffnete es wieder, wählte eine andere Sprache, stellte die alte wieder ein, startete den "
+                        "Rechner neu, wartete eine Minute, öffnete das Programm wieder und versuchte noch einmal, denselben langen Text zu "
+                        "übersetzen, aber das Ergebnis war genauso seltsam wie vorher, und dann schrieb ich dem Entwickler einen Brief mit "
+                        "einer genauen Beschreibung von allem, was an diesem langen und ermüdenden Tag passiert war. das war alles.",
+                        Method::direct);
+  INFO(r.text);
+  REQUIRE(r.ok());
+  CHECK(std::none_of(r.text.begin(), r.text.end(), [](char ch) { return std::isalpha(static_cast<unsigned char>(ch)); }));
+  CHECK(!r.text.starts_with(","));
 }
 
 TEST_CASE("llm: Hy-MT2 de → ru") {

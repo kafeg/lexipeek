@@ -40,7 +40,23 @@ TEST_CASE("bergamot config picks the files and the gemm precision") {
   CHECK(c.find("gemm-precision: int8shiftAll\n") != std::string::npos);
   CHECK(c.find("shortlist") == std::string::npos);
   CHECK(c.find("trgvocab.spm]") != std::string::npos);
+  CHECK(c.find("ssplit-mode") == std::string::npos);
+  // A multi-target model: Marian keeps each tagged piece one sentence.
+  CHECK(mt::bergamot_config(d, true).find("ssplit-mode: sentence\n") != std::string::npos);
   wipe(d);
+}
+
+TEST_CASE("a long sentence's pieces for OPUS-MT; its ', ' before a lower-case piece dropped") {
+  CHECK(mt::clauses("kurz, und gut") == std::vector<std::string>{"kurz, und gut"});
+  auto c = mt::clauses("eins zwei, drei vier; fünf sechs: sieben acht", 22);
+  CHECK(c == std::vector<std::string>{"eins zwei, drei vier;", "fünf sechs:", "sieben acht"});
+  c = mt::clauses("eins zwei, drei vier; fünf sechs: sieben acht", 18);
+  CHECK(c == std::vector<std::string>{"eins zwei,", "drei vier;", "fünf sechs:", "sieben acht"});
+  CHECK(mt::clauses(std::string(400, 'x')).size() == 1);  // no place to cut: Marian's own break
+  CHECK(mt::unlead("явно должно попадать", ", muss eindeutig") == "muss eindeutig");
+  CHECK(mt::unlead("явно", " ; so") == "so");
+  CHECK(mt::unlead(", а потом", ", und dann") == ", und dann");
+  CHECK(mt::unlead("Das Haus", "Дом") == "Дом");
 }
 
 TEST_CASE("sentences and chunks") {

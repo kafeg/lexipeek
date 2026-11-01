@@ -17,6 +17,10 @@ Service) instead of Android's intents, without what is e-ink only (black and whi
   The default is Direct · OPUS-MT (unlike InkPeek's Fast: a desktop has the memory, ~1.2 GB, and its quality is
   better); a pair's download brings it, removing a pair frees it; where no OPUS-MT model covers a pair or the machine
   cannot run it, the card uses Fast · Mozilla.
+  Direct with a multi-target model: its tag (`>>deu<<`) before each sentence (InkPeek's) and before each piece of a
+  sentence over 300 characters, cut after ", " / "; " / ": " (past ~128 tokens the model loses its way and Marian's own
+  cut had no tag: the rest came out in another language); Marian splits no tagged piece again (a sentence starting in
+  lower case after ". " lost its tag so); a ", " the model puts before a piece starting in lower case is dropped.
 - Everything comes from the app's own downloads: InkPeek's `packs` release, checked by sha256 (M9's voice model: a
   pinned Hugging Face file, by sha256).
 

@@ -144,7 +144,7 @@ struct Translator::Impl {
     }
     auto h = std::make_unique<Bergamots>();
     for (auto &d : p.dirs) {
-      auto cfg = bergamot_config(d);
+      auto cfg = bergamot_config(d, !p.tag.empty());
       if (cfg.empty()) throw std::runtime_error(tr("mt_cannot_load"));
       h->steps.push_back(std::make_unique<BergamotModel>(cfg));
     }
@@ -238,16 +238,19 @@ Translation Translator::translate(const std::string &from, const std::string &to
       }
       auto &steps = static_cast<Bergamots &>(h).steps;
       if (m == Method::direct) {
-        // A multi-target model needs its tag before every sentence.
+        // A multi-target model needs its tag before every sentence, a long one's every piece.
         auto &model = *steps[0];
         if (p.tag.empty()) {
-          r.text = model.translate(text);
+          r.text = unlead(text, model.translate(text));
           return;
         }
         std::string out;
         bool first = true;
         for (auto &s : sentences(text)) {
-          out += (first ? "" : " ") + (trim(s).empty() ? s : model.translate(p.tag + " " + s));
+          std::string t = trim(s).empty() ? s : "";
+          for (auto &c : t.empty() ? clauses(s) : std::vector<std::string>{})
+            t += (t.empty() ? "" : " ") + unlead(c, model.translate(p.tag + " " + c));
+          out += (first ? "" : " ") + t;
           first = false;
         }
         r.text = trim(out);

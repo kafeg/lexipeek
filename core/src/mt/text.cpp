@@ -12,7 +12,7 @@ std::vector<std::pair<std::string, std::string>> steps(const std::string &from, 
   return {{from, "en"}, {"en", to}};
 }
 
-std::string bergamot_config(const fs::path &dir) {
+std::string bergamot_config(const fs::path &dir, bool one_sentence) {
   std::vector<std::string> names;
   std::error_code ec;
   for (auto &e : fs::directory_iterator(dir, ec))
@@ -37,6 +37,8 @@ std::string bergamot_config(const fs::path &dir) {
        "max-length-factor: 2.0\nskip-cost: true\ncpu-threads: 1\nquiet: true\nquiet-translation: true\n";
   c += std::string("gemm-precision: ") + (model.find("alphas") != std::string::npos ? "int8shiftAlphaAll" : "int8shiftAll") + "\n";
   c += "alignment: soft\n";
+  // A multi-target model's tag stands before each piece: Marian must not split one again (its part would have none).
+  if (one_sentence) c += "ssplit-mode: sentence\n";
   return c;
 }
 
@@ -69,6 +71,33 @@ std::vector<std::string> chunks(const std::string &text, size_t max) {
     else out.push_back(s);
   }
   return out;
+}
+
+std::vector<std::string> clauses(const std::string &sentence, size_t max) {
+  if (utf16_length(sentence) <= max) return {sentence};
+  std::vector<std::string> parts;
+  size_t at = 0;
+  for (size_t i = 0; i + 1 < sentence.size(); i++)
+    if ((sentence[i] == ',' || sentence[i] == ';' || sentence[i] == ':') && sentence[i + 1] == ' ') {
+      parts.push_back(trim(sentence.substr(at, i + 1 - at)));
+      at = i + 1;
+    }
+  parts.push_back(trim(sentence.substr(at)));
+  std::vector<std::string> out;
+  for (auto &p : parts) {
+    if (p.empty()) continue;
+    if (!out.empty() && utf16_length(out.back()) + 1 + utf16_length(p) <= max) out.back() += " " + p;
+    else out.push_back(p);
+  }
+  return out;
+}
+
+std::string unlead(const std::string &source, const std::string &out) {
+  auto lead = [](const std::string &s) {
+    auto t = trim(s);
+    return !t.empty() && (t[0] == ',' || t[0] == ';' || t[0] == ':');
+  };
+  return lead(out) && !lead(source) ? trim(trim(out).substr(1)) : out;
 }
 
 std::string fill(std::string prompt, const std::string &from, const std::string &to, const std::string &text) {
