@@ -43,7 +43,7 @@ std::wstring quote(const std::wstring &a) {
   size_t slashes = 0;
   for (auto ch : a) {
     if (ch == L'\\') ++slashes;
-    else if (ch == L'"') out.append(slashes * 2 + 1, L'\\'), slashes = 0;
+    else if (ch == L'"') out.append(slashes + 1, L'\\'), slashes = 0;  // its backslashes doubled (they are in out once), one for it
     else slashes = 0;
     out += ch;
   }
