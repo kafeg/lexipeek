@@ -19,18 +19,20 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `make deps` — submodules (Bergamot recursively; not `--recursive` at the root: InkPeek's own engines are not needed).
 - `make build` — CMake + Ninja into `build/`; the first build compiles the vcpkg ports and the engines (~8 min).
 - `make test` — ctest: `core` (doctest, `tests/*_test.cpp`), `engine-pins`, `cli-usage`. Model tests run when
-  `LEXIPEEK_MODELS` names a data dir with the models, else they say "skipped".
+  `LEXIPEEK_MODELS` names a data dir with the models, else they say "skipped". **What tests what, where it runs:
+  `docs/testing.md`**; a wait in a test is `until()` (`tests/temp.hpp`), never a fixed sleep.
 - `make asan` — the same with ASan + UBSan on our code (`build-asan/`). `make bench` — `lexipeek-cli bench`.
 - Packs: `lexipeek-cli packs list | status | install <id>… | remove <id>… | update [--base URL]` from InkPeek's `packs`
   release (sha256, resumable); layout as InkPeek's (`dicts/<id>/`, `models/<from><to>/`, `opus/<id>/`, `llm/<id>.gguf`,
-  `langid.ftz`, `installed.json`). CI still fetches models with `scripts/fetch-models.sh` (cache key, runs before the build).
+  `langid.ftz`, `installed.json`). CI fetches packs with `scripts/fetch-models.sh` (cache key, runs before the build;
+  it marks `installed.json` too), on Windows by `lexipeek-cli packs install` after the build.
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
 - App (macOS): `make app` (core + `mac/` by XcodeGen, Release; version `0.1.<git commit count>` as
   InkPeek's, the build number the count — Makefile's `VERSION`; signed with the local certificate when it exists — `scripts/create-dev-certificate.sh` once, then the
   Accessibility grant and Keychain keys survive rebuilds; `SIGN=<identity>` picks another), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
   `open "lexipeek://lookup?text=Das%20Haus"` or `lexipeek://input`.
-- **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~1.5 min) — the built app draws a fixed set of cards
+- **UI check: `make snapshots`** (`scripts/snapshots.sh [out-dir]`, ~4 min; CI's macOS job runs it too) — the built app draws a fixed set of cards
   (word, full entries with sections, a section, a gloss word opened, phrase and passages on both tabs, long list scrolled
   to the end, passages with line breaks and lists, each method, same language, no pack, unknown, input, selection failed, no
   Accessibility, pinned, saved ★), the LexiPeek window (empty, a word, a passage, Notes' three pages) and every
@@ -158,11 +160,14 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   With a GPU the AI model's processor needs do not apply (`Device::gpu`, `cannot`).
 - Engines build as C++17 (`cmake/engines.cmake`), our code as C++20. Linux: OpenBLAS `dynamic-arch` (a cached
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
-- CI (`.github/workflows/ci.yml`): macOS arm64, Linux x64, Windows x64, Linux ASan + UBSan; models from the packs
-  release on macOS and Linux (cached), none on Windows. Windows: MSVC's environment (`ilammy/msvc-dev-cmd`), the core by
-  Ninja with `-DLEXIPEEK_QT=OFF` into `build`, then `scripts\build-win.cmd build` (the WinUI shell over that dir, NuGet
-  packages cached; the folder as the `LexiPeek-Windows` artifact); the Qt shell on Windows only in a run by hand
-  (`gh workflow run ci.yml`: job `windows-qt`).
+- CI (`.github/workflows/ci.yml`, map in `docs/testing.md`): macOS arm64, Linux x64, Windows x64, Linux ASan + UBSan;
+  packs from the release (cached): models and six dictionaries on macOS and Linux, dictionaries only on Windows. macOS
+  also builds the app and runs `scripts/snapshots.sh` (artifact). Windows: MSVC's environment (`ilammy/msvc-dev-cmd`),
+  the core by Ninja with `-DLEXIPEEK_QT=OFF` into `build`, then `scripts\build-win.cmd build` (the WinUI shell over that
+  dir, NuGet packages cached; the folder as the `LexiPeek-Windows` artifact), then `scripts/win-checks.ps1`
+  (`--self-test`, `--snapshots` of the card cases; artifact); the Qt shell on Windows only in a run by hand
+  (`gh workflow run ci.yml`: job `windows-qt`). vcpkg's binary cache is saved again whenever Configure built a port
+  (a runner image's new compiler changes every ABI hash).
 - `mac/`: `cmake/apple_bundle.cmake` walks `lexipeek_core`'s link closure and `libtool`s it into
   `build/mac/liblexipeek_all.a` + `link.xcconfig` (frameworks, system libs); Swift imports the facade through
   `mac/Bridge` (module `LexiPeekCore`): only typedefs for template instances and `std::optional` readers — no logic.
