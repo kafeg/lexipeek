@@ -119,7 +119,12 @@ struct CardSession::Impl {
         int id = request = ++last;
         lookups().add([self, step, id] {
           if (!self->current(id)) return;
-          auto card = self->e.lookup_as(step.text, step.source, step.lang, step.answer);
+          Card card;  // a throw on this thread would end the process: the card as it was instead
+          try {
+            card = self->e.lookup_as(step.text, step.source, step.lang, step.answer);
+          } catch (const std::exception &) {
+            card = {};
+          }
           self->post([card, id](Impl &s) mutable {
             if (!s.current(id)) return;
             s.waiting = false;
@@ -147,7 +152,12 @@ struct CardSession::Impl {
         auto card = nav.card();
         lookups().add([self, card, step, id, sec] {
           if (!self->current(id)) return;
-          auto page = self->e.section(card, step.entry, step.key, step.page);
+          decltype(self->e.section(card, step.entry, step.key, step.page)) page;
+          try {
+            page = self->e.section(card, step.entry, step.key, step.page);
+          } catch (const std::exception &) {
+            return self->post([sec](Impl &s) { s.section_waiting = s.section_waiting && s.section != sec; });
+          }
           self->post([page, id, sec](Impl &s) {
             if (!s.current(id) || s.section != sec) return;  // ← closed it meanwhile
             s.section_waiting = false;
@@ -175,18 +185,22 @@ struct CardSession::Impl {
     auto self = me.lock();
     translations().add([self, card, m, id, n] {
       Translation t;
-      if (!self->current(id) || self->translation != n) t.error = "stale";
-      else if (!card.study.empty()) {
-        // Languages you learn: one after another, each shown as it comes; the first is the card's translation.
-        for (int i = 0; i < static_cast<int>(card.study.size()); i++) {
-          if (!self->current(id) || self->translation != n) break;
-          auto x = self->e.translate_into(card, i, m, self->tag);
-          if (i == 0) t = x;
-          self->post([x, m, id, n, i](Impl &s) {
-            if (s.current(id) && s.translation == n) s.nav.learned(i, m, x);
-          });
-        }
-      } else t = self->e.translate(card, m, self->tag);
+      try {
+        if (!self->current(id) || self->translation != n) t.error = "stale";
+        else if (!card.study.empty()) {
+          // Languages you learn: one after another, each shown as it comes; the first is the card's translation.
+          for (int i = 0; i < static_cast<int>(card.study.size()); i++) {
+            if (!self->current(id) || self->translation != n) break;
+            auto x = self->e.translate_into(card, i, m, self->tag);
+            if (i == 0) t = x;
+            self->post([x, m, id, n, i](Impl &s) {
+              if (s.current(id) && s.translation == n) s.nav.learned(i, m, x);
+            });
+          }
+        } else t = self->e.translate(card, m, self->tag);
+      } catch (const std::exception &x) {
+        t = {}, t.error = x.what();
+      }
       self->post([t, m, id, n](Impl &s) {
         if (s.current(id) && s.translation == n) s.nav.translated(m, t);
       });
@@ -207,7 +221,12 @@ struct CardSession::Impl {
       std::thread([self, card = nav.card(), a, k = key, id] {
         // A newer card by now: no request (an AI answer costs).
         if (!self->current(id)) return;
-        auto st = self->e.ask(card, a, k);
+        AiState st;
+        try {
+          st = self->e.ask(card, a, k);
+        } catch (const std::exception &x) {
+          st.answered = true, st.error = x.what();
+        }
         self->post([st, a, id](Impl &s) {
           if (s.current(id)) s.nav.state = with_answer(s.nav.state, a, st);
         });
