@@ -48,6 +48,8 @@ enum Selection {
         }
         let pid = app.processIdentifier
         let name = app.bundleIdentifier ?? "?"
+        // Our own windows: AX into this process from its main thread is never answered (each query waits its timeout).
+        guard pid != ProcessInfo.processInfo.processIdentifier else { return nil }
         if let r = viaAX(pid: pid) {
             log.info("\(name, privacy: .public): AX")
             return r
@@ -56,11 +58,14 @@ enum Selection {
         if !woken.contains(pid) {
             woken.insert(pid)
             let el = AXUIElementCreateApplication(pid)
-            for attr in ["AXManualAccessibility", "AXEnhancedUserInterface"] {
+            AXUIElementSetMessagingTimeout(el, 1)
+            var hung = false  // an app that does not answer: no waiting for its tree
+            for attr in ["AXManualAccessibility", "AXEnhancedUserInterface"] where !hung {
                 let e = AXUIElementSetAttributeValue(el, attr as CFString, kCFBooleanTrue)
+                hung = e == .cannotComplete
                 log.info("\(name, privacy: .public): set \(attr, privacy: .public) → \(e.rawValue)")
             }
-            for _ in 0..<8 {
+            for _ in 0..<(hung ? 0 : 8) {
                 try? await Task.sleep(nanoseconds: 50_000_000)
                 if let r = viaAX(pid: pid) {
                     log.info("\(name, privacy: .public): AX after waking")
