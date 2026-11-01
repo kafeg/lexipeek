@@ -100,8 +100,18 @@ TEST_CASE("read aloud: a language you learn — the translation on Translate, th
     if (!r.read.text.empty()) rows.push_back(r.read);
   CHECK(rows == std::vector<Read>{{"das Haus", "de"}, {"Gebäude", "de"}});
   CHECK(!v.reading);
-  for (auto &r : v.rows)
-    if (r.read.text == "Gebäude") CHECK((r.reading && r.read_phase == Phase::making));
+  for (auto &r : v.rows) {
+    if (r.read.text == "Gebäude") CHECK((r.reading && r.read_phase == Phase::making && r.read_help == "Making the reading…"));
+    if (r.read.text == "das Haus") CHECK(r.read_help == "Read aloud (⌘.)");
+    if (r.read.text.empty()) CHECK(r.read_help.empty());
+  }
+  s.read_phase = Phase::loading;
+  for (auto &r : card_view(c, s).rows)
+    if (r.read.text == "Gebäude") CHECK(r.read_help == "Loading the voice model…");
+  s.read_phase = Phase::ready;
+  for (auto &r : card_view(c, s).rows)
+    if (r.read.text == "Gebäude") CHECK(r.read_help == "Stop (⌘.)");
+  s.read_phase = Phase::making;
   s.reading = {"das Haus", "de"};
   CHECK(card_view(c, s).reading);
   CHECK(card_view(c, s).read_help == "Making the reading…");

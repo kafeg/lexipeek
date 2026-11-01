@@ -50,6 +50,7 @@ void read_view(const Card &c, const CardState &s, CardView &v) {
             r.read = {spoken(w.header, w.base), c.study.front().lang};
             r.reading = s.reading == r.read;
             r.read_phase = r.reading ? s.read_phase : speech::Phase::idle;
+            r.read_help = help(r.reading, r.read_phase);
           }
   if (!s.read_error.empty()) {
     v.rows.push_back({CardRow::Style::error, "", s.read_error, ""});

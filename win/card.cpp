@@ -380,10 +380,7 @@ void CardWidget::rebuild() {
     g.ColumnDefinitions().Append(narrow);
     g.Children().Append(row(r));
     int at = static_cast<int>(i);
-    auto play = command(read_glyph(r.reading, r.read_phase),
-                        app::text(!r.reading ? "read_help" : r.read_phase == speech::Phase::loading ? "read_loading"
-                                                           : r.read_phase == speech::Phase::making ? "read_making" : "read_stop"),
-                        [this, at] { m_.read(at); }, nullptr, 12);
+    auto play = command(read_glyph(r.reading, r.read_phase), r.read_help, [this, at] { m_.read(at); }, nullptr, 12);
     play.VerticalAlignment(xaml::VerticalAlignment::Top);
     controls::Grid::SetColumn(play, 1);
     g.Children().Append(play);

@@ -354,7 +354,7 @@ struct CardView: View {
                 Button { model.read(i) } label: { ReadIcon(phase: r.readPhase).font(font(-3)) }
                     .buttonStyle(.borderless)
                     .foregroundStyle(.secondary)
-                    .help(L.t(r.readPhase == .loading ? "read_loading" : r.readPhase == .making ? "read_making" : r.reading ? "read_stop" : "read_help"))
+                    .help(r.readHelp)
             }
         } else {
             row(r)

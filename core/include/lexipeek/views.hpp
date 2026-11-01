@@ -133,6 +133,7 @@ struct CardRow {
   speech::Read read = {};  // its own small ▶ (a translated word of a language you learn); text "": none
   bool reading = false;    // being read: read_phase says how far
   speech::Phase read_phase = speech::Phase::idle;
+  std::string read_help = "";  // its ▶'s tooltip by the phase
 };
 
 struct MethodItem {
