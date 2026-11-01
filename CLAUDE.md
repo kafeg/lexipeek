@@ -130,7 +130,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Settings row kind `checks` (`study.<code>` toggles). Empty list: the old paths.
 - `core/src/anki/` (facade `lexipeek/anki.hpp`): the Anki binding through AnkiConnect v6 — `notes` (the store's saved words,
   phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Peek` and decks made when
-  missing, notes found by their Key field, then updated or added, by `multi`), `Sender` (in `Core`: one thread looks at the
+  missing, notes found by their Key field, then updated or added, by `multi`; an update without a reading at hand leaves Audio as it is), `Sender` (in `Core`: one thread looks at the
   store every 3 s, asks Anki every 30 s, makes one missing reading at a time through `Reader` — the core's
   `Speaker::make_now`, the text's language by `source()` —, sends what waits — a note Anki refused again after 2 min; what it did in `<data>/anki.log`; started by the shell, never in snapshot mode).
   Views: Settings → Sync → Anki rows (`anki_rows`, picked by the tab's key; a text row's `choices` are Anki's decks to

@@ -603,3 +603,30 @@ TEST_CASE("anki: a reading that cannot be made now does not hold its note: it go
   }
   wipe(d);
 }
+
+TEST_CASE("anki: an update without a reading at hand keeps the note's Audio (a restart while the voice model is gone)") {
+  auto d = fresh("lexipeek-anki-keep-audio");
+  FakeAnki anki;
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    auto f = d / "Haus.wav";
+    std::ofstream(f, std::ios::binary) << "RIFF1";
+    anki::Reader made{[&](const anki::Note &) { return speech::Made{text::utf8_of(f)}; }, [] { return true; }};
+    auto key = anki::key_of("Haus", "ru");
+    {
+      anki::Sender snd(st, d, anki::default_transport(), made);
+      snd.configure(on(srv.url()));
+      snd.run_once();
+      snd.run_once();
+      REQUIRE(anki.by_key(key));
+      REQUIRE(anki.by_key(key)->fields.at("Audio").starts_with("[sound:"));
+    }
+    anki::Sender again(st, d, anki::default_transport(), anki::Reader{{}, [] { return false; }});
+    again.configure(on(srv.url()));
+    again.run_once();
+    CHECK(anki.by_key(key)->fields.at("Audio") == "[sound:lexipeek_" + key + ".wav]");
+  }
+  wipe(d);
+}

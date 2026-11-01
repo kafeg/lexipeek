@@ -297,7 +297,8 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
     std::vector<std::pair<std::size_t, bool>> whose;  // the note and whether it is an update
     for (std::size_t i = 0; i < part.size(); i++) {
       auto &n = part[i];
-      json f{{"Front", n.front}, {"Back", n.back}, {"Audio", sound[i]}, {"Example", n.example}, {"Key", n.key}};
+      json f{{"Front", n.front}, {"Back", n.back}, {"Example", n.example}, {"Key", n.key}};
+      if (!sound[i].empty()) f["Audio"] = sound[i];  // no reading at hand: the note's Audio stays as it is
       if (auto it = ids.find(n.key); it != ids.end()) {
         for (auto &id : it->second) {
           writes.push_back(request("updateNoteFields", {{"note", {{"id", id}, {"fields", f}}}}, key));
@@ -368,9 +369,9 @@ struct Sender::Impl {
     std::ofstream(f, std::ios::app | std::ios::binary) << text::local_time(ms) << " " << line << "\n";
   }
 
-  // The store's notes with the readings made so far; those still without one, unsent first.
-  std::vector<Note> all_notes(const AnkiSettings &set, std::vector<Note> &missing) {
-    auto all = notes(store, set, data);
+  // The store's notes ([all], read without mu: the store may wait for its sync folder) with the readings made so far;
+  // those still without one, unsent first.
+  std::vector<Note> with_audio(std::vector<Note> all, std::vector<Note> &missing) {
     for (auto &n : all)
       if (auto i = audio.find(n.key); n.audio.empty() && i != audio.end()) n.audio = i->second;
     for (auto &n : all)
@@ -412,14 +413,15 @@ struct Sender::Impl {
     if (std::chrono::steady_clock::now() >= probed) {
       auto c = check(set, k, t);
       g.lock();
-      if (!st.probed || c.code != st.check.code) log("anki: " + (c.code == Code::ok ? c.text : text_of(c.code, c.text)));
+      if (!st.probed || c.code != st.check.code) log("anki: " + c.text);
       st.check = c, st.probed = true, probed = std::chrono::steady_clock::now() + std::chrono::seconds(30);
       g.unlock();
     }
     std::vector<Note> missing;
+    auto listed = notes(store, set, data);
     g.lock();
     st.voice = ready;
-    auto all = all_notes(set, missing);
+    auto all = with_audio(listed, missing);
     // One reading at a time, made before its note goes (notes go without one while the voice model is missing).
     if (ready && !missing.empty()) {
       auto n = missing.front();
@@ -433,7 +435,7 @@ struct Sender::Impl {
       if (!m.file.empty()) audio[n.key] = m.file;
       else if (!m.later) no_audio.insert(n.key);
       missing.clear();
-      all = all_notes(set, missing);
+      all = with_audio(listed, missing);
       more = std::any_of(missing.begin(), missing.end(), [&](const Note &x) { return !tried.count(x.key); });
     }
     auto wait = backlog(all, sent);
@@ -531,11 +533,15 @@ void Sender::send_now() {
 }
 
 Status Sender::status() const {
-  std::lock_guard g(impl_->mu);
+  std::unique_lock g(impl_->mu);
   // Not started (snapshots): what waits, worked out here; Anki not asked.
   if (!impl_->worker.joinable() && impl_->s.on) {
+    auto set = impl_->s;
+    g.unlock();
+    auto listed = notes(impl_->store, set, impl_->data);
+    g.lock();
     std::vector<Note> missing;
-    auto all = impl_->all_notes(impl_->s, missing);
+    auto all = impl_->with_audio(listed, missing);
     impl_->st.on = true, impl_->st.voice = impl_->voice();
     impl_->count(all, backlog(all, impl_->sent), missing);
   }
