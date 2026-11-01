@@ -12,7 +12,8 @@ cases from `tests/inkpeek` (the pinned submodule), never edited to make LexiPeek
 - **engines** — ctest `engine-pins`: the engine submodules at InkPeek's commits.
 
 The rest of the core (`tests/*_test.cpp`, doctest): lookup and views, nav and `CardSession`, settings, Notes, packs,
-dictionaries, first run, l10n, Read aloud's logic, the app facade. A wait in a test is `until()` (`tests/temp.hpp`), never a
+dictionaries, first run, l10n, Read aloud's logic, the app facade, Anki (`anki_test`: a fake AnkiConnect on 127.0.0.1 — decks,
+note types, notes, media in memory — reached through libcurl). A wait in a test is `until()` (`tests/temp.hpp`), never a
 fixed sleep.
 
 ## CI (`.github/workflows/ci.yml`, every push to `main`)

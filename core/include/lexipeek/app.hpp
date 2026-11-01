@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "lexipeek/anki.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/l10n.hpp"
@@ -95,6 +96,12 @@ struct Engine {
   std::string set_sync_folder(const std::string &data, const std::string &folder) const;
   // At launch, before prepare(): this computer's name for a device never named (device.json's name).
   void name_device(const std::string &computer) const;
+  // The Anki binding (Sync → Anki): started once by the shell, never in snapshots; AnkiConnect's key from the Keychain /
+  // Credential Manager ("" = none); "Send now"; its state for the tab.
+  void anki_start(const std::string &key) const;
+  void anki_key(const std::string &key) const;
+  void anki_send_now() const;
+  anki::Status anki_status() const;
 };
 
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
@@ -125,6 +132,9 @@ std::vector<std::string> model_titles(const std::vector<ai::Model> &list);
 std::vector<ai::Model> filter_models(const std::vector<ai::Model> &list, const std::string &filter, bool free_only);
 // AI → Connection's test (network, blocking): one short request, its answer's line or the error's text.
 std::string ai_test(const std::string &data, const std::string &key);
+
+// Sync → Anki's Check (blocking, localhost): reads only.
+anki::Check anki_check(const std::string &data, const std::string &key);
 
 // Settings → Packs.
 PacksView packs(const std::string &data, const Device &d);

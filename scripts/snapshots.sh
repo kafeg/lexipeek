@@ -18,17 +18,22 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir "$TMP/data"
 for f in "$DATA"/*; do
-  case "${f##*/}" in log | device | device.json | inkpeek-log | sync-cache | lexipeek.db* | settings.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
+  case "${f##*/}" in log | device | device.json | inkpeek-log | sync-cache | lexipeek.db* | settings.json | anki.json) ;; *) ln -s "$f" "$TMP/data/" ;; esac
 done
 # The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English),
-# the run's app language and a sync folder of its own (sync_fixture: other devices' logs; made again for each look).
-python3 -c 'import json, sys
+# the run's app language, a sync folder of its own (sync_fixture: other devices' logs; made again for each look) and Anki
+# on (never sending in a snapshot run): Haus and a phrase in its record, Notes' mark.
+python3 -c 'import hashlib, json, sys
 try: s = json.load(open(sys.argv[1]))
 except OSError: s = {}
 s["mt_english"] = True
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
 s["sync"] = sys.argv[4]
-json.dump(s, open(sys.argv[2], "w"))' "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG" "$TMP/sync"
+s["anki"] = {"on": True}
+json.dump(s, open(sys.argv[2], "w"))
+key = lambda t: s.get("answer", "ru") + "-" + hashlib.sha256(t.lower().encode()).hexdigest()[:32]
+json.dump({"sent": {key(t): "-" for t in ("Haus", "Ich mache die Tür zu")}}, open(sys.argv[5], "w"))' \
+  "$DATA/settings.json" "$TMP/data/settings.json" "$UI_LANG" "$TMP/sync" "$TMP/data/anki.json"
 
 . scripts/snapshot-cases.sh
 
@@ -53,7 +58,7 @@ ai_fixtures "$TMP/fixtures"
 # aloud on (its ▶; no voice model needed to draw it).
 mkdir "$TMP/aidata"
 for f in "$TMP/data"/*; do
-  case "${f##*/}" in settings.json) ;; *) ln -s "$(readlink "$f")" "$TMP/aidata/" ;; esac
+  case "${f##*/}" in settings.json | anki.json) ;; *) ln -s "$(readlink "$f")" "$TMP/aidata/" ;; esac
 done
 python3 -c 'import json, sys
 s = json.load(open(sys.argv[1]))
@@ -87,6 +92,7 @@ for look in light dark; do
   pid=$!
   wait_for "$dir/empty/settings.done" 60 || { echo "$look: empty settings timed out" >&2; fail=1; }
   mv "$dir/empty/settings-languages-translation.png" "$dir/settings-languages-translation-empty.png" 2>/dev/null || true
+  mv "$dir/empty/settings-sync-anki.png" "$dir/settings-sync-anki-off.png" 2>/dev/null || true
   while IFS='|' read -r name step file; do
     [ -z "$file" ] || cp "$DATA/$file" "$empty/"
     echo "lexipeek://firstrun?step=$step&snap=$name" >"$dir/empty/request.tmp" && mv "$dir/empty/request.tmp" "$dir/empty/request"

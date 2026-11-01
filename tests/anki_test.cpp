@@ -1,0 +1,523 @@
+// Anki through AnkiConnect, without Anki: a fake AnkiConnect (API version 6) on 127.0.0.1 keeps decks, note types,
+// notes and media in memory; the binding sends the store's entries to it through libcurl.
+#include <doctest/doctest.h>
+#include "temp.hpp"
+#include <atomic>
+#include <cstring>
+#include <fstream>
+#include <mutex>
+#include <regex>
+#include <set>
+#include <nlohmann/json.hpp>
+#include <sha256.h>
+#include "lexipeek/anki.hpp"
+#include "lexipeek/l10n.hpp"
+#include "lexipeek/speech.hpp"
+#include "lexipeek/store.hpp"
+#include "lexipeek/views.hpp"
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+using socket_t = SOCKET;
+#else
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
+using socket_t = int;
+#define closesocket close
+#endif
+
+using namespace lexipeek;
+using nlohmann::json;
+namespace fs = std::filesystem;
+
+namespace {
+
+// AnkiConnect as its docs say: the envelope {"result", "error"}, multi, the actions the binding uses.
+struct FakeAnki {
+  struct NoteRec {
+    long long id;
+    std::string deck, model;
+    std::map<std::string, std::string> fields;
+  };
+  std::mutex mu;
+  std::set<std::string> decks{"Default"};
+  std::map<std::string, std::vector<std::string>> models{{"Basic", {"Front", "Back"}}};
+  std::map<std::string, std::string> model_css;
+  std::vector<NoteRec> notes;
+  std::map<std::string, std::string> media;
+  std::string key;               // apiKey ("" = none)
+  std::set<long long> editing;   // notes open in an editor: their update fails
+  int requests = 0, syncs = 0;
+  long long next = 1000;
+
+  json action(const json &r) {
+    if (!key.empty() && r.value("key", "") != key) return {{"result", nullptr}, {"error", "valid api key must be provided"}};
+    auto a = r.value("action", "");
+    auto p = r.value("params", json::object());
+    auto ok = [](json v) { return json{{"result", std::move(v)}, {"error", nullptr}}; };
+    auto err = [](const std::string &e) { return json{{"result", nullptr}, {"error", e}}; };
+    if (a == "version") return ok(6);
+    if (a == "deckNames") return ok(decks);
+    if (a == "createDeck") return decks.insert(p["deck"].get<std::string>()), ok(1);
+    if (a == "modelNames") {
+      json out = json::array();
+      for (auto &[n, f] : models) out.push_back(n);
+      return ok(out);
+    }
+    if (a == "modelFieldNames") {
+      auto i = models.find(p["modelName"].get<std::string>());
+      return i == models.end() ? err("model was not found") : ok(i->second);
+    }
+    if (a == "createModel") {
+      auto n = p["modelName"].get<std::string>();
+      if (models.count(n)) return err("Model name already exists");
+      models[n] = p["inOrderFields"].get<std::vector<std::string>>();
+      model_css[n] = p.value("css", "");
+      return ok(json::object());
+    }
+    if (a == "findNotes") {
+      auto q = p["query"].get<std::string>();
+      std::set<std::string> keys;
+      static const std::regex k("Key:([a-z0-9-]+)");
+      for (std::sregex_iterator i(q.begin(), q.end(), k), e; i != e; ++i) keys.insert((*i)[1]);
+      json out = json::array();
+      for (auto &n : notes)
+        if (q.find("\"note:" + n.model + "\"") != std::string::npos && keys.count(n.fields["Key"])) out.push_back(n.id);
+      return ok(out);
+    }
+    if (a == "notesInfo") {
+      json out = json::array();
+      for (auto &id : p["notes"])
+        for (auto &n : notes)
+          if (n.id == id.get<long long>()) {
+            json f = json::object();
+            for (auto &[name, v] : n.fields) f[name] = {{"value", v}, {"order", 0}};
+            out.push_back({{"noteId", n.id}, {"modelName", n.model}, {"fields", f}});
+          }
+      return ok(out);
+    }
+    if (a == "addNote") {
+      auto &n = p["note"];
+      if (!decks.count(n["deckName"].get<std::string>())) return err("deck was not found: " + n["deckName"].get<std::string>());
+      auto m = models.find(n["modelName"].get<std::string>());
+      if (m == models.end()) return err("model was not found: " + n["modelName"].get<std::string>());
+      NoteRec rec{next++, n["deckName"], n["modelName"], {}};
+      for (auto &f : m->second) rec.fields[f] = n["fields"].value(f, "");
+      notes.push_back(rec);
+      return ok(rec.id);
+    }
+    if (a == "updateNoteFields") {
+      auto id = p["note"]["id"].get<long long>();
+      if (editing.count(id)) return err("the note is open in an editor");
+      for (auto &n : notes)
+        if (n.id == id) {
+          for (auto &[f, v] : p["note"]["fields"].items()) n.fields[f] = v.get<std::string>();
+          return ok(nullptr);
+        }
+      return err("note was not found: " + std::to_string(id));
+    }
+    if (a == "storeMediaFile") return media[p["filename"]] = p["data"], ok(p["filename"]);
+    if (a == "sync") return syncs++, ok(nullptr);
+    if (a == "multi") {
+      json out = json::array();
+      for (auto &x : p["actions"]) out.push_back(action(x));
+      return ok(out);
+    }
+    return err("unsupported action");
+  }
+
+  std::string answer(const std::string &body) {
+    std::lock_guard g(mu);
+    requests++;
+    try {
+      return action(json::parse(body)).dump();
+    } catch (const std::exception &e) {
+      return json{{"result", nullptr}, {"error", e.what()}}.dump();
+    }
+  }
+
+  const NoteRec *by_key(const std::string &k) {
+    std::lock_guard g(mu);
+    for (auto &n : notes)
+      if (n.fields["Key"] == k) return &n;
+    return nullptr;
+  }
+};
+
+// A tiny HTTP/1.1 server on 127.0.0.1 (a free port): one request per connection, closed after the answer.
+class Server {
+ public:
+  explicit Server(FakeAnki &anki) : anki_(anki) {
+#ifdef _WIN32
+    WSADATA w;
+    WSAStartup(MAKEWORD(2, 2), &w);
+#endif
+    s_ = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    a.sin_port = 0;
+    bind(s_, reinterpret_cast<sockaddr *>(&a), sizeof a);
+    listen(s_, 16);
+    socklen_t n = sizeof a;
+    getsockname(s_, reinterpret_cast<sockaddr *>(&a), &n);
+    port_ = ntohs(a.sin_port);
+    t_ = std::thread([this] { loop(); });
+  }
+  ~Server() {
+    stop_ = true;
+    t_.join();
+    closesocket(s_);
+  }
+  std::string url() const { return "http://127.0.0.1:" + std::to_string(port_); }
+
+ private:
+  void loop() {
+    while (!stop_) {
+      fd_set r;
+      FD_ZERO(&r);
+      FD_SET(s_, &r);
+      timeval tv{0, 20000};
+      if (select(static_cast<int>(s_ + 1), &r, nullptr, nullptr, &tv) <= 0) continue;
+      auto c = accept(s_, nullptr, nullptr);
+      std::string in;
+      char buf[65536];
+      std::size_t want = std::string::npos;
+      while (in.size() < want) {
+        auto got = recv(c, buf, sizeof buf, 0);
+        if (got <= 0) break;
+        in.append(buf, static_cast<std::size_t>(got));
+        auto end = in.find("\r\n\r\n");
+        if (end != std::string::npos && want == std::string::npos) {
+          std::smatch m;
+          static const std::regex len("[Cc]ontent-[Ll]ength: *([0-9]+)");
+          auto head = in.substr(0, end);
+          want = end + 4 + (std::regex_search(head, m, len) ? std::stoul(m[1]) : 0);
+        }
+      }
+      auto body = want == std::string::npos ? "" : in.substr(in.find("\r\n\r\n") + 4);
+      auto out = anki_.answer(body);
+      auto reply = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(out.size()) +
+                   "\r\nConnection: close\r\n\r\n" + out;
+      send(c, reply.data(), static_cast<int>(reply.size()), 0);
+      closesocket(c);
+    }
+  }
+
+  FakeAnki &anki_;
+  socket_t s_;
+  int port_ = 0;
+  std::atomic<bool> stop_{false};
+  std::thread t_;
+};
+
+// A port nothing listens on: a server's, closed.
+std::string closed_url() {
+  FakeAnki a;
+  return Server(a).url();
+}
+
+fs::path fresh(const std::string &name) {
+  auto d = fs::temp_directory_path() / name;
+  wipe(d);
+  fs::create_directories(d);
+  return d;
+}
+
+AnkiSettings on(const std::string &url) {
+  AnkiSettings s;
+  s.on = true, s.url = url;
+  return s;
+}
+
+}  // namespace
+
+TEST_CASE("anki: the Key — the answer language and sha256 of InkPeek's lookup key, history apart") {
+  auto k = anki::key_of("Haus", "ru");
+  CHECK(k.size() == 3 + 32);
+  CHECK(k.starts_with("ru-"));
+  CHECK(anki::key_of("haus", "ru") == k);          // normKey: lower case
+  CHECK(anki::key_of(" Haus ", "ru") == k);        // trimmed
+  CHECK(anki::key_of("Haus", "en") != k);          // another answer language, another note
+  CHECK(anki::key_of("Haus", "ru", true) == "h-" + k);
+  SHA256 h;
+  CHECK(k == "ru-" + h("haus").substr(0, 32));
+  CHECK(std::regex_match(anki::key_of("Ich mache die Tür zu!", "ru"), std::regex("[a-z0-9-]+")));
+}
+
+TEST_CASE("anki: the notes — saved words and phrases into their decks, the history when on, a word's header apart") {
+  auto d = fresh("lexipeek-anki-notes");
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "das Haus (Hauses, pl. Häuser) — дом, здание");
+    st.save("Ich mache die Tür zu", "phrase", "ru", "Я закрываю дверь");
+    st.seen("Baum", "word", "ru", "der Baum — дерево");
+    AnkiSettings s;
+    auto n = anki::notes(st, s, d);
+    REQUIRE(n.size() == 2);
+    auto &phrase = n[0].kind == "phrase" ? n[0] : n[1];
+    auto &word = n[0].kind == "word" ? n[0] : n[1];
+    CHECK(word.deck == "Vocabulary::Words");
+    CHECK(word.front == "Haus");
+    CHECK(word.back == "<div class=\"head\">das Haus (Hauses, pl. Häuser)</div>дом, здание");
+    CHECK(phrase.deck == "Vocabulary::Phrases");
+    CHECK(phrase.back == "Я закрываю дверь");
+    s.history_on = true, s.words_on = false;
+    n = anki::notes(st, s, d);
+    REQUIRE(n.size() == 2);
+    CHECK(n[1].deck == "Vocabulary::History");
+    CHECK(n[1].key == anki::key_of("Baum", "ru", true));
+    st.save("<b>&", "phrase", "ru", "a\nb");
+    CHECK(anki::notes(st, s, d)[0].front == "&lt;b&gt;&amp;");
+    CHECK(anki::notes(st, s, d)[0].back == "a<br>b");
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: sent once, then only what changed; a note deleted in Anki is added again; the record survives a restart") {
+  auto d = fresh("lexipeek-anki-send");
+  FakeAnki anki;
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "das Haus — дом");
+    st.save("Ich mache die Tür zu", "phrase", "ru", "Я закрываю дверь");
+    anki::Sender snd(st, d, anki::default_transport());
+    snd.configure(on(srv.url()));
+    auto s = snd.run_once();
+    CHECK(s.code == anki::Code::ok);
+    CHECK(s.waiting == 0);
+    CHECK(anki.decks.count("Vocabulary::Words"));
+    CHECK(anki.decks.count("Vocabulary::Phrases"));
+    CHECK(anki.models["Vocabulary"] == anki::fields);
+    REQUIRE(anki.notes.size() == 2);
+    auto *haus = anki.by_key(anki::key_of("Haus", "ru"));
+    REQUIRE(haus);
+    CHECK(haus->deck == "Vocabulary::Words");
+    CHECK(haus->fields.at("Front") == "Haus");
+    CHECK(snd.sent(anki::key_of("Haus", "ru")));
+    CHECK(s.text.find("2") != std::string::npos);
+
+    // Nothing waits: Anki is not asked at all.
+    auto before = anki.requests;
+    snd.run_once();
+    CHECK(anki.requests == before);
+
+    // A new meaning updates the same note.
+    st.save("Haus", "word", "ru", "das Haus — дом, здание");
+    s = snd.run_once();
+    CHECK(anki.notes.size() == 2);
+    CHECK(anki.by_key(anki::key_of("Haus", "ru"))->fields.at("Back").find("здание") != std::string::npos);
+
+    // Deleted in Anki, then changed: added again, not lost.
+    std::erase_if(anki.notes, [](auto &n) { return n.fields["Front"] == "Haus"; });
+    st.save("Haus", "word", "ru", "das Haus — жилище");
+    snd.run_once();
+    CHECK(anki.notes.size() == 2);
+    CHECK(anki.by_key(anki::key_of("Haus", "ru")));
+  }
+  {
+    Store st({d, {}, {}, {}});
+    anki::Sender again(st, d, anki::default_transport());
+    again.configure(on(srv.url()));
+    CHECK(again.sent(anki::key_of("Ich mache die Tür zu", "ru")));
+    auto before = anki.requests;
+    CHECK(again.run_once().waiting == 0);
+    CHECK(anki.requests == before);
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: Anki not running — everything waits, then goes once it answers") {
+  auto d = fresh("lexipeek-anki-down");
+  FakeAnki anki;
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    anki::Sender snd(st, d, anki::default_transport());
+    snd.configure(on(closed_url()));
+    auto s = snd.run_once();
+    CHECK(s.code == anki::Code::not_running);
+    CHECK(s.waiting == 1);
+    CHECK_FALSE(snd.sent(anki::key_of("Haus", "ru")));
+    Server srv(anki);
+    snd.configure(on(srv.url()));  // another address: tried at once
+    s = snd.run_once();
+    CHECK(s.code == anki::Code::ok);
+    CHECK(s.waiting == 0);
+    CHECK(anki.notes.size() == 1);
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: the thread sends by itself; Send now; the key; the note type changed; a refused note") {
+  auto d = fresh("lexipeek-anki-thread");
+  FakeAnki anki;
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    anki::Sender snd(st, d, anki::default_transport(), std::chrono::milliseconds(20));
+    snd.configure(on(srv.url()));
+    snd.start();
+    st.save("Haus", "word", "ru", "дом");
+    CHECK(until([&] { return anki.by_key(anki::key_of("Haus", "ru")) != nullptr; }));
+    CHECK(until([&] { return snd.status().waiting == 0 && !snd.status().sending; }));
+
+    // AnkiConnect wants a key: nothing goes until it is given.
+    {
+      std::lock_guard g(anki.mu);
+      anki.key = "secret";
+    }
+    st.save("Baum", "word", "ru", "дерево");
+    CHECK(until([&] { return snd.status().code == anki::Code::need_key; }));
+    CHECK(snd.status().waiting == 1);
+    snd.set_key("secret");
+    CHECK(until([&] { return anki.by_key(anki::key_of("Baum", "ru")) != nullptr; }));
+
+    // A note open in Anki's editor: refused, not tried again until "Send now".
+    auto baum = anki.by_key(anki::key_of("Baum", "ru"))->id;
+    {
+      std::lock_guard g(anki.mu);
+      anki.editing.insert(baum);
+    }
+    st.save("Baum", "word", "ru", "дерево, древесина");
+    CHECK(until([&] { return snd.status().code == anki::Code::refused; }));
+    CHECK(snd.status().text.find("editor") != std::string::npos);
+    auto before = anki.requests;
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    CHECK(snd.status().waiting == 1);
+    {
+      std::lock_guard g(anki.mu);
+      anki.editing.clear();
+    }
+    snd.send_now();
+    CHECK(until([&] { return snd.status().waiting == 0 && snd.status().code == anki::Code::ok; }));
+    CHECK(anki.requests > before);
+    CHECK(anki.by_key(anki::key_of("Baum", "ru"))->fields.at("Back").find("древесина") != std::string::npos);
+  }
+  wipe(d);
+
+  // Someone's own "Vocabulary" without our fields is not touched.
+  d = fresh("lexipeek-anki-model");
+  FakeAnki other;
+  other.models["Vocabulary"] = {"Front", "Back"};
+  Server srv2(other);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    anki::Sender snd(st, d, anki::default_transport());
+    snd.configure(on(srv2.url()));
+    auto s = snd.run_once();
+    CHECK(s.code == anki::Code::model);
+    CHECK(other.notes.empty());
+    CHECK(other.models["Vocabulary"].size() == 2);
+    CHECK(anki::check(on(srv2.url()), "", anki::default_transport()).code == anki::Code::model);
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: audio — a saved note's kept reading into Anki's media; the history; sync after sending") {
+  auto d = fresh("lexipeek-anki-audio");
+  FakeAnki anki;
+  Server srv(anki);
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    st.seen("Baum", "word", "ru", "дерево");
+    auto dir = speech::saved_dir(d, "Haus");
+    fs::create_directories(dir);
+    std::ofstream(dir / "a.wav", std::ios::binary) << "RIFF1";
+    auto s = on(srv.url());
+    s.history_on = true, s.sync = true;
+    anki::Sender snd(st, d, anki::default_transport());
+    snd.configure(s);
+    snd.run_once();
+    auto key = anki::key_of("Haus", "ru");
+    auto name = "lexipeek_" + key + ".wav";
+    REQUIRE(anki.media.count(name));
+    CHECK(anki.media[name] == "UklGRjE=");
+    CHECK(anki.by_key(key)->fields.at("Audio") == "[sound:" + name + "]");
+    auto *baum = anki.by_key(anki::key_of("Baum", "ru", true));
+    REQUIRE(baum);
+    CHECK(baum->deck == "Vocabulary::History");
+    CHECK(baum->fields.at("Audio").empty());
+    CHECK(anki.syncs == 1);
+    // Audio off: the next change goes without it.
+    s.audio = false;
+    snd.configure(s);
+    st.save("Haus", "word", "ru", "дом, здание");
+    snd.run_once();
+    CHECK(anki.by_key(key)->fields.at("Audio").empty());
+  }
+  wipe(d);
+}
+
+TEST_CASE("anki: Check reads only; its texts") {
+  FakeAnki anki;
+  Server srv(anki);
+  auto c = anki::check(on(srv.url()), "", anki::default_transport());
+  CHECK(c.code == anki::Code::ok);
+  CHECK(c.text == tr("anki_connected", {"6", trn("anki_decks", 1)}));
+  CHECK(anki.decks.size() == 1);
+  CHECK(anki.models.count("Vocabulary") == 0);
+  anki.key = "k";
+  CHECK(anki::check(on(srv.url()), "", anki::default_transport()).code == anki::Code::need_key);
+  CHECK(anki::check(on(srv.url()), "k", anki::default_transport()).code == anki::Code::ok);
+  auto down = anki::check(on(closed_url()), "", anki::default_transport());
+  CHECK(down.code == anki::Code::not_running);
+  CHECK(down.text == tr("anki_not_running"));
+}
+
+TEST_CASE("anki: Sync → Anki — the rows, their changes, an empty deck name is its default again") {
+  Settings s;
+  SettingsState st;
+  auto keys = settings_tab_keys(SettingsSection::sync);
+  auto at = static_cast<int>(std::find(keys.begin(), keys.end(), "anki") - keys.begin());
+  REQUIRE(at < static_cast<int>(keys.size()));
+  auto page = settings_view(SettingsSection::sync, at, s, st);
+  auto has = [&](const std::string &key) {
+    return std::any_of(page.rows.begin(), page.rows.end(), [&](auto &r) { return r.key == key; });
+  };
+  CHECK(has("anki_on"));
+  CHECK(has("anki_check"));
+  CHECK_FALSE(has("anki_send"));  // off: nothing to send
+  CHECK(has("anki_words"));
+  CHECK_FALSE(has("anki_history"));  // the history's deck only when on
+  CHECK(has("anki_key"));
+  settings_toggle(s, "anki_on", true);
+  settings_toggle(s, "anki_history_on", true);
+  settings_text(s, "anki_words", "  Deutsch::Wörter ");
+  CHECK(s.anki.on);
+  CHECK(s.anki.words == "Deutsch::Wörter");
+  settings_text(s, "anki_words", "");
+  CHECK(s.anki.words == "Vocabulary::Words");
+  st.anki.on = true, st.anki.waiting = 3;
+  page = settings_view(SettingsSection::sync, at, s, st);
+  CHECK(has("anki_send"));
+  CHECK(has("anki_history"));
+  auto send = std::find_if(page.rows.begin(), page.rows.end(), [](auto &r) { return r.key == "anki_send"; });
+  CHECK(send->about == trn("anki_waiting", 3));
+  CHECK(send->enabled);
+  auto d = fresh("lexipeek-anki-settings");
+  CHECK(save_settings(d, s).empty());
+  auto back = load_settings(d);
+  CHECK(back.anki.on);
+  CHECK(back.anki.history_on);
+  CHECK(back.anki.url == "http://127.0.0.1:8765");
+  wipe(d);
+}
+
+TEST_CASE("anki: Notes' rows carry their Key") {
+  auto d = fresh("lexipeek-anki-rows");
+  {
+    Store st({d, {}, {}, {}});
+    st.save("Haus", "word", "ru", "дом");
+    st.seen("Haus", "word", "ru", "дом");
+    CHECK(notes_view(st, NotesTab::words, "ru").rows.at(0).key == anki::key_of("Haus", "ru"));
+    CHECK(notes_view(st, NotesTab::history, "ru").rows.at(0).key == anki::key_of("Haus", "ru", true));
+  }
+  wipe(d);
+}

@@ -38,6 +38,8 @@ final class SettingsModel: ObservableObject {
     @Published private var update = lexipeek.UpdateCheck()
     @Published private var aiTesting = false
     @Published private var aiTest = ""
+    @Published private var ankiChecking = false
+    @Published private var ankiCheck: lexipeek.anki.Check?
     // AI → Modules' prompt editor and AI → Connection's model list, shown as sheets.
     @Published var editing: PromptEdit?
     @Published var choosingModel = false
@@ -75,12 +77,14 @@ final class SettingsModel: ObservableObject {
     private var answers = lexipeek.mac.Strings()
     private var login = false
     private var aiKey = false
+    private var ankiKey = false
 
     func refresh() {
         hasPair = lexipeek.app.has_pair(std.string())
         answers = lexipeek.app.answers(std.string())
         login = SMAppService.mainApp.status == .enabled
         aiKey = Keychain.has(String(lexipeek.app.ai_provider(std.string())))
+        ankiKey = Keychain.has(Keychain.anki)
         revision += 1
         refreshSync()
     }
@@ -123,6 +127,11 @@ final class SettingsModel: ObservableObject {
         s.ai_key = aiKey
         s.ai_testing = aiTesting
         s.ai_test = std.string(aiTest)
+        s.anki_key = ankiKey
+        s.anki_checking = ankiChecking
+        if let c = ankiCheck { s.anki_check = c }
+        s.anki_checked = ankiCheck != nil
+        s.anki = client.engine.anki_status()
         s.device = CoreClient.device
         s.downloading = std.string(downloading ?? "")
         s.progress = downloadProgress
@@ -172,6 +181,17 @@ final class SettingsModel: ObservableObject {
         refresh()
     }
 
+    // AnkiConnect's key into the Keychain (an empty one removes it) and to the binding.
+    func saveAnkiKey(_ key: String) {
+        Keychain.set(Keychain.anki, key)
+        client.engine.anki_key(std.string(Keychain.key(Keychain.anki)))
+        ankiCheck = nil
+        refresh()
+    }
+
+    // Sync → Anki's state while it is shown (what waits, a send going on).
+    func tick() { if client.engine.anki_status().on { revision += 1 } }
+
     func editPrompt(_ id: String) {
         let e = lexipeek.app.prompt_editor(std.string(), std.string(id))
         editing = PromptEdit(e)
@@ -186,6 +206,10 @@ final class SettingsModel: ObservableObject {
         switch key {
         case "setup": openFirstRun?()
         case "ai_test": testAI()
+        case "anki_check": checkAnki()
+        case "anki_send":
+            client.engine.anki_send_now()
+            refresh()
         case "ai_reset": changed(lexipeek.app.reset_prompts(std.string()))
         case "updates": checkUpdates()
         case "access": Access.ask()
@@ -271,6 +295,20 @@ final class SettingsModel: ObservableObject {
             DispatchQueue.main.async {
                 self.aiTest = r
                 self.aiTesting = false
+            }
+        }
+    }
+
+    // Only on a click: AnkiConnect asked (reads only), off the main queue.
+    private func checkAnki() {
+        guard !ankiChecking else { return }
+        ankiChecking = true
+        let key = Keychain.key(Keychain.anki)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let r = lexipeek.app.anki_check(std.string(), std.string(key))
+            DispatchQueue.main.async {
+                self.ankiCheck = r
+                self.ankiChecking = false
             }
         }
     }
@@ -386,6 +424,7 @@ struct SectionView: View {
         .sheet(item: section == .ai ? $model.editing : .constant(nil)) { e in PromptSheet(edit: e, model: model) }
         .sheet(isPresented: section == .ai ? $model.choosingModel : .constant(false)) { ModelSheet(model: model) }
         .sheet(isPresented: section == .speech ? $model.addingVoice : .constant(false)) { VoiceSheet(model: model) }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in if section == .sync { model.tick() } }
     }
 }
 
@@ -486,7 +525,7 @@ struct RowsView: View {
         case .secret:
             VStack(alignment: .leading, spacing: 6) {
                 label(r)
-                KeyField(saved: r.on) { model.saveKey($0) }
+                KeyField(saved: r.on) { r.key == "anki_key" ? model.saveAnkiKey($0) : model.saveKey($0) }
             }
         case .model:
             VStack(alignment: .leading, spacing: 6) {

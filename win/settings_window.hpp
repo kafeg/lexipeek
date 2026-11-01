@@ -3,6 +3,7 @@
 #pragma once
 #include <functional>
 #include <map>
+#include <optional>
 #include "core_client.hpp"
 #include "dicts_pane.hpp"
 #include "packs_pane.hpp"
@@ -18,8 +19,10 @@ struct SettingsShell {
   UpdateCheck update;
   std::string test, downloading, download_error, lookup_error, input_error;
   double progress = 0;
-  mutable std::map<std::string, bool> keys;  // per provider: a key is stored (the store read once, again after a change)
+  mutable std::map<std::string, bool> keys;  // per provider ("anki": AnkiConnect's): a key is stored (read once, again after a change)
   SyncInfo sync;  // Sync → Sync's status line, asked on the sync queue
+  bool anki_checking = false;
+  std::optional<anki::Check> anki_check;  // Sync → Anki's last Check
   SettingsState state() const;
 };
 
@@ -64,6 +67,8 @@ class SettingsWindow {
   xaml::Controls::ScrollViewer scroll_{nullptr};
   xaml::Controls::ProgressBar bar_{nullptr};  // the method's download, moved by the timer
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer poll_{nullptr};
+  winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer anki_{nullptr};  // Sync → Anki drawn again when the binding's state moves
+  anki::Status drawn_anki_;
   PacksPane packs_;
   DictsPane dicts_;
   SettingsSection section_ = SettingsSection::general, drawn_section_ = SettingsSection::general;

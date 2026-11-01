@@ -97,7 +97,7 @@ TEST_CASE("settings: Sync → Sync — the folder, the hint, one status line") {
   Settings s;
   auto st = state();
   auto p = settings_view(SettingsSection::sync, 0, s, st);
-  CHECK(p.tabs == std::vector<std::string>{"Sync"});
+  CHECK(p.tabs == std::vector<std::string>{"Sync", "Anki"});
   REQUIRE(row(p, "sync_folder"));
   CHECK(row(p, "sync_folder")->value == "Choose…");
   CHECK(row(p, "sync_folder")->about.starts_with("None"));
@@ -401,7 +401,8 @@ TEST_CASE("settings: every pane's toggles and choices round trip through setting
   st.installed_pairs = {{"ru", "de"}, {"ru", "en"}};
   auto ds = d.string();
   int toggles = 0, choices = 0;
-  for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general, SettingsSection::speech}) {
+  for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general, SettingsSection::speech,
+                   SettingsSection::sync}) {
     auto tabs = std::max<size_t>(1, settings_tabs(sec).size());
     for (int tab = 0; tab < static_cast<int>(tabs); tab++) {
       // A row of the pane as it is on disk now (a copy: the page is made again each time).
@@ -434,7 +435,7 @@ TEST_CASE("settings: every pane's toggles and choices round trip through setting
       }
     }
   }
-  CHECK(toggles > 15);
+  CHECK(toggles > 20);
   CHECK(choices > 40);
   // A preset fills the server's address in, the provider stays.
   CHECK(app::choose(ds, "ai_provider", 4, st).empty());

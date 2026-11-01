@@ -64,6 +64,7 @@ void run() {
     return win::snapshots(*shell, dir, opt("--cases"), opt("--ai-fixtures"), opt("--firstrun-from"), [](int failed) { shell->quit(failed); });
   }
   shell = new win::Shell(*client, true);
+  client->engine.anki_start(os::secret("anki"));  // the Anki binding sends on its own (never in snapshots)
   os::receive([](const std::vector<std::string> &a) {
     if (std::find(a.begin(), a.end(), "--quit") != a.end()) return shell->quit();  // a newer copy installed, or uninstalled
     shell->handle(a);

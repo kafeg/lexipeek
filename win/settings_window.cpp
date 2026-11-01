@@ -33,6 +33,12 @@ SettingsState SettingsShell::state() const {
   s.ai_key = keys[provider];
   s.ai_testing = testing;
   s.ai_test = test;
+  if (!keys.contains("anki")) keys["anki"] = !os::secret("anki").empty();
+  s.anki_key = keys["anki"];
+  s.anki_checking = anki_checking;
+  s.anki_checked = anki_check.has_value();
+  if (anki_check) s.anki_check = *anki_check;
+  s.anki = client.engine.anki_status();
   s.device = client.device;
   s.downloading = downloading;
   s.progress = progress;
@@ -54,7 +60,9 @@ wchar_t glyph(const std::string &key) {
       {"ai_key", 0xE8D7},        {"ai_model", 0xE950},      {"answer_lang", 0xE774}, {"edit", 0xE70F},      {"ai_test", 0xE9D9},
       {"ai_translate", 0xE8C1},  {"ai_prefetch", 0xE896},   {"ai_reset", 0xE72C},   {"download_error", 0xE783}, {"version", 0xE946},
       {"updates", 0xE895},       {"release", 0xE896},       {"source", 0xE943},     {"inkpeek", 0xE71B},    {"license", 0xE8A5},
-      {"sync_folder", 0xE8B7},   {"sync_state", 0xE895}};
+      {"sync_folder", 0xE8B7},   {"sync_state", 0xE895},
+      {"anki_on", 0xE724},       {"anki_check", 0xE703},    {"anki_send", 0xE898},  {"anki_url", 0xE71B},   {"anki_key", 0xE8D7},
+      {"anki_audio", 0xE767},    {"anki_sync", 0xE895},     {"anki_model", 0xE8A1}};
   auto i = glyphs.find(key);
   return static_cast<wchar_t>(i == glyphs.end() ? 0 : i->second);
 }
@@ -162,6 +170,13 @@ SettingsWindow::SettingsWindow(CoreClient &client, xaml::ElementTheme theme) : s
     if (bar_) bar_.Value(sh_.progress);
   });
   notes_bus().listen([this] { refresh_sync(); });  // the folder read: its status line again
+  anki_ = page::every(1000, [this] {
+    if (section_ != SettingsSection::sync || !window.Visible()) return;
+    auto s = sh_.client.engine.anki_status();
+    auto &d = drawn_anki_;
+    if (s.on != d.on || s.waiting != d.waiting || s.sending != d.sending || s.text != d.text) drawn_anki_ = s, draw();
+  });
+  anki_.Start();
   refresh(theme);
   refresh_sync();
 }
@@ -386,12 +401,15 @@ xaml::UIElement SettingsWindow::row(const SettingRow &r) {
       controls::PasswordBox e;
       e.PlaceholderText(tr("key_t"));
       xaml::Automation::AutomationProperties::SetName(e, tr("key_t"));
-      auto store = [this, dir](controls::PasswordBox const &box) {
+      // The AI provider's key, or AnkiConnect's ("anki"): the binding gets it at once.
+      auto name = r.key == "anki_key" ? std::string("anki") : app::ai_provider(dir);
+      auto store = [this, name](controls::PasswordBox const &box) {
         auto key = winrt::to_string(box.Password());
         key.erase(0, key.find_first_not_of(" \t\r\n"));  // a pasted key often brings a space or a line break
         key.erase(key.find_last_not_of(" \t\r\n") + 1);
         if (key.empty()) return;
-        if (!os::set_secret(app::ai_provider(dir), key)) return after(os::last_error());
+        if (!os::set_secret(name, key)) return after(os::last_error());
+        if (name == "anki") sh_.client.engine.anki_key(key), sh_.anki_check.reset();
         sh_.keys.clear();
         sh_.test.clear();
         draw();
@@ -406,8 +424,9 @@ xaml::UIElement SettingsWindow::row(const SettingRow &r) {
       controls::Grid::SetColumn(save, 1);
       line.Children().Append(save);
       if (r.on) {
-        auto remove = page::button(tr("remove"), [this, dir] {
-          os::set_secret(app::ai_provider(dir), "");
+        auto remove = page::button(tr("remove"), [this, name] {
+          os::set_secret(name, "");
+          if (name == "anki") sh_.client.engine.anki_key("");
           sh_.keys.clear();
           draw();
         });
@@ -591,6 +610,18 @@ void SettingsWindow::press(const SettingRow &r) {
   if (r.key == "speech_add") return add_voice();
   if (r.key == "speech_remove") return sh_.client.engine.remove_speech(), draw();
   if (r.key.starts_with("voice_remove.")) return sh_.client.engine.remove_voice(r.key.substr(13)), draw();
+  if (r.key == "anki_send") return sh_.client.engine.anki_send_now(), draw();
+  if (r.key == "anki_check" && !sh_.anki_checking) {
+    sh_.anki_checking = true;
+    draw();
+    auto k = os::secret("anki");
+    page::run<anki::Check>(sh_.client, [dir, k] { return app::anki_check(dir, k); }, [this](anki::Check c) {
+      sh_.anki_check = c;
+      sh_.anki_checking = false;
+      draw();
+    });
+    return;
+  }
   if (r.key == "ai_test" && !sh_.testing) {
     sh_.testing = true;
     draw();

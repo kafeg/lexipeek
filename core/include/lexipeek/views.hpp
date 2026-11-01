@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "lexipeek/anki.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/packs.hpp"
 #include "lexipeek/speech.hpp"
@@ -288,6 +289,8 @@ struct NotesRow {
   std::string text;   // what opens the card
   std::string line;   // one short line: the saved meaning, else the newest answer, else "—"
   std::string looks;  // History: "3×"; "" elsewhere
+  std::string key;    // its Anki note's Key (anki::key_of)
+  bool anki = false;  // it went to Anki (the binding is on and its record has it)
 };
 
 struct NotesView {
@@ -392,6 +395,12 @@ struct SettingsState {
   bool speech_built = false, speech_installed = false;
   std::vector<speech::Voice> voices;
   SyncInfo sync;  // Sync → Sync's status line (the shell asks the engine: Engine::sync_info)
+  // Sync → Anki: AnkiConnect's key is kept (Keychain / Credential Manager), the Check running and its last answer, the
+  // binding's state (Engine::anki_status).
+  bool anki_key = false, anki_checking = false;
+  anki::Check anki_check;
+  bool anki_checked = false;
+  anki::Status anki;
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.

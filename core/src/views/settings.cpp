@@ -381,6 +381,51 @@ std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) 
   return rows;
 }
 
+// Sync → Anki: the binding on, the connection's check, what waits and "Send now", the three decks (each on or off, its
+// name), audio and AnkiWeb, the note type; the address and AnkiConnect's key last.
+std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
+  auto &a = s.anki;
+  std::vector<SettingRow> rows{toggle("anki_on", tr("anki_on_t"), tr("anki_on_d"), a.on)};
+  auto check = valued(Kind::button, "anki_check", tr("anki_check_t"),
+                      st.anki_checking ? tr("anki_checking") : st.anki_checked ? st.anki_check.text : tr("anki_check_d"), tr("anki_check_btn"));
+  check.enabled = !st.anki_checking;
+  rows.push_back(check);
+  if (a.on) {
+    std::string state = st.anki.sending ? tr("anki_sending")
+                        : st.anki.waiting > 0 ? trn("anki_waiting", st.anki.waiting)
+                                              : tr("anki_all_sent");
+    if (!st.anki.text.empty()) state += " · " + st.anki.text;
+    auto now = valued(Kind::button, "anki_send", tr("anki_send_t"), state, tr("anki_send_btn"));
+    now.enabled = !st.anki.sending && st.anki.waiting > 0;
+    rows.push_back(now);
+  }
+  rows.push_back(heading(tr("anki_decks_t"), tr("anki_decks_d")));
+  auto deck = [&](const std::string &id, bool on, const std::string &name, const std::string &def) {
+    rows.push_back(toggle("anki_" + id + "_on", tr("anki_" + id + "_t"), tr("anki_" + id + "_d"), on));
+    if (!on) return;
+    auto r = valued(Kind::text, "anki_" + id, tr("anki_deck_t"), tr("anki_deck_d"), name);
+    r.placeholder = def;
+    rows.push_back(r);
+  };
+  AnkiSettings d;
+  deck("words", a.words_on, a.words, d.words);
+  deck("phrases", a.phrases_on, a.phrases, d.phrases);
+  deck("history", a.history_on, a.history, d.history);
+  rows.push_back(heading(tr("anki_notes_t")));
+  rows.push_back(valued(Kind::status, "anki_model", tr("anki_model_t"), tr("anki_model_d", {text::join(anki::fields, " · ")}), anki::model_name));
+  rows.back().on = true;
+  rows.push_back(toggle("anki_audio", tr("anki_audio_t"), tr("anki_audio_d"), a.audio));
+  rows.push_back(toggle("anki_sync", tr("anki_sync_t"), tr("anki_sync_d"), a.sync));
+  rows.push_back(heading(tr("anki_conn_t")));
+  auto url = valued(Kind::text, "anki_url", tr("anki_url_t"), tr("anki_url_d"), a.url);
+  url.placeholder = d.url;
+  rows.push_back(url);
+  auto key = valued(Kind::secret, "anki_key", tr("key_t"), st.anki_key ? tr("key_saved") : tr("anki_key_d"), "");
+  key.on = st.anki_key;
+  rows.push_back(key);
+  return rows;
+}
+
 }  // namespace
 
 std::vector<std::string> settings_sections() {
@@ -394,7 +439,7 @@ std::vector<std::string> settings_tab_keys(SettingsSection section) {
     case SettingsSection::ai: return {"connection", "modules"};
     case SettingsSection::general: return {"system", "keys"};
     case SettingsSection::speech: return {};
-    case SettingsSection::sync: return {"sync"};
+    case SettingsSection::sync: return {"sync", "anki"};
   }
   return {};
 }
@@ -406,7 +451,7 @@ std::vector<std::string> settings_tabs(SettingsSection section) {
     case SettingsSection::ai: return names({"ai_connect", "ai_modules"});
     case SettingsSection::general: return names({"system_t", "hotkeys_t"});
     case SettingsSection::speech: return {};
-    case SettingsSection::sync: return names({"sync_t"});
+    case SettingsSection::sync: return names({"sync_t", "anki_tab"});
   }
   return {};
 }
@@ -449,9 +494,10 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
     case SettingsSection::general: p.rows = general(s, st, p.tab); break;
     case SettingsSection::speech: p.rows = speech_rows(s, st); break;
     case SettingsSection::sync: {
-      // A tab by its key: Sync, and the tabs others add next to it.
+      // A tab by its key: Sync, Anki.
       auto key = settings_tab_keys(section).at(static_cast<size_t>(p.tab));
       if (key == "sync") p.rows = sync_rows(st);
+      else if (key == "anki") p.rows = anki_rows(s, st);
       break;
     }
   }
@@ -469,6 +515,12 @@ void settings_toggle(Settings &s, const std::string &key, bool on) {
   else if (key == "ai_prefetch") s.ai.prefetch = on;
   else if (key == "speech_on") s.speech.on = on;
   else if (key == "speech_gpu") s.speech.gpu = on;
+  else if (key == "anki_on") s.anki.on = on;
+  else if (key == "anki_words_on") s.anki.words_on = on;
+  else if (key == "anki_phrases_on") s.anki.phrases_on = on;
+  else if (key == "anki_history_on") s.anki.history_on = on;
+  else if (key == "anki_audio") s.anki.audio = on;
+  else if (key == "anki_sync") s.anki.sync = on;
   else if (key.starts_with("voice.")) {
     auto &off = s.speech.off;
     off.erase(std::remove(off.begin(), off.end(), key.substr(6)), off.end());
@@ -537,6 +589,15 @@ void settings_text(Settings &s, const std::string &key, const std::string &value
   if (key == "ai_url") s.ai.url = v;
   else if (key == "ai_command") set(s.ai.commands);
   else if (key == "ai_model") set(s.ai.models);
+  else if (key.starts_with("anki_")) {
+    // An empty one is its default again.
+    AnkiSettings d;
+    auto &a = s.anki;
+    if (key == "anki_url") a.url = v.empty() ? d.url : v;
+    else if (key == "anki_words") a.words = v.empty() ? d.words : v;
+    else if (key == "anki_phrases") a.phrases = v.empty() ? d.phrases : v;
+    else if (key == "anki_history") a.history = v.empty() ? d.history : v;
+  }
 }
 
 PromptEditor prompt_editor(const Settings &s, const std::string &id) {

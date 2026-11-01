@@ -753,7 +753,7 @@ NotesView notes_view(const Store &st, NotesTab tab, const std::string &answer, i
   }
   for (int i = first; i < last; i++) {
     auto &e = items[static_cast<size_t>(i)];
-    v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), e.looks});
+    v.rows.push_back({e.text, line(e.text, e.meaning, e.lang), e.looks, anki::key_of(e.text, e.lang, tab == NotesTab::history)});
   }
   return v;
 }

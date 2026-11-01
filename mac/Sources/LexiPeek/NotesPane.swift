@@ -16,6 +16,7 @@ struct NotesLook {
         var text: String
         var line: String
         var looks: String
+        var anki: Bool
     }
 
     var tabs: [String] = []
@@ -29,7 +30,7 @@ struct NotesLook {
 
     init(_ v: lexipeek.NotesView) {
         tabs = v.tabs.map { String($0) }
-        rows = v.rows.map { Row(text: String($0.text), line: String($0.line), looks: String($0.looks)) }
+        rows = v.rows.map { Row(text: String($0.text), line: String($0.line), looks: String($0.looks), anki: $0.anki) }
         empty = String(v.empty)
         clear = v.clear
         page = Int(v.page)
@@ -174,6 +175,8 @@ struct NotesList: View {
             .buttonStyle(.plain)
             .help(r.text)
             if !r.looks.isEmpty { Text(r.looks).font(.caption).foregroundStyle(.secondary).monospacedDigit() }
+            // It went to Anki (Settings → Sync → Anki).
+            if r.anki { Image(systemName: "checkmark.rectangle.stack").foregroundStyle(.secondary).help(L.t("anki_in")) }
             Button { model.remove(r.text) } label: { Image(systemName: "xmark") }
                 .buttonStyle(.borderless)
                 .foregroundStyle(.secondary)

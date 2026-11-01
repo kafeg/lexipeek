@@ -116,7 +116,22 @@ AiState Engine::ask(const Card &card, ai::Ask a, const std::string &key) const {
   else st.error = ai::error_text(r, load_settings(core->data()).ai);
   return st;
 }
-NotesView Engine::notes(NotesTab tab, int page) const { return notes_view(core->store(), tab, core->answer(), page); }
+NotesView Engine::notes(NotesTab tab, int page) const {
+  auto v = notes_view(core->store(), tab, core->answer(), page);
+  if (load_settings(core->data()).anki.on)
+    for (auto &r : v.rows) r.anki = core->anki().sent(r.key);
+  return v;
+}
+void Engine::anki_start(const std::string &key) const {
+  core->anki().set_key(key);
+  core->anki().start();
+}
+void Engine::anki_key(const std::string &key) const { core->anki().set_key(key); }
+void Engine::anki_send_now() const { core->anki().send_now(); }
+anki::Status Engine::anki_status() const { return core->anki().status(); }
+anki::Check anki_check(const std::string &data, const std::string &key) {
+  return anki::check(load_settings(dir(data)).anki, key, anki::default_transport());
+}
 bool Engine::saved(const Card &card) const { return core->store().is_saved(card.save_text) || core->store().is_saved(card.text); }
 void Engine::remove_note(NotesTab tab, const std::string &text) const {
   if (lexipeek::remove_note(core->store(), tab, text).empty() && tab != NotesTab::history) core->speaker().forget(text);

@@ -268,7 +268,7 @@ void MainWindow::draw_notes() {
   auto tip = tr(tab == NotesTab::history ? "forget" : "unsave_word");
   for (auto &r : v.rows) {
     auto g = load(LR"(<Grid ColumnSpacing="12" Padding="4,7,0,8">
-  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
   <StackPanel VerticalAlignment="Center">
     <TextBlock x:Name="Text" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
     <TextBlock x:Name="Line" Style="{StaticResource CaptionTextBlockStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
@@ -276,14 +276,22 @@ void MainWindow::draw_notes() {
   </StackPanel>
   <TextBlock x:Name="Looks" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource CaptionTextBlockStyle}"
              Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+  <FontIcon x:Name="Anki" Grid.Column="2" Glyph="&#xE930;" FontSize="14" VerticalAlignment="Center" Visibility="Collapsed"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
 </Grid>)").as<controls::Grid>();
     part<controls::TextBlock>(g, L"Text").Text(h(one_line(r.text)));
     part<controls::TextBlock>(g, L"Line").Text(h(one_line(r.line)));
     part<controls::TextBlock>(g, L"Looks").Text(h(r.looks));
+    if (r.anki) {
+      // It went to Anki (Settings → Sync → Anki).
+      auto mark = part<controls::FontIcon>(g, L"Anki");
+      mark.Visibility(xaml::Visibility::Visible);
+      controls::ToolTipService::SetToolTip(mark, box_value(tr("anki_in")));
+    }
     auto text = r.text;
     auto x = page::icon_button(0xE711, tip, [this, text] { remove(text); });
     x.VerticalAlignment(xaml::VerticalAlignment::Center);
-    controls::Grid::SetColumn(x, 2);
+    controls::Grid::SetColumn(x, 3);
     g.Children().Append(x);
     controls::ToolTipService::SetToolTip(part<controls::TextBlock>(g, L"Text"), box_value(h(r.text)));
     controls::ListViewItem item;

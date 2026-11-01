@@ -16,6 +16,9 @@
 
 namespace lexipeek {
 
+namespace anki {
+class Sender;
+}
 namespace speech {
 class Speaker;
 }
@@ -211,6 +214,7 @@ class Core {
   void without_files(const std::function<void()> &f);
   Translator &translator();
   speech::Speaker &speaker();  // Read aloud (M9)
+  anki::Sender &anki();        // the Anki binding (started by the shell)
   std::filesystem::path data() const;
 
  private:

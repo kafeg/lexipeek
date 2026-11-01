@@ -260,6 +260,19 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   InkPeek's; "As the system" by default — the system's language when it is one of them, else English. A new install also
   answers in it (an existing settings.json keeps its answer). Every text of the core's `views` and of a shell comes from
   the core's table; dictionaries and the card's articles are data, not translated.
+- **Anki** (Settings → Sync → Anki; the Sync tab is the sync folder's): a binding, not a button — nothing in the card.
+  Through Anki's add-on AnkiConnect (its API version 6 at `http://127.0.0.1:8765`, any AnkiConnect speaks it). Once on,
+  saved words, saved phrases (passages too) and, when on, the history go to Anki by themselves while it runs, each into
+  its deck — `Vocabulary::Words`, `Vocabulary::Phrases`, `Vocabulary::History` (each on or off, its name editable; the
+  history off by default) —, as notes of the note type **Vocabulary** (Front · Back · Audio · Example · Key; neutral names:
+  InkPeek shares the binding through AnkiDroid later). Key = the answer language + the first 32 hex digits of sha256 of
+  InkPeek's lookup key of the text (`h-` before a history note's): a change of an entry updates its note (found by Key),
+  a note deleted in Anki is added again, never a duplicate. What could not go waits and goes when Anki answers (tried
+  again every 15 s; a note Anki refused waits for a change or **Send now**). Audio: the note's kept reading (☆) when Read
+  aloud made one, as `lexipeek_<Key>.wav` in Anki's media — nothing is read for Anki. "Sync after sending" (off) asks Anki
+  to sync with AnkiWeb. The record of what went is `<data>/anki.json` (Key → a digest of the fields; per computer, like
+  Anki's collection); Notes marks a row that went. **Check** reads only (version, decks, note types). AnkiConnect's
+  `apiKey`, when set, is kept in the Keychain / Credential Manager. A snapshot run never sends.
 - **About and updates** (the About window): version, MIT, links to the repo and InkPeek, the packs' licenses (Wiktionary
   CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0). "Check now" asks GitHub's Releases API for LexiPeek's
   latest release — only on that click; none yet → "No releases yet", a newer one → a link to its page.

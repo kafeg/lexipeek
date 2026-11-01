@@ -129,6 +129,12 @@ Settings load_settings(const fs::path &data) {
       s.speech.keep = sp.value("keep", s.speech.keep);
       s.speech.off = sp.value("off", s.speech.off);
     }
+    if (auto a = j.value("anki", json::object()); a.is_object()) {
+      auto &k = s.anki;
+      k.on = a.value("on", k.on), k.url = a.value("url", k.url), k.audio = a.value("audio", k.audio), k.sync = a.value("sync", k.sync);
+      k.words = a.value("words", k.words), k.phrases = a.value("phrases", k.phrases), k.history = a.value("history", k.history);
+      k.words_on = a.value("words_on", k.words_on), k.phrases_on = a.value("phrases_on", k.phrases_on), k.history_on = a.value("history_on", k.history_on);
+    }
   } catch (const std::exception &) {
     // A field of the wrong type: what was read before it stays (the platform's defaults too).
   }
@@ -169,6 +175,10 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   for (auto &[answer, langs] : s.study)
     if (!langs.empty()) j["study"][answer] = langs;
   j["speech"] = {{"on", s.speech.on}, {"male", s.speech.male}, {"gpu", s.speech.gpu}, {"keep", s.speech.keep}, {"off", s.speech.off}};
+  auto &k = s.anki;
+  j["anki"] = {{"on", k.on},           {"url", k.url},           {"words", k.words},           {"phrases", k.phrases},
+               {"history", k.history}, {"words_on", k.words_on}, {"phrases_on", k.phrases_on}, {"history_on", k.history_on},
+               {"audio", k.audio},     {"sync", k.sync}};
   std::error_code ec;
   fs::create_directories(data, ec);
   auto tmp = data / "settings.json.tmp";

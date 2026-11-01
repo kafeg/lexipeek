@@ -6,6 +6,7 @@
 #include <set>
 #include "ai/ai.hpp"
 #include "dict/library.hpp"
+#include "lexipeek/anki.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/dicts.hpp"
 #include "lexipeek/settings.hpp"
@@ -73,6 +74,7 @@ struct Core::Impl {
   std::mutex answer_mu;  // the answer language for Notes, never waiting for a lookup or prepare()
   std::string notes_answer;
   ai::Transport transport;
+  std::unique_ptr<anki::Sender> anki;  // last: its thread reads the store
 
   // The text's language among the packs' book languages into answer (InkPeek's LangId.source): (lang, other). self:
   // the answer language is a candidate too (languages you learn), told by its packs into others.
@@ -177,6 +179,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->speaker = std::make_unique<speech::Speaker>(o.data);
   impl_->notes_answer = o.answer;
   impl_->transport = o.ai_replies.empty() ? ai::default_transport() : ai::file_transport(o.ai_replies);
+  impl_->anki = std::make_unique<anki::Sender>(*impl_->store, o.data);
   impl_->o = std::move(o);
 }
 
@@ -198,6 +201,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->o.card = s.card;
   impl_->o.card.read = s.speech.on;
   impl_->speaker->configure(s.speech);
+  impl_->anki->configure(s.anki);
   impl_->o.ai = s.ai;
   impl_->o.study = s.study;
   if (device) impl_->o.device = device;
@@ -523,5 +527,6 @@ void Core::without_files(const std::function<void()> &f) {
 Translator &Core::translator() { return *impl_->tr; }
 
 speech::Speaker &Core::speaker() { return *impl_->speaker; }
+anki::Sender &Core::anki() { return *impl_->anki; }
 
 }  // namespace lexipeek

@@ -3,9 +3,11 @@ import Foundation
 import LexiPeekCore
 import Security
 
-// The AI providers' API keys in the login Keychain, one item per provider; given to the core per request, never stored elsewhere.
+// The AI providers' API keys in the login Keychain, one item per provider, and AnkiConnect's (account "anki"); given to
+// the core per request, never stored elsewhere.
 enum Keychain {
     private static let service = "dev.kafeg.lexipeek.ai"
+    static let anki = "anki"
 
     private static func query(_ provider: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: provider]

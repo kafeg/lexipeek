@@ -128,6 +128,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `card_view` draws blocks, `CardState::learned` the translations (`Core::translate_into`, the session one after
   another); AI: `ai::study_prompt` + `version(a, s, study)` (InkPeek's `Ai.STUDY`; `study_test` checks its numbers);
   Settings row kind `checks` (`study.<code>` toggles). Empty list: the old paths.
+- `core/src/anki/` (facade `lexipeek/anki.hpp`): the Anki binding through AnkiConnect v6 — `notes` (the store's saved words,
+  phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Vocabulary` and decks made when
+  missing, notes found by their Key field, then updated or added, by `multi`), `Sender` (in `Core`: one thread looks at the
+  store every 3 s, sends what waits; started by the shell, never in snapshot mode). Views: Settings → Sync → Anki rows
+  (`anki_rows`, picked by the tab's key), `NotesRow::key` / `anki`. Tests: `anki_test`'s fake AnkiConnect on 127.0.0.1.
+  AnkiConnect's key: Keychain account `anki` (Mac), Credential Manager's `anki` (Windows).
 - `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
   progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
