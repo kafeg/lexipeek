@@ -14,8 +14,7 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
    focus unless typing, at the selection inside the screen, its height kept while loading, acrylic, Esc / Ctrl+P while
    open, ←/→ Ctrl+S Backspace, outside click, drag and pin), the icon at the selection; `--snapshots --cases` draws the card
    cases (not `noaccess`: the Mac's Accessibility). Open: Mica / acrylic, corners and shadow seen only on Windows 10 (a
-   VM: acrylic falls back to its colour); the card's ▶ once Read aloud runs on Windows; an own dictionary in a junction
-   (`mklink /J`) is not found by the core.
+   VM: acrylic falls back to its colour); the card's ▶ once Read aloud runs on Windows.
 3. Done: the LexiPeek window (`MainWindow.xaml*`: a `NavigationView` with the memory line and Settings · About at its
    foot; Look up — a query box, Return / Shift+Return, the embedded card; Words · Phrases · History — `notes_view` in a
    `ListView` with the counts in the nav, ✕ / Delete, TSV, the pager, Clear History, backup and restore; Help — `help_view`
@@ -24,8 +23,7 @@ Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e
 4. Done: Settings as Windows 11's (sections in a `NavigationView`, sub-tabs in a `SelectorBar`, the core's rows as setting
    cards, Packs, Other dictionaries and the catalog, AI with the key in the Credential Manager, hotkeys recorded in a
    dialog, the prompt editor and "Choose…" as `ContentDialog`s) and About; closing hides them (downloads go on). Open:
-   Read aloud's section once the voice model runs on Windows; an own dictionary's `.dict` stays on disk when it is deleted
-   while the engine has it open (as in `qt/`).
+   Read aloud's section once the voice model runs on Windows.
 5. Done: the first run (`first_run`: qt/first_run's steps as Windows' setup pages, its `firstrun-*` snapshots); CI's Windows
    job builds the core by Ninja with `-DLEXIPEEK_QT=OFF`, then the WinUI shell (`build-win.cmd build`, the folder as an
    artifact; the Qt shell only in a run by hand); release.yml ships `LexiPeek-Windows.zip` (the folder), release.sh checks

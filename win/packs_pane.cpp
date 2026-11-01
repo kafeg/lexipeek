@@ -97,7 +97,7 @@ void PacksPane::run(const PackAction &a) {
   auto dir = c_.data();
   auto ids = a.ids;
   if (a.remove) {
-    page::run<Status>(c_, [dir, ids] { return app::remove(dir, ids); }, [this](Status s) { finished(s); });
+    page::run<Status>(c_, [e = c_.engine, dir, ids] { return e.remove(dir, ids); }, [this](Status s) { finished(s); });
   } else {
     dl_ = app::Download();
     auto dl = dl_;

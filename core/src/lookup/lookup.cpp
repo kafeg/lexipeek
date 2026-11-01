@@ -509,6 +509,15 @@ void Core::reload() {
   impl_->tr->release();
 }
 
+void Core::without_files(const std::function<void()> &f) {
+  std::lock_guard g(impl_->mu);
+  impl_->gen++;
+  impl_->lib.reset();
+  impl_->tr->release();
+  f();
+  impl_->lib = std::make_unique<dict::Library>(impl_->o.data / "dicts", impl_->o.data / "index", own(impl_->o.data, impl_->o.dicts));
+}
+
 Translator &Core::translator() { return *impl_->tr; }
 
 speech::Speaker &Core::speaker() { return *impl_->speaker; }

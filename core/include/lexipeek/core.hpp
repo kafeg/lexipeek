@@ -1,6 +1,7 @@
 // The one entry for every shell: a request → the card (dictionary first, at once), then its translation (slow).
 #pragma once
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -204,6 +205,9 @@ class Core {
   void prepare();
   // The packs changed on disk (installed, removed): look at the dictionaries again, free the held models.
   void reload();
+  // f with every dictionary's file closed (Windows keeps an open file from being deleted), the held models freed; then the
+  // dictionaries looked at again. For removing dictionaries or packs.
+  void without_files(const std::function<void()> &f);
   Translator &translator();
   speech::Speaker &speaker();  // Read aloud (M9)
   std::filesystem::path data() const;

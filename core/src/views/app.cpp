@@ -142,6 +142,16 @@ void Engine::prepare() const {
   core->store().daily_backup(core->data() / "backup");
 }
 void Engine::reload() const { core->reload(); }
+std::string Engine::remove_dict(const std::string &data, const std::string &id) const {
+  std::string err;
+  core->without_files([&] { err = app::remove_dict(data, id); });
+  return err;
+}
+Status Engine::remove(const std::string &data, const std::vector<std::string> &ids) const {
+  Status s;
+  core->without_files([&] { s = app::remove(data, ids); });
+  return s;
+}
 void Engine::release() const { core->release(); }
 MemoryView Engine::memory() const { return memory_view(core->memory()); }
 void Engine::cancel(int tag) const { core->cancel(tag); }

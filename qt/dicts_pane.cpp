@@ -126,7 +126,7 @@ void DictsPane::draw() {
         box.addButton(t("cancel"), QMessageBox::RejectRole);
         box.exec();
         if (box.clickedButton() != del) return;
-        message_ = app::remove_dict(dir, id);
+        message_ = c_.engine.remove_dict(dir, id);
         changed(true);
       }));
     }

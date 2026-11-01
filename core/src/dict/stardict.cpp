@@ -465,7 +465,9 @@ std::vector<fs::path> scan(const fs::path &root) {
   std::vector<fs::path> out;
   std::error_code ec;
   if (!fs::is_directory(root, ec)) return out;
-  for (auto it = fs::recursive_directory_iterator(root, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
+  // Into linked folders too (a symlink, a Windows junction): the depth limit stops a loop, the library one file twice.
+  auto opts = fs::directory_options::follow_directory_symlink | fs::directory_options::skip_permission_denied;
+  for (auto it = fs::recursive_directory_iterator(root, opts, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
     if (it.depth() > 6) it.disable_recursion_pending();
     if (it->is_regular_file(ec) && it->path().extension() == ".ifo") out.push_back(it->path());
   }

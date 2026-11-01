@@ -133,7 +133,7 @@ void PacksPane::run(const PackAction &a) {
   auto dir = c_.data();
   auto ids = a.ids;
   if (a.remove) {
-    c_.run<Status>(c_.ai, [dir, ids] { return app::remove(dir, ids); }, [this](Status s) { finished(s); }, this);
+    c_.run<Status>(c_.ai, [e = c_.engine, dir, ids] { return e.remove(dir, ids); }, [this](Status s) { finished(s); }, this);
     return draw();
   }
   dl_ = app::Download();

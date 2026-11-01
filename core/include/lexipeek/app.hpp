@@ -71,6 +71,10 @@ struct Engine {
   std::string export_tsv(NotesTab tab, const std::string &file) const;
   void prepare() const;
   void reload() const;
+  // Settings → Other dictionaries' Delete and Settings → Packs' Remove with this engine's files closed meanwhile (else
+  // Windows keeps them): "" or the error.
+  std::string remove_dict(const std::string &data, const std::string &id) const;
+  Status remove(const std::string &data, const std::vector<std::string> &ids) const;
   void release() const;
   // The held model for the menu bar's menu.
   MemoryView memory() const;
