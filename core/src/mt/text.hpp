@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "text/text.hpp"
 
 namespace lexipeek::mt {
 
@@ -20,8 +21,7 @@ std::vector<std::string> sentences(const std::string &text);
 std::vector<size_t> sentence_breaks(const std::u32string &text);
 std::u32string utf32(const std::string &s);
 std::string utf8(const std::u32string &s);
-// Trimmed of whitespace as Kotlin's String.trim() (Unicode spaces too).
-std::string trim_space(const std::string &s);
+using text::trim_space;  // Kotlin's String.trim() (Unicode spaces too)
 
 // Whole sentences joined into pieces of at most max characters (a longer sentence is a piece of its own).
 std::vector<std::string> chunks(const std::string &text, size_t max = 1200);
@@ -37,7 +37,7 @@ std::string unlead_lines(const std::string &source, const std::string &out);
 // Length in UTF-16 units, as Kotlin's String.length: InkPeek's limits are in these.
 size_t utf16_length(const std::string &s);
 
-std::string trim(const std::string &s);
+using text::trim;
 
 // The prompt from a template with {from}, {to}, {text}.
 std::string fill(std::string prompt, const std::string &from, const std::string &to, const std::string &text);

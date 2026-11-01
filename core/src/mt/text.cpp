@@ -42,12 +42,6 @@ std::string bergamot_config(const fs::path &dir, bool one_sentence) {
   return c;
 }
 
-std::string trim(const std::string &s) {
-  auto b = s.find_first_not_of(" \t\r\n");
-  if (b == std::string::npos) return "";
-  return s.substr(b, s.find_last_not_of(" \t\r\n") - b + 1);
-}
-
 size_t utf16_length(const std::string &s) {
   size_t n = 0;
   auto p = reinterpret_cast<const utf8proc_uint8_t *>(s.data());

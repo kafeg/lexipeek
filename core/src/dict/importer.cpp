@@ -20,11 +20,6 @@ namespace {
 
 const std::vector<std::string> EXT{".ifo", ".idx", ".idx.gz", ".dict", ".dict.dz", ".syn", ".syn.dz"};
 
-std::string slurp(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
-}
-
 std::string base_of(const fs::path &ifo) { return ifo.filename().string().substr(0, ifo.filename().string().size() - 4); }
 
 std::int64_t idx_size(const fs::path &ifo) {
@@ -77,15 +72,15 @@ fs::path place(const fs::path &ifo, const std::string &name, const fs::path &tar
 
 Imported collect(const fs::path &from, const fs::path &target) {
   std::set<std::pair<std::string, std::int64_t>> have;
-  for (auto &ifo : dict::scan(target)) have.insert({slurp(ifo), idx_size(ifo)});
+  for (auto &ifo : dict::scan(target)) have.insert({text::read_file(ifo), idx_size(ifo)});
   Imported r;
   for (auto &ifo : dict::scan(from)) {
     auto name = bookname(ifo);
-    if (have.contains({slurp(ifo), idx_size(ifo)})) r.already.push_back(name);
+    if (have.contains({text::read_file(ifo), idx_size(ifo)})) r.already.push_back(name);
     else {
       place(ifo, name, target);
       r.added.push_back(name);
-      have.insert({slurp(ifo), idx_size(ifo)});
+      have.insert({text::read_file(ifo), idx_size(ifo)});
     }
   }
   return r;

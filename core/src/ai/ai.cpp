@@ -34,11 +34,7 @@ std::string replace_all(std::string s, const std::string &what, const std::strin
   return s;
 }
 
-std::string trim(const std::string &s) {
-  auto a = s.find_first_not_of(" \t\r\n");
-  if (a == std::string::npos) return "";
-  return s.substr(a, s.find_last_not_of(" \t\r\n") - a + 1);
-}
+using text::trim;
 
 // At most n bytes, cut at a character's start.
 std::string cut(const std::string &s, size_t n) {

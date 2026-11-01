@@ -40,13 +40,6 @@ std::int64_t num(const json &j, const char *k) {
 
 std::string dump(const ojson &j) { return j.dump(-1, ' ', false, json::error_handler_t::replace); }
 
-std::string slurp(const fs::path &f) {
-  std::ifstream in(f, std::ios::binary);
-  std::stringstream ss;
-  ss << in.rdbuf();
-  return ss.str();
-}
-
 }  // namespace
 
 std::int64_t now() {
@@ -121,7 +114,7 @@ std::string month_file(std::int64_t ms) {
 }
 
 std::vector<std::string> lines_of(const fs::path &file) {
-  auto s = slurp(file);
+  auto s = text::read_file(file);
   std::vector<std::string> out;
   for (size_t at = 0, nl; (nl = s.find('\n', at)) != std::string::npos; at = nl + 1) out.push_back(s.substr(at, nl - at));
   return out;
@@ -214,7 +207,7 @@ std::string write_whole(const fs::path &file, const std::string &bytes, bool int
 }
 
 std::optional<DeviceFile> read_device_file(const fs::path &file) {
-  auto j = json::parse(slurp(file), nullptr, false);
+  auto j = json::parse(text::read_file(file), nullptr, false);
   if (!j.is_object()) return std::nullopt;
   DeviceFile d{str(j, "device"), str(j, "app"), str(j, "name"), num(j, "created")};
   if (d.device.empty()) return std::nullopt;

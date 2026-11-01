@@ -76,13 +76,6 @@ std::string base64(const std::string &in) {
   return out;
 }
 
-std::string file_bytes(const std::string &path) {
-  std::ifstream f(text::path_of(path), std::ios::binary);
-  std::ostringstream s;
-  s << f.rdbuf();
-  return s.str();
-}
-
 // One action's answer: its result, or why not.
 struct Answer {
   Code code = Code::ok;
@@ -288,7 +281,7 @@ Result send(const std::vector<Note> &notes, const AnkiSettings &s, const std::st
     std::vector<std::size_t> with_audio;
     for (std::size_t i = 0; i < part.size(); i++) {
       if (part[i].audio.empty()) continue;
-      auto bytes = file_bytes(part[i].audio);
+      auto bytes = text::read_file(text::path_of(part[i].audio));
       if (bytes.empty()) continue;
       media.push_back(request("storeMediaFile", {{"filename", "lexipeek_" + part[i].key + ".wav"}, {"data", base64(bytes)}}, key));
       with_audio.push_back(i);

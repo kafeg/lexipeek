@@ -1,6 +1,8 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include "text/text.hpp"
 #include <algorithm>
+#include <fstream>
+#include <iterator>
 #include <vector>
 #include <pcre2.h>
 #include <ctime>
@@ -275,6 +277,11 @@ std::FILE *open_file(const std::filesystem::path &p, const char *mode) {
 #else
   return std::fopen(p.c_str(), mode);
 #endif
+}
+
+std::string read_file(const std::filesystem::path &p) {
+  std::ifstream f(p, std::ios::binary);
+  return {std::istreambuf_iterator<char>(f), {}};
 }
 
 std::string trim(std::string_view s) {

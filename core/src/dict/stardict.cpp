@@ -14,14 +14,6 @@ namespace {
 
 constexpr char MAGIC[4] = {'I', 'P', 'K', '3'};
 
-std::string slurp(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  if (!f) return {};
-  std::stringstream s;
-  s << f.rdbuf();
-  return s.str();
-}
-
 // A whole gzip file inflated (an .idx.gz, a .dict.dz without dictzip chunks).
 std::string gunzip(const fs::path &p) {
   std::string out;
@@ -38,7 +30,7 @@ std::string gunzip(const fs::path &p) {
 }
 
 std::string maybe_gz(const std::string &base) {
-  if (fs::exists(base)) return slurp(base);
+  if (fs::exists(base)) return text::read_file(base);
   for (auto ext : {".gz", ".dz"})
     if (fs::exists(base + ext)) return gunzip(base + ext);
   return {};
@@ -242,7 +234,7 @@ std::string StarDict::stamp() const {
 void StarDict::prepare() {
   std::lock_guard g(mu_);
   if (!index_.empty()) return;
-  if (slurp(work_ / "stamp") != stamp() || !fs::exists(work_ / "index.ipk")) build();
+  if (text::read_file(work_ / "stamp") != stamp() || !fs::exists(work_ / "index.ipk")) build();
   load();
 }
 
@@ -314,7 +306,7 @@ void StarDict::build() {
 }
 
 void StarDict::load() {
-  index_ = slurp(work_ / "index.ipk");
+  index_ = text::read_file(work_ / "index.ipk");
   if (index_.size() < 8 || index_.compare(0, 4, MAGIC, 4) != 0) throw std::runtime_error("Broken index: " + name_);
   count_ = get<uint32_t>(index_, 4);
   blob_ = 8 + 4 * count_;

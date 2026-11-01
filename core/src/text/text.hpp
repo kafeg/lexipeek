@@ -65,6 +65,7 @@ std::int32_t java_hash(std::string_view s);
 std::filesystem::path path_of(std::string_view utf8);
 std::string utf8_of(const std::filesystem::path &p);
 std::FILE *open_file(const std::filesystem::path &p, const char *mode);
+std::string read_file(const std::filesystem::path &p);  // whole, as bytes; "" when it cannot be read
 
 // Text bits used all over: edges' spaces out, items joined, a byte count as "84 MB", a local day as "2026-10-27".
 std::string trim(std::string_view s);

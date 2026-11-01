@@ -6,19 +6,13 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 #include "ai/ai.hpp"
+#include "text/text.hpp"
 
 namespace lexipeek::ai {
 
 namespace fs = std::filesystem;
 
 namespace {
-
-std::string read(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  std::stringstream s;
-  s << f.rdbuf();
-  return s.str();
-}
 
 #ifdef _WIN32
 FILE *open_pipe(const std::string &c) { return _popen(c.c_str(), "r"); }
@@ -59,9 +53,9 @@ Ran run(const CliCall &call) {
   // pipes are not close-on-exec) and hold that request until the watcher ends.
   int st = std::system(line.c_str());
   r.code = st == -1 ? -1 : (st >> 8) & 0xff;  // a wait status: the exit code is its second byte
-  r.out = read(out);
+  r.out = text::read_file(out);
 #endif
-  r.err = read(err);
+  r.err = text::read_file(err);
   std::error_code ec;
   fs::remove(err, ec);
   fs::remove(out, ec);
@@ -84,15 +78,15 @@ Transport file_transport(const fs::path &dir) {
     return std::string("quick");
   };
   auto status = [dir] {
-    auto s = read(dir / "status");
+    auto s = text::read_file(dir / "status");
     return s.empty() ? 0L : std::stol(s);
   };
   return {[=](const Call &c) {
             http::Reply r;
             if (auto s = status()) return r.status = s, r.body = R"({"error":{"message":"from the test's status file"}})", r;
             r.status = 200;
-            if (c.method == "GET") return r.body = read(dir / "models.json"), r;
-            auto answer = read(dir / (which(c.body) + ".json"));
+            if (c.method == "GET") return r.body = text::read_file(dir / "models.json"), r;
+            auto answer = text::read_file(dir / (which(c.body) + ".json"));
             if (c.url.ends_with("/v1/messages")) {
               nlohmann::json j{{"content", {{{"type", "text"}, {"text", answer}}}}, {"stop_reason", "end_turn"}};
               r.body = j.dump();
@@ -106,7 +100,7 @@ Transport file_transport(const fs::path &dir) {
             Ran r;
             if (auto s = status()) return r.code = 1, r.err = "exit " + std::to_string(s), r;
             r.code = 0;
-            r.out = read(dir / (which(call.prompt) + ".json"));
+            r.out = text::read_file(dir / (which(call.prompt) + ".json"));
             return r;
           }};
 }

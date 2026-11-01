@@ -29,11 +29,6 @@ struct Embedded {
 };
 #include "speech/voices.inc"
 
-std::string read_file(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  return {std::istreambuf_iterator<char>(f), {}};
-}
-
 std::string sha256_file(const fs::path &p) {
   std::ifstream f(p, std::ios::binary);
   SHA256 h;
@@ -209,11 +204,11 @@ std::vector<Voice> own_voices(const fs::path &data) {
     auto p = f.path();
     if (p.extension() != ".json") continue;
     try {
-      auto j = json::parse(read_file(p));
+      auto j = json::parse(text::read_file(p));
       auto id = text::utf8_of(p.stem());
       auto stem = p.parent_path() / p.stem();
-      own.push_back(with_codes({id, j.value("lang", ""), j.value("text", ""), "own"}, read_file(fs::path(stem) += ".spk"),
-                               read_file(fs::path(stem) += ".rvq")));
+      own.push_back(with_codes({id, j.value("lang", ""), j.value("text", ""), "own"}, text::read_file(fs::path(stem) += ".spk"),
+                               text::read_file(fs::path(stem) += ".rvq")));
     } catch (const std::exception &) {
     }
   }

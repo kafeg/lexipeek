@@ -33,13 +33,6 @@ T get(const json &j, const char *k, T def) {
 
 namespace fs = std::filesystem;
 
-std::string read(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  std::stringstream s;
-  s << f.rdbuf();
-  return s.str();
-}
-
 // A temporary file, then a rename: a crash leaves the old file, never half of one.
 bool write(const fs::path &p, const std::string &text) {
   std::error_code ec;
@@ -336,7 +329,7 @@ Manifest read_manifest(const fs::path &file) {
   std::lock_guard g(mu);
   auto it = kept.find(file);
   if (!ec && it != kept.end() && it->second.time == time && it->second.size == size) return it->second.m;
-  auto m = parse_manifest(read(file));
+  auto m = parse_manifest(text::read_file(file));
   if (!ec) kept[file] = {time, size, m};
   return m;
 }
@@ -348,7 +341,7 @@ Manifest Packs::cached() const {
 
 std::map<std::string, std::string> Packs::installed() const {
   try {
-    return json::parse(read(layout().installed())).get<std::map<std::string, std::string>>();
+    return json::parse(text::read_file(layout().installed())).get<std::map<std::string, std::string>>();
   } catch (const std::exception &) {
     return {};
   }

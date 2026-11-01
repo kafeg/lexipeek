@@ -38,11 +38,6 @@ bool write_file(const fs::path &p, const std::string &bytes) {
   return !ec;
 }
 
-std::string read_file(const fs::path &p) {
-  std::ifstream f(p, std::ios::binary);
-  return {std::istreambuf_iterator<char>(f), {}};
-}
-
 #ifdef LEXIPEEK_TTS
 struct Model : mt::Held {
   qt_context *q = nullptr;
@@ -277,7 +272,7 @@ Reading Speaker::state() const {
 }
 
 std::string Speaker::add_voice(const std::string &wav, const std::string &said, const std::string &lang) {
-  auto a = read_wav(read_file(text::path_of(wav)));
+  auto a = read_wav(text::read_file(text::path_of(wav)));
   if (!a.error.empty()) return a.error;
   double secs = static_cast<double>(a.samples.size()) / 24000.0;
   if (secs < 2 || secs > 30) return tr("voice_length");

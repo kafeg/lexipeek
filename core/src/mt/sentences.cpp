@@ -28,13 +28,6 @@ SB prop(char32_t c) {
 bool para(SB p) { return p == SB::Sep || p == SB::CR || p == SB::LF; }
 bool saterm(SB p) { return p == SB::ATerm || p == SB::STerm; }
 
-// Kotlin's Char.isWhitespace, which String.trim() uses.
-bool space(char32_t c) {
-  if (c == '\t' || c == '\n' || c == 0x0B || c == '\f' || c == '\r' || (c >= 0x1C && c <= 0x1F)) return true;
-  auto cat = utf8proc_category(static_cast<utf8proc_int32_t>(c));
-  return cat == UTF8PROC_CATEGORY_ZS || cat == UTF8PROC_CATEGORY_ZL || cat == UTF8PROC_CATEGORY_ZP;
-}
-
 }  // namespace
 
 std::u32string utf32(const std::string &s) {
@@ -109,14 +102,6 @@ std::vector<size_t> sentence_breaks(const std::u32string &t) {
   }
   out.push_back(t.size());
   return out;
-}
-
-std::string trim_space(const std::string &s) {
-  auto u = utf32(s);
-  size_t b = 0, e = u.size();
-  while (b < e && space(u[b])) b++;
-  while (e > b && space(u[e - 1])) e--;
-  return utf8(u.substr(b, e - b));
 }
 
 std::vector<std::string> sentences(const std::string &text) {

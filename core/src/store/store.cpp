@@ -48,13 +48,6 @@ const char *APP = "lexipeek";
 
 std::int64_t now_ms() { return store::now(); }
 
-std::string slurp(const fs::path &f) {
-  std::ifstream in(f, std::ios::binary);
-  std::stringstream ss;
-  ss << in.rdbuf();
-  return ss.str();
-}
-
 // false: the file could not be read (a share gone meanwhile).
 bool read_file(const fs::path &f, std::string &out) {
   std::ifstream in(f, std::ios::binary);
@@ -94,12 +87,6 @@ struct Stmt {
   std::int64_t num(int i) { return sqlite3_column_int64(s, i); }
 };
 
-std::string join_ids(const std::vector<std::string> &v) {
-  std::string out;
-  for (auto &s : v) out += (out.empty() ? "" : ",") + s;
-  return out;
-}
-
 std::vector<std::string> split(const std::string &s) {
   std::vector<std::string> out;
   std::stringstream ss(s);
@@ -130,7 +117,7 @@ std::string push_folder(const fs::path &local, const fs::path &remote) {
     auto name = text::utf8_of(f.filename());
     names.insert(name);
     auto to = remote / f.filename();
-    std::string l = slurp(f), r;
+    std::string l = text::read_file(f), r;
     if (fs::exists(to, ec) && !read_file(to, r)) return "cannot read " + text::utf8_of(to);
     if (l == r) continue;
     auto rc = r.substr(0, r.rfind('\n') == std::string::npos ? 0 : r.rfind('\n') + 1);
@@ -173,7 +160,7 @@ std::string mirror_folder(const fs::path &src, const fs::path &dst) {
     names.insert(f.filename());
     std::string bytes;
     if (!read_file(f, bytes)) return "cannot read " + text::utf8_of(f);
-    if (fs::exists(dst / f.filename(), ec) && slurp(dst / f.filename()) == bytes) continue;
+    if (fs::exists(dst / f.filename(), ec) && text::read_file(dst / f.filename()) == bytes) continue;
     if (auto e = store::write_whole(dst / f.filename(), bytes); !e.empty()) return e;
   }
   for (auto &e : fs::directory_iterator(dst, ec))
@@ -420,7 +407,7 @@ struct Store::Impl {
       return;
     }
     if (e.empty()) e = push_folder(own_dir, remote_dir);
-    if (e.empty() && slurp(remote_dir / "device.json") != dev) e = store::write_whole(remote_dir / "device.json", dev, true);
+    if (e.empty() && text::read_file(remote_dir / "device.json") != dev) e = store::write_whole(remote_dir / "device.json", dev, true);
     g.lock();
     if (!e.empty()) pending = true;
     if (e == "unreachable") reachable = false;
@@ -475,7 +462,7 @@ struct Store::Impl {
         return db_error();
     for (auto &h : r.history)
       if (!Stmt(db, "INSERT INTO history(text, kind, seen, count, meaning, lang, base, devices) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
-               .bind(h.text).bind(h.kind).bind(h.seen).bind(h.count).bind(h.meaning).bind(h.lang).bind_base(h.base).bind(join_ids(h.devices)).run())
+               .bind(h.text).bind(h.kind).bind(h.seen).bind(h.count).bind(h.meaning).bind(h.lang).bind_base(h.base).bind(text::join(h.devices, ",")).run())
         return db_error();
     for (auto &a : r.ai)
       if (!Stmt(db, "INSERT INTO ai(text, lang, section, ver, model, answer, created) VALUES(?, ?, ?, ?, ?, ?, ?)")
