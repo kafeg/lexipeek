@@ -490,12 +490,12 @@ void Sender::start() {
   std::lock_guard g(impl_->mu);
   if (impl_->worker.joinable()) return;
   impl_->worker = std::thread([i = impl_.get()] {
-    std::unique_lock g(i->mu);
+    std::unique_lock lock(i->mu);
     while (!i->stop) {
-      g.unlock();
+      lock.unlock();
       i->round();
-      g.lock();
-      if (!i->more) i->cv.wait_for(g, i->every, [i] { return i->stop || i->now; });
+      lock.lock();
+      if (!i->more) i->cv.wait_for(lock, i->every, [i] { return i->stop || i->now; });
     }
   });
 }
