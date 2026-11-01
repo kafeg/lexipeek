@@ -35,8 +35,8 @@ final class PacksModel: ObservableObject {
         error = ""
         let ids = a.ids
         if a.remove {
-            DispatchQueue.global(qos: .userInitiated).async {
-                let s = lexipeek.app.remove(std.string(), ids)
+            DispatchQueue.global(qos: .userInitiated).async { [engine = client.engine] in
+                let s = engine.remove(std.string(), ids)
                 DispatchQueue.main.async { self.finished(s) }
             }
             return

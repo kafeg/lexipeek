@@ -60,7 +60,7 @@ final class OtherDictionariesModel: ObservableObject {
     }
 
     func remove(_ r: Row) {
-        message = String(lexipeek.app.remove_dict(std.string(), std.string(r.id)))
+        message = String(client.engine.remove_dict(std.string(), std.string(r.id)))
         changed(reload: true)
     }
 
