@@ -36,6 +36,13 @@ speech::Read card_read(const Card &c, const CardState &s, CardTab tab) {
   return {c.kind == Card::Kind::word ? spoken(c.header, c.base.empty() ? c.text : c.base) : c.text, c.lang};
 }
 
+speech::Read note_read(const Card &c, const CardState &s) {
+  auto top = s;
+  top.section = {}, top.entry_open = -1;
+  auto r = card_read(c, top, CardTab::dictionary);
+  return r.text.empty() ? card_read(c, top, CardTab::translate) : r;
+}
+
 void read_view(const Card &c, const CardState &s, CardView &v) {
   v.read = card_read(c, s, v.tab);
   v.reading = !v.read.text.empty() && s.reading == v.read;

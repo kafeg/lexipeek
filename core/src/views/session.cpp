@@ -100,7 +100,7 @@ struct CardSession::Impl {
       if (st.phase != cs.read_phase) cs.read_phase = st.phase, dirty = true;
     if (st.phase == speech::Phase::ready) {
       play = st.wav, playing = true, cs.read_phase = speech::Phase::ready, dirty = true;
-      if (cs.saved) e.core->speaker().keep(cs.reading, true);  // a saved card's reading stays with its note
+      if (cs.saved && cs.reading == note_read(nav.card(), cs)) e.core->speaker().keep(nav.card().save_text, cs.reading);  // the note's own
     }
     if (st.phase == speech::Phase::failed) {
       cs.reading = {}, cs.read_phase = speech::Phase::idle, cs.read_error = st.error, cs.read_fix = st.fix;
@@ -286,11 +286,9 @@ void CardSession::choose_ai() {
 void CardSession::toggle_saved() {
   auto &i = *impl_;
   if (!i.nav.has_card() || !card_view(i.nav.card(), i.nav.state).can_save) return;
+  // Un-saving lets the note's readings go (Core::toggle_saved); saving keeps its own one if it was made.
   i.nav.state.saved = i.e.toggle_saved(i.nav.card(), shown_translation(i.nav.state));
-  // Its reading goes with the note (the word's headword; a phrase, a text: itself).
-  auto r = card_read(i.nav.card(), i.nav.state, CardTab::dictionary);
-  if (r.text.empty()) r = card_read(i.nav.card(), i.nav.state, i.nav.state.tab);
-  if (!r.text.empty()) i.e.core->speaker().keep(r, i.nav.state.saved);
+  if (i.nav.state.saved) i.e.core->speaker().keep(i.nav.card().save_text, note_read(i.nav.card(), i.nav.state));
   i.dirty = i.notes = true;
 }
 

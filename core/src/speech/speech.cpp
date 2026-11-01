@@ -300,9 +300,21 @@ fs::path reading_file(const fs::path &data, const Voice &v, const Read &r) {
   return data / "readings" / (h(key) + ".wav");
 }
 
-fs::path saved_reading(const fs::path &data, const Voice &v, const Read &r) {
-  auto f = reading_file(data, v, r);
-  return f.parent_path() / "saved" / f.filename();
+fs::path saved_dir(const fs::path &data, const std::string &note) {
+  SHA256 h;
+  return data / "readings" / "saved" / h(note);
+}
+
+fs::path saved_reading(const fs::path &data, const std::string &note, const Voice &v, const Read &r) {
+  return saved_dir(data, note) / reading_file(data, v, r).filename();
+}
+
+fs::path find_saved(const fs::path &data, const Voice &v, const Read &r) {
+  std::error_code ec;
+  auto name = reading_file(data, v, r).filename();
+  for (auto &d : fs::directory_iterator(data / "readings" / "saved", ec))
+    if (fs::exists(d.path() / name, ec)) return d.path() / name;
+  return {};
 }
 
 void prune_readings(const fs::path &data, std::size_t keep) {

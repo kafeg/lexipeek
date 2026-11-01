@@ -369,8 +369,10 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   **Card:** ▶ in the bottom row on the right (before copy); a press shows the reading's phase in ▶'s own place, one size
   (nothing in the card moves): the model loading (an hourglass; Windows a clock), the reading being made (a sound wave;
   Windows a speaker), ■ while it plays; a press on any of them stops. ⌘. (Windows Ctrl+.) the same, a key of the card
-  (while it has the focus), not a hotkey. A failure is a line with Settings → Read aloud. ☆ keeps the card's reading
-  with its note (`<data>/readings/saved/`, never pruned; one made later for a saved card too). The menu (menu bar, tray)
+  (while it has the focus), not a hotkey. A failure is a line with Settings → Read aloud. ☆ keeps the note's own reading
+  (the header's ▶ on Dictionary, else on Translate; not a row's ▶) with the note: a copy in its folder
+  `<data>/readings/saved/<sha256 of the note>/`, never pruned; one made later for a saved card too; un-saving or removing
+  the note deletes only its own copies (two notes may read the same text). The menu (menu bar, tray)
   names the voice model while it is in memory, with its own Unload Now. Read aloud off (the default): no ▶; on without the model: a press says what to do
   (the line and its button).
   **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for its own time

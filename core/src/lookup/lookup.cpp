@@ -404,7 +404,8 @@ bool Core::toggle_saved(const Card &card, const std::string &translation) {
   if (card.save_text.empty()) return false;
   if (st.is_saved(card.save_text) || st.is_saved(card.text)) {
     st.unsave(card.save_text);
-    if (card.text != card.save_text) st.unsave(card.text);
+    impl_->speaker->forget(card.save_text);
+    if (card.text != card.save_text) st.unsave(card.text), impl_->speaker->forget(card.text);
     return false;
   }
   auto line = card.save_line.empty() ? translation : card.save_line;

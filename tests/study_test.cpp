@@ -2,11 +2,14 @@
 #include <doctest/doctest.h>
 #include "temp.hpp"
 #include <fstream>
+#include <thread>
 #include <nlohmann/json.hpp>
 #include "ai/ai.hpp"
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/session.hpp"
+#include "lexipeek/speech.hpp"
 #include "lexipeek/study.hpp"
 #include "lexipeek/views.hpp"
 
@@ -272,5 +275,71 @@ TEST_CASE("study: a language picked in the Translation pane is kept (the shell's
   CHECK(load_settings(d).study["ru"] == V{"de"});
   CHECK(app::choose(d.string(), "study", 0, {}).empty());
   CHECK(!load_settings(d).study.contains("ru"));
+  wipe(d);
+}
+
+TEST_CASE("study: ☆ keeps the note's own reading in its folder; un-saving and removing the note delete only its copies") {
+  set_ui_language("en");
+  auto d = study_data("readings");
+  Settings st;
+  st.speech.on = true;
+  st.study["ru"] = {"de"};
+  save_settings(d, st);
+  auto v = speech::voice_for({}, st.speech, "de");
+  if (v.id.empty()) return wipe(d);
+  speech::Read house{"das Haus", "de"}, building{"das Gebäude", "de"};
+  auto made = [&](const speech::Read &r) {
+    fs::create_directories(d / "readings");
+    std::ofstream(speech::reading_file(d, v, r), std::ios::binary) << speech::wav_bytes(std::vector<float>(100, 0), 24000);
+  };
+  auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
+  auto ru = app::CardSession::make(e), de = app::CardSession::make(e);
+  auto settle = [](app::CardSession &s) {
+    for (int i = 0; i < 500 && s.busy(); i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    s.poll();
+  };
+  auto play = [&](app::CardSession &s, int row) {
+    s.read(row);
+    settle(s);
+    auto wav = s.take_play();
+    s.played();
+    return wav;
+  };
+  made(house), made(building);
+  ru.look("дом", Source::input);
+  settle(ru);
+  REQUIRE(ru.has_card());
+  ru.select(CardTab::dictionary);
+  CHECK(ru.view().read == house);
+  ru.toggle_saved();
+  CHECK(ru.nav().state.saved);
+  CHECK(fs::exists(speech::saved_reading(d, "дом", v, house)));
+  // A translated word's own ▶ while saved: played, not kept with the note.
+  int row = -1;
+  for (size_t i = 0; i < ru.view().rows.size(); i++)
+    if (ru.view().rows[i].read == building) row = static_cast<int>(i);
+  REQUIRE(row >= 0);
+  CHECK(play(ru, row) == speech::reading_file(d, v, building).string());
+  CHECK(speech::find_saved(d, v, building).empty());
+  // de "Haus" reads the same "das Haus": its own copy, from the other note's once the readings let it go.
+  speech::prune_readings(d, 0);
+  de.look("Haus", Source::input);
+  settle(de);
+  REQUIRE(de.has_card());
+  CHECK(de.view().read == house);
+  de.toggle_saved();
+  CHECK(fs::exists(speech::saved_reading(d, "Haus", v, house)));
+  ru.toggle_saved();
+  CHECK(!ru.nav().state.saved);
+  CHECK(!fs::exists(speech::saved_dir(d, "дом")));
+  CHECK(play(de, -1) == speech::saved_reading(d, "Haus", v, house).string());
+  e.remove_note(NotesTab::words, "Haus");
+  CHECK(!fs::exists(speech::saved_dir(d, "Haus")));
+  // Saved before its reading is made: kept once it is.
+  ru.toggle_saved();
+  CHECK(!fs::exists(speech::saved_dir(d, "дом")));
+  made(house);
+  CHECK(!play(ru, -1).empty());
+  CHECK(fs::exists(speech::saved_reading(d, "дом", v, house)));
   wipe(d);
 }

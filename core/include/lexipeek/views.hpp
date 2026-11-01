@@ -196,6 +196,8 @@ struct CardView {
 // in brackets, "gescheitert" → "scheitern"); a text in the answer language with a language you learn, on Translate its
 // translation, on Dictionary the first translated word's headword; else nothing.
 speech::Read card_read(const Card &c, const CardState &s, CardTab tab);
+// The note's own reading, the one ☆ keeps: the header's ▶ on Dictionary (no section or entry open), else on Translate.
+speech::Read note_read(const Card &c, const CardState &s);
 
 // The tab a new card opens on: Dictionary for a word with entries or a phrase set to open word by word, else Translate.
 CardTab first_tab(const Card &c);

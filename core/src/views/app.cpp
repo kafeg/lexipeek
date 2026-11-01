@@ -115,7 +115,9 @@ AiState Engine::ask(const Card &card, ai::Ask a, const std::string &key) const {
 }
 NotesView Engine::notes(NotesTab tab, int page) const { return notes_view(core->store(), tab, core->answer(), page); }
 bool Engine::saved(const Card &card) const { return core->store().is_saved(card.save_text) || core->store().is_saved(card.text); }
-void Engine::remove_note(NotesTab tab, const std::string &text) const { lexipeek::remove_note(core->store(), tab, text); }
+void Engine::remove_note(NotesTab tab, const std::string &text) const {
+  if (lexipeek::remove_note(core->store(), tab, text).empty() && tab != NotesTab::history) core->speaker().forget(text);
+}
 void Engine::clear_history() const { core->store().clear_history(); }
 
 std::string Engine::backup(const std::string &file) const {

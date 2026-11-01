@@ -254,7 +254,7 @@ TEST_CASE("read aloud: a reading kept is played again without the model; off and
   wipe(d);
 }
 
-TEST_CASE("read aloud: a saved note's reading is kept apart, never pruned, and read from there") {
+TEST_CASE("read aloud: a saved note's reading is kept in its folder, never pruned, read from there; the note's own reading") {
   auto d = temp("lexipeek-saved");
   Speaker sp(d);
   SpeechSettings s;
@@ -264,9 +264,11 @@ TEST_CASE("read aloud: a saved note's reading is kept apart, never pruned, and r
   auto v = voice_for({}, s, "de");
   if (v.id.empty()) return wipe(d);
   put(reading_file(d, v, r), wav_bytes(std::vector<float>(100, 0), 24000));
-  sp.keep(r, true);
-  auto saved = saved_reading(d, v, r);
+  sp.keep("Haus", r);
+  sp.keep("дом", r);
+  auto saved = saved_reading(d, "Haus", v, r);
   CHECK(fs::exists(saved));
+  CHECK(saved_dir(d, "Haus") != saved_dir(d, "дом"));
   prune_readings(d, 0);
   CHECK(!fs::exists(reading_file(d, v, r)));
   CHECK(fs::exists(saved));
@@ -274,9 +276,18 @@ TEST_CASE("read aloud: a saved note's reading is kept apart, never pruned, and r
   for (int i = 0; i < 500 && sp.state().phase == Phase::making; i++) std::this_thread::sleep_for(std::chrono::milliseconds(2));
   CHECK(sp.state().ticket == t);
   CHECK(sp.state().phase == Phase::ready);
-  CHECK(sp.state().wav == saved.string());
-  sp.keep(r, false);
-  CHECK(!fs::exists(saved));
+  CHECK(!find_saved(d, v, r).empty());
+  sp.forget("Haus");
+  CHECK(!fs::exists(saved_dir(d, "Haus")));
+  CHECK(find_saved(d, v, r) == saved_reading(d, "дом", v, r));  // the other note's copy stays
+  sp.forget("дом");
+  CHECK(find_saved(d, v, r).empty());
+  // The note's own reading: the header's on Dictionary, whatever tab, section or entry is open.
+  auto c = learnt();
+  auto st = first_state(c);
+  st.tab = CardTab::translate, st.entry_open = 0, st.section.key = "syn";
+  CHECK(note_read(c, st) == r);
+  CHECK(note_read(german(), first_state(german())) == r);
   wipe(d);
 }
 
