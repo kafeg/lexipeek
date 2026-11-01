@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "card.hpp"
 #include <winrt/Microsoft.UI.Text.h>
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <winrt/Windows.UI.Text.h>
 #include <winrt/Windows.UI.ViewManagement.h>
@@ -236,6 +237,7 @@ controls::Button command(wchar_t glyph, const std::string &tooltip, std::functio
   b.Width(32), b.Height(32), b.Padding({0, 0, 0, 0});
   b.Background(clear()), b.BorderThickness({0, 0, 0, 0});
   tip(b, tooltip);
+  if (!tooltip.empty()) xaml::Automation::AutomationProperties::SetName(b, h(tooltip));  // an icon's name for UI Automation
   if (click) b.Click([click](auto &&, auto &&) { click(); });
   return b;
 }

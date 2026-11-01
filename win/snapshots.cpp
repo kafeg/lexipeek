@@ -82,7 +82,7 @@ Case pane_case(const std::string &name) {
     return {name, [tab](Shell &s) { s.open_about(), s.about_ui->select(tab); }, [hide](Shell &s) { hide(s.about); },
             [](Shell &s) { return content(s.about); }};
   }
-  static const char *keys[] = {"languages", "card", "ai", "general"};
+  static const char *keys[] = {"languages", "card", "ai", "general", "read"};
   SettingsSection sec = SettingsSection::general;
   int tab = 0;
   for (auto x : shown_sections) {
@@ -293,7 +293,7 @@ std::vector<Case> cases(const std::string &file, const std::string &fixtures, co
        [asked](Shell &) { return content(*asked); }},
   };
   // Every Settings section × tab, About's tabs.
-  static const char *keys[] = {"languages", "card", "ai", "general"};
+  static const char *keys[] = {"languages", "card", "ai", "general", "read"};
   for (auto sec : shown_sections) {
     auto tabs = settings_tab_keys(sec);
     for (size_t tab = 0; tab < std::max<size_t>(1, tabs.size()); ++tab)
