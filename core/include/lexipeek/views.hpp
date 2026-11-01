@@ -135,6 +135,7 @@ struct CardRow {
   bool reading = false;    // being read: read_phase says how far
   speech::Phase read_phase = speech::Phase::idle;
   std::string read_help = "";  // its ▶'s tooltip by the phase
+  bool divider = false;        // a thin line above it: another result of a list (InkPeek's Ink.divider)
 };
 
 struct MethodItem {

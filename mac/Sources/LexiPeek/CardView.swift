@@ -76,7 +76,10 @@ struct CardView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 8) {
-                            ForEach(look.rows.indices, id: \.self) { i in readable(look.rows[i], i) }
+                            ForEach(look.rows.indices, id: \.self) { i in
+                                // Another result of a list: a hairline in the gap above it (InkPeek's divider).
+                                readable(look.rows[i], i).overlay(alignment: .top) { if look.rows[i].divider { Divider().offset(y: -4) } }
+                            }
                             if !look.fix.isEmpty {
                                 Button(look.fix) { NotificationCenter.default.post(name: .openPane, object: look.fixPane) }
                                     .controlSize(.small)
@@ -409,7 +412,6 @@ struct CardView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
-            .overlay(alignment: .top) { Divider() }
         case .text:
             Text(r.text).font(font(1)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
         case .markdown:

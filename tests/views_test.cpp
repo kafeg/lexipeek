@@ -52,6 +52,8 @@ TEST_CASE("views: more dictionaries name themselves; another headword keeps its 
   CHECK(v.rows[0].text == "дом");
   CHECK(v.rows[1].label == "Mueller");
   CHECK(v.rows[1].text == "Häusern: Hausen — жить");
+  CHECK(!v.rows[0].divider);  // a thin line between the dictionaries (InkPeek's)
+  CHECK(v.rows[1].divider);
 }
 
 TEST_CASE("views: the badge's menu lists the packs' languages when there is a choice") {
@@ -139,6 +141,8 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   CHECK(v.rows[6].label == "Krankenhaus, zuhause, a, b, c, d, e, f, g, h …");
   CHECK(v.rows[6].text == "Related words · 11 ›");
   CHECK(v.rows[6].open == "rel");
+  CHECK(v.rows[6].divider);  // a line above each section, none inside the article
+  CHECK(!v.rows[5].divider);
   CHECK(v.rows[7].label == "Gebäude ≠ Hütte");
   CHECK(v.rows[7].text == "Synonyms · 1 · antonyms · 1 ›");
   CHECK(v.rows[8].text == "Forms and pronunciation · [haʊ̯s] ›");
@@ -154,6 +158,8 @@ TEST_CASE("views: the full entry — senses, examples, other headwords, sections
   CHECK(v.rows[1].label == "Hausarzt");
   CHECK(v.rows[1].text == "— домашний врач");
   CHECK(v.rows[1].link == "Hausarzt");
+  CHECK(!v.rows[1].divider);  // a line between the words, none under the title
+  CHECK(v.rows[2].divider);
   CHECK(v.pager == "21–23 of 23");
   CHECK(v.prev);
   CHECK(!v.next);
@@ -240,6 +246,9 @@ TEST_CASE("views: a phrase opens on Translate, word by word in Dictionary") {
   CHECK(v.rows[3].label == "die");
   CHECK(v.rows[3].text.empty());
   CHECK(v.rows[3].link == "die");
+  CHECK(!v.rows[0].divider);  // word by word: a line between the words
+  CHECK(v.rows[1].divider);
+  CHECK(v.rows[3].divider);
   CHECK(!v.menu);
   c.gloss[0].word = "Ich";
   c.gloss[0].base = "ich";

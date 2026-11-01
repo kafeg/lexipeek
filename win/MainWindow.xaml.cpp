@@ -205,7 +205,7 @@ void MainWindow::draw_notes() {
   Rows().Items().Clear();
   auto tip = tr(tab == NotesTab::history ? "forget" : "unsave_word");
   for (auto &r : v.rows) {
-    auto g = load(LR"(<Grid ColumnSpacing="12" Padding="4,7,0,8">
+    auto g = load(LR"(<Grid ColumnSpacing="12" Padding="4,7,0,8" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}">
   <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
   <StackPanel VerticalAlignment="Center">
     <TextBlock x:Name="Text" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
@@ -232,6 +232,7 @@ void MainWindow::draw_notes() {
     controls::Grid::SetColumn(x, 3);
     g.Children().Append(x);
     controls::ToolTipService::SetToolTip(part<controls::TextBlock>(g, L"Text"), box_value(h(r.text)));
+    if (&r != &v.rows.back()) g.BorderThickness({0, 0, 0, 1});  // a thin line between the rows (InkPeek's)
     controls::ListViewItem item;
     item.Content(g);
     item.Tag(box_value(h(r.text)));

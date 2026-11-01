@@ -180,6 +180,7 @@ xaml::Media::SolidColorBrush brush(uint32_t argb) {
 xaml::Media::SolidColorBrush primary(bool dark) { return brush(dark ? 0xFFFFFFFF : 0xE4000000); }
 xaml::Media::SolidColorBrush secondary(bool dark) { return brush(dark ? 0xC5FFFFFF : 0x9E000000); }
 xaml::Media::SolidColorBrush critical(bool dark) { return brush(dark ? 0xFFFF99A4 : 0xFFC42B1C); }
+xaml::Media::SolidColorBrush divider(bool dark) { return brush(dark ? 0x15FFFFFF : 0x0F000000); }  // DividerStrokeColorDefault
 xaml::Media::SolidColorBrush accent(bool dark) {
   using winrt::Windows::UI::ViewManagement::UIColorType;
   auto c = winrt::Windows::UI::ViewManagement::UISettings().GetColorValue(dark ? UIColorType::AccentLight2 : UIColorType::AccentDark1);
@@ -367,6 +368,14 @@ void CardWidget::rebuild() {
   body.Spacing(8);
   for (size_t i = 0; i < v_.rows.size(); i++) {
     auto &r = v_.rows[i];
+    if (r.divider) {
+      // Another result of a list: a 1 px line in the gap above it (InkPeek's divider).
+      controls::Border line;
+      line.Height(1);
+      line.Margin({0, -4, 0, -4});
+      line.Background(divider(root_.ActualTheme() == xaml::ElementTheme::Dark));
+      body.Children().Append(line);
+    }
     if (r.read.text.empty()) {
       body.Children().Append(row(r));
       continue;

@@ -199,6 +199,9 @@ TEST_CASE("study: a word in the answer language — the language you learn, its 
                       "das Gebäude (Gebäudes, pl. Gebäude)", "Heim"});
   CHECK(v.rows[0].open == "entry");
   CHECK(v.rows[1].link == "Haus");
+  CHECK(!v.rows[0].divider);  // a line under the pack's line and between its words (InkPeek's)
+  CHECK(v.rows[1].divider);
+  CHECK(v.rows[2].divider);
   CHECK(v.pager.empty());
   // Its line: the full entry alone; ← back.
   CardNav nav;

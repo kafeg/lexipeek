@@ -17,6 +17,7 @@ struct CardLook {
         var reading: Bool
         var readPhase: lexipeek.speech.Phase
         var readHelp: String
+        var divider: Bool
     }
 
     struct Lang: Identifiable {
@@ -86,7 +87,7 @@ struct CardLook {
         rows = v.rows.map {
             Row(style: $0.style, label: String($0.label), text: String($0.text), html: String($0.html), link: String($0.link),
                 open: String($0.open), entry: Int($0.entry), copy: String($0.copy), read: !$0.read.text.empty(), reading: $0.reading,
-                readPhase: $0.read_phase, readHelp: String($0.read_help))
+                readPhase: $0.read_phase, readHelp: String($0.read_help), divider: $0.divider)
         }
         menu = v.menu
         menuTitle = String(v.menu_title)

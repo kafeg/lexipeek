@@ -197,7 +197,9 @@ std::string few(const std::vector<std::string> &xs, const std::string &sep = ", 
 // Under a pack's article: a row per section it has (InkPeek's DictionaryPage.sections), a preview and its caption.
 void section_rows(std::vector<CardRow> &rows, const Related &r, int entry, const std::vector<std::string> &shown) {
   auto row = [&](const std::string &key, const std::string &preview, const std::string &caption) {
-    if (!preview.empty() && std::find(shown.begin(), shown.end(), key) != shown.end()) rows.push_back({Style::section, preview, caption + " ›", "", "", key, entry});
+    if (preview.empty() || std::find(shown.begin(), shown.end(), key) == shown.end()) return;
+    rows.push_back({Style::section, preview, caption + " ›", "", "", key, entry});
+    rows.back().divider = true;
   };
   auto n = [](const std::vector<std::string> &xs) { return digits(static_cast<long long>(xs.size())); };
   std::vector<std::string> forms;
@@ -216,7 +218,7 @@ std::vector<CardRow> section_page(const SectionPage &p) {
   if (!p.text.empty()) rows.push_back({Style::text, "", p.text, ""});
   for (auto &i : p.items) {
     CardRow r{Style::gloss, i.word, i.meaning.empty() ? "" : "— " + i.meaning, ""};
-    r.link = i.base;
+    r.link = i.base, r.divider = &i != &p.items.front();
     rows.push_back(r);
   }
   return rows;
@@ -226,12 +228,12 @@ std::vector<CardRow> section_page(const SectionPage &p) {
 int page_of(const Card &c, const CardState &s) { return std::clamp(s.entry_page, 0, std::max(0, static_cast<int>(c.entries.size()) - 1)); }
 
 // A word of a phrase (InkPeek's word by word): a form names itself first; a click opens its base form.
-CardRow gloss_row(const Card &c, const Gloss &g) {
+CardRow gloss_row(const Card &c, const Gloss &g, bool divider) {
   auto line = g.header.empty() || !c.prefs.grammar ? g.base : g.header;
   bool known = !g.header.empty() || !g.meaning.empty();
   auto label = !known ? g.word : text::lower(g.base) == text::lower(g.word) ? line : g.word + ": " + line;
   CardRow r{Style::gloss, label, g.meaning.empty() ? "" : "— " + g.meaning, ""};
-  r.link = g.base.empty() ? g.word : g.base;
+  r.link = g.base.empty() ? g.word : g.base, r.divider = divider;
   return r;
 }
 
@@ -242,7 +244,7 @@ std::vector<CardRow> study_rows(const Card &c) {
   for (auto &l : c.study) {
     if (c.kind != Card::Kind::word) {
       if (l.gloss.empty()) rows.push_back({Style::note, "", tr("card_no_entry"), ""});
-      for (auto &g : l.gloss) rows.push_back(gloss_row(c, g));
+      for (auto &g : l.gloss) rows.push_back(gloss_row(c, g, !rows.empty()));
       continue;
     }
     if (l.entry < 0 || l.entry >= static_cast<int>(c.entries.size())) {
@@ -251,12 +253,12 @@ std::vector<CardRow> study_rows(const Card &c) {
     }
     auto &en = c.entries[static_cast<size_t>(l.entry)];
     CardRow e{Style::entry, en.dictionary, en.line, ""};
-    e.copy = e.text, e.open = "entry", e.entry = l.entry;
+    e.copy = e.text, e.open = "entry", e.entry = l.entry, e.divider = !rows.empty();
     rows.push_back(e);
     for (auto &w : l.words) {
       auto f = frequency(w.rank);
       CardRow r{Style::gloss, w.header.empty() || !c.prefs.grammar ? w.base : w.header, f.empty() ? "" : "· " + f, ""};
-      r.link = w.base;
+      r.link = w.base, r.divider = true;
       rows.push_back(r);
     }
   }
@@ -288,7 +290,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
       if (!full) {
         CardRow r{Style::entry, label, short_line(e.line), ""};
         r.copy = r.text;
-        r.open = "entry", r.entry = static_cast<int>(i);
+        r.open = "entry", r.entry = static_cast<int>(i), r.divider = !rows.empty();
         rows.push_back(r);
         continue;
       }
@@ -313,10 +315,10 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
   auto line = [&](const Gloss &g) { return g.header.empty() || !c.prefs.grammar ? g.base : g.header; };
   for (auto &g : c.separable) {
     CardRow r{Style::gloss, g.word + ": " + line(g), g.meaning.empty() ? "" : "— " + g.meaning, ""};
-    r.link = g.base;
+    r.link = g.base, r.divider = !rows.empty();
     rows.push_back(r);
   }
-  for (auto &g : c.gloss) rows.push_back(gloss_row(c, g));
+  for (auto &g : c.gloss) rows.push_back(gloss_row(c, g, !rows.empty()));
   if (c.more > 0) rows.push_back({Style::note, "", trn("card_more", c.more), ""});
   return rows;
 }
