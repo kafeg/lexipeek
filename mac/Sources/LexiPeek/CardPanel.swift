@@ -167,6 +167,7 @@ final class CardController {
 
     private func fit() {
         guard panel.isVisible, let h = hosting else { return }
+        if Snapshot.dir == nil, let s = panel.screen { screen = s.visibleFrame }  // dragged to another display meanwhile
         let fitting = h.fittingSize
         let height = min(model.loading ? max(fitting.height, panel.frame.height) : fitting.height, screen.height)
         if height != panel.frame.height || fitting.width != panel.frame.width {
