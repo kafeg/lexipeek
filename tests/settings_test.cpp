@@ -377,29 +377,32 @@ TEST_CASE("settings: every pane's toggles and choices round trip through setting
   for (auto sec : {SettingsSection::languages, SettingsSection::card, SettingsSection::ai, SettingsSection::general, SettingsSection::speech}) {
     auto tabs = std::max<size_t>(1, settings_tabs(sec).size());
     for (int tab = 0; tab < static_cast<int>(tabs); tab++) {
-      auto page = [&] { return app::settings_page(ds, sec, tab, st); };
-      for (auto &r : page().rows) {
+      // A row of the pane as it is on disk now (a copy: the page is made again each time).
+      auto now = [&](const std::string &key) {
+        auto p = app::settings_page(ds, sec, tab, st);
+        auto *r = row(p, key);
+        REQUIRE(r);
+        return *r;
+      };
+      auto rows = app::settings_page(ds, sec, tab, st).rows;
+      for (auto &r : rows) {
         CAPTURE(r.key);
         // Open at login shows the system's say (SettingsState::login), not settings.json.
         if (r.kind == Kind::toggle && r.enabled && r.key != "open_at_login") {
           toggles++;
           CHECK(app::toggle(ds, r.key, !r.on).empty());
-          auto now = row(page(), r.key);
-          REQUIRE(now);
-          CHECK(now->on == !r.on);
+          CHECK(now(r.key).on == !r.on);
           CHECK(app::toggle(ds, r.key, r.on).empty());
-          CHECK(row(page(), r.key)->on == r.on);
+          CHECK(now(r.key).on == r.on);
         } else if (r.kind == Kind::choice && r.enabled && r.key != "ai_preset") {
           for (int i = 0; i < static_cast<int>(r.choices.size()); i++) {
             CAPTURE(i);
             choices++;
             CHECK(app::choose(ds, r.key, i, st).empty());
-            auto now = row(page(), r.key);
-            REQUIRE(now);
-            CHECK(now->selected == i);
+            CHECK(now(r.key).selected == i);
           }
           CHECK(app::choose(ds, r.key, r.selected, st).empty());
-          CHECK(row(page(), r.key)->selected == r.selected);
+          CHECK(now(r.key).selected == r.selected);
         }
       }
     }
