@@ -185,6 +185,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
 - CI (`.github/workflows/ci.yml`, map in `docs/testing.md`): macOS arm64, Linux x64, Windows x64 on every push; Linux ASan + UBSan
   and the Qt shell on Windows only in a run by hand; vcpkg's binaries cached by vcpkg, manifest and runner image;
+  the compiler's output by sccache (main keeps one cache per job);
   packs from the release (cached): models and six dictionaries on macOS and Linux, dictionaries only on Windows (InkPeek's
   device cases). Windows: MSVC's environment (`ilammy/msvc-dev-cmd`), the core by Ninja with `-DLEXIPEEK_QT=OFF` into
   `build`, then `scripts\build-win.cmd build` (the WinUI shell over that dir, NuGet packages cached; the folder as the

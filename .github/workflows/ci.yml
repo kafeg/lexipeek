@@ -24,9 +24,14 @@ jobs:
           - { name: linux-x64, os: ubuntu-24.04, models: "langid model-de-en model-en-ru opus-deu_eng_fra_por_spa-sla dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en" }
           - { name: windows-x64, os: windows-2025, packs: "langid dict-de-en dict-de-ru dict-en-de dict-en-ru dict-ru-de dict-ru-en", cmake: "-DLEXIPEEK_QT=OFF" }
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      actions: write
     env:
       TYPE: ${{ matrix.type || 'Release' }}
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      SCCACHE_DIR: ${{ github.workspace }}/.sccache
+      SCCACHE_CACHE_SIZE: 2G
     steps:
       - uses: actions/checkout@v4
       - name: Submodules
@@ -62,9 +67,17 @@ jobs:
       # Windows: MSVC's environment, so the core builds by Ninja into the dir the WinUI shell's build reuses.
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
+      # The compiler's cache: a push rebuilds only what changed. Saved after Build; on main the older ones are deleted.
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: actions/cache/restore@v4
+        id: sccache
+        with:
+          path: .sccache
+          key: sccache-${{ matrix.name }}-${{ github.sha }}
+          restore-keys: sccache-${{ matrix.name }}-
       - name: Configure
         shell: bash
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE ${{ matrix.cmake }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache ${{ matrix.cmake }}
       - name: vcpkg cache
         shell: bash
         run: |
@@ -78,6 +91,20 @@ jobs:
           key: ${{ steps.vcpkg.outputs.cache-primary-key }}
       - name: Build
         run: cmake --build build --config ${{ env.TYPE }} --parallel
+      - run: sccache --show-stats
+      - uses: actions/cache/save@v4
+        if: steps.sccache.outputs.cache-hit != 'true'
+        with:
+          path: .sccache
+          key: ${{ steps.sccache.outputs.cache-primary-key }}
+      - name: Older compiler caches
+        if: steps.sccache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY: ${{ steps.sccache.outputs.cache-primary-key }}
+        run: |
+          gh cache list --key sccache-${{ matrix.name }}- --json key -q ".[].key | select(. != \"$KEY\")" | while read -r k; do gh cache delete "$k"; done
       - name: Packs (Windows)
         if: matrix.packs != ''
         shell: bash
