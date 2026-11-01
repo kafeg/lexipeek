@@ -155,7 +155,6 @@ struct Speaker::Impl {
       st = s;
     }
     if (!st.on) return set(ticket, Phase::failed, "", tr("read_off"), true);
-    if (!built()) return set(ticket, Phase::failed, "", tr("read_not_built"));
     auto own = own_voices(data);
     auto v = voice_for(own, st, r.lang);
     if (v.id.empty()) return set(ticket, Phase::failed, "", tr("read_no_voice", {language_name(r.lang)}), true);
@@ -166,6 +165,7 @@ struct Speaker::Impl {
       fs::last_write_time(file, fs::file_time_type::clock::now(), ec);  // the newest kept
       return set(ticket, Phase::ready, text::utf8_of(file));
     }
+    if (!built()) return set(ticket, Phase::failed, "", tr("read_not_built"));  // a kept reading plays without the engine
     if (!model_installed(data)) return set(ticket, Phase::failed, "", tr("read_no_model"), true);
     try {
       with_model(ticket, st.gpu, [&](mt::Held &held) {
