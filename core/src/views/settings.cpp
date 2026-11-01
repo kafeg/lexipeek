@@ -302,8 +302,8 @@ std::vector<SettingRow> appearance(const Settings &s) {
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
-// Sync → Sync: what syncs, the folder (picked by the shell), its state, this device; how to keep the folder the same
-// everywhere; the backups (Export… / Import…, done by the shell through Engine::backup / restore).
+// Sync → Sync: what syncs, the folder (picked by the shell), its state, this device; the backups (Export… / Import…,
+// done by the shell through Engine::backup / restore); how to keep the folder the same everywhere.
 std::vector<SettingRow> sync_rows(const SettingsState &st) {
   auto &s = st.sync;
   std::vector<SettingRow> rows;
@@ -320,11 +320,11 @@ std::vector<SettingRow> sync_rows(const SettingsState &st) {
     rows.push_back(r);
   }
   rows.push_back(valued(Kind::status, "sync_device", tr("sync_device_t"), s.name.empty() ? "—" : s.name, s.device));
-  rows.push_back(heading(tr("sync_hint_t"), tr("sync_hint")));
   rows.push_back(heading(tr("backup_t"), tr("backup_d")));
   rows.push_back(valued(Kind::button, "backup_export", tr("backup_export_t"), tr("backup_export_d"), tr("export_btn")));
   rows.push_back(valued(Kind::button, "backup_import", tr("backup_import_t"), tr("backup_import_d"), tr("import_btn")));
   if (!st.backup_said.empty()) rows.push_back(valued(Kind::status, "backup_said", tr("backup_last_t"), st.backup_said, ""));
+  rows.push_back(heading(tr("sync_hint_t"), tr("sync_hint")));  // last: a heading with no rows under it
   return rows;
 }
 
