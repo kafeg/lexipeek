@@ -90,7 +90,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return }
             SettingsWindow.select(self.settingsWindow, s, tab: tab, model: self.settings)
         }
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main) { n in
+            let shown = NSApp.windows.filter { $0.styleMask.contains(.titled) && ($0.isVisible || $0.isMiniaturized) }
+            let closing = (n.object as? NSWindow).map(ObjectIdentifier.init)
+            if !Dock.regular(shown: shown.map(ObjectIdentifier.init), closing: closing) { NSApp.setActivationPolicy(.accessory) }
+        }
         if lexipeek.app.first_run_at_launch(std.string(), Selection.trusted) { openFirstRun() }
+    }
+
+    // A window of the app is opening: in the Dock and ⌘Tab until the last one closes (willClose above).
+    private func front(_ w: NSWindow?) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        w?.present()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -185,20 +197,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showAbout() {
         if aboutWindow == nil { aboutWindow = AboutWindow.make(model: settings) }
         aboutWindow?.title = L.t("menu_about")
-        NSApp.activate(ignoringOtherApps: true)
-        aboutWindow?.present()
+        front(aboutWindow)
     }
 
     @objc private func showMain() { openMain(nil) }
 
     @objc private func showHelp() { openMain(.help) }
 
-    // The LexiPeek window (nil: the page shown last); the app is in the Dock while it is open.
+    // The LexiPeek window (nil: the page shown last).
     private func openMain(_ page: MainPage?) {
         if mainWindow == nil {
             let w = MainWindow.make(model: main)
             NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { [weak self] _ in
-                if Snapshot.dir == nil { NSApp.setActivationPolicy(.accessory) }
                 self?.main.card.cancel()  // closed: its card's work stops
             }
             mainWindow = w
@@ -210,9 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             w.orderBack(nil)
             return
         }
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        mainWindow?.present()
+        front(mainWindow)
     }
 
     // The window on a page, off screen: <name>.png, <name>-end.png when it scrolls, then <name>.done (look: a text looked
@@ -232,8 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if settingsWindow == nil { settingsWindow = SettingsWindow.make(model: settings) }
         settings.refresh()
         if let section { SettingsWindow.select(settingsWindow, section, model: settings) }
-        NSApp.activate(ignoringOtherApps: true)
-        settingsWindow?.present()
+        front(settingsWindow)
     }
 
     // Accessibility, the first pair and its download, the hotkey; closed, it opens at launch only while no pair is installed.
@@ -256,8 +263,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         firstRun.start()
-        NSApp.activate(ignoringOtherApps: true)
-        firstRunWindow?.present()
+        front(firstRunWindow)
     }
 
     // Each section × tab in the real window (with its toolbar), off screen: settings-<section>[-<tab>].png; settings.done

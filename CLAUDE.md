@@ -179,8 +179,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   a change goes `app::toggle` / `choose` → settings.json, then `Prefs.reload()` (its `changed` → `configure`) and
   `L.apply()` (`app::set_language`: the app's language — the setting, else the system's when it is one of the eight, else
   English; a new install's settings.json gets it as the answer language too), then the window's labels again.
-  Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is own dictionaries' pane (with the dictionary order; Article's "Dictionary order" opens it). ⌘S is a local key (not a hotkey: a pinned
-  card would steal the frontmost app's Save).
+  Hotkeys and app lists stay `Prefs` bindings (platform values); `OtherDictionariesPane.swift` is own dictionaries' pane (with the dictionary order; Article's "Dictionary order" opens it). The card's keys: `LexiPeekKit`'s
+  `CardKeys` — only Esc and ⌘P are hotkeys (while it is open and not pinned); ⌘S, ⌘., ←/→, Delete / ⌘[ are local, while
+  the card has the focus (a hotkey takes the key from every app). Dock: `front(window)` makes the app regular, the last
+  titled window's close (`Dock.regular`) an accessory again.
   AI: `Keychain.swift` (one generic password per provider, service `dev.kafeg.lexipeek.ai`; never read in snapshot
   mode — a Keychain prompt would show on the screen), `CardModel.askAI()` sends `card_asks` on the `CoreClient`'s
   concurrent AI queue (after a look-up, a tab picked, AI translation picked, "←"); Settings → AI in `SettingsView.swift`
@@ -188,7 +190,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   for the key after a rebuild (`SIGN=<identity>` keeps it).
   The first-run window (`FirstRun.swift`) draws `app::first_run`; its state is the core's `FirstRunState` (`first_run` in settings.json).
   `Downloader.swift`: every download through the core (`app::Download` polled) and `[String].cxx`.
-  `LexiPeekKit` — pure Swift (shortcuts, placement), tested without the core; hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
+  `LexiPeekKit` — pure Swift (shortcuts, placement, the card's keys, Dock), tested without the core (`make app-test`, CI's macOS job); hotkey labels, `lexipeek://` links, menu lines and Notes' file names come from the core (`app::hotkey_label`, `link`, `menu_line`, `notes_file`). `CoreClient` — the
   engine and queues for the rest (Notes, settings, packs).
 - `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
   by default — on Windows too since M8: `build-win.cmd <dir> qt`; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel

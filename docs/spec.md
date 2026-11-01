@@ -30,9 +30,10 @@ Linux, sync — see Milestones. No browser extension: the hotkey and the icon at
 - No telemetry, no accounts. Network: the pack list, downloads, the update check, AI when it is on.
 
 ## Platform
-macOS 14+, Apple Silicon only. A menu-bar app (`LSUIElement`). Needs Accessibility (hotkey on the selection, reading
-the selected text); the first run asks for it and explains why. While it is off (after a rebuild too: an ad-hoc signed
-build is a new app to it), every place says so: the menu-bar icon is ⚠ (its tooltip why), the menu's first item opens
+macOS 14+, Apple Silicon only. A menu-bar app (`LSUIElement`); while one of its windows is open (the LexiPeek window,
+Settings, About, the first run) it is a regular app — in the Dock and ⌘Tab —, a menu-bar app again when all are
+closed. Needs Accessibility (hotkey on the selection, reading the selected text); the first run asks for it and explains why.
+While it is off (after a rebuild too: an ad-hoc signed build is a new app to it), every place says so: the menu-bar icon is ⚠ (its tooltip why), the menu's first item opens
 System Settings → Accessibility, the Settings window and the LexiPeek window show a banner with "Open System
 Settings…", and the lookup hotkey's card (to type in) has a line with the same link. Checked every second; all of it
 goes the moment it is on. The same ⚠ (menu bar and tray, both OSes) when no language pack is installed ("Set Up a
@@ -182,7 +183,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   core per request: never in settings.json, logs, snapshots or the UI. Data sent: only the text and the prompt.
 - **Keys:** ⌥D the selection, ⌥A input (both changeable, conflicts checked), ⌘P pins the card; Esc and a click
   outside close it. ⌥D with a card open: another selection → its card at once; the same one or none → closes.
-  In the card: ←/→ switch tabs, ⌘S is ☆.
+  Esc and ⌘P are hotkeys only while a card is open and not pinned. The card's own keys work only while it has the
+  focus (a hotkey would take them from every app): ←/→ switch tabs, ⌘S is ☆, ⌘. reads aloud, Delete or ⌘[ goes back.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
   one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.
@@ -194,8 +196,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **☆ in the header** (★ when saved, a click or ⌘S toggles): a word is saved as its base form (InkPeek's `saveKey`:
   the pack's headword; "das Haus" → Haus when the pack's header starts so), a phrase or passage as it is, with one
   short line: the dictionary's first line of a word, else the translation shown. ★ also when the text itself was saved.
-- **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O; the app is in the Dock while it is
-  open): a sidebar — **Look up** · Notes: **Words** · **Phrases** · **History** with counts · **Help** (InkPeek's ?
+- **The LexiPeek window** (desktop's own, not InkPeek's; menu bar → Open LexiPeek ⌘O): a sidebar — **Look up** ·
+  Notes: **Words** · **Phrases** · **History** with counts · **Help** (InkPeek's ?
   page in desktop form, `help_view`: topics — getting started, the card, packs, translation methods, other
   dictionaries, AI, what is sent, Notes — InkPeek's texts where they say the same, each topic with its settings
   pane; also the app's Help menu, ⌘?); under them what is in
@@ -354,8 +356,8 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   on Translate the translation into it (once there), on Dictionary the first translated word, and each translated
   word's row has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
   **Card:** ▶ in the bottom row on the right (before copy), ■ while it reads (a press stops); ⌘. (Windows Ctrl+.) the
-  same. The first ▶ loads the model: "Loading the voice model…" under the rows until the reading starts; a failure is a
-  line with Settings → Read aloud. Read aloud off (the default): no ▶; on without the model: a press says what to do
+  same, a key of the card (while it has the focus), not a hotkey. The first ▶ loads the model: "Loading the voice
+  model…" under the rows until the reading starts; a failure is a line with Settings → Read aloud. Read aloud off (the default): no ▶; on without the model: a press says what to do
   (the line and its button).
   **Readings:** one at a time for the app; a newer press cancels the one being made. The model stays for its own time
   after its last reading (Settings → Read aloud: 1, 3, 5, 15 min, 1 h, until quit; 3 min by default — it holds ~3.5 GB

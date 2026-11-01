@@ -46,7 +46,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
       - name: Tools (macOS)
         if: runner.os == 'macOS'
-        run: brew install ninja zstd || true
+        run: brew install ninja zstd xcodegen || true
       - uses: actions/cache@v4
         if: matrix.models != ''
         with:
@@ -70,6 +70,9 @@ jobs:
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - name: Test
         run: ctest --test-dir build -C ${{ env.TYPE }} --output-on-failure
+      - name: Swift tests (macOS)
+        if: runner.os == 'macOS'
+        run: make app-test SIGN=-
       - uses: actions/cache@v4
         if: runner.os == 'Windows'
         with:

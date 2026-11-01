@@ -17,7 +17,7 @@ final class CardHostingView<Content: View>: NSHostingView<Content> {
 
 // Shows the card at the selection or the cursor, keeps its top edge and its height while it is open.
 final class CardController {
-    private static let escapeKey: UInt32 = 100, pinKey: UInt32 = 101, readKey: UInt32 = 102
+    private static let firstKey: UInt32 = 100  // the card's hotkeys: 100, 101
 
     let model: CardModel
     private let panel: CardPanel
@@ -133,47 +133,36 @@ final class CardController {
     private func hotkeys(_ on: Bool) {
         guard on != keysOn else { return }
         keysOn = on
-        if on {
-            Hotkeys.shared.register(Self.escapeKey, code: 0x35, modifiers: 0) { [weak self] in self?.close() }
-            Hotkeys.shared.register(Self.pinKey, code: 0x23, modifiers: Shortcut.cmd) { [weak self] in self?.model.pinned.toggle() }
-            Hotkeys.shared.register(Self.readKey, code: 0x2F, modifiers: Shortcut.cmd) { [weak self] in self?.model.read() }
-        } else {
-            Hotkeys.shared.unregister(Self.escapeKey)
-            Hotkeys.shared.unregister(Self.pinKey)
-            Hotkeys.shared.unregister(Self.readKey)
+        for (i, k) in CardKeys.hotkeys.enumerated() {
+            let id = Self.firstKey + UInt32(i)
+            if on {
+                Hotkeys.shared.register(id, code: k.code, modifiers: k.modifiers) { [weak self] in self?.perform(k.key) }
+            } else {
+                Hotkeys.shared.unregister(id)
+            }
         }
     }
 
-    // In the card (when it has the focus): Esc, ⌘P, ←/→ tabs, ⌘S ☆, Delete or ⌘[ back; the input field keeps its own keys.
+    // In the card (when it has the focus); the input field keeps its own keys.
     private func key(_ e: NSEvent) -> NSEvent? {
         guard e.window === panel else { return e }
         let mods = e.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        if e.keyCode == 0x35 && mods.isEmpty && !keysOn {
-            close()
-            return nil
-        }
-        if e.keyCode == 0x23 && mods == .command && !keysOn {
-            model.pinned.toggle()
-            return nil
-        }
-        guard model.card != nil else { return e }
-        if e.keyCode == 0x01 && e.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command {
-            model.toggleSaved()
-            return nil
-        }
-        if e.keyCode == 0x2F && mods == .command && !keysOn {
-            model.read()
-            return nil
-        }
-        guard !(panel.firstResponder is NSTextView) else { return e }
-        switch e.keyCode {
-        case 0x7B: model.switchTab(-1)
-        case 0x7C: model.switchTab(1)
-        case 0x33: model.back()
-        case 0x21 where e.modifierFlags.contains(.command): model.back()
-        default: return e
-        }
+        guard let k = CardKeys.local(code: e.keyCode, command: mods == .command, plain: mods.isEmpty, hotkeysOn: keysOn,
+                                     card: model.card != nil, typing: panel.firstResponder is NSTextView) else { return e }
+        perform(k)
         return nil
+    }
+
+    private func perform(_ k: CardKey) {
+        switch k {
+        case .close: close()
+        case .pin: model.pinned.toggle()
+        case .save: model.toggleSaved()
+        case .read: model.read()
+        case .previousTab: model.switchTab(-1)
+        case .nextTab: model.switchTab(1)
+        case .back: model.back()
+        }
     }
 
     private func fit() {

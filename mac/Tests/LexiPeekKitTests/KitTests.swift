@@ -66,3 +66,51 @@ final class PlacementTests: XCTestCase {
         XCTAssertEqual(Placement.resized(CGRect(x: 0, y: 10, width: 300, height: 100), height: 300, screen: screen).minY, 0)
     }
 }
+
+final class CardKeysTests: XCTestCase {
+    private func key(_ code: UInt16, command: Bool = false, hotkeysOn: Bool = true, card: Bool = true, typing: Bool = false) -> CardKey? {
+        CardKeys.local(code: code, command: command, plain: !command, hotkeysOn: hotkeysOn, card: card, typing: typing)
+    }
+
+    // Only Esc and ⌘P are taken from the other apps while a card is open: never ⌘., ⌘S or ⌘C.
+    func testHotkeys() {
+        XCTAssertEqual(CardKeys.hotkeys.map(\.key), [.close, .pin])
+        XCTAssertEqual(CardKeys.hotkeys.map(\.code), [0x35, 0x23])
+        XCTAssertEqual(CardKeys.hotkeys.map(\.modifiers), [0, Shortcut.cmd])
+    }
+
+    func testReadIsLocal() {
+        XCTAssertEqual(key(CardKeys.period, command: true), .read)
+        XCTAssertEqual(key(CardKeys.period, command: true, typing: true), .read)
+        XCTAssertNil(key(CardKeys.period, command: true, card: false))
+        XCTAssertNil(key(CardKeys.period))
+    }
+
+    func testEscAndPinLocalOnlyWithoutHotkeys() {
+        XCTAssertNil(key(CardKeys.escape))
+        XCTAssertNil(key(CardKeys.p, command: true))
+        XCTAssertEqual(key(CardKeys.escape, hotkeysOn: false, card: false), .close)
+        XCTAssertEqual(key(CardKeys.p, command: true, hotkeysOn: false, card: false), .pin)
+    }
+
+    func testCardKeys() {
+        XCTAssertEqual(key(CardKeys.s, command: true), .save)
+        XCTAssertEqual(key(CardKeys.left), .previousTab)
+        XCTAssertEqual(key(CardKeys.right), .nextTab)
+        XCTAssertEqual(key(CardKeys.delete), .back)
+        XCTAssertEqual(key(CardKeys.bracket, command: true), .back)
+        XCTAssertNil(key(CardKeys.bracket))
+        XCTAssertNil(key(CardKeys.left, typing: true))
+        XCTAssertNil(key(8, command: true))  // ⌘C goes on to the field or the app
+    }
+}
+
+final class DockTests: XCTestCase {
+    func testRegularWhileAWindowIsShown() {
+        let a = ObjectIdentifier(NSObject.self), b = ObjectIdentifier(NSString.self)
+        XCTAssertFalse(Dock.regular(shown: [], closing: nil))
+        XCTAssertTrue(Dock.regular(shown: [a], closing: nil))
+        XCTAssertFalse(Dock.regular(shown: [a], closing: a))
+        XCTAssertTrue(Dock.regular(shown: [a, b], closing: a))
+    }
+}
