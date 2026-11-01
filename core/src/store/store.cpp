@@ -16,6 +16,7 @@
 #include <thread>
 #include <regex>
 #include <sstream>
+#include "lexipeek/dicts.hpp"
 #include "store/log.hpp"
 #include "text/text.hpp"
 
@@ -744,7 +745,8 @@ Store::Restored Store::restore(const std::filesystem::path &file) {
     while (q.row()) {
       if (Stmt(im.db, "SELECT 1 FROM saved WHERE text=?").bind(q.text(0)).row() || q.text(0).empty()) continue;
       Line l;
-      l.op = Op::saved_put, l.text = q.text(0), l.kind = q.text(1), l.meaning = q.text(2), l.lang = q.text(4);
+      // InkPeek's backup names the language ("Russian"); this store and the log keep its code.
+      l.op = Op::saved_put, l.text = q.text(0), l.kind = q.text(1), l.meaning = q.text(2), l.lang = language_code(q.text(4));
       l.t = when(l.text, q.num(3));
       ls.push_back(l);
     }
@@ -755,7 +757,7 @@ Store::Restored Store::restore(const std::filesystem::path &file) {
       if (Stmt(im.db, "SELECT 1 FROM history WHERE text=?").bind(q.text(0)).row() || q.text(0).empty()) continue;
       Line l;
       l.op = Op::history_seen, l.text = q.text(0), l.kind = q.text(1), l.c = std::max<std::int64_t>(1, q.num(3));
-      l.meaning = q.text(4), l.lang = q.text(5), l.base = q.text(6) == l.text ? "" : q.text(6);
+      l.meaning = q.text(4), l.lang = language_code(q.text(5)), l.base = q.text(6) == l.text ? "" : q.text(6);
       l.t = when(l.text, q.num(2));
       ls.push_back(l);
     }

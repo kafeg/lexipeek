@@ -642,6 +642,26 @@ TEST_CASE("backup: an older backup without some columns, a removed word comes ba
   CHECK(s.looks("Tür") == 4);
 }
 
+TEST_CASE("backup: InkPeek's names its languages; they come in as codes (the Anki Key, Notes and the log as InkPeek's)") {
+  auto a = fresh("lexipeek-backup-inkpeek");
+  sqlite3 *db = nullptr;
+  sqlite3_open((a / "inkpeek.db").string().c_str(), &db);
+  sqlite3_exec(db,
+               "CREATE TABLE saved(text TEXT PRIMARY KEY, kind TEXT, meaning TEXT, created INTEGER, lang TEXT);"
+               "CREATE TABLE history(text TEXT PRIMARY KEY, kind TEXT, seen INTEGER, count INTEGER, meaning TEXT, lang TEXT, base TEXT);"
+               "CREATE TABLE ai(text TEXT, lang TEXT, section TEXT, ver INTEGER, model TEXT, answer TEXT, created INTEGER);"
+               "INSERT INTO saved VALUES('Haus', 'word', 'дом', 1000, 'Russian');"
+               "INSERT INTO history VALUES('Baum', 'word', 1000, 2, 'дерево', 'Russian', NULL);"
+               "INSERT INTO ai VALUES('Haus', 'Russian', 'quick', 7, 'claude', '{}', 1000);",
+               nullptr, nullptr, nullptr);
+  sqlite3_close(db);
+  Store s(StoreOptions{a / "store", {}, "mac-0000000e", ""});
+  CHECK(s.restore(a / "inkpeek.db").added == 3);
+  CHECK(s.saved()[0].lang == "ru");
+  CHECK(s.history()[0].lang == "ru");
+  CHECK(s.answer("Haus", "Russian", "quick", 7) == "{}");  // answers keep the name, in both apps
+}
+
 TEST_CASE("backup: a copy a day, the last five kept, none while empty") {
   auto a = fresh("lexipeek-daily");
   Store s(StoreOptions{a, {}, "mac-0000000d", ""});

@@ -45,6 +45,8 @@ std::vector<CatalogItem> parse_catalog(const std::string &source, const std::str
 std::string two_letter(const std::string &code);
 // The language's English name ("German"), the code when unknown.
 std::string catalog_language(const std::string &code);
+// Back: "Russian" → "ru" (InkPeek's records keep the name, as its Sync.code reads it); anything else as it is.
+std::string language_code(const std::string &name);
 
 struct CatalogList {
   std::vector<CatalogItem> items;

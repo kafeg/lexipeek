@@ -143,6 +143,12 @@ std::string catalog_language(const std::string &code) {
   return code;
 }
 
+std::string language_code(const std::string &name) {
+  for (auto &l : LANGS)
+    if (name == l.name) return l.two;
+  return name;
+}
+
 CatalogList fetch_catalog(const DictSettings &s, const std::string &listings) {
   CatalogList out;
   for (auto &src : catalog_sources()) {
