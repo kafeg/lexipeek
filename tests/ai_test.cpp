@@ -299,6 +299,7 @@ TEST_CASE("ai: the tabs' Markdown under the app's headings; the reply's JSON ins
   CHECK(ctx == "**Examples**\n- Das **Haus** ist alt.\n*Дом старый.*");
   CHECK(ai::render(ai::Ask::quick, quick_json, true) == "*das Haus · die Häuser · сущ., ср. р. · дат. мн.*\n- дом\n- здание");
   CHECK(ai::render(ai::Ask::quick, R"({"translation":"Я закрываю дверь."})", false) == "Я закрываю дверь.");
+  CHECK(ai::render(ai::Ask::quick, R"({"base":"Haus","irregular":null})", true) == "*Haus*");  // a model off the schema
   CHECK(ai::json_object(ai::strip_thinking("<think>{\"no\":1}</think>Here: {\"a\": 1} done")) == R"({"a":1})");
   CHECK(ai::json_object("no braces").empty());
   // Fenced, with raw line breaks inside a string (and an escaped quote): read anyway.

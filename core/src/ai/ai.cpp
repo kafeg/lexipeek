@@ -603,7 +603,7 @@ std::string render(Ask a, const std::string &answer, bool word) {
       auto art = str(j, "article"), base = str(j, "base"), pl = str(j, "plural");
       f = art + (!art.empty() && !base.empty() ? " " : "") + base + (pl.empty() ? "" : " · " + pl);
     }
-    for (auto &x : {f, str(j, "pos"), str(j, "form_of"), j.value("irregular", false) ? tr("irregular") : std::string()})
+    for (auto &x : {f, str(j, "pos"), str(j, "form_of"), j.contains("irregular") && j["irregular"].is_boolean() && j["irregular"].get<bool>() ? tr("irregular") : std::string()})
       if (!x.empty()) facts += (facts.empty() ? "" : " · ") + x;
   }
   std::string out = facts.empty() ? "" : "*" + facts + "*";
