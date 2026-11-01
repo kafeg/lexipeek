@@ -208,11 +208,12 @@ TEST_CASE("card session: AI translation picked in the card, the provider's key p
   {
     std::ofstream(d / "settings.json") << R"({"ai": {"provider": "claude-cli", "translate": true, "prefetch": false}})";
   }
-  int calls = 0;
+  std::atomic<int> calls{0}, done{0};
   std::atomic<bool> go{true};
   ai::set_cli_runner([&](const ai::CliCall &) {
     calls++;
     until([&] { return go.load(); }, 10);
+    done++;
     nlohmann::json body{{"base", "Haus"}, {"article", "das"}, {"plural", ""}, {"pos", ""}, {"forms", ""}, {"irregular", false},
                         {"form_of", ""}, {"meanings", {"дом"}}, {"translation", ""}};
     return ai::CliRan{0, nlohmann::json{{"type", "result"}, {"is_error", false}, {"result", body.dump()}}.dump(), ""};
@@ -249,12 +250,13 @@ TEST_CASE("card session: AI translation picked in the card, the provider's key p
     s.select(CardTab::translate);
     s.choose_ai();
     CHECK(s.busy());
+    REQUIRE(until([&] { return calls == 2; }));  // the request is out, its answer held back
     s.cancel();
     CHECK(!s.busy());
     CHECK(!s.nav().state.quick.asking);
     go = true;
-    until([&] { return calls == 2; });
-    s.poll();
+    REQUIRE(until([&] { return done == 2; }));
+    until([&] { return s.poll(), false; }, 1);  // what it posts comes in now: dropped
     CHECK(!s.nav().state.quick.answered);
   }
   ai::set_cli_runner(nullptr);

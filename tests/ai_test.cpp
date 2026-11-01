@@ -553,12 +553,11 @@ TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysi
   {
     std::ofstream(d / "settings.json") << R"({"ai": {"provider": "claude-cli", "prefetch": true, "translate": true}})";
   }
-  // Analysis answers only after Context was asked: it is on its way the whole time, whatever the runner's speed.
-  std::atomic<bool> context_asked{false};
+  // Analysis answers only once Context was opened: it is on its way the whole time, whatever the runner's speed.
+  std::atomic<bool> context_opened{false};
   ai::set_cli_runner([&](const ai::CliCall &c) {
     bool analysis = c.prompt.find("grammar") != std::string::npos || c.stdin_arg.find("grammar") != std::string::npos;
-    if (analysis) until([&] { return context_asked.load(); }, 10);
-    else context_asked = true;
+    if (analysis) until([&] { return context_opened.load(); }, 10);
     nlohmann::json body = analysis ? nlohmann::json{{"grammar", "ANALYSIS"}, {"words", nlohmann::json::array()}}
                                    : nlohmann::json{{"explanation", "CONTEXT"}, {"examples", nlohmann::json::array()}};
     return ai::CliRan{0, nlohmann::json{{"type", "result"}, {"is_error", false}, {"result", body.dump()}}.dump(), ""};
@@ -571,6 +570,7 @@ TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysi
   s.poll();
   CHECK(s.nav().state.analysis.asking);
   s.select(CardTab::context);
+  context_opened = true;
   CHECK(until([&] { return s.poll(), !s.busy(); }));
   auto st = s.nav().state;
   CHECK(!st.analysis.asking);

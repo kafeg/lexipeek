@@ -109,7 +109,6 @@ jobs:
       # through TCC's database (a hosted runner's SIP is off).
       - name: Selection test (macOS)
         if: runner.os == 'macOS'
-        continue-on-error: true
         timeout-minutes: 5
         run: |
           sudo sqlite3 "/Library/Application Support/com.apple.TCC/TCC.db" "INSERT OR REPLACE INTO access (service, client, client_type, auth_value, auth_reason, auth_version, indirect_object_identifier, flags, last_modified) VALUES ('kTCCServiceAccessibility', 'dev.kafeg.lexipeek', 0, 2, 4, 1, 'UNUSED', 0, CAST(strftime('%s','now') AS INTEGER));"
