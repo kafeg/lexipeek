@@ -170,13 +170,14 @@ std::vector<Note> notes(const Store &store, const AnkiSettings &s, const fs::pat
   for (auto &x : store.saved()) {
     bool word = x.kind == "word";
     if (word ? !s.words_on : !s.phrases_on) continue;
-    out.push_back({key_of(x.text, x.lang, false, answer), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
-                   word ? "word" : "phrase", x.text, x.lang});
+    auto lang = x.lang.empty() ? answer : x.lang;
+    out.push_back({key_of(x.text, lang), word ? s.words : s.phrases, html(x.text), back_of(x.meaning), "", reading_of(data, x.text),
+                   word ? "word" : "phrase", x.text, lang});
   }
   if (s.history_on)
     for (auto &x : store.history())
       out.push_back({key_of(x.text, x.lang, true, answer), s.history, html(x.text), back_of(x.meaning), "", reading_of(data, x.text), "history", x.text,
-                     x.lang});
+                     x.lang.empty() ? answer : x.lang});
   return out;
 }
 

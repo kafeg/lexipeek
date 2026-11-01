@@ -279,6 +279,17 @@ TEST_CASE("anki: the notes — saved words and phrases into their decks, the his
     st.save("<b>&", "phrase", "ru", "a\nb");
     CHECK(anki::notes(st, s, d)[0].front == "&lt;b&gt;&amp;");
     CHECK(anki::notes(st, s, d)[0].back == "a<br>b");
+    // Without its language (InkPeek's older rows): the answer language, for its Key and its reading.
+    st.save("Lösung", "word", "", "die Lösung — решение");
+    s.words_on = true;
+    int found = 0;
+    for (auto &x : anki::notes(st, s, d))
+      if (x.text == "Lösung") {
+        found++;
+        CHECK(x.lang == "ru");
+        CHECK(x.key == anki::key_of("Lösung", "ru"));
+      }
+    CHECK(found == 1);
   }
   wipe(d);
 }
