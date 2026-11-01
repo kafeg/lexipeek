@@ -42,14 +42,15 @@ jobs:
           [ "$RUNNER_OS" = Linux ] || git submodule update --init --recursive --depth 1 engines/qwentts || git submodule update --init --recursive engines/qwentts
           echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
           mkdir -p .vcpkg-cache
-      # vcpkg's binaries by this vcpkg, manifest and runner image; another image's cache is restored, then saved under
-      # this key right after Configure without the zips this build does not use (also when a test fails later).
+      # vcpkg's binaries: the newest cache is restored; after Configure it is saved under the hash of the ABIs this
+      # build uses (a new compiler or port → a new key), without the zips it does not use (also when a test fails later).
       - uses: actions/cache/restore@v4
-        id: vcpkg
         with:
           path: .vcpkg-cache
-          key: vcpkg2-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-${{ env.ImageVersion }}
-          restore-keys: vcpkg2-${{ matrix.name }}-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}-
+          key: vcpkg3-${{ matrix.name }}-
+          restore-keys: |
+            vcpkg3-${{ matrix.name }}-
+            vcpkg2-${{ matrix.name }}-
       - name: Tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ninja-build zstd
@@ -79,16 +80,24 @@ jobs:
         shell: bash
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=$TYPE -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache ${{ matrix.cmake }}
       - name: vcpkg cache
+        id: abis
         shell: bash
         run: |
           abis=$(grep -h '^Abi:' build/vcpkg_installed/vcpkg/status | cut -d' ' -f2 | tr -d '\r' | sort -u)
           find .vcpkg-cache -name '*.zip' | while read -r f; do echo "$abis" | grep -qx "$(basename "$f" .zip)" || rm "$f"; done
           echo "vcpkg cache: $(find .vcpkg-cache -name '*.zip' | wc -l) zips, $(echo "$abis" | wc -l) ports"
+          echo "key=vcpkg3-${{ matrix.name }}-$(echo "$abis" | { sha256sum 2>/dev/null || shasum -a 256; } | cut -c1-16)" >> "$GITHUB_OUTPUT"
+      - name: vcpkg cache saved?
+        id: have
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "n=$(gh cache list --key '${{ steps.abis.outputs.key }}' --json key -q length)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/save@v4
-        if: steps.vcpkg.outputs.cache-hit != 'true'
+        if: steps.have.outputs.n == '0'
         with:
           path: .vcpkg-cache
-          key: ${{ steps.vcpkg.outputs.cache-primary-key }}
+          key: ${{ steps.abis.outputs.key }}
       - name: Build
         run: cmake --build build --config ${{ env.TYPE }} --parallel
       - run: sccache --show-stats
@@ -97,14 +106,18 @@ jobs:
         with:
           path: .sccache
           key: ${{ steps.sccache.outputs.cache-primary-key }}
-      - name: Older compiler caches
-        if: steps.sccache.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main'
+      - name: Older caches
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           KEY: ${{ steps.sccache.outputs.cache-primary-key }}
+          VCPKG: ${{ steps.abis.outputs.key }}
         run: |
           gh cache list --key sccache-${{ matrix.name }}- --json key -q ".[].key | select(. != \"$KEY\")" | while read -r k; do gh cache delete "$k"; done
+          for p in vcpkg2-${{ matrix.name }}- vcpkg3-${{ matrix.name }}-; do
+            gh cache list --key $p --json key -q ".[].key | select(. != \"$VCPKG\")" | while read -r k; do gh cache delete "$k"; done
+          done
       - name: Packs (Windows)
         if: matrix.packs != ''
         shell: bash

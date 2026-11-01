@@ -189,7 +189,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Engines build as C++17 (`cmake/engines.cmake`), our code as C++20. Linux: OpenBLAS `dynamic-arch` (a cached
   build runs on other runners' CPUs, else SIGILL), marian's `USE_STATIC_LIBS` off (glibc's `libm.a`).
 - CI (`.github/workflows/ci.yml`, map in `docs/testing.md`): macOS arm64, Linux x64, Windows x64 on every push; Linux ASan + UBSan
-  and the Qt shell on Windows only in a run by hand; vcpkg's binaries cached by vcpkg, manifest and runner image;
+  and the Qt shell on Windows only in a run by hand; vcpkg's binaries cached under the hash of their ABIs;
   the compiler's output by sccache (main keeps one cache per job);
   packs from the release (cached): models and six dictionaries on macOS and Linux, dictionaries only on Windows (InkPeek's
   device cases). Windows: MSVC's environment (`ilammy/msvc-dev-cmd`), the core by Ninja with `-DLEXIPEEK_QT=OFF` into
