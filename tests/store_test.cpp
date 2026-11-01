@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <fstream>
 #include <random>
+#include <set>
+#include <cstdlib>
 #include <nlohmann/json.hpp>
 #include "lexipeek/store.hpp"
 #include <sqlite3.h>
@@ -92,6 +94,40 @@ std::vector<std::string> own_lines(const fs::path &folder) {
   return out;
 }
 
+// What differs from expected.json: per list, the entries only it has and those only [got] has.
+std::string diff(const fs::path &dir, const json &got) {
+  auto want = json::parse(slurp(dir / "expected.json"));
+  std::string out;
+  for (auto k : {"saved", "history", "ai"}) {
+    std::set<std::string> w, g;
+    for (auto &e : want[k]) w.insert(e.dump());
+    for (auto &e : got[k]) g.insert(e.dump());
+    for (auto &e : w)
+      if (!g.count(e)) out += dir.filename().string() + " " + k + " expected only: " + e + "\n";
+    for (auto &e : g)
+      if (!w.count(e)) out += dir.filename().string() + " " + k + " merged only:   " + e + "\n";
+  }
+  return out;
+}
+
+// The merge of a generated case; the same read twice and with every device's log compacted.
+void generated(const fs::path &d) {
+  auto lines = store::read_roots({d});
+  auto got = json::parse(records_json(store::merge(lines)));
+  auto e = diff(d, got);
+  INFO(e);
+  CHECK(e.empty());
+  CHECK(store::read_roots({d, d}).size() == lines.size());
+  std::map<std::string, std::vector<store::Line>> by_device;
+  for (auto &l : lines) by_device[l.d].push_back(l);
+  std::vector<store::Line> compacted;
+  for (auto &[id, own] : by_device)
+    for (auto &l : store::compact(own)) compacted.push_back(l);
+  std::sort(compacted.begin(), compacted.end(), store::before);
+  INFO(d.filename().string(), ": compacted ", lines.size(), " → ", compacted.size());
+  CHECK(json::parse(records_json(store::merge(compacted))) == got);
+}
+
 }  // namespace
 
 TEST_CASE("sync cases: reader — the merge") {
@@ -114,6 +150,20 @@ TEST_CASE("sync cases: reader — the store's SQLite view of the folder") {
     Store again({data, {}, "mac-test0000", ""});
     check_case(d, json::parse(records_json(again.records())));
   }
+}
+
+TEST_CASE("sync cases: generated — the merge, read twice, every device compacted") {
+  auto all = cases("generated");
+  REQUIRE(all.size() >= 20);
+  for (auto &d : all) generated(d);
+}
+
+TEST_CASE("sync cases: stress (LEXIPEEK_STRESS=1) — a case of 50,000 lines made now by InkPeek's generate.py") {
+  auto *on = std::getenv("LEXIPEEK_STRESS");
+  if (!on || std::string(on) != "1") return;
+  auto dir = fresh("lexipeek-stress");
+  REQUIRE(std::system(("python3 \"" + (SYNC / "generate.py").string() + "\" --stress \"" + dir.string() + "\"").c_str()) == 0);
+  generated(dir / "stress");
 }
 
 TEST_CASE("sync cases: identity — keep or new, by the pure check and by the store at start") {

@@ -258,6 +258,41 @@ TEST_CASE("anki: the Key — the answer language and sha256 of InkPeek's lookup 
   CHECK(anki::key_of("Haus", "en", false, "ru") != k);
 }
 
+// tests/inkpeek/tests/anki (InkPeek runs them too): what differs, a line each (the first 20).
+json anki_cases(const char *name) {
+  std::ifstream f(fs::path(LEXIPEEK_INKPEEK) / "tests" / "anki" / name);
+  auto c = json::parse(f)["cases"];
+  REQUIRE(c.size() >= 50);
+  return c;
+}
+
+void differs(std::vector<std::string> &bad, const json &c, const json &want, const json &got) {
+  if (want != got && bad.size() < 20) bad.push_back(c.dump() + "\n    got: " + got.dump());
+}
+
+TEST_CASE("anki: InkPeek's cases — the Key, a note's fields, the rule for duplicates") {
+  std::vector<std::string> bad;
+  for (auto &c : anki_cases("keys.json"))
+    differs(bad, c, c["key"], anki::key_of(c["text"], c["lang"], c["history"].get<bool>(), c["answer"]));
+  for (auto &c : anki_cases("fields.json")) {
+    auto n = anki::note_of(c["text"], c["kind"], c["meaning"], c["lang"], c["quick"].is_string() ? c["quick"].get<std::string>() : "",
+                           c["history"].get<bool>(), c["answer"]);
+    differs(bad, c, c["fields"], json{{"Front", n.front}, {"Back", n.back}, {"Example", n.example}, {"Key", n.key}});
+  }
+  for (auto &c : anki_cases("dedupe.json")) {
+    std::vector<anki::Found> notes;
+    for (auto &n : c["notes"]) notes.push_back({n["id"].get<long long>(), n["key"], n["audio"]});
+    auto p = anki::dedupe_plan(notes);
+    json audio = json::object();
+    for (auto &[id, a] : p.audio) audio[std::to_string(id)] = a;
+    differs(bad, c, json{{"audio", c["audio"]}, {"deleted", c["deleted"]}}, json{{"audio", audio}, {"deleted", p.deleted}});
+  }
+  std::string all;
+  for (auto &b : bad) all += b + "\n";
+  INFO(all);
+  CHECK(bad.empty());
+}
+
 TEST_CASE("anki: the notes — saved words and phrases into their decks, the history when on, a word's header apart") {
   auto d = fresh("lexipeek-anki-notes");
   {
@@ -294,6 +329,14 @@ TEST_CASE("anki: the notes — saved words and phrases into their decks, the his
         CHECK(x.key == anki::key_of("Lösung", "ru"));
       }
     CHECK(found == 1);
+    // A blank line: the newest quick AI answer's line (kept under the English name), as InkPeek's Back.
+    st.save("Wolke", "word", "ru", "");
+    st.put_answer("Wolke", "Russian", "quick", 3, "m", R"({"translation":"облако"})");
+    st.save("Regen", "word", "", " ");
+    st.put_answer("Regen", "Russian", "quick", 7, "m", R"({"article":"der","base":"Regen","meanings":["дождь"]})");
+    for (auto &x : anki::notes(st, s, d))
+      if (x.text == "Wolke") CHECK(x.back == "облако");
+      else if (x.text == "Regen") CHECK(x.back == "<div class=\"head\">der Regen</div>дождь");
   }
   wipe(d);
 }

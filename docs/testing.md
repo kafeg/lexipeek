@@ -4,7 +4,10 @@ The point of the tests: LexiPeek's logic and data formats stay identical to InkP
 cases from `tests/inkpeek` (the pinned submodule), never edited to make LexiPeek pass:
 - **sync** — `store_test`: InkPeek's `tests/sync` cases — `reader` (the merge, and the store's SQLite view of the folder),
   `identity` (keep / new, by the pure check and by the store at start), `writer` (the device's files byte for byte,
-  written by the store) —, compaction merging the same, two stores on one folder;
+  written by the store), `generated` (24 cases made by InkPeek's `tests/sync/generate.py`: the merge, the same read twice
+  and with every device compacted) —, compaction merging the same, two stores on one folder;
+- **Anki** — `anki_test`: InkPeek's `tests/anki` cases — Keys, a note's Front / Back / Example / Key from an entry, the
+  rule for duplicates (`note_of`, `dedupe_plan`);
 - **device cases** — `inkpeek_cases_test`: InkPeek's `cases.tsv` (headers, meanings, the text's language, separable verbs,
   translations) on real packs: 211 run on macOS and Linux, 200 on Windows (no translation model there);
 - **sentences** — `sentences_test`: InkPeek's sentence cases and Unicode's `SentenceBreakTest.txt`;
@@ -28,6 +31,8 @@ fixed sleep.
 The device cases assume a device's whole pack set: every job with dictionaries has all six.
 
 ## Local only
+- `LEXIPEEK_STRESS=1`: `store_test` makes a sync case of 50,000 ops (`python3`, InkPeek's `generate.py --stress`) and
+  merges it (~5 s).
 - Hy-MT2 tests (`LEXIPEEK_MODELS` with `llm/llm-hy-mt2-1.8b-q4.gguf`); without a model a test says "skipped".
 - The shells: `make snapshots`, `scripts/selection-test.sh`, `scripts/qt-snapshots.sh`, on Windows `LexiPeek.exe
   --self-test` / `--snapshots`, `scripts/win-e2e.ps1`, `scripts/win-read-e2e.ps1`.
