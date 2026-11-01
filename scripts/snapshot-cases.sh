@@ -22,6 +22,8 @@ und erzählte ihr alles, vom dunklen Morgen bis zum hellen Nachmittag."
 cases() {
   cat <<EOF
 word-hausern|lookup?text=Häusern
+word-article-noun|lookup?text=die Konjugation
+word-one-dictionary|lookup?text=einundvierzig
 word-haus-full|lookup?text=Haus&full=1
 word-entry-one|lookup?text=Haus&entry=1
 section-page-2|lookup?text=machen&full=1&section=rel&page=1
