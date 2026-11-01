@@ -192,7 +192,7 @@ TEST_CASE("study: a word in the answer language — the language you learn, its 
   CHECK(v.books.empty());
   CHECK(v.answers.empty());  // passive: no menu
   CHECK(v.subtitle.starts_with("ru → de"));
-  CHECK(texts(v) == V{"дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
+  CHECK(texts(v) == V{"InkPeek · ru → de дом (дома, pl. дома) — Haus, Gebäude (alt), Heim; Haus", "das Haus (Hauses, pl. Häuser) · among the 1,000 most frequent words",
                       "das Gebäude (Gebäudes, pl. Gebäude)", "Heim"});
   CHECK(v.rows[0].open == "entry");
   CHECK(v.rows[1].link == "Haus");
@@ -204,7 +204,7 @@ TEST_CASE("study: a word in the answer language — the language you learn, its 
   nav.open_entry(0);
   CHECK(card_view(c, nav.state).rows.front().text.find("Haus, Gebäude") != std::string::npos);
   nav.back();
-  CHECK(texts(card_view(c, nav.state)).front().starts_with("дом (дома, pl. дома) — Haus"));
+  CHECK(card_view(c, nav.state).rows.front().text.starts_with("дом (дома, pl. дома) — Haus"));
   // A word clicked opens its own card.
   auto step = nav.open("Haus");
   CHECK(step.text == "Haus");

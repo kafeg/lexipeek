@@ -82,7 +82,8 @@ TEST_CASE("views: a word opens on Dictionary with its header, the form, frequenc
   CHECK(v.tabs);
   REQUIRE(v.rows.size() == 1);
   CHECK(v.rows[0].style == Style::entry);
-  CHECK(v.rows[0].label.empty());  // one dictionary: no name
+  CHECK(v.rows[0].label == "InkPeek · de → ru");  // one dictionary names itself too (InkPeek's)
+  CHECK(v.rows[0].open == "entry");
   CHECK(v.rows[0].text == "дом");  // the header and the form are above it
   CHECK(v.rows[0].copy == "дом");
   CHECK(v.rows[0].html.empty());
@@ -507,6 +508,17 @@ TEST_CASE("views: a dictionary's line opens only its full entry, ← comes back 
   CHECK(v.pager.empty());
   n.back();
   CHECK(card_view(n.card(), n.state).rows.size() == 2);
+  // One dictionary: its line opens its full entry too, ← back to the line.
+  n.arrived(word());
+  n.open_entry(0);
+  v = card_view(n.card(), n.state);
+  REQUIRE(v.rows.size() == 1);
+  CHECK(v.rows[0].html == "<b>Haus</b> дом");
+  CHECK(v.back == "Dictionary");
+  n.back();
+  v = card_view(n.card(), n.state);
+  CHECK(v.rows[0].text == "дом");
+  CHECK(v.back.empty());
 }
 
 TEST_CASE("views: full entries show one dictionary at a time, ◀ ▶ turn") {

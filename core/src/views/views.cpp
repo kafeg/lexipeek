@@ -249,7 +249,8 @@ std::vector<CardRow> study_rows(const Card &c) {
       rows.push_back({Style::note, "", tr("card_no_entry"), ""});
       continue;
     }
-    CardRow e{Style::entry, "", c.entries[static_cast<size_t>(l.entry)].line, ""};
+    auto &en = c.entries[static_cast<size_t>(l.entry)];
+    CardRow e{Style::entry, en.dictionary, en.line, ""};
     e.copy = e.text, e.open = "entry", e.entry = l.entry;
     rows.push_back(e);
     for (auto &w : l.words) {
@@ -277,9 +278,9 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
       auto &e = c.entries[i];
       // The selected form names itself first (InkPeek's line): "Häusern: das Haus (…) — дом".
       auto form = text::lower(e.word) == text::lower(c.text) ? "" : c.text + ": ";
-      // The header and the form are above: the card's own headword shows only its meaning, and the dictionary's name
-      // only when there are more.
-      auto label = c.entries.size() > 1 ? e.dictionary : "";
+      // The header and the form are above: the card's own headword shows only its meaning; every line names its
+      // dictionary and opens its full entry (InkPeek's).
+      auto &label = e.dictionary;
       auto short_line = [&](const std::string &l) {
         auto dash = l.find(" — ");
         return dash != std::string::npos && text::lower(e.word) == text::lower(c.save_text) ? l.substr(dash + 5) : form + l;
@@ -287,7 +288,7 @@ std::vector<CardRow> dictionary_rows(const Card &c, const CardState &s) {
       if (!full) {
         CardRow r{Style::entry, label, short_line(e.line), ""};
         r.copy = r.text;
-        if (c.entries.size() > 1) r.open = "entry", r.entry = static_cast<int>(i);
+        r.open = "entry", r.entry = static_cast<int>(i);
         rows.push_back(r);
         continue;
       }
@@ -474,7 +475,7 @@ CardView card_view(const Card &c, const CardState &s) {
     v.prev = i > 0, v.next = i + 1 < n;
   }
   if (in_section) v.back = tr("card_back_entry");
-  else if (one && dict) v.back = tr("card_back_all");
+  else if (one && dict) v.back = tr(n > 1 ? "card_back_all" : "tab_dictionary");
   else if (!s.before.empty()) v.back = s.before;
   v.menu = v.tab == CardTab::translate && (!c.methods.empty() || c.ai.translate);
   if (v.menu) {

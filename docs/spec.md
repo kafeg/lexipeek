@@ -150,9 +150,9 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   entries' "1 / 3") on the left; copy (the translation, else the first dictionary line), the badge, ☆ and the pin on the right. A cut header (InkPeek's title) ends in "…"; a
   click shows it whole over the card at full width (a shadow, the card dimmed under it), selectable, at most half the
   height limit (then it scrolls); ▲ or a click on the card folds it. A word's header: up to two lines, under it one grey line of facts ("form: Häusern · among the 1,000 most frequent
-  words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's, the
-  dictionary's name only when there are more; a click on one dictionary's line opens its full entry alone (← comes back to all
-  of them). With full entries (Card → Article) the card shows one dictionary's at a time, ‹ › to the others in the
+  words · looked up 2 times"). The dictionary's line shows only the meaning when its headword is the header's; every
+  line names its dictionary, also when it is the only one (InkPeek's: "einundvierzig — forty-one" from de → en says so
+  when de → ru has no entry), and a click on it opens its full entry alone (← comes back to all of them). With full entries (Card → Article) the card shows one dictionary's at a time, ‹ › to the others in the
   card's order (InkPeek's ◀ ▶); there is no switch in the card. The badge is codes only ("de → ru", "ru", "fr → ru"); when the packs
   offer a choice it is a menu: the text's language (the packs' into the answer) and the answer language — a pick looks
   the text up again. A copy button next to the translation and the dictionary's line.
