@@ -37,6 +37,8 @@ class Regex {
 // Kotlin's lowercase() (Locale.ROOT), code point by code point.
 std::string lower(std::string_view s);
 std::string nfc(std::string_view s);
+// Each byte that is not valid UTF-8 as U+FFFD (a lexipeek:// link's %FF): JSON and PCRE2 take only valid UTF-8.
+std::string valid_utf8(std::string_view s);
 // InkPeek's normKey: NFC, soft hyphens out, trimmed, lower case.
 std::string norm_key(std::string_view s);
 // Whitespace as InkPeek's (Kotlin's isWhitespace): space separators (no-break ones too), line and paragraph separators,

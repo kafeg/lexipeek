@@ -181,6 +181,7 @@ TEST_CASE("core: an empty data dir gives a card without methods") {
   CHECK(c.text == "Das Haus");
   CHECK(core.lookup(Request{.text = "das\u00a0Haus"}).kind == Card::Kind::phrase);  // a web page's &nbsp;
   CHECK(core.lookup(Request{.text = "das\u00a0Haus"}).text == "das Haus");
+  CHECK(core.lookup(Request{.text = "Ha\xffus"}).text == "Ha\uFFFDus");  // a lexipeek:// link's %FF
   CHECK(c.answer == "ru");
   CHECK(!c.method);
   CHECK(!core.translate(c).ok());

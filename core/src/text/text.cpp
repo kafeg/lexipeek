@@ -165,6 +165,13 @@ std::int32_t java_hash(std::string_view s) {
   return static_cast<std::int32_t>(h);
 }
 
+std::string valid_utf8(std::string_view s) {
+  std::string out;
+  out.reserve(s.size());
+  each(s, [&](utf8proc_int32_t cp) { put(out, cp); });
+  return out;
+}
+
 std::string nfc(std::string_view s) {
   utf8proc_uint8_t *r = nullptr;
   auto n = utf8proc_map(reinterpret_cast<const utf8proc_uint8_t *>(s.data()), static_cast<utf8proc_ssize_t>(s.size()), &r,

@@ -108,7 +108,7 @@ Answer envelope(const json &j) {
 }
 
 Answer post(const AnkiSettings &s, const std::string &key, const Transport &t, const std::string &action, json params = json::object()) {
-  auto r = t(s.url, request(action, std::move(params), key).dump());
+  auto r = t(s.url, request(action, std::move(params), key).dump(-1, ' ', false, json::error_handler_t::replace));
   if (!r.error.empty() || r.status == 0) return {Code::not_running, {}, r.error};
   if (r.status == 401 || r.status == 403) return {Code::need_key, {}, std::to_string(r.status)};
   try {
@@ -607,7 +607,11 @@ void Sender::start() {
     std::unique_lock lock(i->mu);
     while (!i->stop) {
       lock.unlock();
-      i->round();
+      try {
+        i->round();
+      } catch (const std::exception &e) {  // a round's surprise must not take the app down with this thread
+        i->log(std::string("error: ") + e.what());
+      }
       lock.lock();
       if (!i->more) i->cv.wait_for(lock, i->every, [i] { return i->stop || i->now; });
     }
