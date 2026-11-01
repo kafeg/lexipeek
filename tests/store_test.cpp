@@ -223,6 +223,11 @@ TEST_CASE("lines: what is skipped, the canonical form, the month file") {
   CHECK(back->c == 3);
   CHECK(store::month_file(1793491199999) == "2026-10.jsonl");
   CHECK(store::month_file(1793491200000) == "2026-11.jsonl");
+  CHECK(store::month_file(0) == "1970-01.jsonl");
+  CHECK(store::month_file(951782400000) == "2000-02.jsonl");   // 2000-02-29
+  CHECK(store::month_file(951868799999) == "2000-02.jsonl");
+  CHECK(store::month_file(951868800000) == "2000-03.jsonl");
+  CHECK(store::month_file(99999999999999) == "5138-11.jsonl");  // past Windows' gmtime_s
   CHECK(store::format(store::DeviceFile{"mac-k3fw2xqa", "lexipeek", "MacBook Air", 1793145600000}) ==
         "{\"device\":\"mac-k3fw2xqa\",\"app\":\"lexipeek\",\"name\":\"MacBook Air\",\"created\":1793145600000}\n");
 }

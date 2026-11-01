@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
-#include <ctime>
 #include <fstream>
 #include <map>
 #include <nlohmann/json.hpp>
@@ -103,16 +102,19 @@ std::string format(const Line &l) {
   return dump(j);
 }
 
+// The UTC month by days since 1970 (H. Hinnant's civil_from_days): any year, the same on every OS (Windows' gmtime_s
+// stops at 3000).
 std::string month_file(std::int64_t ms) {
-  auto secs = static_cast<std::time_t>(ms >= 0 ? ms / 1000 : (ms - 999) / 1000);
-  std::tm tm{};
-#ifdef _WIN32
-  gmtime_s(&tm, &secs);
-#else
-  gmtime_r(&secs, &tm);
-#endif
+  auto days = (ms >= 0 ? ms : ms - 86'399'999) / 86'400'000 + 719'468;
+  auto era = (days >= 0 ? days : days - 146'096) / 146'097;
+  auto doe = days - era * 146'097;
+  auto yoe = (doe - doe / 1460 + doe / 36'524 - doe / 146'096) / 365;
+  auto doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  auto mp = (5 * doy + 2) / 153;
+  auto month = mp < 10 ? mp + 3 : mp - 9;
+  auto year = yoe + era * 400 + (month <= 2 ? 1 : 0);
   char buf[32];
-  std::snprintf(buf, sizeof buf, "%04d-%02d.jsonl", tm.tm_year + 1900, tm.tm_mon + 1);
+  std::snprintf(buf, sizeof buf, "%04lld-%02lld.jsonl", static_cast<long long>(year), static_cast<long long>(month));
   return buf;
 }
 
