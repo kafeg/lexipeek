@@ -3,8 +3,8 @@ import CxxStdlib
 import LexiPeekCore
 
 SelectionTest.respawnDisclaimed()
-// A snapshot run never touches the person's data: its own data dir, only the packs linked (scripts/snapshots.sh).
-if Snapshot.dir != nil, case let why = String(lexipeek.app.isolated(std.string(), std.string())), !why.isEmpty {
+// A snapshot or selection test run never touches the person's data: its own data dir, only the packs linked.
+if Snapshot.dir != nil || SelectionTest.dir != nil, case let why = String(lexipeek.app.isolated(std.string(), std.string())), !why.isEmpty {
     FileHandle.standardError.write(Data("refused: \(why)\n".utf8))
     exit(2)
 }

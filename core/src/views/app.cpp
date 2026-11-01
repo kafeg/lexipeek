@@ -36,8 +36,9 @@ std::string isolated(const std::string &data, const std::string &person) {
     auto name = text::utf8_of(it->path().filename());
     if (it->is_symlink(ec) && std::find(packs.begin(), packs.end(), name) == packs.end()) return name + " links outside the run's data dir";
   }
-  auto sync = load_settings(d).sync;
-  if (!sync.empty() && fs::exists(p / "settings.json") && load_settings(p).sync == sync) return "the sync folder is the person's own: " + sync;
+  auto s = load_settings(d);
+  if (!s.sync.empty() && fs::exists(p / "settings.json") && load_settings(p).sync == s.sync) return "the sync folder is the person's own: " + s.sync;
+  if (ai::provider(s.ai.provider) && !std::getenv("LEXIPEEK_AI_REPLIES")) return "AI is on without LEXIPEEK_AI_REPLIES: it would ask " + s.ai.provider;
   return "";
 }
 Device device(int ram_mb, const std::vector<std::string> &features, const std::string &arch) {

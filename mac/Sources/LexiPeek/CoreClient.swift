@@ -45,7 +45,7 @@ final class CoreClient {
         t.resume()
         syncTimer = t
         // The Anki binding sends on its own; never from a snapshot run (it would reach a real Anki).
-        if Snapshot.dir == nil { engine.anki_start(std.string(Keychain.key(Keychain.anki))) }
+        if Snapshot.dir == nil && SelectionTest.dir == nil { engine.anki_start(std.string(Keychain.key(Keychain.anki))) }
     }
 
     // A sync call off the main queue; done on it.

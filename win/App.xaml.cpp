@@ -58,13 +58,6 @@ int self_test(const std::string &file) {
 
 // The tray app on its data dir: a second launch's arguments come to it, this launch's lexipeek:// link opens.
 void run() {
-  // A snapshot run never touches the person's data: its own data dir, only the packs linked; why not in <dir>/failed.txt.
-  if (auto dir = opt("--snapshots"); !dir.empty())
-    if (auto why = app::isolated(data, ""); !why.empty()) {
-      std::filesystem::create_directories(path(dir));
-      std::ofstream(path(dir) / "failed.txt") << "refused: " << why << "\n";
-      app::leave(2);
-    }
   client = new win::CoreClient(data, app::device(os::ram_mb(), cpu_features(), cpu_arch()));
   if (auto dir = opt("--snapshots"); !dir.empty()) {
     shell = new win::Shell(*client, false);
@@ -104,8 +97,18 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   for (int i = 1; i < n; ++i) arguments.push_back(winrt::to_string(argv[i]));
   LocalFree(argv);
   data = opt("--data");
-  wchar_t env[MAX_PATH]{};
-  if (data.empty() && GetEnvironmentVariableW(L"LEXIPEEK_DATA", env, MAX_PATH)) data = winrt::to_string(env);
+  if (std::wstring env(GetEnvironmentVariableW(L"LEXIPEEK_DATA", nullptr, 0), L'\0'); data.empty() && !env.empty()) {
+    env.resize(GetEnvironmentVariableW(L"LEXIPEEK_DATA", env.data(), static_cast<DWORD>(env.size())));  // any length
+    data = winrt::to_string(env);
+  }
+  // A snapshot run never touches the person's data: its own data dir, only the packs linked; why not in <dir>/failed.txt.
+  // First: the app's language below may write the data dir's settings.
+  if (auto dir = opt("--snapshots"); !dir.empty())
+    if (auto why = app::isolated(data, ""); !why.empty()) {
+      std::filesystem::create_directories(path(dir));
+      std::ofstream(path(dir) / "failed.txt") << "refused: " << why << "\n";
+      app::leave(2);
+    }
   set_ui_platform("windows");
   if (auto r = os::cli_runner()) ai::set_cli_runner(r);
   app::set_language(data, os::ui_language());

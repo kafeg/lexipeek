@@ -30,6 +30,7 @@ try: s = json.load(open(sys.argv[1]))
 except (OSError, ValueError): s = {}
 s.pop("sync", None)  # never their sync folder or Anki
 s.pop("anki", None)
+s.pop("ai", None)  # nor their AI provider: the AI instance below has answers from files
 s["mt_english"] = True
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
 exec(sys.argv[4])

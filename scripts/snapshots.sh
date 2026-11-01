@@ -29,13 +29,14 @@ trap 'rm -rf "$TMP"; kill $ANKI_PID 2>/dev/null' EXIT
 . scripts/snapshot-cases.sh
 mkdir "$TMP/data"
 link_packs "$DATA" "$TMP/data"
-# The settings as they are, with Mozilla's English in between on (shown only by a fast translation through English),
+# The settings as they are (but AI), with Mozilla's English in between on (shown only by a fast translation through English),
 # the run's app language, a sync folder of its own (sync_fixture: other devices' logs; made again for each look) and Anki
 # on (never sending in a snapshot run): Haus and a phrase in its record, Notes' mark.
 python3 -c 'import hashlib, json, sys
 try: s = json.load(open(sys.argv[1]))
 except OSError: s = {}
 s["mt_english"] = True
+s.pop("ai", None)  # never their AI provider: a phrase opened on AI would ask it (the AI instance has fixtures)
 if sys.argv[3]: s["ui_lang"] = sys.argv[3]
 s["sync"] = sys.argv[4]
 s["anki"] = {"on": True, "url": "http://127.0.0.1:9"}
