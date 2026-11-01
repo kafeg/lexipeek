@@ -220,11 +220,10 @@ TEST_CASE("read aloud: a reading kept is played again without the model; off and
   auto d = temp("lexipeek-readings");
   Speaker sp(d);
   auto wait = [&](int t) {
-    for (int i = 0; i < 500; i++) {
+    until([&] {
       auto st = sp.state();
-      if (st.ticket == t && st.phase != Phase::making && st.phase != Phase::loading) return st;
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    }
+      return st.ticket == t && st.phase != Phase::making && st.phase != Phase::loading;
+    });
     return sp.state();
   };
   auto st = wait(sp.read({"Haus", "de"}));
@@ -273,7 +272,7 @@ TEST_CASE("read aloud: a saved note's reading is kept in its folder, never prune
   CHECK(!fs::exists(reading_file(d, v, r)));
   CHECK(fs::exists(saved));
   int t = sp.read(r);
-  for (int i = 0; i < 500 && sp.state().phase == Phase::making; i++) std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  until([&] { return sp.state().phase != Phase::making; });
   CHECK(sp.state().ticket == t);
   CHECK(sp.state().phase == Phase::ready);
   CHECK(!find_saved(d, v, r).empty());
@@ -368,7 +367,7 @@ TEST_CASE("read aloud: the card's session presses ▶, says why it cannot read, 
   auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
   auto s = app::CardSession::make(e);
   s.look("Haus", Source::input);
-  for (int i = 0; i < 500 && s.busy(); i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  until([&] { return s.poll(), !s.busy(); });
   s.poll();
   // No pack: the text's language is unknown, nothing to read.
   CHECK(s.view().read.text.empty());

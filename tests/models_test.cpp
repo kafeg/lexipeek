@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <functional>
 #include <thread>
+#include "temp.hpp"
 #include "lexipeek/mt.hpp"
 #include "lexipeek/session.hpp"
 
@@ -143,8 +144,7 @@ TEST_CASE("idle unload and the reload budget") {
     Translator tr(o);
     auto to = c.m == Method::fast ? "en" : "ru";
     REQUIRE(tr.load("de", to, c.m).empty());
-    for (int i = 0; i < 100 && !tr.held().empty(); i++) std::this_thread::sleep_for(10ms);
-    CHECK(tr.held().empty());
+    CHECK(until([&] { return tr.held().empty(); }));
     CHECK(ms([&] { tr.load("de", to, c.m); }) < c.budget_ms);
   }
 }

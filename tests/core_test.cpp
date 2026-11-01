@@ -1,6 +1,7 @@
 // Core tests that need no models.
 #include <doctest/doctest.h>
 #include "temp.hpp"
+#include <atomic>
 #include <fstream>
 #include <thread>
 #include "lexipeek/core.hpp"
@@ -136,10 +137,11 @@ TEST_CASE("model host: one model, idle unload") {
   host.with("b", 200ms, load, [](mt::Held &) {});
   CHECK(alive == 1);  // a freed before b
   CHECK(host.held() == "b");
-  host.with("b", 50ms, load, [](mt::Held &) { std::this_thread::sleep_for(100ms); });  // not freed while in use
-  CHECK(host.held() == "b");
-  for (int i = 0; i < 100 && !host.held().empty(); i++) std::this_thread::sleep_for(10ms);
-  CHECK(host.held().empty());
+  host.with("b", 50ms, load, [&](mt::Held &) {  // not freed while in use
+    std::this_thread::sleep_for(100ms);
+    CHECK(host.held() == "b");
+  });
+  CHECK(until([&] { return host.held().empty(); }));
   CHECK(alive == 0);
   CHECK_THROWS(host.with("c", 50ms, [&]() -> std::unique_ptr<mt::Held> { throw std::runtime_error("x"); }, [](mt::Held &) {}));
   CHECK(host.held().empty());
@@ -151,14 +153,20 @@ TEST_CASE("model host: one model, idle unload") {
   std::this_thread::sleep_for(50ms);
   CHECK(host.held() == "e");
   host.set_idle(30ms);  // the held model too, from its last use
-  for (int i = 0; i < 100 && !host.held().empty(); i++) std::this_thread::sleep_for(10ms);
-  CHECK(host.held().empty());
-  // held() does not wait for a use in progress.
-  std::thread t([&] { host.with("g", 1h, load, [](mt::Held &) { std::this_thread::sleep_for(300ms); }); });
-  std::this_thread::sleep_for(50ms);
+  CHECK(until([&] { return host.held().empty(); }));
+  // held() does not wait for a use in progress (the use ends only after it answered).
+  std::atomic<bool> in_use{false}, answered{false};
+  std::thread t([&] {
+    host.with("g", 1h, load, [&](mt::Held &) {
+      in_use = true;
+      until([&] { return answered.load(); }, 10);
+    });
+  });
+  REQUIRE(until([&] { return in_use.load(); }));
   auto at = mt::ModelHost::clock::now();
   CHECK(host.held() == "g");
-  CHECK(mt::ModelHost::clock::now() - at < 100ms);
+  CHECK(mt::ModelHost::clock::now() - at < 5s);
+  answered = true;
   t.join();
   host.release();
 }

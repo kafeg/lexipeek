@@ -232,10 +232,7 @@ TEST_CASE("app: a card session — a look-up arrives at a poll, ☆, a word open
     auto e = app::Engine::make(d.string(), app::device(8192, {"asimddp"}, "arm64"));
     auto s = app::CardSession::make(e);
     auto settle = [&] {
-      for (int i = 0; i < 500 && (s.busy() || s.looking()); i++) {
-        s.poll();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+      until([&] { return s.poll(), !s.busy() && !s.looking(); });
       s.poll();
     };
     s.look("Haus", Source::hotkey, "", "");

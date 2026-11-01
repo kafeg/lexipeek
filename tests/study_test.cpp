@@ -295,7 +295,7 @@ TEST_CASE("study: ☆ keeps the note's own reading in its folder; un-saving and 
   auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
   auto ru = app::CardSession::make(e), de = app::CardSession::make(e);
   auto settle = [](app::CardSession &s) {
-    for (int i = 0; i < 500 && s.busy(); i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    until([&] { return s.poll(), !s.busy(); });
     s.poll();
   };
   auto play = [&](app::CardSession &s, int row) {

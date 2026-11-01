@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 #include "temp.hpp"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <thread>
 #include <filesystem>
@@ -552,9 +553,12 @@ TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysi
   {
     std::ofstream(d / "settings.json") << R"({"ai": {"provider": "claude-cli", "prefetch": true, "translate": true}})";
   }
-  ai::set_cli_runner([](const ai::CliCall &c) {
+  // Analysis answers only after Context was asked: it is on its way the whole time, whatever the runner's speed.
+  std::atomic<bool> context_asked{false};
+  ai::set_cli_runner([&](const ai::CliCall &c) {
     bool analysis = c.prompt.find("grammar") != std::string::npos || c.stdin_arg.find("grammar") != std::string::npos;
-    std::this_thread::sleep_for(std::chrono::milliseconds(analysis ? 600 : 50));
+    if (analysis) until([&] { return context_asked.load(); }, 10);
+    else context_asked = true;
     nlohmann::json body = analysis ? nlohmann::json{{"grammar", "ANALYSIS"}, {"words", nlohmann::json::array()}}
                                    : nlohmann::json{{"explanation", "CONTEXT"}, {"examples", nlohmann::json::array()}};
     return ai::CliRan{0, nlohmann::json{{"type", "result"}, {"is_error", false}, {"result", body.dump()}}.dump(), ""};
@@ -562,16 +566,12 @@ TEST_CASE("ai: a slow Analysis and a quick Context, Context opened while Analysi
   auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
   auto s = app::CardSession::make(e);
   s.look("Haus", Source::input);
-  auto settle = [&](int ms) {
-    for (int i = 0; i < ms / 10; i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    s.poll();
-  };
-  settle(300);
-  REQUIRE(s.has_card());
+  REQUIRE(until([&] { return s.poll(), s.has_card(); }));
   s.select(CardTab::analysis);
-  settle(100);
+  s.poll();
+  CHECK(s.nav().state.analysis.asking);
   s.select(CardTab::context);
-  settle(1500);
+  CHECK(until([&] { return s.poll(), !s.busy(); }));
   auto st = s.nav().state;
   CHECK(!st.analysis.asking);
   CHECK(st.analysis.json.find("ANALYSIS") != std::string::npos);
