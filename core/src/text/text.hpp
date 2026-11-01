@@ -39,6 +39,11 @@ std::string lower(std::string_view s);
 std::string nfc(std::string_view s);
 // InkPeek's normKey: NFC, soft hyphens out, trimmed, lower case.
 std::string norm_key(std::string_view s);
+// Whitespace as InkPeek's (Kotlin's isWhitespace): space separators (no-break ones too), line and paragraph separators,
+// TAB LF VT FF CR, U+001C–U+001F; [s] without it at its edges; [s] empty or only that.
+bool is_space(std::int32_t c);
+std::string trim_space(std::string_view s);
+bool blank(std::string_view s);
 // Unicode spaces (no-break, thin, ideographic…) as plain spaces, line and paragraph separators as line breaks: web
 // pages' &nbsp; would join words.
 std::string plain_spaces(std::string_view s);

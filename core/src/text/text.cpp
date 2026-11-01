@@ -1,5 +1,7 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include "text/text.hpp"
+#include <algorithm>
+#include <vector>
 #include <pcre2.h>
 #include <ctime>
 #include <stdexcept>
@@ -123,9 +125,26 @@ std::string no_soft_hyphens(std::string_view s) {
 
 }  // namespace
 
+// Java's toLowerCase(Locale.ROOT), as InkPeek: per character, and the full mapping's İ → i̇ and a word's final Σ → ς.
 std::string lower(std::string_view s) {
+  std::vector<utf8proc_int32_t> cs;
+  each(s, [&](utf8proc_int32_t c) { cs.push_back(c); });
+  auto mark = [](utf8proc_int32_t c) {
+    auto k = utf8proc_category(c);
+    return k == UTF8PROC_CATEGORY_MN || k == UTF8PROC_CATEGORY_ME || k == UTF8PROC_CATEGORY_CF;
+  };
+  auto cased = [](utf8proc_int32_t c) { return utf8proc_tolower(c) != c || utf8proc_toupper(c) != c || utf8proc_category(c) == UTF8PROC_CATEGORY_LT; };
+  auto near = [&](size_t i, int step) {
+    for (auto j = static_cast<std::ptrdiff_t>(i) + step; j >= 0 && j < static_cast<std::ptrdiff_t>(cs.size()); j += step)
+      if (!mark(cs[static_cast<size_t>(j)])) return cased(cs[static_cast<size_t>(j)]);
+    return false;
+  };
   std::string out;
-  each(s, [&](utf8proc_int32_t c) { put(out, utf8proc_tolower(c)); });
+  for (size_t i = 0; i < cs.size(); i++) {
+    if (cs[i] == 0x130) put(out, 'i'), put(out, 0x307);
+    else if (cs[i] == 0x3A3 && near(i, -1) && !near(i, 1)) put(out, 0x3C2);
+    else put(out, utf8proc_tolower(cs[i]));
+  }
   return out;
 }
 
@@ -156,10 +175,27 @@ std::string nfc(std::string_view s) {
   return out;
 }
 
-std::string norm_key(std::string_view s) {
-  static const Regex edge("^\\s+|\\s+$");
-  return lower(edge.replace(no_soft_hyphens(nfc(s)), ""));
+std::string norm_key(std::string_view s) { return lower(trim_space(no_soft_hyphens(nfc(s)))); }
+
+bool is_space(std::int32_t c) {
+  auto cat = utf8proc_category(c);
+  return cat == UTF8PROC_CATEGORY_ZS || cat == UTF8PROC_CATEGORY_ZL || cat == UTF8PROC_CATEGORY_ZP || (c >= 9 && c <= 13) ||
+         (c >= 0x1c && c <= 0x1f);
 }
+
+std::string trim_space(std::string_view s) {
+  size_t from = s.size(), to = 0;
+  for (size_t at = 0; at < s.size();) {
+    utf8proc_int32_t c;
+    auto n = utf8proc_iterate(reinterpret_cast<const utf8proc_uint8_t *>(s.data() + at), static_cast<utf8proc_ssize_t>(s.size() - at), &c);
+    if (n <= 0) n = 1, c = 0xFFFD;
+    if (!is_space(c)) from = std::min(from, at), to = at + static_cast<size_t>(n);
+    at += static_cast<size_t>(n);
+  }
+  return from < to ? std::string(s.substr(from, to - from)) : std::string();
+}
+
+bool blank(std::string_view s) { return trim_space(s).empty(); }
 
 std::string plain_spaces(std::string_view s) {
   std::string out;
