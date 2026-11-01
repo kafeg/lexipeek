@@ -5,10 +5,11 @@ on:
   pull_request:
   workflow_dispatch:
 
-# A newer push to the same branch stops the run before it (a run by hand is its own group: it has the Qt job).
+# A newer push stops the run before it, except on main: a run there finishes (Windows takes ~30 min), the newest push
+# waits for it. A run by hand is its own group: it has the Qt job.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   core:
