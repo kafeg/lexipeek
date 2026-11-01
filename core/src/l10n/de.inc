@@ -336,7 +336,7 @@
 {"lic_opus", "Modelle der direkten Übersetzung · CC BY 4.0"},
 {"lic_hymt", "KI-Übersetzungsmodell · Apache-2.0"},
 {"lic_langid", "Spracherkennungsmodell · CC BY-SA 3.0"},
-{"lic_third", "Die Engines und Bibliotheken in der App (Qt unter Windows: LGPLv3) und ihre Lizenzen"},
+{"lic_third", "Die Engines und Bibliotheken in der App und ihre Lizenzen"},
 {"packs_installed.one", "{n} Sprachpaar installiert"},
 {"packs_installed.other", "{n} Sprachpaare installiert"},
 {"packs_none", "Keine Sprachpaare installiert"},

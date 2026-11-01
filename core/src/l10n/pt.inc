@@ -336,7 +336,7 @@
 {"lic_opus", "Modelos de tradução direta · CC BY 4.0"},
 {"lic_hymt", "Modelo de tradução com IA · Apache-2.0"},
 {"lic_langid", "Modelo de deteção de idioma · CC BY-SA 3.0"},
-{"lic_third", "Os motores e bibliotecas da app (Qt no Windows: LGPLv3) e as suas licenças"},
+{"lic_third", "Os motores e bibliotecas da app e as suas licenças"},
 {"packs_installed.one", "{n} par de idiomas instalado"},
 {"packs_installed.other", "{n} pares de idiomas instalados"},
 {"packs_none", "Nenhum par de idiomas instalado"},
