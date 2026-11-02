@@ -1,7 +1,14 @@
 # TODO
 
 Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes,
-sync with InkPeek and Anki (Settings → Sync, with Export / Import). Now: M6 Windows (Qt). Milestones: `docs/spec.md` → Milestones.
+sync with InkPeek and Anki (Settings → Sync, with Export / Import); Windows (M8). Now: M10 Linux. Milestones: `docs/spec.md` → Milestones.
+
+## M10 Linux (spec M10)
+1. The OS parts (`platform/linux/`): hotkeys (X11, the portal), PRIMARY, one instance, autostart, keys, `lexipeek://`.
+2. The Qt shell on Linux: texts `@linux`, the tray, `--lookup-selection` / `--input`, no icon at the selection.
+3. `scripts/build-linux.sh` → `LexiPeek-Linux-x64.tar.gz`; release.yml's `linux-x64`, release.sh checks it; notices.
+4. Docs (README, CHANGELOG, help); a run on a Linux x64 desktop (X11, Wayland).
+- Open: Read aloud (qwentts builds on Linux; the Qt shell has no player); an AppImage; the icon at the selection (XInput2).
 
 ## M8 Native Windows shell (`win/`, WinUI 3), by phases
 Each phase builds, runs on Windows (`--self-test`, `--snapshots`, `scripts/win-e2e.ps1`) and is committed.

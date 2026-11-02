@@ -25,7 +25,7 @@ Service) instead of Android's intents, without what is e-ink only (black and whi
   pinned Hugging Face file, by sha256).
 
 ## Not yet
-Linux, sync — see Milestones. No browser extension: the hotkey and the icon at the selection work in browsers too.
+See Milestones. No browser extension: the hotkey and the icon at the selection work in browsers too.
 
 ## Principles
 - The core works offline and without AI. AI is an optional, marked tab, asked only on the person's action.
@@ -43,6 +43,7 @@ Settings…", and the lookup hotkey's card (to type in) has a line with the same
 goes the moment it is on. The same ⚠ (menu bar and tray, both OSes) when no language pack is installed ("Set Up a
 Language Pack…" first in the menu, a banner in the windows, the card's "Open Settings → Packs") and when another app
 has taken a hotkey ("Change the Hotkeys…").
+Windows 10 1809+ (x64): M8. Linux x64 (glibc 2.35+, X11 or Wayland with XWayland): M10.
 
 ## Stack
 One C++ core with all the logic; a thin native shell per OS that only draws what the core gives it.
@@ -56,7 +57,7 @@ One C++ core with all the logic; a thin native shell per OS that only draws what
 | `win/` | (M8) Windows: WinUI 3 (Windows App SDK, C++/WinRT, unpackaged, self-contained) — the system's own controls, the core called directly; platform parts: `RegisterHotKey`, UI Automation, Credential Manager |
 | `qt/` | (M6) Linux (and Windows until M8): Qt 6 Widgets in C++ — the core is called directly; the desktop's theme. Platform parts per OS (Linux: X11 / portals) |
 | checks | warnings as errors, clang-tidy, ASan + UBSan test runs |
-| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account) and the Windows app (its folder zipped) on GitHub Releases |
+| CI | GitHub-hosted runners: **the core, the CLI and its tests on macOS, Windows and Linux from M0**; the mac app on macOS; a `v*` tag: the `.app` (ad-hoc signed; Developer ID and notarisation once there is an account), the Windows app (its folder zipped) and the Linux folder (`.tar.gz`, M10) on GitHub Releases |
 
 Why native shells: the look must be the system's on every OS; on macOS almost everything is native anyway (panel,
 material, Service, Accessibility), and SwiftUI settings look as in panerail. The rule (as panerail's `PaneRailKit`):
@@ -427,10 +428,29 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   reads (5.4 GB with the load of the first reading). The first reading after a build ~3 s more (Metal's pipelines).
   Windows 10 VM, 4 cores, no GPU (the CPU, qwen.dll's Vulkan finds no driver): load 2.3 s from the file cache; a word
   8.5–10 s, a sentence 15 s; peak 5.7 GB.
+- **M10 Linux** (x64; the owner: "publish for Linux too"). The Qt shell (`qt/`) with Linux's OS parts
+  (`platform/linux/`); small on purpose. It runs as an X11 client, on Wayland through XWayland: only X11 lets a window
+  stand at the cursor. **Hotkeys** Ctrl+Alt+D and Ctrl+Alt+A (Super for ⌘): X11 by `XGrabKey`; Wayland by the XDG
+  GlobalShortcuts portal where the desktop has one (KDE Plasma, GNOME 48+: the desktop asks once to bind them), else a
+  shortcut of the desktop runs `lexipeek --lookup-selection` (or `--input`), which hands it to the running LexiPeek;
+  Settings → Hotkeys and Help say so, with the program's path. The card's Esc and Ctrl+P while it is open: X11 only.
+  **Selection:** the PRIMARY selection only (X11's, which XWayland shares with Wayland apps; else `wl-paste --primary`
+  when installed); the clipboard is never touched. Its place is unknown: the card opens at the pointer. **One instance:**
+  a socket in `$XDG_RUNTIME_DIR` (the same user only). **Tray:** Qt's tray icon (StatusNotifierItem over D-Bus, else
+  XEmbed); GNOME shows it with the AppIndicator extension (Ubuntu's default); with no tray a second launch opens the
+  window. **Open at login:** `~/.config/autostart/lexipeek.desktop`. **Keys** (AI, AnkiConnect): the Secret Service
+  through libsecret, loaded at run time; without it a file only the user can read (`$XDG_CONFIG_HOME/LexiPeek/keys.json`,
+  0600), and Settings says so. **Data:** `$XDG_DATA_HOME/LexiPeek`. **`lexipeek://`** and the app menu entry:
+  `~/.local/share/applications/lexipeek.desktop` (`MimeType=x-scheme-handler/lexipeek`), written at each launch with
+  where the program is. **Not in it:** Read aloud (no player in the Qt shell), the icon at the selection, the
+  selection's place, a GPU for the AI model. **Release:** `LexiPeek-Linux-x64.tar.gz`, the folder `LexiPeek/`:
+  `lexipeek` (Qt linked in, built on Ubuntu 22.04), `lib/` (what desktops may lack), `lexipeek.png`, the notices.
+  Nothing to install: unpack and run; `lexipeek --uninstall` removes the menu entry, autostart and the link handler
+  (packs and notes stay). Texts: a key's `@linux` text, else its `@win` one (Ctrl, "this computer").
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
-  sync in InkPeek (LexiPeek has it) · Linux (the Qt shell; an AppImage first).
+  sync in InkPeek (LexiPeek has it) · Linux: Read aloud, an AppImage or Flatpak.
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0); the
