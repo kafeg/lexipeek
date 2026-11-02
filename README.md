@@ -66,8 +66,8 @@ changed in Settings → General → Hotkeys.
   own voice from a short recording. Turn it on in Settings → Read aloud: the voice model downloads once (2.4 GB).
 - **The language you learn.** Text already in your own language opens in the one you learn: its dictionary line, each
   translated word with its grammar, and the translation (Settings → Languages → Translation).
-- **Sync with InkPeek** through any folder you keep in sync: Syncthing, Synology Drive, Nextcloud, Dropbox, OneDrive,
-  iCloud Drive. Saved words and phrases, History and AI answers, on any number of devices; each writes only its own
+- **Sync with InkPeek** through any folder you keep in sync: Syncthing, Nextcloud, or the desktop app of your NAS
+  or cloud drive. Saved words and phrases, History and AI answers, on any number of devices; each writes only its own
   files. Settings → Sync, with backup and restore.
 - **Anki** through its add-on AnkiConnect: saved words and phrases go to their decks by themselves while Anki runs, each
   note with its audio (Settings → Sync → Anki).
