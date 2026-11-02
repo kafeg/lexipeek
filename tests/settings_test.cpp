@@ -109,7 +109,8 @@ TEST_CASE("settings: Sync → Sync — what syncs, the folder, its state, this d
   CHECK(row(p, "sync_device")->value == "mac-k3fw2xqa");
   CHECK(row(p, "sync_device")->about == "MacBook Air");
   CHECK(p.rows.back().about.find("Syncthing works best") != std::string::npos);
-  CHECK(p.rows.back().about.find("Synology Drive") != std::string::npos);
+  CHECK(p.rows.back().about.find("NAS or cloud drive") != std::string::npos);
+  CHECK(p.rows.back().about.find("Synology") == std::string::npos);
   CHECK(row(p, "backup_export")->value == "Export…");
   CHECK(row(p, "backup_import")->value == "Import…");
   st.backup_said = "Added: 3";
