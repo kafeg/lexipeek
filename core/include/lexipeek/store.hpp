@@ -86,6 +86,8 @@ class Store {
   // Re-reads the logs (the sync folder: the two-installs check, this device's lines written there, the other devices'
   // kept in <data>/sync-cache), rebuilds the view. Not forced: only when the folder changed. → whether the view changed.
   bool sync(bool force = true);
+  // Grows with every change of the view (a write, a sync that read the logs again): a reader knows when to read it again.
+  std::uint64_t changes() const;
   std::string merge() { return sync(true), error(); }
   // Another sync folder ("" = none), read at once.
   std::string set_folder(const std::filesystem::path &folder);

@@ -9,6 +9,7 @@
 #include <set>
 #include <fstream>
 #include <map>
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -199,6 +200,7 @@ struct Store::Impl {
   std::map<std::string, std::vector<Line>> lines;  // per text, in order
   bool reading = false;                             // a sync reads the logs without m: own lines written meanwhile kept
   std::vector<Line> written;
+  std::atomic<std::uint64_t> changes{0};
   mutable std::mutex m;
   // One sync at a time; taken before m. The folder's files are read and written without m: a share that stalls keeps
   // no look-up, ☆ or Notes waiting.
@@ -320,6 +322,7 @@ struct Store::Impl {
     }
     written.clear();
     lines = std::move(v.lines);
+    changes++;
     for (auto &[text, ls] : lines)
       for (auto &l : ls) clock.see(l.t);
     if (!exec("BEGIN") || !exec(SCHEMA)) return exec("ROLLBACK"), db_error();
@@ -529,6 +532,7 @@ struct Store::Impl {
       lines[l.text].push_back(l);
       if (reading) written.push_back(l);
     }
+    changes++;
     push();
     if (!exec("BEGIN")) return db_error();
     for (auto &l : ls)
@@ -563,6 +567,8 @@ std::string Store::device() const {
   std::lock_guard g(impl_->m);
   return impl_->self.device;
 }
+
+std::uint64_t Store::changes() const { return impl_->changes; }
 
 bool Store::sync(bool force) {
   std::lock_guard s(impl_->sync_m);

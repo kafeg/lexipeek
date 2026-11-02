@@ -406,6 +406,10 @@ struct Sender::Impl {
   Status st;
   std::chrono::steady_clock::time_point retry{}, probed{}, deduped{};
   bool now = false, stop = false, more = false, unsynced = false;
+  // The store's notes, made again only when the store or the settings changed (or on "Send now").
+  std::vector<Note> listed;
+  std::uint64_t listed_at = 0;
+  bool stale = true;
   std::thread worker;
 
   bool voice() const { return reader.ready && reader.ready(); }
@@ -478,8 +482,16 @@ struct Sender::Impl {
       st.check = c, st.probed = true, probed = std::chrono::steady_clock::now() + std::chrono::seconds(30);
       g.unlock();
     }
+    g.lock();
+    bool again = std::exchange(stale, false) || forced;
+    g.unlock();
+    if (auto at = store.changes(); again || at != listed_at) {
+      auto fresh = notes(store, set, data);
+      g.lock();
+      listed = std::move(fresh), listed_at = at;
+      g.unlock();
+    }
     std::vector<Note> missing;
-    auto listed = notes(store, set, data);
     // Duplicates by Key (another app sent before AnkiWeb synced): every 10 min while Anki answers, and on "Send now".
     if (std::chrono::steady_clock::now() >= deduped && st.check.code == Code::ok) {
       deduped = std::chrono::steady_clock::now() + std::chrono::minutes(10);
@@ -571,6 +583,7 @@ void Sender::configure(const AnkiSettings &s) {
     std::lock_guard g(impl_->mu);
     bool again = s.url != impl_->s.url || (s.on && !impl_->s.on);
     impl_->s = s;
+    impl_->stale = true;
     if (again) impl_->retry = {}, impl_->probed = {}, impl_->failed.clear();
   }
   impl_->cv.notify_all();
