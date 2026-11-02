@@ -36,7 +36,7 @@ Privacy & Security → Open Anyway). LexiPeek lives in
 the menu bar. It reads the selected text through Accessibility (never the clipboard): allow it in System Settings →
 Privacy & Security → Accessibility — the first run shows where.
 
-**Windows** 10 or 11, 64-bit. Download `LexiPeek-Windows.zip` from [Releases](https://github.com/kafeg/lexipeek/releases),
+**Windows** 10 (version 1903 or later) or 11, 64-bit. Download `LexiPeek-Windows.zip` from [Releases](https://github.com/kafeg/lexipeek/releases),
 unzip it and run `LexiPeek.exe` in the `LexiPeek` folder: it offers to install itself for you (no administrator rights;
 the Start menu; removed in Settings → Apps) or to just run from there. Until it is signed, Windows may warn that it is
 from an unknown publisher: "More info" → "Run anyway". LexiPeek lives in the tray (^ on the taskbar).

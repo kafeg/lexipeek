@@ -21,6 +21,7 @@ bool set_secret(const std::string &, const std::string &) { return false; }
 bool hand_over(const std::vector<std::string> &) { return false; }
 void receive(std::function<void(const std::vector<std::string> &)>) {}
 void quit_running() {}
+bool too_old() { return false; }
 bool installed_here() { return true; }
 std::string install(const std::string &, bool) { return ""; }
 std::string installed_program() { return ""; }

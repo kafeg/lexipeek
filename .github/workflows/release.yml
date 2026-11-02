@@ -154,5 +154,5 @@ jobs:
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
           MAC=$'This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.'
           [ "$SIGNED" = true ] && MAC='Signed and notarised.'
-          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
+          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10 1903+/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
           gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

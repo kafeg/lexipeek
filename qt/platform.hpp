@@ -15,6 +15,7 @@ using os::front_is_mine;
 using os::Input;
 using os::install;
 using os::installed_here;
+using os::too_old;
 using os::installed_program;
 using os::last_error;
 using os::login;

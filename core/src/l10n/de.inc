@@ -57,6 +57,7 @@
 {"card_no_lang", "Die Sprache dieses Textes ließ sich nicht erkennen."},
 {"card_no_packs", "Noch kein Sprachpaket installiert: Wörterbucheinträge und Offline-Übersetzung kommen mit einem."},
 {"packs_open", "Einstellungen → Pakete öffnen"},
+{"win_too_old", "LexiPeek benötigt Windows 10 Version 1903 oder neuer."},
 {"inst_q_t", "LexiPeek installieren?"},
 {"inst_q_d", "Nur für dich: im Startmenü, entfernbar unter Einstellungen → Apps. Oder diese Kopie einfach starten."},
 {"inst_btn", "Installieren"},

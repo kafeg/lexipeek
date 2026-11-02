@@ -84,6 +84,10 @@ int run(int argc, char **argv) {
   // The system's UI language ("ru" of "ru-RU"), not its formats' locale.
   auto ui = QLocale::system().uiLanguages();
   app::set_language(data, (ui.isEmpty() ? QLocale::system().name() : ui.first()).left(2).toStdString());
+  if (platform::too_old()) {
+    QMessageBox::critical(nullptr, "LexiPeek", t("win_too_old"));
+    return 1;
+  }
   // Settings → Apps → LexiPeek → Uninstall (--yes: without asking): a running copy quits first.
   if (args.contains("--uninstall")) {
     if (args.contains("--yes") || ui::ask(nullptr, t("uninst_q", app::data_dir()), {}, t("delete"), t("cancel"))) {

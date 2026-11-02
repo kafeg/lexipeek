@@ -58,6 +58,7 @@
 {"card_no_lang", "Nie udało się rozpoznać języka tego tekstu."},
 {"card_no_packs", "Nie zainstalowano jeszcze pakietu językowego: hasła słownika i tłumaczenie offline przychodzą razem z nim."},
 {"packs_open", "Otwórz Ustawienia → Pakiety"},
+{"win_too_old", "LexiPeek wymaga systemu Windows 10 w wersji 1903 lub nowszej."},
 {"inst_q_t", "Zainstalować LexiPeek?"},
 {"inst_q_d", "Tylko dla ciebie: w menu Start, usuwane w Ustawienia → Aplikacje. Albo po prostu uruchom tę kopię."},
 {"inst_btn", "Zainstaluj"},

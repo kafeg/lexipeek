@@ -112,6 +112,10 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   set_ui_platform("windows");
   if (auto r = os::cli_runner()) ai::set_cli_runner(r);
   app::set_language(data, os::ui_language());
+  if (os::too_old()) {
+    MessageBoxW(nullptr, winrt::to_hstring(app::text("win_too_old")).c_str(), L"LexiPeek", MB_ICONERROR);
+    app::leave(1);
+  }
   // Settings → Apps → LexiPeek → Uninstall (--yes: without asking): a running copy quits first.
   if (has("--uninstall")) {
     if (!has("--yes")) asking = Ask::uninstall;

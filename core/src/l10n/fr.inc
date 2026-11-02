@@ -57,6 +57,7 @@
 {"card_no_lang", "Impossible de reconnaître la langue de ce texte."},
 {"card_no_packs", "Aucun pack de langue installé : les entrées du dictionnaire et la traduction hors ligne arrivent avec lui."},
 {"packs_open", "Ouvrir Réglages → Packs"},
+{"win_too_old", "LexiPeek nécessite Windows 10 version 1903 ou ultérieure."},
 {"inst_q_t", "Installer LexiPeek ?"},
 {"inst_q_d", "Pour vous seul : dans le menu Démarrer, supprimable dans Paramètres → Applications. Ou lancez simplement cette copie."},
 {"inst_btn", "Installer"},

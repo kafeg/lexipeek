@@ -58,6 +58,10 @@ bool hand_over(const std::vector<std::string> &args);
 void receive(std::function<void(const std::vector<std::string> &)> got);
 void quit_running();  // a running one quits (an install or uninstall replaces it); waits for it a few seconds
 
+// Windows older than 10 version 1903: the UTF-8 code page the manifest asks for is not there (non-ASCII paths would
+// break); the shells refuse to start.
+bool too_old();
+
 // Per-user install: %LOCALAPPDATA%\Programs\LexiPeek, a Start menu shortcut, an entry in Settings → Apps.
 bool installed_here();  // this copy runs from there (or the OS has no install: true)
 // Copies this program there (folder: the whole folder it runs from, else the exe alone); "" or the error.

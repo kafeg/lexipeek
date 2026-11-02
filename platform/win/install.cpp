@@ -96,6 +96,8 @@ void receive(std::function<void(const std::vector<std::string> &)> got) {
   if (own_integrity() > SECURITY_MANDATORY_MEDIUM_RID) ChangeWindowMessageFilterEx(hidden(), WM_COPYDATA, MSGFLT_ALLOW, nullptr);
 }
 
+bool too_old() { return GetACP() != CP_UTF8; }
+
 bool installed_here() {
   std::error_code ec;
   return fs::exists(install_dir(), ec) && fs::equivalent(program_dir(), install_dir(), ec);
