@@ -18,7 +18,7 @@ cp qt/icons/icon_256.png "$out/lexipeek.png"
 cp LICENSE THIRD_PARTY_NOTICES.txt "$out/"
 # Qt's X11 platform needs xcb's small helper libraries; desktops without a Qt app often lack them (Ubuntu 22.04:
 # xcb-cursor).
-for l in libxcb-cursor.so.0 libxcb-icccm.so.4 libxcb-image.so.0 libxcb-keysyms.so.1 libxcb-render-util.so.0 libxcb-util.so.1; do
+for l in libxcb-cursor.so.0 libxcb-icccm.so.4 libxcb-image.so.0 libxcb-keysyms.so.1 libxcb-render-util.so.0 libxcb-util.so.1 libxcb-xinput.so.0; do
   p=$(ldd "$out/lexipeek" | awk -v l="$l" '$1 == l { print $3 }')
   [ -n "$p" ] || continue
   cp -L "$p" "$out/lib/"
