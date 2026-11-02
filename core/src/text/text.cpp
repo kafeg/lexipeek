@@ -26,9 +26,10 @@ Regex::Regex(std::string_view pattern, bool ignore_case, bool dotall) : impl_(st
 
 Regex::~Regex() { pcre2_code_free(impl_->code); }
 
-bool Regex::find(std::string_view s, Match &m, size_t from) const {
-  auto *md = pcre2_match_data_create_from_pattern(impl_->code, nullptr);
-  int n = pcre2_match(impl_->code, reinterpret_cast<PCRE2_SPTR>(s.data()), s.size(), from, 0, md, nullptr);
+namespace {
+bool match(pcre2_code *code, std::string_view s, Regex::Match &m, size_t from, uint32_t options) {
+  auto *md = pcre2_match_data_create_from_pattern(code, nullptr);
+  int n = pcre2_match(code, reinterpret_cast<PCRE2_SPTR>(s.data()), s.size(), from, options, md, nullptr);
   bool ok = n > 0;
   if (ok) {
     auto *ov = pcre2_get_ovector_pointer(md);
@@ -41,11 +42,15 @@ bool Regex::find(std::string_view s, Match &m, size_t from) const {
   pcre2_match_data_free(md);
   return ok;
 }
+}  // namespace
+
+bool Regex::find(std::string_view s, Match &m, size_t from) const { return match(impl_->code, s, m, from, 0); }
 
 std::vector<Regex::Match> Regex::all(std::string_view s) const {
   std::vector<Match> out;
   Match m;
-  for (size_t from = 0; from <= s.size() && find(s, m, from);) {
+  // The text's UTF-8 checked by the first match only: checked again at every match, a long text took quadratic time.
+  for (size_t from = 0; from <= s.size() && match(impl_->code, s, m, from, out.empty() ? 0 : PCRE2_NO_UTF_CHECK);) {
     out.push_back(m);
     if (m.end == m.begin) {
       // An empty match: step over one UTF-8 character.

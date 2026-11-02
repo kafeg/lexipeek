@@ -49,6 +49,9 @@ TEST_CASE("separable verbs written apart") {
   CHECK(f[0].form == "mache");
   CHECK(f[1].verb == "anfangen");
   CHECK(dict::find_separable("Ich gehe zu Hause.", bases, particle).empty());
+  // A long passage: only the clauses within the first words, a clause cut by the limit left out.
+  CHECK(dict::find_separable("Ich mache die Tür zu, und er fängt morgen an.", bases, particle, 5).size() == 1);
+  CHECK(dict::find_separable("Ich mache die Tür zu, und er fängt morgen an.", bases, particle, 4).empty());
 }
 
 TEST_CASE("a pack article's senses and examples") {

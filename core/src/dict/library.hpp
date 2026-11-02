@@ -44,9 +44,10 @@ struct SeparableFind {
   std::string form, particle, verb;
 };
 
-// Separable verbs written apart (Separable.kt): bases = the lemmas of a form, particle = a verb's particle or "".
+// Separable verbs written apart (Separable.kt): bases = the lemmas of a form, particle = a verb's particle or "". Only the
+// clauses within the first [limit] words: a long passage's look-up stays quick.
 std::vector<SeparableFind> find_separable(const std::string &text, const std::function<std::vector<std::string>(const std::string &)> &bases,
-                                          const std::function<std::string(const std::string &)> &particle);
+                                          const std::function<std::string(const std::string &)> &particle, size_t limit = 1000);
 
 // The own dictionaries' roots (dicts-own, folders read in place), which are off, the order of all (ids).
 struct Own {

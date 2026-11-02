@@ -63,15 +63,22 @@ size_t gloss_words(const std::string &txt) {
 }
 
 std::vector<SeparableFind> find_separable(const std::string &text, const std::function<std::vector<std::string>(const std::string &)> &bases,
-                                          const std::function<std::string(const std::string &)> &particle) {
+                                          const std::function<std::string(const std::string &)> &particle, size_t limit) {
   static const text::Regex token("\\p{L}+|[^\\p{L}\\p{N}\\s]"), letters("^\\p{L}+$");
   static const std::set<std::string> conj{"und", "oder", "aber", "sondern", "denn"};
   std::vector<std::vector<std::string>> clauses(1);
+  size_t words = 0;
   for (auto &m : token.all(text)) {
-    if (letters.matches(m.groups[0]))
+    if (letters.matches(m.groups[0])) {
+      // Past the limit: the clause it cuts is left out (its last word read is not its end).
+      if (++words > limit) {
+        clauses.back().clear();
+        break;
+      }
       clauses.back().push_back(m.groups[0]);
-    else if (!clauses.back().empty())
+    } else if (!clauses.back().empty()) {
       clauses.emplace_back();
+    }
   }
   std::vector<SeparableFind> out;
   auto add = [&](SeparableFind f) {
@@ -275,19 +282,28 @@ std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string 
 std::vector<std::pair<SeparableFind, std::optional<Head>>> Library::separable(const std::string &txt, const std::string &answer) {
   auto dicts = all();
   std::erase_if(dicts, [](StarDict *d) { return !d->pack(); });
+  // Each form and verb looked up once: a long passage repeats them in clause after clause.
+  std::map<std::string, std::vector<std::string>> bases;
+  std::map<std::string, std::string> particles;
   auto finds = find_separable(
       txt,
       [&](const std::string &f) {
-        std::vector<std::string> out;
-        for (auto *d : dicts)
-          for (auto &h : d->lookup(f))
-            if (std::find(out.begin(), out.end(), h.word) == out.end()) out.push_back(h.word);
-        return out;
+        auto [it, fresh] = bases.try_emplace(f);
+        if (fresh)
+          for (auto *d : dicts)
+            for (auto &h : d->lookup(f))
+              if (std::find(it->second.begin(), it->second.end(), h.word) == it->second.end()) it->second.push_back(h.word);
+        return it->second;
       },
-      [&](const std::string &v) -> std::string {
-        for (auto *d : dicts)
-          if (auto r = d->related(v); r && !r->sep.empty()) return r->sep;
-        return "";
+      [&](const std::string &v) {
+        auto [it, fresh] = particles.try_emplace(v);
+        if (fresh)
+          for (auto *d : dicts)
+            if (auto r = d->related(v); r && !r->sep.empty()) {
+              it->second = r->sep;
+              break;
+            }
+        return it->second;
       });
   std::vector<std::pair<SeparableFind, std::optional<Head>>> out;
   for (auto &f : finds) {
