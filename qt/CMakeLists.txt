@@ -28,6 +28,7 @@ endif()
 # may lack beside it in lib/ (scripts/build-linux.sh).
 if(LINUX)
   qt_import_plugins(lexipeek-qt INCLUDE Qt6::QXcbIntegrationPlugin)
-  set_target_properties(lexipeek-qt PROPERTIES OUTPUT_NAME lexipeek BUILD_RPATH "$ORIGIN/lib" INSTALL_RPATH "$ORIGIN/lib")
-  target_link_options(lexipeek-qt PRIVATE -static-libstdc++ -static-libgcc)
+  # Only $ORIGIN/lib (not the build tree's), as DT_RPATH: it also finds what lib/'s own libraries need (RUNPATH would not).
+  set_target_properties(lexipeek-qt PROPERTIES OUTPUT_NAME lexipeek BUILD_WITH_INSTALL_RPATH ON INSTALL_RPATH "$ORIGIN/lib")
+  target_link_options(lexipeek-qt PRIVATE -static-libstdc++ -static-libgcc -Wl,--disable-new-dtags)
 endif()
