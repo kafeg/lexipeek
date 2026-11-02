@@ -100,6 +100,14 @@ make install  # macOS: the app into /Applications
 On Windows (Visual Studio 2022 or later, or its Build Tools, with C++ and the Windows SDK, CMake, Ninja, Git):
 `scripts\build-win.cmd` — the app's folder in `build-win\win\LexiPeek\`.
 
+Linux (x64; not in the releases yet): `scripts/build-linux.sh` — the Qt shell's folder in `build-linux/LexiPeek/`
+(`lexipeek`, Qt statically linked) and `dist/LexiPeek-Linux-x64.tar.gz`; it needs CMake, Ninja, GCC 13 and X11's
+development headers (`.github/workflows/linux.yml` lists them). Run `lexipeek` from the folder: it adds itself to the app menu,
+lives in the tray and keeps its data in `~/.local/share/LexiPeek`; `lexipeek --uninstall` removes the menu entry.
+Hotkeys Ctrl+Alt+D and Ctrl+Alt+A read the primary selection (never the clipboard). On Wayland it runs through
+XWayland; where the desktop has no GlobalShortcuts portal, bind a shortcut in its keyboard settings to
+`lexipeek --lookup-selection` (and `lexipeek --input`). Read aloud and the icon at the selection are not on Linux yet.
+
 ## License
 
 MIT (see [LICENSE](LICENSE)). The bundled engines and libraries keep their own licenses — Bergamot / Marian,

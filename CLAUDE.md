@@ -8,8 +8,8 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 C++20 core with all the logic + a thin native shell per OS. `core/` — no UI, no OS headers; vcpkg: sqlite3,
 nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
 `mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `win/` (M8) — the Windows shell, WinUI 3 (C++/WinRT);
-`qt/` (M6) — Qt 6 Widgets, for Linux later and Windows' fallback build (`LEXIPEEK_QT` off by default everywhere).
-`platform/` — the OS parts both Windows shells share.
+`qt/` (M6) — Qt 6 Widgets, the Linux app (M10) and Windows' fallback build (`LEXIPEEK_QT` off by default everywhere).
+`platform/` — the OS parts both Windows shells share, and Linux's.
 Engines as submodules at InkPeek's commits: Bergamot, PCRE2, fastText, llama.cpp; and Read aloud's qwentts.cpp (spec M9, not
 InkPeek's: its own pin). macOS 14+, Apple Silicon only.
 
@@ -237,7 +237,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   computer's name) and `sync(true)` (`prepare` on the indexing queue meanwhile), then `sync(false)` every 30 s, `.notesChanged` on a change).
   Settings → Sync: `SettingsModel.chooseSyncFolder` (NSOpenPanel → `set_sync_folder`), the status line and this device
   from `sync_info`, Export… / Import… (`backup` / `restore`; what they said: `SettingsState::backup_said`) — Notes has none.
-- `qt/` (M6, Linux later and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
+- `qt/` (M6, the Linux app (M10) and Windows' fallback; macOS only to work on it): Qt Widgets on qtbase alone (vcpkg feature `qt`, `-DLEXIPEEK_QT=ON`, off
   by default — on Windows too since M8: `build-win.cmd <dir> qt`; static on Windows, host triplet = target). It draws the same `views` as `mac/`: `card` (CardModel
   polls its CardSession, CardWidget draws CardView), `popup` (the pop-up card), `main_window`, `settings_window` (+
   `packs_pane`, `dicts_pane`), `first_run`, `shell` (tray, menu, hotkeys), `core_client` (pools; `run(pool, work,
@@ -245,7 +245,10 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   from a widget's own signal), `fluent` (the Windows 11 look: palettes, one style sheet, the system's icon glyphs drawn
   by GDI, toggle, settings card, tabs). OS parts only in `platform.hpp`: thin Qt adapters (QRect, QStringList, QWidget)
   over the shared layer below.
-  Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it). **UI check:
+  Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it; Linux: `"linux"`, its `@linux`
+  text, else `@win`). Linux: `scripts/build-linux.sh [dir]` (vcpkg's static Qt with its xcb platform, `QT_QPA_PLATFORM=xcb`
+  forced: XWayland on Wayland; libstdc++ static, `lib/` by rpath for libxcb-cursor) → `dist/LexiPeek-Linux-x64.tar.gz`;
+  `.github/workflows/linux.yml` (by hand, Ubuntu 22.04 + GCC 13) builds it and runs `--self-test` under Xvfb; not in release.yml yet. **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
   Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
@@ -260,8 +263,13 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Manager, the Run key, one instance per user (`hand_over` / `receive`: the hidden window titled "LexiPeek receiver", the same
   wire as before; the sender's window in wParam: refused unless this session, this user, medium integrity or more; dwData 1,
   ≤ 1 MB, strict UTF-8; the message filter opened only when running elevated), the per-user install (`install(version, folder)`: the WinUI build copies its folder, Qt its exe),
-  `lexipeek://`, CLI providers, low memory, glyph masks, `self_test` (the OS checks of both shells' `--self-test`). `none.cpp`
-  elsewhere.
+  `lexipeek://`, CLI providers, low memory, glyph masks, `self_test` (the OS checks of both shells' `--self-test`).
+  Linux (`linux/`, only with `LEXIPEEK_QT`: QtCore's loop, QtDBus, Xlib): hotkeys by `XGrabKey` on the root (ids from 100:
+  the card's keys), on Wayland ids below 100 through the GlobalShortcuts portal (`Portal`, moc'd), none there →
+  `desktop_shortcuts()` names the program for `--lookup-selection` / `--input`; the PRIMARY selection by its own X
+  connection (UTF8_STRING, INCR; never CLIPBOARD), else `wl-paste --primary`; a socket in `$XDG_RUNTIME_DIR` (same uid);
+  autostart and the desktop file `dev.kafeg.lexipeek.desktop` (Exec = where the program is now, `lexipeek://` in
+  mimeapps.list); keys by libsecret (dlopen), else `~/.config/LexiPeek/keys.json` 0600. `none.cpp` elsewhere.
 - `win/` (M8): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core and
   platform → `<dir>/win/lexipeek-core.props` + `version.h` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`,
   shared with mac) → NuGet `win/packages.config` → MSBuild → what ships trimmed into `<dir>\win\LexiPeek\`);

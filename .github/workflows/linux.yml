@@ -1,0 +1,51 @@
+name: linux
+# The Linux app (spec M10: scripts/build-linux.sh, the Qt shell's folder on Ubuntu 22.04's glibc), only in a run by hand
+# (gh workflow run linux.yml): not released yet. Its self-test on a virtual X server: hotkeys, keys, autostart,
+# lexipeek://. The tar.gz as an artifact.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-app:
+    runs-on: ubuntu-22.04
+    env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      CC: gcc-13
+      CXX: g++-13
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the version's last part is the commit count
+      - name: Submodules
+        run: |
+          git submodule update --init --depth 1 vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek || git submodule update --init vcpkg engines/fasttext engines/llama engines/pcre2 tests/inkpeek
+          git submodule update --init --recursive engines/bergamot
+          echo "VCPKG_REF=$(git rev-parse HEAD:vcpkg)" >> "$GITHUB_ENV"
+          mkdir -p .vcpkg-cache
+      - uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-linux-x64-app-${{ env.VCPKG_REF }}-${{ hashFiles('vcpkg.json', 'cmake/triplets/*') }}
+          restore-keys: vcpkg-linux-x64-app-
+      # GCC 13 (std::format) on 22.04's glibc; X11's headers for Qt's xcb platform.
+      - name: Tools
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y g++-13 ninja-build zstd autoconf autoconf-archive automake libtool bison flex gperf \
+            '^libxcb.*-dev' libx11-xcb-dev libx11-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libgl-dev libegl-dev libglu1-mesa-dev xvfb
+      - run: scripts/build-linux.sh build
+      - name: Self-test
+        run: |
+          HOME=$RUNNER_TEMP/home xvfb-run -a build/LexiPeek/lexipeek --self-test self-test.txt --data "$RUNNER_TEMP/data" || true
+          cat self-test.txt
+          ! grep -q '^FAIL' self-test.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LexiPeek-Linux-x64
+          path: dist/LexiPeek-Linux-x64.tar.gz
+          retention-days: 7
