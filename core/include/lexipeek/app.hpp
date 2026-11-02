@@ -146,7 +146,7 @@ std::vector<std::string> missing_ids(const std::string &data, const std::string 
 std::string refresh(const std::string &data);
 
 // The first-run window (views.hpp): by the data dir's packs list and installed parts.
-FirstRunView first_run(const std::string &data, const FirstRunState &s);
+FirstRunView first_run(const std::string &data, const FirstRunState &s, const Device &d);  // d: what this machine downloads
 
 // The lookup hotkey, once the selection was read (read: some text): close the open card (none read, or the same text
 // again), show the text's card, or a card to type in (nothing read, no card open).

@@ -42,7 +42,9 @@ System Settings → Accessibility, the Settings window and the LexiPeek window s
 Settings…", and the lookup hotkey's card (to type in) has a line with the same link. Checked every second; all of it
 goes the moment it is on. The same ⚠ (menu bar and tray, both OSes) when no language pack is installed ("Set Up a
 Language Pack…" first in the menu, a banner in the windows, the card's "Open Settings → Packs") and when another app
-has taken a hotkey ("Change the Hotkeys…").
+has taken a hotkey ("Change the Hotkeys…"). Windows: a default hotkey taken by another app gives way to the key above
+it (Win+Shift+D → E, Win+Shift+A → Q), saved as the setting; one still taken also gets a notification from the tray
+icon (a click opens Settings → Hotkeys): the tray's ⚠ alone is easy to miss.
 Windows 10 1809+ (x64): M8. Linux x64 (glibc 2.35+, X11 or Wayland with XWayland): M10.
 
 ## Stack
@@ -304,7 +306,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   finished; again from Settings → Translation): why Accessibility → open System Settings → continue by itself when
   granted (no restart; "Later" skips it) → pick the first pair (answer language: the system's when the packs offer it,
   else English; the text's language from a list by the packs' levels) and download it with progress → "select a word
-  and press ⌥D".
+  and press ⌥D". Each download is listed before it starts — the file, its size, where it comes from (host and first
+  folders: `github.com/kafeg/inkpeek`) —, the packs list's too.
 
 ## Milestones (each: spec → code → check → commit, stop)
 Done: **M0 Engines** (CMake + vcpkg, engines at InkPeek's pins, `lexipeek-cli`, bench; CI on three OSes) · **M1 Core**
@@ -371,8 +374,9 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   tray menus: its look, light and dark, the icon font; a Win32 popup menu stays light in dark mode). Platform parts are
   shared with `qt/` (`platform/`: hotkeys, UI Automation selection, Credential Manager, Run key, per-user install — the
   WinUI build copies its folder —, single instance), behaviour unchanged. Built by phases (`TODO.md`). Windows 10 1903 and later (the UTF-8 code page of the manifest: non-ASCII paths; an older one is refused at start); the look is Windows 11's. Snapshots: a window rendered to PNG
-  in a signed-in session (`--snapshots`, the same cases). Releases: a zip of the folder (the exe offers to install
-  itself, as now). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
+  in a signed-in session (`--snapshots`, the same cases). Releases: an installer (Inno Setup, `win/LexiPeek.iss`: for
+  this user, no admin, into the folder the exe's own install uses, the Start menu, an uninstaller; LexiPeek starts at
+  the end, so the first run opens) and a zip of the folder (the exe offers to install itself). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
 - **M9 Read aloud** (the owner's decision: no system voices, no Piper; only Qwen3-TTS
   Base 1.7B, which clones a native speaker's voice from a short clip and its exact text — single words come out right,
   where the built-in speakers babble after them). Off by default; one ▶ in the card.

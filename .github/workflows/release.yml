@@ -2,7 +2,7 @@ name: release
 # The title names the tag for a push and for a run by hand: scripts/release.sh finds its run by it.
 run-name: Release ${{ inputs.tag || github.ref_name }}
 
-# A v* tag: the macOS app (zip), the Windows app (a zip of its folder: WinUI 3, self-contained) and the Linux app
+# A v* tag: the macOS app (zip), the Windows app (its installer and a zip of its folder: WinUI 3, self-contained) and the Linux app
 # (linux.yml: a tar.gz of its folder) built, tested and published on GitHub Releases with the third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
 # none yet); without them the builds are ad-hoc / unsigned and the release notes say how to open them.
 on:
@@ -119,14 +119,21 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLEXIPEEK_QT=OFF
           cmake --build build --parallel
           ctest --test-dir build --output-on-failure
-      # The WinUI shell into build\win\LexiPeek\, zipped as that folder (LexiPeek\LexiPeek.exe and its runtime).
+      # The WinUI shell into build\win\LexiPeek\ with the notices: the installer (Inno Setup, win\LexiPeek.iss: for this
+      # user, LexiPeek started at the end) and that folder zipped (portable: LexiPeek\LexiPeek.exe and its runtime).
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: cmd
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           call scripts\build-win.cmd build || exit /b 1
+          copy /y THIRD_PARTY_NOTICES.txt build\win\LexiPeek\ || exit /b 1
           mkdir dist
           %SystemRoot%\System32\tar.exe -a -c -f dist\LexiPeek-Windows.zip -C build\win LexiPeek
+          set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+          if not exist "%ISCC%" choco install innosetup --version 6.7.1 -y --no-progress || exit /b 1
+          "%ISCC%" /Q /DVersion=%TAG:~1% /DSource=%CD%\build\win\LexiPeek /O%CD%\dist win\LexiPeek.iss || exit /b 1
 
       - uses: actions/upload-artifact@v4
         with:
@@ -160,5 +167,5 @@ jobs:
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
           MAC=$'This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.'
           [ "$SIGNED" = true ] && MAC='Signed and notarised.'
-          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10 1903+/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'$'\n\nLinux x64 (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland through XWayland): unpack\nLexiPeek-Linux-x64.tar.gz and run LexiPeek/lexipeek; it adds itself to the app menu and lives in the tray (a desktop\nwithout one, as GNOME without its AppIndicator extension, gets the window). Hotkeys Ctrl+Alt+D and Ctrl+Alt+A read the\nprimary selection; on Wayland without global shortcuts bind lexipeek --lookup-selection in the keyboard settings.'
+          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10 1903+/11 (x64): run LexiPeek-Windows-Setup.exe (for you, no admin; LexiPeek starts when it is done).\nLexiPeek-Windows.zip is the same app to run from its folder. It is not signed yet: on "Windows protected your PC"\nclick More info › Run anyway.'$'\n\nLinux x64 (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland through XWayland): unpack\nLexiPeek-Linux-x64.tar.gz and run LexiPeek/lexipeek; it adds itself to the app menu and lives in the tray (a desktop\nwithout one, as GNOME without its AppIndicator extension, gets the window). Hotkeys Ctrl+Alt+D and Ctrl+Alt+A read the\nprimary selection; on Wayland without global shortcuts bind lexipeek --lookup-selection in the keyboard settings.'
           gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

@@ -90,6 +90,7 @@ Shell::Shell(CoreClient &client, bool live) : card(client), icon(client), main_k
   icon.open = [this](const os::Selected &s) { card.show(s.text, Source::hotkey, s.bounds, false); };
   tray_.activated = [this] { open_main(); };
   tray_.menu = [this](POINT p) { show_menu(p); };
+  tray_.notice_clicked = [this] { open_settings(static_cast<int>(SettingsSection::general), 1); };
   // Light or dark switched: the taskbar's glyph follows.
   tray_.theme_changed = [this] { update_tray(); };
   // A pack installed or removed anywhere (Settings, the first run, the CLI): the icon follows.
@@ -125,11 +126,26 @@ void Shell::apply() {
 
 void Shell::register_hotkeys() {
   if (!live_) return;
-  bool a = os::register_hotkey(translate_key, s_.lookup, [this] { translate_selection(); });
-  bool b = os::register_hotkey(input_key, s_.input, [this] { type_text(); });
+  // The default taken by another app: the next choice (Win+Shift+E), kept in the settings once it registers.
+  auto take = [this](int id, bool input, const std::function<void()> &fire) {
+    auto &now = input ? s_.input : s_.lookup;
+    for (auto &k : hotkey_choices(now, input)) {
+      if (!os::register_hotkey(id, k, fire)) continue;
+      if (!(k == now)) now = k, app::save(c_.data(), s_);
+      return true;
+    }
+    return false;
+  };
+  bool a = take(translate_key, false, [this] { translate_selection(); });
+  bool b = take(input_key, true, [this] { type_text(); });
   keys_ = a && b;
   lookup_error_ = a ? "" : app::text("hk_taken"), input_error_ = b ? "" : app::text("hk_taken");
   if (settings_ui) settings_ui->hotkey_errors(lookup_error_, input_error_);
+  // Still taken: a notification says so once (the tray's ⚠ alone goes unseen); a click opens Settings → Hotkeys.
+  auto taken = std::string(a ? "" : app::hotkey_label(s_.lookup)) + (a || b ? "" : ", ") + (b ? "" : app::hotkey_label(s_.input));
+  if (taken != told_) tell_ = taken;
+  told_ = taken;
+  update_tray();
 }
 
 // With a card open: another selection opens its card at once; the same one or none closes it.
@@ -166,6 +182,8 @@ void Shell::update_tray() {
   bool pair = pair_ && !force_warnings, keys = keys_ && !force_warnings;
   if (live_)
     tray_.show(!pair || !keys, std::wstring(!pair ? L"LexiPeek — " + tr("nopack_t") : !keys ? L"LexiPeek — " + tr("hk_taken_t") : winrt::hstring(L"LexiPeek")));
+  if (live_ && !tell_.empty()) tray_.notify(tr("hk_taken_t").c_str(), tr("hk_taken_n", tell_).c_str());
+  tell_.clear();
   if (main) self(main)->refresh(theme());
 }
 

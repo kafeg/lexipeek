@@ -76,6 +76,7 @@ class Shell {
   bool pair_ = true;
   bool keys_ = true;  // both hotkeys registered
   std::string lookup_error_, input_error_;  // a hotkey taken: Settings says so on its row
+  std::string told_, tell_;                 // the taken hotkeys a notification named, and to name at the next update_tray
   bool low_ = false;  // memory was low at the last check
   Settings s_;
 };

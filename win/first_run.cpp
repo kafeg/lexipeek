@@ -28,7 +28,7 @@ FirstRunWindow::FirstRunWindow(CoreClient &client, xaml::ElementTheme theme) : c
   step_ = part<controls::TextBlock>(content, L"Step");
   title_ = part<controls::TextBlock>(content, L"Heading");
   text_ = part<controls::TextBlock>(content, L"Text");
-  window = win::window(app::text("fr_window"), content, 600, 660, theme);
+  window = win::window(app::text("fr_window"), content, 600, 720, theme);
   part<controls::Image>(content, L"Logo").Source(app_icon(static_cast<int>(48 * GetDpiForWindow(hwnd(window)) / 96.0)));
   if (auto p = window.AppWindow().Presenter().try_as<winrt::Microsoft::UI::Windowing::OverlappedPresenter>())
     p.IsResizable(false), p.IsMaximizable(false);
@@ -41,7 +41,7 @@ FirstRunWindow::FirstRunWindow(CoreClient &client, xaml::ElementTheme theme) : c
   state.system = os::ui_language();
   poll_ = page::every(300, [this] {
     state.done = dl_.get_done(), state.total = dl_.get_total();
-    look_ = app::first_run(c_.data(), state);
+    look_ = app::first_run(c_.data(), state, c_.device);
     if (!bar_ || !look_.progress) return draw();
     if (look_.fraction >= 0) bar_.IsIndeterminate(false), bar_.Value(look_.fraction);
     if (progress_) progress_.Text(h(look_.progress_text));
@@ -85,7 +85,7 @@ void FirstRunWindow::draw() {
     add(page::text(look_.book_label));
     // The language on the left, its level and size on the right (Settings' list look: a card with rows).
     // Theme resources in XAML: they follow the window's light or dark (a lookup in code gets the app's).
-    auto books = load(LR"(<ListView SelectionMode="Single" Height="232" Padding="0,4" CornerRadius="8" BorderThickness="1"
+    auto books = load(LR"(<ListView SelectionMode="Single" Height="168" Padding="0,4" CornerRadius="8" BorderThickness="1"
   Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"/>)")
                      .as<controls::ListView>();
     controls::ListViewItem picked{nullptr};
@@ -128,6 +128,11 @@ void FirstRunWindow::draw() {
   }
   if (!look_.error.empty()) add(page::info(look_.error, controls::InfoBarSeverity::Error));
   if (!look_.note.empty()) add(page::text(look_.note, L"CaptionTextBlockStyle", true));
+  if (!look_.files.empty()) {
+    auto files = look_.files_title;
+    for (auto &f : look_.files) files += "\n" + f;
+    add(page::text(files, L"CaptionTextBlockStyle", true));
+  }
   buttons_.Children().Clear();
   if (!look_.secondary.empty()) buttons_.Children().Append(page::button(h(look_.secondary), [this] { other(); }));
   if (!look_.button.empty()) {
@@ -203,7 +208,7 @@ void FirstRunWindow::install() {
 }
 
 void FirstRunWindow::draw_again() {
-  look_ = app::first_run(c_.data(), state);
+  look_ = app::first_run(c_.data(), state, c_.device);
   draw();
 }
 

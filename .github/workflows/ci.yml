@@ -145,6 +145,20 @@ jobs:
           name: LexiPeek-Windows
           path: build/win/LexiPeek
           retention-days: 7
+      # The installer as release.yml makes it (win/LexiPeek.iss), version 0.0.0: it compiles, and can be tried.
+      - name: Installer (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          set "ISCC=%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe"
+          if not exist "%ISCC%" choco install innosetup --version 6.7.1 -y --no-progress || exit /b 1
+          "%ISCC%" /Q /DSource=%CD%\build\win\LexiPeek /O%CD%\build\setup win\LexiPeek.iss
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: LexiPeek-Windows-Setup
+          path: build/setup/LexiPeek-Windows-Setup.exe
+          retention-days: 7
       - name: Backtrace
         if: failure() && runner.os == 'Linux'
         run: |

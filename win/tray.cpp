@@ -84,6 +84,19 @@ void Tray::add() {
   Shell_NotifyIconW(NIM_SETVERSION, &d);
 }
 
+void Tray::notify(const std::wstring &title, const std::wstring &text) {
+  if (!added_) add();
+  NOTIFYICONDATAW d{};
+  d.cbSize = sizeof d;
+  d.hWnd = hwnd_;
+  d.uID = 1;
+  d.uFlags = NIF_INFO;
+  d.dwInfoFlags = NIIF_WARNING;
+  wcsncpy_s(d.szInfoTitle, title.c_str(), _TRUNCATE);
+  wcsncpy_s(d.szInfo, text.c_str(), _TRUNCATE);
+  Shell_NotifyIconW(NIM_MODIFY, &d);
+}
+
 void Tray::remove() {
   if (!added_) return;
   NOTIFYICONDATAW d{};
@@ -102,6 +115,9 @@ LRESULT CALLBACK Tray::proc(HWND h, UINT m, WPARAM w, LPARAM l) {
       case NIN_SELECT:
       case NIN_KEYSELECT:
         if (t->activated) t->activated();
+        break;
+      case NIN_BALLOONUSERCLICK:
+        if (t->notice_clicked) t->notice_clicked();
         break;
       case WM_CONTEXTMENU:
         if (t->menu) t->menu({GET_X_LPARAM(w), GET_Y_LPARAM(w)});

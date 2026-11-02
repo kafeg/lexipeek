@@ -39,10 +39,10 @@ yet, so macOS blocks the first launch: open System Settings → Privacy & Securi
 click **Open Anyway**. LexiPeek lives in the menu bar. It reads the selected text through Accessibility (never the
 clipboard): allow it in System Settings → Privacy & Security → Accessibility — the first run shows where.
 
-**Windows** 10 (version 1903 or later) or 11, 64-bit. Download `LexiPeek-Windows.zip` from
-[Releases](https://github.com/kafeg/lexipeek/releases), unzip it and run `LexiPeek.exe` in the `LexiPeek` folder: it
-offers to install itself for you (no administrator rights; the Start menu; removed in Settings → Apps) or to just run
-from there. It is not signed yet: on "Windows protected your PC" click **More info** → **Run anyway**. LexiPeek lives in
+**Windows** 10 (version 1903 or later) or 11, 64-bit. Download `LexiPeek-Windows-Setup.exe` from
+[Releases](https://github.com/kafeg/lexipeek/releases) and run it: it installs LexiPeek for you (no administrator
+rights; the Start menu; removed in Settings → Apps) and starts it. `LexiPeek-Windows.zip` is the same app to run from
+its folder. It is not signed yet: on "Windows protected your PC" click **More info** → **Run anyway**. LexiPeek lives in
 the tray (^ on the taskbar).
 
 **Linux** x64 with glibc 2.35 or later (Ubuntu 22.04, Debian 12, Fedora 36 or newer), X11 or Wayland (through
@@ -53,11 +53,12 @@ It reads the primary selection — the text you selected —, never the clipboar
 no global hotkeys, bind `lexipeek --lookup-selection` (and `lexipeek --input`) in its keyboard settings. Read aloud and
 the icon at the selection are not on Linux yet.
 
-**First run:** pick the language you read and the one to translate into; the pair downloads once (about 60–240 MB)
-and works offline from then on.
+**First run:** pick the language you read and the one to translate into; the pair downloads once (about 60–240 MB;
+the window lists each file and where it comes from) and works offline from then on.
 
 **Hotkeys:** the selection — ⌥D on macOS, Win+Shift+D on Windows, Ctrl+Alt+D on Linux; a card to type in — ⌥A /
-Win+Shift+A / Ctrl+Alt+A. Both can be changed in Settings → General → Hotkeys.
+Win+Shift+A / Ctrl+Alt+A. On Windows, when another app has taken one, LexiPeek takes Win+Shift+E (Win+Shift+Q), and
+says so when that one is taken too. Both can be changed in Settings → General → Hotkeys.
 
 ## What it does
 

@@ -2,8 +2,8 @@
 // Linux and as Windows' fallback build). The process as qt/main.cpp: one instance per user, lexipeek:// links, the per-user
 // install, every way out through app::leave. Build and what ships: scripts\build-win.cmd.
 // WinUI needs a signed-in desktop: over SSH it fails at start (E_ACCESSDENIED); run it there by a scheduled task with an
-// interactive token, as scripts/win-e2e.ps1. Over SSH only --install, --uninstall --yes, --self-test, --probe-selection work.
-// Arguments: --data <dir> (else LEXIPEEK_DATA, else the default), lexipeek://… links, --install, --uninstall [--yes],
+// interactive token, as scripts/win-e2e.ps1. Over SSH only --install, --uninstall --yes, --quit, --self-test, --probe-selection work.
+// Arguments: --data <dir> (else LEXIPEEK_DATA, else the default), lexipeek://… links, --install, --uninstall [--yes], --quit,
 // --self-test <file> (the OS parts, no window), --probe-selection <file>, --snapshots <dir> [--cases <file>] [--ai-fixtures <dir>] [--firstrun-from <dir>]
 // (win/snapshots.hpp).
 #include "pch.h"
@@ -120,6 +120,8 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
   if (has("--uninstall")) {
     if (!has("--yes")) asking = Ask::uninstall;
     else os::quit_running(), os::uninstall(), app::leave(0);
+  } else if (has("--quit")) {  // the installer (win/LexiPeek.iss): a running LexiPeek gives way
+    os::quit_running(), app::leave(0);
   } else if (has("--install")) {
     os::quit_running();
     auto e = os::install(LEXIPEEK_VERSION, true);

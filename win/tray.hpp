@@ -11,7 +11,9 @@ class Tray {
   std::function<void()> activated;          // a click or a double click
   std::function<void(POINT)> menu;          // the context menu asked for at this screen point (physical pixels)
   std::function<void()> theme_changed;      // light or dark switched (the taskbar's glyph follows)
+  std::function<void()> notice_clicked;     // the notification of notify() clicked
   void show(bool warn, const std::wstring &tip);  // the glyph in the taskbar's colour, ⚠ when warn
+  void notify(const std::wstring &title, const std::wstring &text);  // a warning notification from the icon
   void remove();
   HWND window() const { return hwnd_; }
 

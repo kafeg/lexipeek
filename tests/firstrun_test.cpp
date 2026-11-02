@@ -1,6 +1,7 @@
 // The first-run window's view model and Mozilla's English in between (setting, card row, store).
 #include <doctest/doctest.h>
 #include "temp.hpp"
+#include <algorithm>
 #include <cstdlib>
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
@@ -97,6 +98,11 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   CHECK(v.books[2].detail == "Experimental · 36 MB");
   CHECK(v.book == "de");
   CHECK(v.button == "Download 65 MB");
+  // Each file it downloads, its size and where it comes from, before the download.
+  CHECK(v.files_title == "What it downloads:");
+  REQUIRE(v.files.size() == 4);
+  CHECK(std::find(v.files.begin(), v.files.end(), "a · 30 MB · github.com/kafeg/inkpeek") != v.files.end());
+  CHECK(first_run_view(m, {}, s, Method::fast, std::nullopt, "https://example.org/packs/").files.back().ends_with(" · example.org/packs"));
   s.book = "fr";
   CHECK(first_run_view(m, {}, s).button == "Download 55 MB");
 
@@ -122,6 +128,7 @@ TEST_CASE("first run: Accessibility, then the pair, its download, the hotkey") {
   CHECK(v.progress);
   CHECK(v.fraction == doctest::Approx(0.2));
   CHECK(v.progress_text == "13 MB of 65 MB");
+  CHECK(v.files.size() == 4);
   CHECK(v.button == "Cancel");
   s.downloading = false, s.error = "sha256 mismatch";
   v = first_run_view(m, {}, s);
@@ -154,6 +161,7 @@ TEST_CASE("first run: no packs list yet") {
   CHECK(v.progress);
   CHECK(v.button.empty());  // no "Try again" while it is fetched
   CHECK(v.text == "Getting the list of language packs…");
+  CHECK(v.files == std::vector<std::string>{"packs.json · github.com/kafeg/inkpeek"});
   s.fetching = false;
   s.list_error = "Could not resolve host";
   v = first_run_view({}, {}, s);
@@ -169,7 +177,7 @@ TEST_CASE("app: the first run on an empty data dir") {
   CHECK(app::first_run_at_launch(d, true));
   FirstRunState s;
   s.trusted = true;
-  CHECK(app::first_run(d, s).step == FirstStep::list);
+  CHECK(app::first_run(d, s, Device{}).step == FirstStep::list);
   auto st = app::settings(d);
   CHECK(!st.first_run);
   CHECK(!st.mt_english);

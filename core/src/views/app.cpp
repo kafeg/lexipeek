@@ -337,9 +337,9 @@ std::vector<std::string> missing_ids(const std::string &data, const std::string 
 
 std::string refresh(const std::string &data) { return Packs(dir(data)).fetch().error; }
 
-FirstRunView first_run(const std::string &data, const FirstRunState &s) {
+FirstRunView first_run(const std::string &data, const FirstRunState &s, const Device &d) {
   Packs p(dir(data));
-  auto v = first_run_view(p.cached(), p.installed(), s);
+  auto v = first_run_view(p.cached(), p.installed(), s, load_settings(dir(data)).method.value_or(Method::fast), d);
   v.step_text = tr("fr_step", {digits(v.number), digits(v.steps)});
   return v;
 }

@@ -10,7 +10,7 @@
 
 namespace lexipeek {
 
-// The default is ⌥D / ⌥A; on Windows (ui_platform) load_settings makes it Win+Shift+D / Win+Shift+A.
+// The default is ⌥D / ⌥A; on Windows (ui_platform) Win+Shift+D / Win+Shift+A (default_hotkey).
 struct Hotkey {
   std::string key = "D";  // a letter or a digit
   bool option = true, command = false, control = false, shift = false;
@@ -96,6 +96,9 @@ struct Settings {
 };
 
 // Missing or broken file: the defaults.
+// This OS's default hotkey (look-up or input), then the ones to try in turn when h is taken by another app.
+Hotkey default_hotkey(bool input);
+std::vector<Hotkey> hotkey_choices(const Hotkey &h, bool input);
 Settings load_settings(const std::filesystem::path &data);
 // "" or the error. Written whole, then renamed.
 std::string save_settings(const std::filesystem::path &data, const Settings &s);

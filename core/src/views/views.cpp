@@ -640,8 +640,35 @@ std::string first_answer(const Manifest &m, const std::string &system) {
   return std::find(a.begin(), a.end(), system) != a.end() ? system : "en";
 }
 
-FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s) {
+namespace {
+// Where a download comes from: its host and first two folders ("github.com/kafeg/inkpeek").
+std::string source_of(const std::string &url) {
+  auto scheme = url.find("://");
+  auto s = scheme == std::string::npos ? url : url.substr(scheme + 3);
+  s = s.substr(0, s.rfind('/'));  // its folder, not the file
+  size_t end = 0;
+  for (int i = 0; i < 3 && end != std::string::npos; ++i) end = s.find('/', i ? end + 1 : 0);
+  return s.substr(0, end);
+}
+}  // namespace
+
+FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s,
+                            Method method, const std::optional<Device> &device, const std::string &base) {
   FirstRunView v;
+  // What the download fetches and from where, before it starts: each file, its size, its source; → their size.
+  auto list = [&](const PairRow *r) {
+    std::int64_t size = 0;
+    if (!r) return size;
+    for (auto &id : missing_ids(m, installed, {r->from, r->to}, method, device))
+      for (auto &c : m.components)
+        if (c.id == id) {
+          auto url = c.kind == "llm" && !c.mirror.empty() ? c.mirror : base + c.file;
+          v.files.push_back(c.file + " · " + size_text(c.size) + " · " + source_of(url));
+          size += c.size;
+        }
+    if (!v.files.empty()) v.files_title = tr("fr_files");
+    return size;
+  };
   auto key = s.hotkey.empty() ? tr("fr_hotkey") : s.hotkey;
   v.answer_label = tr("answer_t"), v.book_label = tr("fr_book");
   if (!s.trusted && !s.access_later) {
@@ -686,6 +713,7 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
       v.progress_text = tr("n_of_m", {size_text(s.done), size_text(s.total)});
     }
     v.text = tr("fr_download_d");
+    list(picked);
     v.error = s.error;
     v.button = tr(s.downloading ? "cancel" : "try_again");
     v.secondary = s.downloading ? "" : tr("back");
@@ -707,12 +735,15 @@ FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::
     v.text = s.fetching ? tr("fr_fetching") : "";
     v.error = s.fetching ? "" : s.list_error.empty() ? tr("fr_no_list") : s.list_error;
     v.button = s.fetching ? "" : tr("try_again");
+    v.files_title = tr("fr_files");
+    v.files = {"packs.json · " + source_of(base + "packs.json")};
     return v;
   }
   v.step = FirstStep::pair;
   v.text = tr("fr_pair");
   v.note = tr("fr_pair_note");
-  v.button = picked ? tr("download_size", {size_text(picked->missing)}) : tr("download");
+  auto size = list(picked);
+  v.button = picked ? tr("download_size", {size_text(size ? size : picked->missing)}) : tr("download");
   v.button_enabled = picked != nullptr;
   return v;
 }

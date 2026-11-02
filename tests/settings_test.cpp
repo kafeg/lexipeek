@@ -402,6 +402,18 @@ TEST_CASE("settings: the hotkeys' default is Win+Shift on Windows, Ctrl+Alt on L
   set_ui_platform("mac");
   wipe(d);
   CHECK(load_settings(d).lookup == Hotkey{"D", true, false, false, false});
+  CHECK(hotkey_choices(default_hotkey(false), false).size() == 1);
+}
+
+TEST_CASE("settings: Windows' default hotkey taken by another app → the key above it; a person's own has no other") {
+  set_ui_platform("windows");
+  auto look = hotkey_choices(default_hotkey(false), false), type = hotkey_choices(default_hotkey(true), true);
+  REQUIRE(look.size() == 2);
+  CHECK(look[1] == Hotkey{"E", false, true, false, true});  // Win+Shift+E
+  REQUIRE(type.size() == 2);
+  CHECK(type[1] == Hotkey{"Q", false, true, false, true});
+  CHECK(hotkey_choices(Hotkey{"K", false, true, false, true}, false).size() == 1);
+  set_ui_platform("mac");
 }
 
 TEST_CASE("settings: every pane's toggles and choices round trip through settings.json, each index shown back") {

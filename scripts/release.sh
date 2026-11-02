@@ -2,7 +2,7 @@
 # A release, the same way every time: scripts/release.sh [--pre]
 #   checks (main, clean, pushed, tests, a CHANGELOG.md section for the version), dates that section if "unreleased",
 #   tags v<VERSION>.<commits>, waits for release.yml, checks the published files (checksums, the Mac app's version,
-#   the Windows zip, the Linux tar.gz); --pre marks the release a pre-release. macOS (BSD sed, shasum).
+#   the Windows installer and zip, the Linux tar.gz); --pre marks the release a pre-release. macOS (BSD sed, shasum).
 #   Run again after a failure: a tag already on HEAD is kept and its build is found or started again.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -46,7 +46,7 @@ gh run watch "$run" --exit-status --interval 60 >/dev/null || die "the build fai
 [ "${1:-}" = "--pre" ] && gh release edit "$TAG" --prerelease >/dev/null
 dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
 gh release download "$TAG" -D "$dir"
-for f in LexiPeek-macOS.zip LexiPeek-Windows.zip LexiPeek-Linux-x64.tar.gz THIRD_PARTY_NOTICES.txt SHA256SUMS.txt; do [ -s "$dir/$f" ] || die "$f missing"; done
+for f in LexiPeek-macOS.zip LexiPeek-Windows-Setup.exe LexiPeek-Windows.zip LexiPeek-Linux-x64.tar.gz THIRD_PARTY_NOTICES.txt SHA256SUMS.txt; do [ -s "$dir/$f" ] || die "$f missing"; done
 (cd "$dir" && shasum -a 256 -c SHA256SUMS.txt >/dev/null) || die "checksum mismatch"
 ditto -x -k "$dir/LexiPeek-macOS.zip" "$dir/mac"
 got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVersionString)
@@ -54,10 +54,14 @@ got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVer
 codesign --verify --deep --strict "$dir/mac/LexiPeek.app" || die "the Mac app's signature does not verify"
 # The Windows zip: the LexiPeek folder with the program, Read aloud's qwen.dll and the Windows App SDK's runtime beside it.
 names=$(unzip -Z1 "$dir/LexiPeek-Windows.zip")
-for f in LexiPeek.exe LexiPeek.pri qwen.dll Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll; do
+for f in LexiPeek.exe LexiPeek.pri qwen.dll Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll THIRD_PARTY_NOTICES.txt; do
   grep -qix "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
 done
 [ "$(unzip -p "$dir/LexiPeek-Windows.zip" LexiPeek/LexiPeek.exe | head -c 2)" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
+# The installer: a Windows program whose version resource (UTF-16) names this version.
+[ "$(head -c 2 "$dir/LexiPeek-Windows-Setup.exe")" = "MZ" ] || die "LexiPeek-Windows-Setup.exe is not a Windows program"
+V="${TAG#v}" perl -0777 -ne 'exit(index($_, "\0\0" . join("", map { "$_\0" } split //, $ENV{V}) . "\0\0") < 0)' "$dir/LexiPeek-Windows-Setup.exe" ||
+  die "LexiPeek-Windows-Setup.exe is not ${TAG#v}"
 # The Linux tar.gz: the LexiPeek folder with the program (an x86-64 ELF; its version checked by linux.yml) and lib/.
 names=$(tar -tzf "$dir/LexiPeek-Linux-x64.tar.gz")
 for f in lexipeek lib/libxcb-cursor.so.0 lib/libxcb-util.so.1 THIRD_PARTY_NOTICES.txt; do

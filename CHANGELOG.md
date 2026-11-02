@@ -1,13 +1,22 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### 0.2.382 — 2026-11-02
+### 0.2.384 — 2026-11-02
 - Linux x64: `LexiPeek-Linux-x64.tar.gz` (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland
   through XWayland). Unpack and run `LexiPeek/lexipeek`: Ctrl+Alt+D looks up the primary selection — the text you
   selected, never the clipboard —, Ctrl+Alt+A opens a card to type in; the tray, the app menu and `lexipeek://`,
   Open at login, keys in the desktop's keyring (else a file only you can read), Notes, sync with InkPeek and Anki
   as on the other two. On Wayland without global shortcuts: bind `lexipeek --lookup-selection` in the keyboard settings.
   Read aloud and the icon at the selection are not on Linux yet.
+- Windows: `LexiPeek-Windows-Setup.exe`, an installer — for you, no administrator rights, the Start menu, removed in
+  Settings → Apps —, and LexiPeek starts when it is done, with its first run. The zip stays, to run from its folder.
+- The first run lists what it downloads before it starts: each file, its size and where it comes from.
+- Windows: when another app has taken Win+Shift+D (or Win+Shift+A), LexiPeek takes Win+Shift+E (Win+Shift+Q); when
+  that one is taken too, a notification says so and opens Settings → Hotkeys.
+- Windows: the card opened for the first time after the start is whole again (its bottom cut through the text field).
+- As InkPeek: a dictionary whose entries end in a sound or a picture shows their text; a word written with a separate
+  umlaut mark (a + ¨, as some readers copy it) is found; a long text's AI answer is not cut short any more (its limit
+  grows with the text) and says so when it is cut; AI answers about a language you learn open in InkPeek and back through sync.
 
 ### 0.2.376 — 2026-11-02
 - Windows: LexiPeek names its version right (0.2.366 said 0.1.366 in About and its install, and Check now offered

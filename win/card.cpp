@@ -339,6 +339,10 @@ void CardWidget::rebuild() {
     r.Height(height);
     grid.RowDefinitions().Append(r);
   }
+  // A window never shown measures its text field before its template: the pop-up fits again once this is laid out.
+  grid.Loaded([this, alive = alive_](auto &&, auto &&) {
+    if (*alive && drawn) drawn();
+  });
   if (!embedded_) grid.Width(v_.width > 0 ? v_.width : 400);
   // A flyout's acrylic fallback where nothing is behind it; else clear (a drag on the background moves the card).
   grid.Background(solid ? brush(dark ? 0xFF2C2C2C : 0xFFF9F9F9) : clear());

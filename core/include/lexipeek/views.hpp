@@ -346,6 +346,8 @@ struct FirstRunView {
   double fraction = -1;      // 0…1, -1 = indeterminate
   std::string progress_text;  // "12 MB of 84 MB"
   std::string error;
+  std::string files_title;          // "Downloads:" ("" = none)
+  std::vector<std::string> files;   // each download: "dict-de-ru.tar.zst · 12 MB · github.com/kafeg/inkpeek"
 };
 
 // "84 MB", "1.2 GB".
@@ -356,7 +358,10 @@ bool has_pair(const Manifest &m, const std::map<std::string, std::string> &insta
 bool first_run_at_launch(bool has_pair, bool trusted, bool finished);
 // The answer language by default: the system's when the packs offer it, else English.
 std::string first_answer(const Manifest &m, const std::string &system);
-FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s);
+// method, device: what the download fetches (as missing_ids); base: where packs.json and the packs come from.
+FirstRunView first_run_view(const Manifest &m, const std::map<std::string, std::string> &installed, const FirstRunState &s,
+                            Method method = Method::fast, const std::optional<Device> &device = std::nullopt,
+                            const std::string &base = PACKS_BASE);
 
 // A translation method for the installed pairs (InkPeek's MethodPane): what it needs here and why it cannot run.
 struct MethodInfo {

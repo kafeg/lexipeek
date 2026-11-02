@@ -29,7 +29,7 @@ FirstRunWindow::FirstRunWindow(CoreClient &client) : c_(client) {
 }
 
 void FirstRunWindow::refresh() {
-  look_ = app::first_run(c_.data(), state);
+  look_ = app::first_run(c_.data(), state, c_.device);
   ui::clear(box_);
   auto *head = new QHBoxLayout;
   auto *icon = new QLabel;
@@ -91,6 +91,11 @@ void FirstRunWindow::refresh() {
   }
   if (!look_.error.empty()) box_->addWidget(ui::text("⚠ " + look_.error, -1));
   if (!look_.note.empty()) box_->addWidget(ui::text(look_.note, -1.5, true));
+  if (!look_.files.empty()) {
+    auto files = look_.files_title;
+    for (auto &f : look_.files) files += "\n" + f;
+    box_->addWidget(ui::text(files, -1.5, true));
+  }
   box_->addStretch();
   auto *buttons = new QHBoxLayout;
   buttons->addStretch();

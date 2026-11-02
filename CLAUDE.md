@@ -273,7 +273,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `win/` (M8): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core and
   platform → `<dir>/win/lexipeek-core.props` + `version.h` by `cmake/win_shell.cmake` (link closure: `cmake/link_closure.cmake`,
   shared with mac) → NuGet `win/packages.config` → MSBuild → what ships trimmed into `<dir>\win\LexiPeek\`);
-  `build-win.cmd [dir] qt` builds the Qt shell instead. The vcxproj runs the XAML passes itself (Build Tools have no
+  `build-win.cmd [dir] qt` builds the Qt shell instead. Hotkeys: a taken default gives way to `hotkey_choices`' next
+  (Win+Shift+E / Q, saved); one still taken: a tray notification (`Tray::notify`, a click opens Settings → Hotkeys). The vcxproj runs the XAML passes itself (Build Tools have no
   WindowsXaml targets; a full VS, as CI's, does not import them here); its toolset is the installed VS's default. `App.xaml.cpp` — the process (qt/main.cpp's: arguments, one instance, install question, every
   way out through `app::leave`), `shell` (tray, its menu, hotkeys, the selection read), `tray` (Shell_NotifyIcon), `MenuHost`
   (the tray menu: a `MenuFlyout` from a 1-pixel host window at the click), `ui` (texts via `tr`, Mica windows with the content in
@@ -305,7 +306,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 ## Release
 `scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## <VERSION>` section
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
-(macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, `LexiPeek-Linux-x64.tar.gz` — linux.yml's —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
+(macOS zip ad-hoc signed, `LexiPeek-Windows-Setup.exe` — that folder in an Inno Setup installer, `win/LexiPeek.iss`
+(per-user, into os::install's folder, LexiPeek started at the end; CI's Windows job builds it as 0.0.0) —,
+`LexiPeek-Windows.zip` — the WinUI shell's folder with the notices —, `LexiPeek-Linux-x64.tar.gz` — linux.yml's —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
 (`cmake/version.cmake` reads it) and `qt/lexipeek.rc.in`, a new CHANGELOG section. `THIRD_PARTY_NOTICES.txt` (in each
 download) again after a port or engine changes: `scripts/gen-notices.sh` with each build's vcpkg `share/` (`--mac`,

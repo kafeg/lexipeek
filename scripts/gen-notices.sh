@@ -70,8 +70,9 @@ rm -f "$TMP/pcre2.in"  # vcpkg's (Qt's) PCRE2 on Linux, the engine's in every bu
 add qwentts.cpp engines/qwentts/LICENSE
 add ggml-qwentts engines/qwentts/ggml/LICENSE
 add voices core/src/speech/voices/SOURCES.md
+add inno-setup win/inno-setup-license.txt
 # Marian: ruy and simd_utils on ARM (the Mac), intgemm on x86-64 (Windows, Linux). Read aloud: not on Linux.
-only ruy macOS; only simd_utils macOS
+only ruy macOS; only simd_utils macOS; only inno-setup Windows
 if linux; then only intgemm "Windows, Linux"; only qwentts.cpp "macOS, Windows"; only ggml-qwentts "macOS, Windows"; only voices "macOS, Windows"
 else only intgemm Windows; fi
 {
@@ -82,7 +83,8 @@ else only intgemm Windows; fi
   echo "LexiPeek-Windows.zip: the LexiPeek folder — LexiPeek.exe (the same core and engines, statically linked, with"
   echo "OpenBLAS and CLAPACK), Read aloud's qwen.dll, the Windows App SDK's runtime DLLs and resources (self-contained,"
   echo "redistributed under the Microsoft Software License Terms of the Windows App SDK: \"windows-app-sdk\" below) and"
-  echo "C++/WinRT's code compiled in (MIT)."
+  echo "C++/WinRT's code compiled in (MIT). LexiPeek-Windows-Setup.exe: the same folder (with this file) in an installer"
+  echo "made by Inno Setup, whose setup and uninstall program it is (\"inno-setup\" below)."
   echo "LexiPeek-Linux-x64.tar.gz: the LexiPeek folder — lexipeek (the same core and engines, statically linked, with"
   echo "OpenBLAS, CLAPACK, the C++ runtime and Qt 6: qtbase and what it uses, LGPL-3.0 — LexiPeek's source and build scripts"
   echo "are public, so it can be relinked with another Qt; the system's X11, xcb and D-Bus libraries) and lib/ with xcb's"

@@ -1,6 +1,6 @@
 # The Windows app end to end, in a signed-in desktop session (not over SSH: no desktop there): LexiPeek.exe started on
-# a data dir with packs, a word selected in Notepad, Win+Shift+D, the card read by UI Automation, Esc, the input
-# hotkey, a lexipeek:// link, a second launch opening the LexiPeek window (a look-up there, History, F1 Help, closed); a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
+# a data dir with packs, the first card (the input hotkey's) whole, a word selected in Notepad, Win+Shift+D, the card
+# read by UI Automation, Esc, the input hotkey, a lexipeek:// link, a second launch opening the LexiPeek window (a look-up there, History, F1 Help, closed); a screenshot after each step into the out dir, "ok|FAIL" lines on stdout.
 # Usage: powershell -ExecutionPolicy Bypass -File scripts\win-e2e.ps1 -Exe <LexiPeek.exe> -Data <data dir> -Out <dir>
 param([Parameter(Mandatory)] [string]$Exe, [Parameter(Mandatory)] [string]$Data, [Parameter(Mandatory)] [string]$Out)
 $ErrorActionPreference = 'Stop'
@@ -40,11 +40,16 @@ Add-Type @'
 using System; using System.Runtime.InteropServices;
 public static class Win {
   [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L, T, R, B; }
+  [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out Rect r);
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out Rect r);
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref Point p);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
   [DllImport("user32.dll")] public static extern void mouse_event(int f, int x, int y, int d, int e);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);
+  [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr h, int id);
 }
 '@
 # A real click in the middle of a window: the focus is there (a notification may hold it otherwise).
@@ -65,6 +70,38 @@ Get-Content $selfTest
 $script:failed += @(Get-Content $selfTest | Where-Object { $_ -like 'FAIL*' }).Count
 
 Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
+# The first card since the start (the input hotkey's, a new install's: no history): its text field whole inside the
+# window's client area. A data dir of its own: the packs linked (junctions, removed as links), the settings copied.
+$fresh = Join-Path $env:TEMP 'lexipeek-e2e-first'
+if (Test-Path $fresh) { cmd /c rmdir /s /q "$fresh" }
+New-Item -ItemType Directory $fresh | Out-Null
+foreach ($d in 'dicts', 'models', 'opus', 'llm') { if (Test-Path "$Data\$d") { cmd /c mklink /j "$fresh\$d" "$Data\$d" | Out-Null } }
+foreach ($f in 'langid.ftz', 'packs.json', 'installed.json', 'settings.json') { if (Test-Path "$Data\$f") { Copy-Item "$Data\$f" $fresh } }
+$first = Start-Process $Exe -ArgumentList '--data', $fresh -PassThru
+Start-Sleep 4
+WinShift 'a'
+Start-Sleep 2
+Shot '0-first-card'
+$ae0 = [System.Windows.Automation.AutomationElement]
+$card = $ae0::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,
+  (New-Object System.Windows.Automation.PropertyCondition $ae0::ProcessIdProperty, $first.Id)) | Select-Object -First 1
+$edit = if ($card) { $card.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+  [System.Windows.Automation.PropertyCondition]::new($ae0::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)) }
+$room = -1
+if ($card -and $edit) {
+  $c = New-Object Win+Rect
+  [void][Win]::GetClientRect([IntPtr]$card.Current.NativeWindowHandle, [ref]$c)
+  $p = New-Object Win+Point
+  [void][Win]::ClientToScreen([IntPtr]$card.Current.NativeWindowHandle, [ref]$p)
+  $room = $p.Y + $c.B - $edit.Current.BoundingRectangle.Bottom
+}
+Check ($room -ge 8) "the first card shows its text field whole ($room px under it in the window)"
+Keys '{ESC}'
+Stop-Process $first -Force
+Start-Sleep 1
+foreach ($d in 'dicts', 'models', 'opus', 'llm') { if (Test-Path "$fresh\$d") { cmd /c rmdir "$fresh\$d" } }
+Remove-Item -Recurse -Force $fresh
+
 $app = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
 Start-Sleep 4
 Check (-not $app.HasExited) 'the app runs (tray)'
@@ -135,7 +172,7 @@ if ($main) {
   Shot '6b-history'
   $rows = Find $main $ae::AutomationIdProperty 'Rows'
   Check ($rows -ne $null -and (Find $rows $ae::NameProperty 'Haus') -ne $null) 'History lists the look-up'
-  $main.SetFocus()
+  try { $main.SetFocus() } catch { ClickIn $app }
   Keys '{F1}'
   Start-Sleep 2
   Shot '6c-help'
@@ -178,6 +215,39 @@ if ($icon) {
   Check ((AppTexts $app) -match 'Haus') 'a click on the icon opens the card'
   Keys '{ESC}'
 }
+Set-Content $settings $kept -Encoding UTF8 -NoNewline
+
+# The default hotkey taken by another program: Win+Shift+E instead, kept in the settings; both taken: the app says so
+# (a notification) and still runs.
+Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
+$s = $kept | ConvertFrom-Json
+$s.PSObject.Properties.Remove('hotkeys')
+$s | ConvertTo-Json -Depth 20 | Set-Content $settings -Encoding UTF8
+Start-Sleep 2  # its hotkeys go with its windows, after the process
+$held = [Win]::RegisterHotKey([IntPtr]::Zero, 0xB001, 0x4000 -bor 0x4 -bor 0x8, [uint32][char]'D')  # Win+Shift+D, MOD_NOREPEAT
+Check $held 'another program holds Win+Shift+D'
+$app = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
+Start-Sleep 4
+$h = (Get-Content $settings -Raw | ConvertFrom-Json).hotkeys
+Check ($h -and $h.lookup.key -eq 'E') "Win+Shift+D taken: the look-up takes Win+Shift+E (settings: $($h.lookup.key))"
+ClickIn $pad
+Keys '^{HOME}'
+Keys '^+{RIGHT}'
+WinShift 'e'
+Start-Sleep 4
+Shot '9-taken-e'
+Check ((AppTexts $app) -match 'Haus') 'Win+Shift+E opens the card'
+Keys '{ESC}'
+Stop-Process $app -Force
+Start-Sleep 2
+$s | ConvertTo-Json -Depth 20 | Set-Content $settings -Encoding UTF8
+[void][Win]::RegisterHotKey([IntPtr]::Zero, 0xB002, 0x4000 -bor 0x4 -bor 0x8, [uint32][char]'E')
+$app = Start-Process $Exe -ArgumentList '--data', $Data -PassThru
+Start-Sleep 4
+Shot '10-both-taken'
+$h = (Get-Content $settings -Raw | ConvertFrom-Json).hotkeys
+Check ((-not $app.HasExited) -and (-not $h -or $h.lookup.key -eq 'D')) 'both taken: the app runs, the settings keep the default (a notification says so)'
+[void][Win]::UnregisterHotKey([IntPtr]::Zero, 0xB001); [void][Win]::UnregisterHotKey([IntPtr]::Zero, 0xB002)
 Set-Content $settings $kept -Encoding UTF8 -NoNewline
 
 Stop-Process $pad -Force

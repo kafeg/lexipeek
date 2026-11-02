@@ -92,16 +92,30 @@ json to_json(const AiSettings &a) {
 
 }  // namespace
 
+Hotkey default_hotkey(bool input) {
+  Hotkey h{input ? "A" : "D"};
+  // Windows: Win+Shift+D and Win+Shift+A — the Mac's letters; Alt+D is the browsers' address bar, Ctrl+Alt+letter is
+  // AltGr+letter (Polish ą), Win+Alt+D the clock's.
+  if (ui_platform() == "windows") h.option = false, h.command = h.shift = true;
+  // Linux: Ctrl+Alt+D and Ctrl+Alt+A (AltGr is a key of its own there; Super+letter is the desktop's).
+  if (ui_platform() == "linux") h.control = true;
+  return h;
+}
+
+std::vector<Hotkey> hotkey_choices(const Hotkey &h, bool input) {
+  std::vector<Hotkey> out{h};
+  // Windows' default taken by another app: the key above it (Win+Shift+E, Win+Shift+Q).
+  if (ui_platform() == "windows" && h == default_hotkey(input)) {
+    out.push_back(h);
+    out.back().key = input ? "Q" : "E";
+  }
+  return out;
+}
+
 Settings load_settings(const fs::path &data) {
   auto j = read(data);
   Settings s;
-  // Windows: Win+Shift+D and Win+Shift+A — the Mac's letters; Alt+D is the browsers' address bar, Ctrl+Alt+letter is
-  // AltGr+letter (Polish ą), Win+Alt+D the clock's.
-  if (ui_platform() == "windows")
-    for (auto *h : {&s.lookup, &s.input}) h->option = false, h->command = h->shift = true;
-  // Linux: Ctrl+Alt+D and Ctrl+Alt+A (AltGr is a key of its own there; Super+letter is the desktop's).
-  if (ui_platform() == "linux")
-    for (auto *h : {&s.lookup, &s.input}) h->control = true;
+  s.lookup = default_hotkey(false), s.input = default_hotkey(true);
   try {
     s.answer = get(j, "answer", s.answer);
     if (j.contains("method") && j["method"].is_string()) {

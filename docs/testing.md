@@ -26,7 +26,7 @@ fixed sleep. A test never writes `LEXIPEEK_MODELS`: it runs on a data dir of its
 | `core macos-arm64` | ctest (core, engine-pins, cli-usage), `make app-test` (LexiPeekKit), the CLI translates | langid, Mozilla de-en and en-ru, OPUS-MT de→sla, six dictionaries (de, en, ru pairs) |
 | `core linux-x64` | ctest, the CLI translates | the same |
 | `linux-asan` | ctest under ASan + UBSan, only in a run by hand (`gh workflow run ci.yml`; locally `make asan`) | langid, Mozilla de-en, the six dictionaries |
-| `core windows-x64` | ctest, the WinUI shell's build (artifact) | langid and the six dictionaries (`lexipeek-cli packs install`) |
+| `core windows-x64` | ctest, the WinUI shell's build (artifact) and its installer (`win/LexiPeek.iss`, artifact) | langid and the six dictionaries (`lexipeek-cli packs install`) |
 | `windows-qt` | the Qt shell's build, only in a run by hand (`gh workflow run ci.yml`) | — |
 | `linux-app` (`linux.yml`) | the Linux app (`scripts/build-linux.sh` on Ubuntu 22.04) and its `--self-test` under Xvfb (X11 hotkeys, keys, autostart, `lexipeek://`), release.yml's Linux job, and on a push to `main` that touches `qt/`, `platform/`, `core/include/` or the build; by hand (`gh workflow run linux.yml`) its dry run; the tar.gz as an artifact | — |
 
@@ -37,4 +37,5 @@ The device cases assume a device's whole pack set: every job with dictionaries h
   merges it (~5 s).
 - Hy-MT2 tests (`LEXIPEEK_MODELS` with `llm/llm-hy-mt2-1.8b-q4.gguf`); without a model a test says "skipped".
 - The shells: `make snapshots`, `scripts/selection-test.sh`, `scripts/qt-snapshots.sh`, on Windows `LexiPeek.exe
-  --self-test` / `--snapshots`, `scripts/win-e2e.ps1`, `scripts/win-read-e2e.ps1`.
+  --self-test` / `--snapshots`, `scripts/win-e2e.ps1` (with the first card's height, a taken hotkey's fallback),
+  `scripts/win-read-e2e.ps1`.

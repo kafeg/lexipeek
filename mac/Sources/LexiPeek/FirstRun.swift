@@ -23,6 +23,7 @@ struct FirstRunLook {
     var fraction = -1.0
     var progressText = ""
     var error = ""
+    var files = ""  // what the download fetches, a line each, under its title
 
     init() {}
 
@@ -48,6 +49,8 @@ struct FirstRunLook {
         fraction = v.fraction
         progressText = String(v.progress_text)
         error = String(v.error)
+        let lines = Array(v.files).map { String($0) }
+        files = lines.isEmpty ? "" : ([String(v.files_title)] + lines).joined(separator: "\n")
     }
 }
 
@@ -70,7 +73,7 @@ final class FirstRunModel: ObservableObject {
         refresh()
     }
 
-    func refresh() { look = FirstRunLook(lexipeek.app.first_run(std.string(), state)) }
+    func refresh() { look = FirstRunLook(lexipeek.app.first_run(std.string(), state, CoreClient.device)) }
 
     // The app's language changed: the pair's default answer and the texts again.
     func relabel() { state.system = lexipeek.ui_language() }
@@ -186,6 +189,7 @@ struct FirstRunView: View {
                 Label { Text(look.error) } icon: { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }.font(.callout)
             }
             if !look.note.isEmpty { Note(look.note) }
+            if !look.files.isEmpty { Note(look.files) }
             Spacer(minLength: 0)
             HStack {
                 Spacer()
@@ -198,7 +202,7 @@ struct FirstRunView: View {
             }
         }
         .padding(20)
-        .frame(width: 480, height: 440, alignment: .topLeading)
+        .frame(width: 480, height: 540, alignment: .topLeading)
     }
 
     @ViewBuilder
