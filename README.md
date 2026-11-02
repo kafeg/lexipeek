@@ -45,13 +45,19 @@ offers to install itself for you (no administrator rights; the Start menu; remov
 from there. It is not signed yet: on "Windows protected your PC" click **More info** → **Run anyway**. LexiPeek lives in
 the tray (^ on the taskbar).
 
-Linux is not in this release.
+**Linux** x64 with glibc 2.35 or later (Ubuntu 22.04, Debian 12, Fedora 36 or newer), X11 or Wayland (through
+XWayland). Download `LexiPeek-Linux-x64.tar.gz` from [Releases](https://github.com/kafeg/lexipeek/releases), unpack it
+anywhere and run `LexiPeek/lexipeek`: it adds itself to the app menu and lives in the tray (GNOME shows it with the
+AppIndicator extension; without a tray a second launch opens the window); `lexipeek --uninstall` removes the menu entry.
+It reads the primary selection — the text you selected —, never the clipboard. On Wayland, where the desktop gives apps
+no global hotkeys, bind `lexipeek --lookup-selection` (and `lexipeek --input`) in its keyboard settings. Read aloud and
+the icon at the selection are not on Linux yet.
 
 **First run:** pick the language you read and the one to translate into; the pair downloads once (about 60–240 MB)
 and works offline from then on.
 
-**Hotkeys:** the selection — ⌥D on macOS, Win+Shift+D on Windows; a card to type in — ⌥A / Win+Shift+A. Both can be
-changed in Settings → General → Hotkeys.
+**Hotkeys:** the selection — ⌥D on macOS, Win+Shift+D on Windows, Ctrl+Alt+D on Linux; a card to type in — ⌥A /
+Win+Shift+A / Ctrl+Alt+A. Both can be changed in Settings → General → Hotkeys.
 
 ## What it does
 
@@ -83,12 +89,12 @@ changed in Settings → General → Hotkeys.
 No accounts, no telemetry. The network is used only for what you ask: the pack list and downloads (from this
 project's and InkPeek's GitHub releases), the voice model (Hugging Face), the update check (on "Check now"), the
 dictionary catalog, and AI when it is on. Your notes and history stay on your computer, and in a sync folder if you
-choose one. Delete `~/Library/Application Support/LexiPeek` (`%LOCALAPPDATA%\LexiPeek` on Windows) to remove them and
-the packs.
+choose one. Delete `~/Library/Application Support/LexiPeek` (`%LOCALAPPDATA%\LexiPeek` on Windows,
+`~/.local/share/LexiPeek` on Linux) to remove them and the packs.
 
 ## Build
 
-C++20 core with all the logic and a thin native shell per OS (SwiftUI on macOS, WinUI 3 on Windows); see
+C++20 core with all the logic and a thin native shell per OS (SwiftUI on macOS, WinUI 3 on Windows, Qt on Linux); see
 [CLAUDE.md](CLAUDE.md) for the layout and [docs/spec.md](docs/spec.md) for the design.
 
 ```sh
@@ -100,18 +106,14 @@ make install  # macOS: the app into /Applications
 On Windows (Visual Studio 2022 or later, or its Build Tools, with C++ and the Windows SDK, CMake, Ninja, Git):
 `scripts\build-win.cmd` — the app's folder in `build-win\win\LexiPeek\`.
 
-Linux (x64; not in the releases yet): `scripts/build-linux.sh` — the Qt shell's folder in `build-linux/LexiPeek/`
-(`lexipeek`, Qt statically linked) and `dist/LexiPeek-Linux-x64.tar.gz`; it needs CMake, Ninja, GCC 13 and X11's
-development headers (`.github/workflows/linux.yml` lists them). Run `lexipeek` from the folder: it adds itself to the app menu,
-lives in the tray and keeps its data in `~/.local/share/LexiPeek`; `lexipeek --uninstall` removes the menu entry.
-Hotkeys Ctrl+Alt+D and Ctrl+Alt+A read the primary selection (never the clipboard). On Wayland it runs through
-XWayland; where the desktop has no GlobalShortcuts portal, bind a shortcut in its keyboard settings to
-`lexipeek --lookup-selection` (and `lexipeek --input`). Read aloud and the icon at the selection are not on Linux yet.
+On Linux (x64, the oldest glibc it should run on; CMake, Ninja, GCC 13 and X11's development headers —
+`.github/workflows/linux.yml` lists them): `scripts/build-linux.sh` — the app's folder in `build-linux/LexiPeek/` (Qt
+statically linked) and `dist/LexiPeek-Linux-x64.tar.gz`.
 
 ## License
 
 MIT (see [LICENSE](LICENSE)). The bundled engines and libraries keep their own licenses — Bergamot / Marian,
-fastText, llama.cpp, qwentts.cpp, PCRE2, SQLite, curl, libarchive, on Windows the Windows App SDK and C++/WinRT, and
-more: see [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). The language packs keep theirs: Wiktionary CC BY-SA,
+fastText, llama.cpp, qwentts.cpp, PCRE2, SQLite, curl, libarchive, on Windows the Windows App SDK and C++/WinRT, on
+Linux Qt (LGPL-3.0), and more: see [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). The language packs keep theirs: Wiktionary CC BY-SA,
 Mozilla models MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0, fastText's language identification CC BY-SA 3.0; the
 voice model Qwen3-TTS Apache-2.0.

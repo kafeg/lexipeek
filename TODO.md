@@ -1,13 +1,13 @@
 # TODO
 
 Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes,
-sync with InkPeek and Anki (Settings → Sync, with Export / Import); Windows (M8). Now: M10 Linux. Milestones: `docs/spec.md` → Milestones.
+sync with InkPeek and Anki (Settings → Sync, with Export / Import); Windows (M8); Linux x64 (M10, released). Milestones: `docs/spec.md` → Milestones.
 
 ## M10 Linux (spec M10)
-1. The OS parts (`platform/linux/`): hotkeys (X11, the portal), PRIMARY, one instance, autostart, keys, `lexipeek://`.
-2. The Qt shell on Linux: texts `@linux`, the tray, `--lookup-selection` / `--input`, no icon at the selection.
-3. `scripts/build-linux.sh` → `LexiPeek-Linux-x64.tar.gz`; release.yml's `linux-x64`, release.sh checks it; notices.
-4. Docs (README, CHANGELOG, help); a run on a Linux x64 desktop (X11, Wayland).
+Done: the OS parts, the Qt shell on Linux, `LexiPeek-Linux-x64.tar.gz` in the release (release.yml calls linux.yml;
+release.sh checks it), notices, docs; run on an Ubuntu 24.04 X11 desktop (hotkeys, PRIMARY in an editor and Chromium,
+first run, tray, Notes, sync, `lexipeek://`).
+- Not run yet: Wayland (the GlobalShortcuts portal), the tray by StatusNotifierItem (only XEmbed was).
 - Open: Read aloud (qwentts builds on Linux; the Qt shell has no player); an AppImage; the icon at the selection (XInput2).
 
 ## M8 Native Windows shell (`win/`, WinUI 3), by phases

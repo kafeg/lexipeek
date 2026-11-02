@@ -2,8 +2,8 @@ name: release
 # The title names the tag for a push and for a run by hand: scripts/release.sh finds its run by it.
 run-name: Release ${{ inputs.tag || github.ref_name }}
 
-# A v* tag: the macOS app (zip) and the Windows app (a zip of its folder: WinUI 3, self-contained) built, tested and
-# published on GitHub Releases with the third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
+# A v* tag: the macOS app (zip), the Windows app (a zip of its folder: WinUI 3, self-contained) and the Linux app
+# (linux.yml: a tar.gz of its folder) built, tested and published on GitHub Releases with the third-party notices. Signing switches itself on once the secrets exist (macOS: Developer ID and notarisation; Windows:
 # none yet); without them the builds are ad-hoc / unsigned and the release notes say how to open them.
 on:
   push:
@@ -132,8 +132,13 @@ jobs:
           name: ${{ matrix.name }}
           path: dist/*
 
+  linux:
+    uses: ./.github/workflows/linux.yml
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+
   publish:
-    needs: build
+    needs: [build, linux]
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
@@ -154,5 +159,5 @@ jobs:
           ( cd dist && sha256sum LexiPeek* > SHA256SUMS.txt )
           MAC=$'This build is not notarised: on first launch\nmacOS blocks it — open System Settings › Privacy & Security, find the message naming LexiPeek and click Open Anyway.'
           [ "$SIGNED" = true ] && MAC='Signed and notarised.'
-          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10 1903+/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'
+          NOTE="macOS 14+ (Apple Silicon): unzip, move LexiPeek to Applications. $MAC"$'\n\nWindows 10 1903+/11 (x64): unzip LexiPeek-Windows.zip, run LexiPeek.exe in the LexiPeek folder; it offers to install itself\nfor you. It is not signed yet: on "Windows protected your PC" click More info › Run anyway.'$'\n\nLinux x64 (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland through XWayland): unpack\nLexiPeek-Linux-x64.tar.gz and run LexiPeek/lexipeek; it adds itself to the app menu and lives in the tray (a desktop\nwithout one, as GNOME without its AppIndicator extension, gets the window). Hotkeys Ctrl+Alt+D and Ctrl+Alt+A read the\nprimary selection; on Wayland without global shortcuts bind lexipeek --lookup-selection in the keyboard settings.'
           gh release create "$TAG" --verify-tag --title "LexiPeek ${TAG#v}" --generate-notes --notes "$NOTE" dist/*

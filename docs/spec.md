@@ -438,17 +438,18 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   when installed); the clipboard is never touched. Its place is unknown: the card opens at the pointer. **One instance:**
   a socket in `$XDG_RUNTIME_DIR` (the same user only). **Tray:** Qt's tray icon (StatusNotifierItem over D-Bus, else
   XEmbed); GNOME shows it with the AppIndicator extension (Ubuntu's default); with no tray a second launch opens the
-  window. **Open at login:** `~/.config/autostart/lexipeek.desktop`. **Keys** (AI, AnkiConnect): the Secret Service
+  window. **Open at login:** `~/.config/autostart/dev.kafeg.lexipeek.desktop`. **Keys** (AI, AnkiConnect): the Secret Service
   through libsecret, loaded at run time; without it a file only the user can read (`$XDG_CONFIG_HOME/LexiPeek/keys.json`,
   0600), and Settings says so. **Data:** `$XDG_DATA_HOME/LexiPeek`. **`lexipeek://`** and the app menu entry:
-  `~/.local/share/applications/lexipeek.desktop` (`MimeType=x-scheme-handler/lexipeek`), written at each launch with
+  `~/.local/share/applications/dev.kafeg.lexipeek.desktop` (`MimeType=x-scheme-handler/lexipeek`), written at each launch with
   where the program is. **Not in it:** Read aloud (no player in the Qt shell), the icon at the selection, the
   selection's place, a GPU for the AI model. **Release:** `LexiPeek-Linux-x64.tar.gz`, the folder `LexiPeek/`:
-  `lexipeek` (Qt linked in, built on Ubuntu 22.04), `lib/` (what desktops may lack), `lexipeek.png`, the notices.
+  `lexipeek` (Qt linked in, built on Ubuntu 22.04), `lib/` (what desktops may lack), `lexipeek.png`, the notices;
+  release.yml's Linux job is `linux.yml` (by hand: its dry run).
   Nothing to install: unpack and run; `lexipeek --uninstall` removes the menu entry, autostart and the link handler
   (packs and notes stay). Texts: a key's `@linux` text, else its `@win` one (Ctrl, "this computer").
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
-  Developer ID, then signed and notarised — and the Windows exe, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
+  Developer ID, then signed and notarised —, the Windows zip and the Linux tar.gz, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
   sync in InkPeek (LexiPeek has it) · Linux: Read aloud, an AppImage or Flatpak.
 

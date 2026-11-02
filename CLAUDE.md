@@ -1,6 +1,6 @@
 # LexiPeek
 
-Pop-up dictionary and offline translator for the desktop (macOS first, then Windows, Linux): select text in any app, press a hotkey, a card opens at the
+Pop-up dictionary and offline translator for the desktop (macOS, Windows, Linux): select text in any app, press a hotkey, a card opens at the
 cursor. Desktop sibling of InkPeek, uses its language packs. Spec — `docs/spec.md` (source of truth).
 Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 
@@ -247,8 +247,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   over the shared layer below.
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it; Linux: `"linux"`, its `@linux`
   text, else `@win`). Linux: `scripts/build-linux.sh [dir]` (vcpkg's static Qt with its xcb platform, `QT_QPA_PLATFORM=xcb`
-  forced: XWayland on Wayland; libstdc++ static, `lib/` by rpath for libxcb-cursor) → `dist/LexiPeek-Linux-x64.tar.gz`;
-  `.github/workflows/linux.yml` (by hand, Ubuntu 22.04 + GCC 13) builds it and runs `--self-test` under Xvfb; not in release.yml yet. **UI check:
+  forced: XWayland on Wayland; libstdc++ static, `lib/` (xcb's helper libraries) by DT_RPATH `$ORIGIN/lib`) → `dist/LexiPeek-Linux-x64.tar.gz`;
+  `.github/workflows/linux.yml` (Ubuntu 22.04 + GCC 13: release.yml calls it with the tag; by hand, its dry run) builds it and runs `--self-test` under Xvfb. **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
   Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
@@ -305,9 +305,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 ## Release
 `scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## <VERSION>` section
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
-(macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
+(macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, `LexiPeek-Linux-x64.tar.gz` — linux.yml's —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
-(`cmake/version.cmake` reads it) and `qt/lexipeek.rc.in`, a new CHANGELOG section.
+(`cmake/version.cmake` reads it) and `qt/lexipeek.rc.in`, a new CHANGELOG section. `THIRD_PARTY_NOTICES.txt` (in each
+download) again after a port or engine changes: `scripts/gen-notices.sh` with each build's vcpkg `share/` (`--mac`,
+`--win`, `--linux`) and `--xcb` (a Debian/Ubuntu `/usr/share/doc`, for `lib/`'s licenses).
 
 ## Rules
 - Branch model: `main` only, commit and push to `main`.
