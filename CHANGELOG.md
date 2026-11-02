@@ -8,8 +8,10 @@ The first release: macOS 14+ (Apple Silicon) and Windows 10/11 (x64).
 - InkPeek's language packs: dictionaries with grammar from Wiktionary, Mozilla, OPUS-MT and Hy-MT2 translation, all on
   the computer; the AI model on the GPU (Metal on a Mac, Vulkan on Windows) when there is one.
 - Own StarDict dictionaries and folders, and a catalog of free ones.
-- Languages you learn: text already in your own language opens in up to two languages you learn — their dictionary
-  lines with each word's own grammar and frequency, one language per page, their translations.
+- The language you learn: text already in your own language opens in it — its dictionary lines with each word's own
+  grammar and frequency, and its translation.
+- Read aloud: a word or a sentence in a natural voice (female or male), made on the computer; your own voice from a
+  short recording.
 - Optional AI with your own key or a local server: AI translation, Analysis, Context.
 - Notes: ☆ words and phrases, History, backup and restore; synced with InkPeek through a folder, and into Anki by
   themselves through AnkiConnect, each note with its reading (Settings → Sync).
