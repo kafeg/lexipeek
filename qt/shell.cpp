@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QLocale>
 #include <QtConcurrent>
+#include <QPainter>
 #include <QScreen>
 #include <QStyleHints>
 #include <algorithm>
@@ -29,11 +30,25 @@ void present(QWidget *w) {
 }
 // The menu bar's glyph in the taskbar's colour; ⚠ when warn.
 QIcon tray_icon(bool warn) {
+#ifdef __linux__
+  // Panels are light or dark whatever the apps are: the app's own icon, as Linux apps show (⚠ in its corner).
+  QIcon i;
+  for (int px : {16, 32, 64}) {
+    QPixmap pm(QString(":/icons/icon_%1.png").arg(px));
+    if (warn) {
+      QPainter p(&pm);
+      fluent::icon(fluent::Glyph::warning, QColor("#e8a400")).paint(&p, QRect(px / 2, px / 2, px / 2, px / 2));
+    }
+    i.addPixmap(pm);
+  }
+  return i;
+#else
   bool light = platform::taskbar_light();
   if (warn) return fluent::icon(fluent::Glyph::warning, light ? Qt::black : Qt::white);
   QIcon i;
   for (int px : {16, 20, 24, 32}) i.addFile(QString(":/icons/tray_%1_%2.png").arg(light ? "black" : "white").arg(px));
   return i;
+#endif
 }
 }  // namespace
 
@@ -88,6 +103,11 @@ void Shell::register_hotkeys() {
   bool b = platform::register_hotkey(input_key, s_.input, [this] { type_text(); });
   keys_ = a && b;
   lookup_error_ = a ? "" : t("hk_taken").toStdString(), input_error_ = b ? "" : t("hk_taken").toStdString();
+  // No global hotkeys for apps here (Wayland without the portal): the desktop's shortcuts run the program instead.
+  if (auto program = os::desktop_shortcuts(); !program.empty()) {
+    keys_ = true;
+    lookup_error_ = lexipeek::tr("hk_desktop", {program + " --lookup-selection"}), input_error_ = lexipeek::tr("hk_desktop", {program + " --input"});
+  }
   if (settings_) settings_->hotkey_errors(lookup_error_, input_error_);
   if (main_) main_->lookup_key = app::hotkey_label(s_.lookup), main_->input_key = app::hotkey_label(s_.input);
 }
@@ -173,9 +193,13 @@ void Shell::open_about() {
   present(about_);
 }
 
-// lexipeek://lookup?text=… (the card with it) and lexipeek://input (the card to type in); a launch without one opens the window.
+// lexipeek://lookup?text=… (the card with it), lexipeek://input (the card to type in), --lookup-selection / --input (as
+// the hotkeys); a launch without one opens the window.
 void Shell::handle(const QStringList &args) {
   for (auto &a : args) {
+    // A desktop's own shortcut instead of a hotkey (Wayland, spec M10).
+    if (a == "--lookup-selection") return translate_selection();
+    if (a == "--input") return type_text();
     if (!a.startsWith("lexipeek:", Qt::CaseInsensitive)) continue;
     auto l = app::link(a.toStdString());
     if (l.input) return popup_.show_card(std::nullopt, Source::input, {}, true);

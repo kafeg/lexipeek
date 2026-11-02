@@ -10,7 +10,12 @@
 namespace lexipeek::qt {
 
 namespace {
-constexpr int escape_key = 100, pin_key = 101, gap = 6, shadow = 16;
+constexpr int escape_key = 100, pin_key = 101, gap = 6;
+// The shadow's room around the frame; none where windows cannot be see-through (X11 without a compositor: it is black).
+int shadow_px() {
+  static const int px = platform::compositing() ? 16 : 0;
+  return px;
+}
 
 // Under the anchor (the selection or the cursor), above it when there is no room, inside the screen.
 QPoint place(QSize size, QRect anchor, QRect screen) {
@@ -25,10 +30,11 @@ QPoint place(QSize size, QRect anchor, QRect screen) {
 // A flyout as Windows 11's: the card in a frame with rounded corners and a hairline, a soft shadow around it (drawn
 // here, the same on Windows 10).
 CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint), model(client) {
+  const int shadow = shadow_px(), lift = shadow ? 4 : 0;
   setAttribute(Qt::WA_ShowWithoutActivating);
-  setAttribute(Qt::WA_TranslucentBackground);
+  if (shadow) setAttribute(Qt::WA_TranslucentBackground);
   auto *box = new QVBoxLayout(this);
-  box->setContentsMargins(shadow, shadow - 4, shadow, shadow + 4);
+  box->setContentsMargins(shadow, shadow - lift, shadow, shadow + lift);
   auto *frame = new QFrame;
   frame->setObjectName("flyout");
   auto *fl = new QVBoxLayout(frame);
@@ -36,11 +42,13 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
   card = new CardWidget(model);
   fl->addWidget(card);
   box->addWidget(frame);
-  auto *drop = new QGraphicsDropShadowEffect(frame);
-  drop->setBlurRadius(28);
-  drop->setOffset(0, 6);
-  drop->setColor(QColor(0, 0, 0, 70));
-  frame->setGraphicsEffect(drop);
+  if (shadow) {
+    auto *drop = new QGraphicsDropShadowEffect(frame);
+    drop->setBlurRadius(28);
+    drop->setOffset(0, 6);
+    drop->setColor(QColor(0, 0, 0, 70));
+    frame->setGraphicsEffect(drop);
+  }
   connect(&model, &CardModel::changed, this, [this] { QMetaObject::invokeMethod(this, [this] { fit(); }, Qt::QueuedConnection); });
   connect(card, &CardWidget::submitted, this, [this](const QString &t) {
     if (t.trimmed().isEmpty()) return;
@@ -50,7 +58,7 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
   });
   // A click anywhere outside the card (not its shadow) closes it; the focused app keeps its click. Short: a tap is quick.
   outside_.setInterval(15);
-  connect(&outside_, &QTimer::timeout, this, [this] {
+  connect(&outside_, &QTimer::timeout, this, [this, shadow] {
     bool down = platform::mouse_down();
     auto card_rect = frameGeometry().adjusted(shadow, shadow, -shadow, -shadow);
     bool outside = down && !was_down_ && !model.pinned && !card_rect.contains(QCursor::pos());
@@ -61,6 +69,7 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
 }
 
 void CardPopup::show_card(const std::optional<std::string> &text, Source source, const QRect &bounds, bool focus) {
+  const int shadow = shadow_px(), lift = shadow ? 4 : 0;
   close_card();
   shown = text.value_or("");
   model.reset();
@@ -73,7 +82,7 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   adjustSize();
   // The frame at the anchor; the window around it is larger by the shadow.
   auto inner = size() - QSize(2 * shadow, 2 * shadow);
-  move(place(inner, anchor, screen_) - QPoint(shadow, shadow - 4));
+  move(place(inner, anchor, screen_) - QPoint(shadow, shadow - lift));
   model.source = source;
   if (text) model.lookup(*text);
   show();

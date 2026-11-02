@@ -322,11 +322,11 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       connect(e, &QKeySequenceEdit::editingFinished, this, [this, e, input, dir] {
         auto h = hotkey_of(e->keySequence());
         if (!h) return draw();
-        auto s = app::settings(dir);
+        auto cur = app::settings(dir);
         // The other hotkey's keys: kept as they were, the row says why.
-        if (*h == (input ? s.lookup : s.input)) return (input ? sh_.input_error : sh_.lookup_error) = t("hk_conflict").toStdString(), draw();
-        (input ? s.input : s.lookup) = *h;
-        after(app::save(dir, s));
+        if (*h == (input ? cur.lookup : cur.input)) return (input ? sh_.input_error : sh_.lookup_error) = t("hk_conflict").toStdString(), draw();
+        (input ? cur.input : cur.lookup) = *h;
+        after(app::save(dir, cur));
       });
       l->addWidget(e);
       auto err = input ? sh_.input_error : sh_.lookup_error;
@@ -350,9 +350,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
         x->setText("✕");
         x->setAutoRaise(true);
         connect(x, &QToolButton::clicked, this, [this, id, dir] {
-          auto s = app::settings(dir);
-          std::erase(s.ignore_apps, id);
-          after(app::save(dir, s));
+          auto cur = app::settings(dir);
+          std::erase(cur.ignore_apps, id);
+          after(app::save(dir, cur));
         });
         row->addWidget(x);
         l->addLayout(row);
@@ -362,9 +362,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       connect(add, &QLineEdit::returnPressed, this, [this, add, dir] {
         auto id = add->text().trimmed().toLower().toStdString();
         if (id.empty()) return;
-        auto s = app::settings(dir);
-        if (std::find(s.ignore_apps.begin(), s.ignore_apps.end(), id) == s.ignore_apps.end()) s.ignore_apps.push_back(id);
-        after(app::save(dir, s));
+        auto cur = app::settings(dir);
+        if (std::find(cur.ignore_apps.begin(), cur.ignore_apps.end(), id) == cur.ignore_apps.end()) cur.ignore_apps.push_back(id);
+        after(app::save(dir, cur));
       });
       l->addWidget(add);
       return under(r, w);
@@ -436,9 +436,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       e->setPlaceholderText(t("key_t"));
       auto *save = new QPushButton(t("save_key"));
       auto store = [this, e, dir] {
-        auto key = e->text().trimmed();  // a pasted key often brings a space or a line break
-        if (key.isEmpty()) return;
-        if (!platform::set_secret(app::ai_provider(dir), key.toStdString())) return after(platform::last_error());
+        auto typed = e->text().trimmed();  // a pasted key often brings a space or a line break
+        if (typed.isEmpty()) return;
+        if (!platform::set_secret(app::ai_provider(dir), typed.toStdString())) return after(platform::last_error());
         sh_.keys.clear();
         e->clear();
         sh_.test.clear();

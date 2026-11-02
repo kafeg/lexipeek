@@ -184,26 +184,26 @@ int snapshots(QApplication &app, CoreClient &client, const SnapshotOptions &o) {
                        },
                        [model, host] { return host != "lookup" || (model->has_card() && !model->busy()); },
                        [model, &card, req] {
-                         auto &r = *req;
+                         auto &rq = *req;
                          if (!model->has_card()) return false;
-                         if (r.first) {
-                           r.first = false;
-                           if (r.method && model->nav.state.has_method) return model->use(*r.method), true;
-                           if (r.ai && model->nav.card().ai.translate) return model->choose_ai(), true;
+                         if (rq.first) {
+                           rq.first = false;
+                           if (rq.method && model->nav.state.has_method) return model->use(*rq.method), true;
+                           if (rq.ai && model->nav.card().ai.translate) return model->choose_ai(), true;
                          }
                          if (model->look().tabs) {
-                           if (r.tab && model->nav.state.tab != *r.tab) return model->select(*r.tab), true;
-                           if (r.open) return model->open(*std::exchange(r.open, std::nullopt)), true;
-                           if (r.full && !model->nav.state.full_entry && !model->nav.card().entries.empty()) return model->full_entries(), true;
-                           if (r.section) return model->open_section(0, *std::exchange(r.section, std::nullopt)), true;
-                           if (r.entry) return model->open_entry(*std::exchange(r.entry, std::nullopt)), true;
-                           if (r.page && model->nav.state.section.page == 0 && !model->nav.state.section.key.empty())
-                             return r.page = false, model->turn(1), true;
-                           if (r.back) return r.back = false, model->back(), true;
-                           if (r.answer) return model->relookup("", *std::exchange(r.answer, std::nullopt)), true;
+                           if (rq.tab && model->nav.state.tab != *rq.tab) return model->select(*rq.tab), true;
+                           if (rq.open) return model->open(*std::exchange(rq.open, std::nullopt)), true;
+                           if (rq.full && !model->nav.state.full_entry && !model->nav.card().entries.empty()) return model->full_entries(), true;
+                           if (rq.section) return model->open_section(0, *std::exchange(rq.section, std::nullopt)), true;
+                           if (rq.entry) return model->open_entry(*std::exchange(rq.entry, std::nullopt)), true;
+                           if (rq.page && model->nav.state.section.page == 0 && !model->nav.state.section.key.empty())
+                             return rq.page = false, model->turn(1), true;
+                           if (rq.back) return rq.back = false, model->back(), true;
+                           if (rq.answer) return model->relookup("", *std::exchange(rq.answer, std::nullopt)), true;
                          }
-                         if (r.save && !model->nav.state.saved) return r.save = false, model->toggle_saved(), true;
-                         if (r.whole) return r.whole = false, card->show_whole(true), true;
+                         if (rq.save && !model->nav.state.saved) return rq.save = false, model->toggle_saved(), true;
+                         if (rq.whole) return rq.whole = false, card->show_whole(true), true;
                          return false;
                        }});
     }

@@ -11,6 +11,7 @@
 #include <QStyle>
 #include <QStyleHints>
 #include <QStyleFactory>
+#include <QSystemTrayIcon>
 #include <QTimer>
 #include <cstdlib>
 #include <sstream>
@@ -50,7 +51,11 @@ int self_test(const QString &path) {
     int ink = 0;
     for (int y = 0; y < img.height(); ++y)
       for (int x = 0; x < img.width(); ++x) ink += qAlpha(img.pixel(x, y)) > 0;
+#ifdef _WIN32
     check(!fluent::icon_font().isEmpty() && ink > 20, "icons: " + fluent::icon_font() + ", the copy icon's pixels " + QString::number(ink));
+#else
+    check(ink > 20, "icons: the copy icon's pixels " + QString::number(ink));  // text characters without Windows' font
+#endif
   }
   out << "info front app: " << q(platform::front_app()) << ", selection: " << (platform::selection() ? "some" : "none") << "\n";
   out << "info data dir: " << q(app::data_dir()) << ", version " << q(version()) << ", cpu " << q(cpu_arch());
@@ -63,8 +68,19 @@ int self_test(const QString &path) {
 
 int run(int argc, char **argv) {
 #ifndef _WIN32
+  [[maybe_unused]] bool tool_run = false;
   for (int i = 1; i < argc; ++i)
-    if (std::string(argv[i]) == "--snapshots" || std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
+    if (std::string(argv[i]) == "--snapshots") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts"), tool_run = true;
+#endif
+#ifdef __linux__
+  // X11 (XWayland on Wayland): only there a window stands at the cursor (spec M10).
+  if (!tool_run && qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) qputenv("QT_QPA_PLATFORM", "xcb");
+  QGuiApplication::setDesktopFileName("dev.kafeg.lexipeek");
+  // Fonts by the system's fontconfig setup, not the path the built-in fontconfig was built with.
+  if (qEnvironmentVariableIsEmpty("FONTCONFIG_FILE") && QFile::exists("/etc/fonts/fonts.conf")) qputenv("FONTCONFIG_FILE", "/etc/fonts/fonts.conf");
+#elif !defined(_WIN32)
+  for (int i = 1; i < argc; ++i)
+    if (std::string(argv[i]) == "--self-test") qputenv("QT_QPA_PLATFORM", "minimal:enable_fonts");
 #endif
   QApplication app(argc, argv);
 #ifdef _WIN32
@@ -79,7 +95,11 @@ int run(int argc, char **argv) {
     QTextStream(stderr) << "refused: " << q(why) << "\n";
     return 2;
   }
-  set_ui_platform("windows");  // the Qt shell's words (Linux's own later); on macOS it only runs to work on it
+#ifdef __linux__
+  set_ui_platform("linux");
+#else
+  set_ui_platform("windows");  // the Qt shell's words; on macOS it only runs to work on it
+#endif
   if (auto run = platform::cli_runner()) ai::set_cli_runner(run);
   // The system's UI language ("ru" of "ru-RU"), not its formats' locale.
   auto ui = QLocale::system().uiLanguages();
@@ -140,8 +160,14 @@ int run(int argc, char **argv) {
     });
     platform::register_scheme();
     if (app::first_run_at_launch(data, true)) shell.open_first_run();
-    if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive); }))
+    // A link, or a desktop's shortcut (--lookup-selection, --input) that started it.
+    if (std::any_of(args.begin(), args.end(), [](const QString &a) { return a.startsWith("lexipeek:", Qt::CaseInsensitive) || a.startsWith("--lookup-selection") || a == "--input"; }))
       shell.handle(args.mid(1));
+#ifdef __linux__
+    // No tray to live in (GNOME without its extension): the window shows it runs, except at login.
+    else if (!QSystemTrayIcon::isSystemTrayAvailable() && !args.contains("--login") && !app::first_run_at_launch(data, true))
+      shell.open_main();
+#endif
     code = app.exec();
   }
   return code;  // the tray icon gone with the shell

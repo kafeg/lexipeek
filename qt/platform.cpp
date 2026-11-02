@@ -45,7 +45,7 @@ void receive(std::function<void(const QStringList &)> got) {
 }
 
 void activate(QWidget *w) {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__linux__)
   os::activate(reinterpret_cast<void *>(w->winId()));
 #endif
   w->raise();

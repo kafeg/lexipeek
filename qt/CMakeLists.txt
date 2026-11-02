@@ -1,4 +1,4 @@
-# The Qt shell: Windows and Linux (on macOS only to work on it; the Mac app is mac/). It draws the core's views.
+# The Qt shell: Linux, and Windows' fallback (on macOS only to work on it; the Mac app is mac/). It draws the core's views.
 find_package(Qt6 REQUIRED COMPONENTS Widgets Concurrent)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -23,4 +23,11 @@ if(WIN32)
   configure_file(lexipeek.rc.in ${CMAKE_CURRENT_BINARY_DIR}/lexipeek.rc @ONLY)
   target_sources(lexipeek-qt PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/lexipeek.rc)
   set_target_properties(lexipeek-qt PROPERTIES OUTPUT_NAME LexiPeek)
+endif()
+# Linux: `lexipeek`, Qt linked in with its X11 platform; the C++ runtime too (any distribution's), the libraries a desktop
+# may lack beside it in lib/ (scripts/build-linux.sh).
+if(LINUX)
+  qt_import_plugins(lexipeek-qt INCLUDE Qt6::QXcbIntegrationPlugin)
+  set_target_properties(lexipeek-qt PROPERTIES OUTPUT_NAME lexipeek BUILD_RPATH "$ORIGIN/lib" INSTALL_RPATH "$ORIGIN/lib")
+  target_link_options(lexipeek-qt PRIVATE -static-libstdc++ -static-libgcc)
 endif()

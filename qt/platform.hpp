@@ -10,6 +10,7 @@ class QWidget;
 namespace lexipeek::qt::platform {
 
 using os::cli_runner;
+using os::compositing;
 using os::front_app;
 using os::front_is_mine;
 using os::Input;
