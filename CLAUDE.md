@@ -170,7 +170,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   of the local own log, else a new id, the same name, and the own lines the folder lacks written again as the new id's),
   again before every push (a failing one pushes nothing and checks at the next sync: two installs running at once), push, other devices' folders mirrored into `<data>/sync-cache/`
   (read while the folder is away or after it is dropped; a device folder that cannot be read keeps its copy), the view
-  rebuilt from data + cache (never the folder itself); → whether the view changed. `set_folder`:
+  rebuilt from data + cache (never the folder itself; read and merged outside the store's lock, swapped in under it with
+  own lines written meanwhile); → whether the view changed. `set_folder`:
   another folder, read at once. No sync folder: the data dir only. The local log before the sync format
   (`<data>/log/*.jsonl`, `"v":1` lines): imported once at open (`import_old`) as this device's own lines with their
   times, the folder then renamed `log.imported`; a line already there is never written twice.

@@ -197,6 +197,8 @@ struct Store::Impl {
   sqlite3 *db = nullptr;
   store::Clock clock;
   std::map<std::string, std::vector<Line>> lines;  // per text, in order
+  bool reading = false;                             // a sync reads the logs without m: own lines written meanwhile kept
+  std::vector<Line> written;
   mutable std::mutex m;
   // One sync at a time; taken before m. The folder's files are read and written without m: a share that stalls keeps
   // no look-up, ☆ or Notes waiting.
@@ -240,7 +242,7 @@ struct Store::Impl {
     auto file = o.data / "lexipeek.db";
     for (int attempt = 0; attempt < 2; attempt++) {
       if (sqlite3_open(text::utf8_of(file).c_str(), &db) == SQLITE_OK) {
-        if (auto e = reread({o.data, cache()}); e.empty()) return "";
+        if (auto e = install(read_view(roots())); e.empty()) return "";
       }
       sqlite3_close(db);
       db = nullptr;
@@ -293,17 +295,48 @@ struct Store::Impl {
   // The device file as the folder shows it.
   store::DeviceFile shared() const { return {self.device, APP, self_name(), self.created}; }
 
-  // The roots' lines again, the whole view made again.
-  std::string reread(const std::vector<fs::path> &roots) {
-    lines.clear();
-    for (auto &l : store::read_roots(roots)) {
-      clock.see(l.t);
-      lines[l.text].push_back(std::move(l));
+  // The logs' lines per text and their merge: read without m.
+  struct View {
+    std::map<std::string, std::vector<Line>> lines;
+    std::map<std::string, Records> merged;
+  };
+  static View read_view(const std::vector<fs::path> &roots) {
+    View v;
+    for (auto &l : store::read_roots(roots)) v.lines[l.text].push_back(std::move(l));
+    for (auto &[text, ls] : v.lines) v.merged[text] = store::merge(ls);
+    return v;
+  }
+
+  // The view swapped in (m held): own lines written while it was read added to it, the SQLite view made again.
+  std::string install(View v) {
+    reading = false;
+    std::set<std::string> dirty;
+    for (auto &l : written) {
+      auto &ls = v.lines[l.text];
+      if (std::none_of(ls.begin(), ls.end(), [&](const Line &x) { return x.raw == l.raw; })) {
+        ls.insert(std::upper_bound(ls.begin(), ls.end(), l, store::before), l);
+        dirty.insert(l.text);
+      }
     }
+    written.clear();
+    lines = std::move(v.lines);
+    for (auto &[text, ls] : lines)
+      for (auto &l : ls) clock.see(l.t);
     if (!exec("BEGIN") || !exec(SCHEMA)) return exec("ROLLBACK"), db_error();
     for (auto &[text, ls] : lines)
-      if (auto e = rows(text); !e.empty()) return exec("ROLLBACK"), e;
+      if (auto e = dirty.contains(text) ? rows(text) : rows(text, v.merged[text]); !e.empty()) return exec("ROLLBACK"), e;
     return commit();
+  }
+
+  // The roots' lines again, the whole view made again: the files read with m let go (g), so Notes, ☆ and look-ups
+  // never wait for them.
+  std::string reread(std::unique_lock<std::mutex> &g) {
+    reading = true;
+    written.clear();
+    g.unlock();
+    auto v = read_view(roots());
+    g.lock();
+    return install(std::move(v));
   }
 
   // The view's logs: the data dir's and the other devices' copied from the folder (never the folder itself).
@@ -329,7 +362,7 @@ struct Store::Impl {
       reachable = false;
       sync_error = folder.empty() ? "" : "unreachable";
       if (!force) return false;
-      if (auto e = reread(roots()); !e.empty()) sync_error = e;
+      if (auto e = reread(g); !e.empty()) sync_error = e;
       return true;
     }
     auto now_sig = signature(folder, id);
@@ -380,7 +413,7 @@ struct Store::Impl {
     g.lock();
     if (!mirrored.empty()) sync_error = mirrored;
     if (others)
-      if (auto re = reread(roots()); !re.empty()) sync_error = re;
+      if (auto re = reread(g); !re.empty()) sync_error = re;
     // As it was before the copies (a change meanwhile is copied next time); a failed read is tried again.
     if (others) sig = mirrored.empty() ? now_sig : "\x01";
     read_ms = now_ms();
@@ -452,10 +485,10 @@ struct Store::Impl {
   }
 
   // The rows of [text]: its lines merged.
-  std::string rows(const std::string &text) {
+  std::string rows(const std::string &text) { return rows(text, store::merge(lines[text])); }
+  std::string rows(const std::string &text, const Records &r) {
     for (auto sql : {"DELETE FROM saved WHERE text=?", "DELETE FROM history WHERE text=?", "DELETE FROM ai WHERE text=?"})
       if (!Stmt(db, sql).bind(text).run()) return db_error();
-    auto r = store::merge(lines[text]);
     for (auto &s : r.saved)
       if (!Stmt(db, "INSERT INTO saved(text, kind, meaning, created, lang, id, origin, updated_by) VALUES(?, ?, ?, ?, ?, ?, ?, ?)")
                .bind(s.text).bind(s.kind).bind(s.meaning).bind(s.created).bind(s.lang).bind(s.id).bind(s.origin).bind(s.updated_by).run())
@@ -494,6 +527,7 @@ struct Store::Impl {
       l.raw = store::format(l);
       if (auto e = store::append(own() / store::month_file(l.t.ms), l.raw); !e.empty()) return e;
       lines[l.text].push_back(l);
+      if (reading) written.push_back(l);
     }
     push();
     if (!exec("BEGIN")) return db_error();
