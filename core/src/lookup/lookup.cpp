@@ -391,7 +391,7 @@ Translation Core::translate_into(const Card &card, int i, std::optional<Method> 
   return impl_->run(card, card.answer, l.lang, has ? *m : l.method, tag);
 }
 
-ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
+ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key, const std::function<bool()> &wanted) {
   AiSettings s;
   {
     std::lock_guard g(impl_->opt_mu);
@@ -402,7 +402,7 @@ ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key) {
               catalog_language(card.answer), card.lang.empty() ? "" : catalog_language(card.lang)};
   for (auto &l : card.study) q.study.push_back(catalog_language(l.lang));
   auto recall = s.recall;
-  auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport, card.prefs.history);
+  auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport, card.prefs.history, wanted);
   // What worked is kept for the next requests (InkPeek's remember), in the settings and here.
   if (recall != s.recall) {
     std::lock_guard g(impl_->mu);

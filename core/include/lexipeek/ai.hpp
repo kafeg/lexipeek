@@ -13,7 +13,7 @@ namespace lexipeek::ai {
 enum class Ask { quick, analysis, context };
 
 // Why there is no answer (InkPeek's AiErrors), ok when there is one.
-enum class Code { ok, off, no_key, no_model, no_server, offline, unreachable, server, region, key, rate, credits, declined, not_json, no_cli, failed };
+enum class Code { ok, off, no_key, no_model, no_server, offline, unreachable, server, region, key, rate, credits, declined, cut, not_json, no_cli, failed };
 
 struct Provider {
   std::string id, title;  // "anthropic", "Claude (Anthropic)"

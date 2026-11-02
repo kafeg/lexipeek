@@ -95,13 +95,9 @@ TEST_CASE("study: the stored language, one (InkPeek's Study)") {
 
 TEST_CASE("study: AI — InkPeek's paragraph and versions; none keeps today's") {
   AiSettings s;
-  // InkPeek: Ask.version(study) = (prompt() + Ai.study(study)).hashCode(), worked out with Java's String.hashCode from
-  // InkPeek's Ai.STUDY and its versions without it (ai_test).
+  // The versions with a language you learn: InkPeek's cases (ai_test, tests/inkpeek/tests/versions).
   CHECK(ai::version(ai::Ask::quick, s, {}) == 1031579369);
-  CHECK(ai::version(ai::Ask::quick, s, {"German", "English"}) == 1835370981);
-  CHECK(ai::version(ai::Ask::quick, s, {"English", "German"}) == -1007015789);
-  CHECK(ai::version(ai::Ask::analysis, s, {"German"}) == 158405933);
-  CHECK(ai::version(ai::Ask::context, s, {"German"}) == 978701152);
+  CHECK(ai::version(ai::Ask::quick, s, {"German"}) != ai::version(ai::Ask::quick, s, {"English"}));
   CHECK(ai::study_prompt({}).empty());
   CHECK(ai::study_prompt({"German", "English"}).starts_with("\nThe text is in {lang}, the reader's own language, and the reader learns German and English."));
   // The request carries it, {lang} filled in.

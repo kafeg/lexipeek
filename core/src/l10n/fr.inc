@@ -522,6 +522,7 @@
 {"reset_prompts_d", "Chaque partie modifiée revient au texte d'origine."},
 {"ai_method", "IA · {1}"},
 {"err_declined", "Le modèle a refusé cette requête."},
+{"err_cut", "La réponse a été coupée : le texte est trop long pour une seule réponse."},
 {"err_not_json", "Le modèle n'a pas répondu en JSON. Réessayez ou prenez un autre modèle."},
 {"err_no_cli", "Le programme {1} est introuvable : installez-le ou indiquez son chemin complet dans Réglages → IA."},
 {"help_t", "Aide"},

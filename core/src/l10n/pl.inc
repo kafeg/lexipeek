@@ -526,6 +526,7 @@
 {"reset_prompts_d", "Każda edytowana część wraca do oryginalnego tekstu."},
 {"ai_method", "AI · {1}"},
 {"err_declined", "Model odrzucił to zapytanie."},
+{"err_cut", "Odpowiedź została ucięta: tekst jest za długi na jedną odpowiedź."},
 {"err_not_json", "Model nie odpowiedział w JSON. Spróbuj ponownie lub wybierz inny model."},
 {"err_no_cli", "Nie znaleziono programu {1}: zainstaluj go lub podaj pełną ścieżkę w Ustawieniach → AI."},
 {"help_t", "Pomoc"},

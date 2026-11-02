@@ -522,6 +522,7 @@
 {"reset_prompts_d", "Ogni parte modificata torna al testo originale."},
 {"ai_method", "IA · {1}"},
 {"err_declined", "Il modello ha rifiutato questa richiesta."},
+{"err_cut", "La risposta è stata troncata: il testo è troppo lungo per una sola risposta."},
 {"err_not_json", "Il modello non ha risposto in JSON. Riprova o usa un altro modello."},
 {"err_no_cli", "Programma {1} non trovato: installalo o indica il percorso completo in Impostazioni → IA."},
 {"help_t", "Aiuto"},

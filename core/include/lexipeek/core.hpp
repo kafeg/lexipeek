@@ -192,7 +192,8 @@ class Core {
   Translation translate_into(const Card &card, int i, std::optional<Method> m = std::nullopt, int tag = 0);
   // Blocking, only on the person's action: the card's text's AI answer, the saved one when there is (offline); key: the
   // provider's API key, from the shell (never kept here).
-  ai::Answer ask(const Card &card, ai::Ask a, const std::string &key);
+  // wanted false when the answer comes (the card closed): not kept.
+  ai::Answer ask(const Card &card, ai::Ask a, const std::string &key, const std::function<bool()> &wanted = {});
   // A newer request: stops a running AI translation (tag's only; 0: any).
   void cancel(int tag = 0);
   // Memory pressure, idle: frees the held model.

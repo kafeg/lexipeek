@@ -58,17 +58,18 @@ std::string to_html(const std::string &data, const std::string &types) {
   std::string out;
   size_t p = 0;
   auto field = [&](char t, bool last) -> std::string {
+    // The last field of a sametypesequence has neither its "\0" nor, binary, its size.
+    if (last) {
+      auto r = data.substr(std::min(p, data.size()));
+      p = data.size();
+      return r;
+    }
     if (t >= 'A' && t <= 'Z') {
       if (p + 4 > data.size()) return p = data.size(), std::string();
       auto n = be32(data, p);
       p += 4;
       auto r = data.substr(p, n);
       p = std::min(data.size(), p + n);
-      return r;
-    }
-    if (last) {
-      auto r = data.substr(std::min(p, data.size()));
-      p = data.size();
       return r;
     }
     auto e = data.find('\0', p);
@@ -89,6 +90,7 @@ std::string to_html(const std::string &data, const std::string &types) {
                        "</abr>", "</i>"), "<kref>", "<u>"), "</kref>", "</u>");
       out += rep(xtags.replace(x, ""), "\n", "<br>");
     } else if (t == 'm' || t == 'l' || t == 't' || t == 'y') out += rep(text::escape(s), "\n", "<br>");
+    else return;
     out += "<br>";
   };
   if (!types.empty()) {

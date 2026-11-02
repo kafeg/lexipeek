@@ -522,6 +522,7 @@
 {"reset_prompts_d", "Jeder bearbeitete Teil wieder mit dem Originaltext."},
 {"ai_method", "KI · {1}"},
 {"err_declined", "Das Modell hat diese Anfrage abgelehnt."},
+{"err_cut", "Die Antwort wurde abgeschnitten: Der Text ist zu lang für eine Antwort."},
 {"err_not_json", "Das Modell hat nicht in JSON geantwortet. Erneut versuchen oder ein anderes Modell wählen."},
 {"err_no_cli", "Das Programm {1} wurde nicht gefunden: installieren oder den vollen Pfad unter Einstellungen → KI angeben."},
 {"help_t", "Hilfe"},

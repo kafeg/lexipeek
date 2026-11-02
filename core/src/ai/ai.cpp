@@ -121,8 +121,11 @@ std::string system_text(const AiSettings &s, const std::string &lang) {
 // without these and is remembered.
 Answer claude(const Query &q, const AiSettings &s, const std::string &model, const std::string &prompt, const std::string &sys,
               std::map<std::string, int> &recall, const Transport &t) {
+  // A long passage's translation needs more than a word's answer: about a token per character of the prompt, at most 4096.
+  auto chars = std::count_if(prompt.begin(), prompt.end(), [](char c) { return (c & 0xC0) != 0x80; });
+  auto max = std::max<long>(def(q.ask).max_tokens, std::min<long>(chars, 4096));
   auto body = [&](bool extras) {
-    json b{{"model", model}, {"max_tokens", def(q.ask).max_tokens}, {"system", sys}, {"messages", {{{"role", "user"}, {"content", prompt}}}}};
+    json b{{"model", model}, {"max_tokens", max}, {"system", sys}, {"messages", {{{"role", "user"}, {"content", prompt}}}}};
     if (!extras) return b;
     b["output_config"] = {{"effort", "low"}, {"format", {{"type", "json_schema"}, {"schema", schema(q.ask, s)}}}};
     // Least thinking: off, or "between_tools" (Sonnet 5.5), or only effort low (Opus 5.5, Fable, Mythos).
@@ -155,7 +158,9 @@ Answer claude(const Query &q, const AiSettings &s, const std::string &model, con
   if (!r.error.empty() || r.status < 200 || r.status >= 300) return http_fail(r, false);
   try {
     auto j = json::parse(r.body);
-    if (j.value("stop_reason", "") == "refusal") return fail(Code::declined);
+    auto stop = j.value("stop_reason", "");
+    if (stop == "refusal") return fail(Code::declined);
+    if (stop == "max_tokens") return fail(Code::cut);
     std::string out;
     for (auto &c : j.value("content", json::array()))
       if (c.value("type", "") == "text") out += (out.empty() ? "" : "\n") + c.value("text", "");
@@ -193,7 +198,14 @@ Answer openai(const Query &q, const AiSettings &s, const std::string &model, con
   variants.push_back(json::object());
   auto memo = host_of(url) + "|" + model, fmt_memo = "json|" + memo;
   bool mode = !(recall.contains(fmt_memo) && recall[fmt_memo] == 1);
-  auto bad = [](const http::Reply &r) { return r.error.empty() && (r.status == 400 || r.status == 422); };
+  // Again only when the error names a field the app added: any other 400 would come back the same.
+  auto bad = [](const http::Reply &r, const json &fields) {
+    if (!r.error.empty() || (r.status != 400 && r.status != 422)) return false;
+    auto said = text::lower(r.body);
+    for (auto &[k, v] : fields.items())
+      if (said.find(text::lower(k)) != std::string::npos) return true;
+    return false;
+  };
   auto ok = [](const http::Reply &r) { return r.error.empty() && r.status >= 200 && r.status < 300; };
   auto attempt = [&] {
     auto b = body;
@@ -205,12 +217,12 @@ Answer openai(const Query &q, const AiSettings &s, const std::string &model, con
       return call(x);
     };
     auto r = with(i);
-    while (bad(r) && i < static_cast<int>(variants.size()) - 1) r = with(++i);
+    while (i < static_cast<int>(variants.size()) - 1 && bad(r, variants[static_cast<size_t>(i)])) r = with(++i);
     if (ok(r)) recall[memo] = i;
     return r;
   };
   auto r = attempt();
-  if (bad(r) && mode) {
+  if (mode && bad(r, json{{"response_format", 0}, {"json_object", 0}})) {
     mode = false;
     r = attempt();
     if (ok(r)) recall[fmt_memo] = 1;
@@ -219,6 +231,7 @@ Answer openai(const Query &q, const AiSettings &s, const std::string &model, con
   try {
     auto j = json::parse(r.body);
     if (!j.contains("choices") || j["choices"].empty()) return fail(Code::failed, error_message(r.body));
+    if (j["choices"][0].value("finish_reason", "") == "length") return fail(Code::cut);
     auto &m = j["choices"][0]["message"];
     return {Code::ok, m.contains("content") && m["content"].is_string() ? m["content"].get<std::string>() : "", "", false};
   } catch (const std::exception &) {
@@ -332,11 +345,10 @@ std::string study_prompt(const std::vector<std::string> &names) {
   // InkPeek's Ai.STUDY, word for word: the answers' versions depend on it.
   static const std::string study =
       "The text is in {lang}, the reader's own language, and the reader learns {study}. Work on the text's "
-      "{study} versions instead of explaining it as a dictionary of {lang}: wherever a key asks for a "
-      "translation, give one into each of {study}, also for a single word, each on its own line after the "
-      "language's name; wherever a key asks about the text's own language (base form, forms, grammar, words, "
-      "examples, idioms), answer about those versions (separable verbs, cases, tenses…). Explanations stay in "
-      "{lang}.";
+      "{study} version instead of explaining it as a dictionary of {lang}: wherever a key asks for a translation, give one "
+      "into {study}, also for a single word; wherever a key asks "
+      "about the text's own language (base form, forms, grammar, words, examples, idioms), answer about that version "
+      "(separable verbs, cases, tenses…). Explanations stay in {lang}.";
   if (names.empty()) return "";
   std::string list;
   for (auto &n : names) list += (list.empty() ? "" : " and ") + n;
@@ -448,11 +460,14 @@ Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &reca
   return {Code::ok, obj, "", false};
 }
 
-Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep) {
+Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep,
+              const std::function<bool()> &wanted) {
   auto ver = version(q.ask, s, q.study);
   if (auto saved = store.answer(q.text, q.lang, section(q.ask), ver)) return {Code::ok, *saved, "", true};
   auto a = ask(q, s, recall, t);
-  if (a.ok() && keep) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
+  if (!a.ok() || (wanted && !wanted())) return a;
+  if (keep || store.is_saved(q.text)) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
+  else store.hold_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
   return a;
 }
 
@@ -551,6 +566,7 @@ std::string error_text(const Answer &a, const AiSettings &s) {
     case Code::rate: return tr("err_rate");
     case Code::credits: return tr("err_credits");
     case Code::declined: return tr("err_declined");
+    case Code::cut: return tr("err_cut");
     case Code::not_json: return with(tr("err_not_json"));
     case Code::no_cli: return tr("err_no_cli", {a.detail});
     case Code::failed: return with(tr("err_other"));

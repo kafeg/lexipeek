@@ -224,7 +224,7 @@ std::string plain_spaces(std::string_view s) {
 
 std::string clean_query(std::string_view s) {
   static const Regex edge("^[\\p{P}\\p{S}\\s]+|[\\p{P}\\p{S}\\s]+$");
-  return edge.replace(spaces().replace(no_soft_hyphens(s), " "), "");
+  return edge.replace(spaces().replace(no_soft_hyphens(nfc(s)), " "), "");
 }
 
 std::string clean_phrase(std::string_view s) {
@@ -233,7 +233,7 @@ std::string clean_phrase(std::string_view s) {
   // Lines stay lines (a selection of paragraphs, a list): blank lines and spaces around them become one line break.
   static const Regex breaks("[^\\S\\n]*\\n\\s*");
   static const Regex blanks("[^\\S\\n]+");
-  auto t = blanks.replace(breaks.replace(no_soft_hyphens(s), "\n"), " ");
+  auto t = blanks.replace(breaks.replace(no_soft_hyphens(nfc(s)), "\n"), " ");
   return end.replace(start.replace(t, ""), "");
 }
 

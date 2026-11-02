@@ -522,6 +522,7 @@
 {"reset_prompts_d", "Cada parte editada vuelve al texto original."},
 {"ai_method", "IA · {1}"},
 {"err_declined", "El modelo rechazó esta petición."},
+{"err_cut", "La respuesta se cortó: el texto es demasiado largo para una sola respuesta."},
 {"err_not_json", "El modelo no respondió en JSON. Inténtalo de nuevo o usa otro modelo."},
 {"err_no_cli", "No se encontró el programa {1}: instálalo o indica su ruta completa en Ajustes → IA."},
 {"help_t", "Ayuda"},

@@ -212,6 +212,8 @@ std::vector<ai::Ask> card_asks(const Card &c, const CardState &s);
 AiState card_answer(const CardState &s, ai::Ask a);
 // The state with an answer set (or asking marked).
 CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer);
+// An answer as the card shows it (an error as its text).
+AiState ai_state(const ai::Answer &r, const AiSettings &s);
 // What ☆ saves as the line: the translation shown (the AI's brief one when by AI), "" when none.
 std::string shown_translation(const CardState &s);
 

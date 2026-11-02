@@ -83,6 +83,9 @@ class Store {
   std::string unsave(const std::string &text);
   std::string put_answer(const std::string &text, const std::string &lang, const std::string &section, std::int64_t ver,
                          const std::string &model, const std::string &answer);
+  // History off: an answer kept only in memory, written if its text is saved (☆) meanwhile.
+  void hold_answer(const std::string &text, const std::string &lang, const std::string &section, std::int64_t ver,
+                   const std::string &model, const std::string &answer);
   std::string forget(const std::string &text);  // one history entry
   std::string clear_history();
   // Re-reads the logs (the sync folder: the two-installs check, this device's lines written there, the other devices'

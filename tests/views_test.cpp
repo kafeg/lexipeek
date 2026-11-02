@@ -2,6 +2,7 @@
 #include <doctest/doctest.h>
 #include "temp.hpp"
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <thread>
 #include "lexipeek/app.hpp"
 #include "lexipeek/core.hpp"
@@ -362,6 +363,23 @@ TEST_CASE("answers: versioned by the installed models' sha256, as InkPeek") {
   CHECK(answer_version(m, have, "de", "ru", Method::direct) == -651348412);
   CHECK(answer_version(m, have, "de", "ru", Method::llm) == 99162322);
   CHECK(answer_version(m, {}, "fr", "ru", Method::direct) == 0);
+  // InkPeek's cases (tests/inkpeek/tests/versions): the sha256s a translation took → its ver; two: Fast through
+  // English, one: the covering component, none: no model.
+  std::ifstream f(std::filesystem::path(LEXIPEEK_INKPEEK) / "tests" / "versions" / "versions.json");
+  auto cases = nlohmann::json::parse(f)["cases"];
+  int n = 0;
+  for (auto &c : cases) {
+    if (!c.contains("offline")) continue;
+    auto shas = c["offline"].get<std::vector<std::string>>();
+    std::int64_t got = 0;
+    if (shas.size() == 2) got = answer_version(m, {{"model-de-en", shas[0]}, {"model-en-ru", shas[1]}}, "de", "ru", Method::fast);
+    else if (shas.size() == 1) got = answer_version(m, {{"opus-a", shas[0]}}, "de", "ru", Method::direct);
+    else got = answer_version(m, {}, "fr", "ru", Method::direct);
+    INFO(c.dump());
+    CHECK(got == c["ver"].get<std::int64_t>());
+    n++;
+  }
+  CHECK(n >= 3);
 }
 
 TEST_CASE("core: configure changes the answer language and the method without a new core") {

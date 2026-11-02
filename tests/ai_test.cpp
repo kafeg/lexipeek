@@ -82,6 +82,24 @@ TEST_CASE("ai: InkPeek's prompts, word for word: the same versions, so synced an
   CHECK(!ai::module_on(ai::Ask::context, s));
 }
 
+TEST_CASE("ai: InkPeek's answer versions (tests/inkpeek/tests/versions): a prompt's, also with a language you learn") {
+  std::ifstream f(fs::path(LEXIPEEK_INKPEEK) / "tests" / "versions" / "versions.json");
+  auto cases = json::parse(f)["cases"];
+  REQUIRE(cases.size() >= 9);
+  AiSettings s;
+  int n = 0;
+  for (auto &c : cases) {
+    if (!c.contains("ask")) continue;
+    auto a = c["ask"] == "quick" ? ai::Ask::quick : c["ask"] == "analysis" ? ai::Ask::analysis : ai::Ask::context;
+    std::vector<std::string> study;
+    if (c["study"].is_string()) study.push_back(c["study"]);
+    INFO(c.dump());
+    CHECK(ai::version(a, s, study) == c["ver"].get<std::int64_t>());
+    n++;
+  }
+  CHECK(n >= 9);
+}
+
 TEST_CASE("ai: Claude — structured output, effort low, the least thinking per model, refusal fallback, a 400 asks plainly") {
   Fake f;
   f.replies = {ok(claude_reply(quick_json))};
@@ -134,6 +152,15 @@ TEST_CASE("ai: Claude — structured output, effort low, the least thinking per 
   Fake r;
   r.replies = {ok(json{{"content", json::array()}, {"stop_reason", "refusal"}}.dump())};
   CHECK(ai::ask(query(), with("anthropic"), recall, r.t()).code == ai::Code::declined);
+
+  // A long passage may get an answer as long as its prompt (at most 4096); a cut answer says so.
+  Fake l;
+  l.replies = {ok(json{{"content", json::array()}, {"stop_reason", "max_tokens"}}.dump())};
+  CHECK(ai::ask(query(ai::Ask::quick, std::string(3000, 'a')), with("anthropic"), recall, l.t()).code == ai::Code::cut);
+  auto max = json::parse(l.calls.at(0).body)["max_tokens"].get<int>();
+  CHECK(max > 3000);
+  CHECK(max <= 4096);
+  CHECK(json::parse(c.body)["max_tokens"].get<int>() < max);
 }
 
 TEST_CASE("ai: OpenAI-compatible — JSON mode, the host's no-reasoning field, the next one on 400, remembered") {
@@ -154,7 +181,7 @@ TEST_CASE("ai: OpenAI-compatible — JSON mode, the host's no-reasoning field, t
 
   // OpenAI: none rejected → low; JSON mode kept.
   Fake g;
-  g.replies = {status(400), ok(openai_reply(quick_json))};
+  g.replies = {status(400, "Unrecognized request argument supplied: reasoning_effort"), ok(openai_reply(quick_json))};
   REQUIRE(ai::ask(query(), with("openai", "gpt-x"), recall, g.t()).ok());
   CHECK(json::parse(g.calls.at(0).body)["reasoning_effort"] == "none");
   CHECK(json::parse(g.calls.at(1).body)["reasoning_effort"] == "low");
@@ -164,7 +191,8 @@ TEST_CASE("ai: OpenAI-compatible — JSON mode, the host's no-reasoning field, t
   auto local = with("custom", "qwen");
   local.url = "http://localhost:1234/v1/";
   Fake h;
-  h.replies = {status(400), status(422), status(400), ok(openai_reply("Sure! " + quick_json))};
+  h.replies = {status(400, "unknown field reasoning_effort"), status(422, "response_format is not supported"),
+               status(400, "unknown field reasoning_effort"), ok(openai_reply("Sure! " + quick_json))};
   REQUIRE(ai::ask(query(), local, recall, h.t()).ok());
   REQUIRE(h.calls.size() == 4);
   CHECK(h.calls[0].url == "http://localhost:1234/v1/chat/completions");
@@ -173,6 +201,17 @@ TEST_CASE("ai: OpenAI-compatible — JSON mode, the host's no-reasoning field, t
   CHECK(recall["json|localhost:1234|qwen"] == 1);
   // A server of one's own needs no key.
   CHECK(!has_header(h.calls[0], "Authorization", "Bearer "));
+
+  // Another 400 (too long, a bad model) would come back the same: asked once.
+  Fake o;
+  o.replies = {status(400, "This model's maximum context length is 4096 tokens")};
+  local.models["custom"] = "m2";
+  CHECK(ai::ask(query(), local, recall, o.t()).code == ai::Code::failed);
+  CHECK(o.calls.size() == 1);
+  // A cut answer says so.
+  Fake x;
+  x.replies = {ok(json{{"choices", {{{"finish_reason", "length"}, {"message", {{"content", "{\"base\":"}}}}}}}.dump())};
+  CHECK(ai::ask(query(), with("openai", "gpt-x"), recall, x.t()).code == ai::Code::cut);
 }
 
 TEST_CASE("ai: errors as InkPeek's AiErrors; nothing is sent without a key, a model or a server") {
@@ -288,6 +327,30 @@ TEST_CASE("ai: answers kept through the store (ai.put), so they come back offlin
   // Not saved: offline says so.
   CHECK(ai::answer(st, query(ai::Ask::context), s, recall, offline.t()).code == ai::Code::offline);
   CHECK(ai::brief(*kept) == "das Haus — дом, здание");
+  wipe(d);
+}
+
+TEST_CASE("ai: History off keeps a ☆-saved text's answers (InkPeek's); an answer after the card closed is not kept") {
+  auto d = fs::temp_directory_path() / "lexipeek-ai-held";
+  wipe(d);
+  fs::create_directories(d);
+  Store st({d, {}, {}, {}});
+  REQUIRE(st.error().empty());
+  std::map<std::string, int> recall;
+  Fake f;
+  f.replies = {ok(claude_reply(quick_json))};
+  auto s = with("anthropic");
+  REQUIRE(ai::answer(st, query(), s, recall, f.t(), false).ok());
+  CHECK(st.records().ai.empty());  // History off: only in the card
+  st.save("Häusern", "word", "ru", "дом");
+  REQUIRE(st.records().ai.size() == 1);  // ☆ takes it along
+  CHECK(st.answer("Häusern", "Russian", "quick", 1031579369));
+  // Saved already: kept at once, with History off too.
+  REQUIRE(ai::answer(st, query(ai::Ask::context), s, recall, f.t(), false).ok());
+  CHECK(st.records().ai.size() == 2);
+  // The card closed before the answer came: not kept.
+  REQUIRE(ai::answer(st, query(ai::Ask::analysis), s, recall, f.t(), true, [] { return false; }).ok());
+  CHECK(st.records().ai.size() == 2);
   wipe(d);
 }
 

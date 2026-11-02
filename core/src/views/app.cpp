@@ -166,12 +166,7 @@ std::vector<Seen> Engine::recents(int n) const { return core->recents(n); }
 bool Engine::toggle_saved(const Card &card, const std::string &translation) const { return core->toggle_saved(card, translation); }
 
 AiState Engine::ask(const Card &card, ai::Ask a, const std::string &key) const {
-  auto r = core->ask(card, a, key);
-  AiState st;
-  st.answered = true, st.ok = r.ok(), st.saved = r.saved;
-  if (r.ok()) st.json = r.json;
-  else st.error = ai::error_text(r, load_settings(core->data()).ai);
-  return st;
+  return ai_state(core->ask(card, a, key), load_settings(core->data()).ai);
 }
 NotesView Engine::notes(NotesTab tab, int page) const {
   auto v = notes_view(core->store(), tab, core->answer(), page);

@@ -522,6 +522,7 @@
 {"reset_prompts_d", "Every edited part back to the original text."},
 {"ai_method", "AI · {1}"},
 {"err_declined", "The model declined this request."},
+{"err_cut", "The answer was cut off: the text is too long for one answer."},
 {"err_not_json", "The model did not answer in JSON. Try again or another model."},
 {"err_no_cli", "The program {1} was not found: install it or give its full path in Settings → AI."},
 {"help_t", "Help"},

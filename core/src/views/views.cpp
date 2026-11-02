@@ -532,6 +532,14 @@ CardState with_answer(const CardState &s, ai::Ask a, const AiState &answer) {
   return out;
 }
 
+AiState ai_state(const ai::Answer &r, const AiSettings &s) {
+  AiState st;
+  st.answered = true, st.ok = r.ok(), st.saved = r.saved;
+  if (r.ok()) st.json = r.json;
+  else st.error = ai::error_text(r, s);
+  return st;
+}
+
 std::string shown_translation(const CardState &s) {
   if (s.by_ai) return s.quick.ok ? ai::brief(s.quick.json) : "";
   return s.translated && s.translation.ok() ? s.translation.text : "";

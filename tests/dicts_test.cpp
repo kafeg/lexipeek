@@ -24,7 +24,7 @@ void be32(std::string &s, uint32_t v) {
 }
 
 // A StarDict dictionary <dir>/<base>.{ifo,idx,dict}, sorted as given.
-void make_dict(const fs::path &dir, const std::string &base, const std::string &name, const Words &words) {
+void make_dict(const fs::path &dir, const std::string &base, const std::string &name, const Words &words, const std::string &types = "h") {
   fs::create_directories(dir);
   std::string idx, dict;
   for (auto &[w, a] : words) {
@@ -36,7 +36,7 @@ void make_dict(const fs::path &dir, const std::string &base, const std::string &
   std::ofstream(dir / (base + ".idx"), std::ios::binary) << idx;
   std::ofstream(dir / (base + ".dict"), std::ios::binary) << dict;
   std::ofstream(dir / (base + ".ifo")) << "StarDict's dict ifo file\nversion=3.0.0\nbookname=" << name << "\nwordcount=" << words.size()
-                                       << "\nidxfilesize=" << idx.size() << "\nsametypesequence=h\n";
+                                       << "\nidxfilesize=" << idx.size() << "\nsametypesequence=" << types << "\n";
 }
 
 std::string slurp(const fs::path &p) {
@@ -106,6 +106,16 @@ std::vector<std::string> ids(const DictsView &v) {
 }
 
 }  // namespace
+
+TEST_CASE("sametypesequence=mW: the last field, a sound, has no size before it") {
+  auto d = fresh("last-binary");
+  make_dict(d / "own", "snd", "snd", {{"Haus", std::string("Haus\0\x09\x09\x09", 8)}}, "mW");
+  dict::StarDict sd(d / "own" / "snd.ifo", d / "index", false);
+  auto hits = sd.lookup("Haus");
+  REQUIRE(hits.size() == 1);
+  CHECK(hits[0].html == "Haus");
+  CHECK(text::clean_query("Ha\u0308user,") == "Häuser");  // a reader's decomposed word is one word
+}
 
 TEST_CASE("short meaning of other dictionaries (InkPeek's Short.kt)") {
   // WikDict: the <div> translations of the first part of speech (or the one asked), distinct, up to 3.

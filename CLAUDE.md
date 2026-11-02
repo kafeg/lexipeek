@@ -116,7 +116,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `core/src/ai/` (InkPeek's `ai/`; facade `lexipeek/ai.hpp`): providers (`providers()`: Anthropic Messages API,
   OpenAI-compatible `/chat/completions` + `/models`, CLI `claude -p` / `codex exec` as one shell command line),
   `prompts.inc` (InkPeek's `Ask` word for word, generated once from its `Ai.kt`: the answers' `version` is Java's
-  `hashCode` of the original prompt — `ai_test` checks InkPeek's numbers), least reasoning per host and its `recall`
+  `hashCode` of the original prompt — `ai_test` and `views_test` run InkPeek's `tests/versions`), least reasoning per host and its `recall`
   (settings.json `ai.recall`), errors as `Code` → `error_text` (InkPeek's AiErrors), `render` (a tab's light Markdown
   under the app's headings), `answer` (the store first: `ai.put` under the answer language's English name, as InkPeek).
   `Transport` (`ai/ai.hpp`): libcurl (`http::request`, any status) and the shell (`popen`), or `file_transport` for
@@ -126,11 +126,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   ask now: the open one first, the others with prefetch), `with_answer`, row style `markdown`; Settings → AI rows
   (`text`, `secret`, `model` kinds, `edit` = a prompt id for ✎), `prompt_editor` / `settings_prompts`, dynamic
   Card → Opening choices. The key never reaches the core's settings: the shell passes it per call.
-- Languages you learn (spec M7, InkPeek's milestone 21): settings.json `study` (per answer language, two at most;
+- Languages you learn (spec M7, InkPeek's milestone 21): settings.json `study` (per answer language, one (a list, for compatibility);
   `lexipeek/study.hpp`, `views/study.cpp`: InkPeek's `Study`), `Core::lookup` fills `Card::study` (`Learned`: the pack
   answer → X's entry index, translated words, a phrase's gloss, the method) only for a text in the answer language;
   `card_view` draws blocks, `CardState::learned` the translations (`Core::translate_into`, the session one after
-  another); AI: `ai::study_prompt` + `version(a, s, study)` (InkPeek's `Ai.STUDY`; `study_test` checks its numbers);
+  another); AI: `ai::study_prompt` + `version(a, s, study)` (InkPeek's `Ai.STUDY` word for word; its numbers: `tests/versions`);
   Settings row kind `checks` (`study.<code>` toggles). Empty list: the old paths.
 - `core/src/anki/` (facade `lexipeek/anki.hpp`): the Anki binding through AnkiConnect v6 — `notes` (the store's saved words,
   phrases, history → notes, `key_of`), `Sent` (`<data>/anki.json`), `check`, `send` (note type `Peek` and decks made when

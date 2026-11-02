@@ -67,6 +67,7 @@ struct CardSession::Impl {
   int last = 0;
   int section = 0;  // the section page asked last (← makes an earlier one stale)
   bool section_waiting = false;
+  std::atomic<int> closes{0};  // cancel(): an AI answer that comes after it is not kept
   std::atomic<int> translation{0};  // the translation asked last (another method makes an earlier one stale)
   CardNav before;                   // the card before a look-up (text that cleans to nothing brings it back)
   int read_ticket = 0;              // the Speaker's reading of this card (0: none)
@@ -218,12 +219,12 @@ struct CardSession::Impl {
       asking.asking = true;
       nav.state = with_answer(nav.state, a, asking);
       dirty = true;
-      std::thread([self, card = nav.card(), a, k = key, id] {
+      std::thread([self, card = nav.card(), a, k = key, id, at = closes.load()] {
         // A newer card by now: no request (an AI answer costs).
         if (!self->current(id)) return;
         AiState st;
         try {
-          st = self->e.ask(card, a, k);
+          st = ai_state(self->e.core->ask(card, a, k, [&] { return self->closes == at; }), load_settings(self->e.core->data()).ai);
         } catch (const std::exception &x) {
           st.answered = true, st.error = x.what();
         }
@@ -320,6 +321,7 @@ void CardSession::recheck_saved() {
 void CardSession::cancel() {
   auto &i = *impl_;
   i.e.cancel(i.tag);
+  i.closes++;
   i.request = ++i.last;
   i.waiting = i.section_waiting = false;
   i.dirty = true;

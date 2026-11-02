@@ -198,6 +198,7 @@ struct Store::Impl {
   sqlite3 *db = nullptr;
   store::Clock clock;
   std::map<std::string, std::vector<Line>> lines;  // per text, in order
+  std::vector<Answer> held;  // answers asked while History was off: written only if the text is saved (the newest 32)
   bool reading = false;                             // a sync reads the logs without m: own lines written meanwhile kept
   std::vector<Line> written;
   std::atomic<std::uint64_t> changes{0};
@@ -649,6 +650,12 @@ std::string Store::save(const std::string &text, const std::string &kind, const 
       a.text = text;
       ls.push_back(Impl::answer_line(a));
     }
+  // With the answers asked while History was off.
+  for (auto a : impl_->held)
+    if (a.text == text || a.text == from) {
+      a.text = text;
+      ls.push_back(Impl::answer_line(a));
+    }
   return impl_->write(ls);
 }
 
@@ -673,6 +680,14 @@ std::string Store::put_answer(const std::string &text, const std::string &lang, 
     }
   }
   return impl_->write(ls);
+}
+
+void Store::hold_answer(const std::string &text, const std::string &lang, const std::string &section, std::int64_t ver,
+                        const std::string &model, const std::string &answer) {
+  auto g = impl_->lock();
+  auto &h = impl_->held;
+  h.push_back({text, lang, section, ver, model, answer, 0});
+  if (h.size() > 32) h.erase(h.begin());
 }
 
 std::string Store::forget(const std::string &text) {
