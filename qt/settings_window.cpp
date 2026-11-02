@@ -1,8 +1,10 @@
 #include "settings_window.hpp"
 #include <QComboBox>
 #include <QDesktopServices>
+#include <QDir>
 #include <QDialog>
 #include <QEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QStandardPaths>
 #include <QDialogButtonBox>
@@ -34,6 +36,17 @@ namespace lexipeek::qt {
 
 std::string version() { return LEXIPEEK_VERSION; }
 
+// Anki itself runs: nothing answering at AnkiConnect's address then means the add-on is missing (Linux: its process).
+static bool anki_running() {
+#ifdef __linux__
+  for (auto &pid : QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+    QFile f("/proc/" + pid + "/comm");
+    if (f.open(QIODevice::ReadOnly) && f.readAll().trimmed() == "anki") return true;
+  }
+#endif
+  return false;
+}
+
 SettingsState SettingsShell::state() const {
   SettingsState s;
   auto dir = client.data();
@@ -50,6 +63,13 @@ SettingsState SettingsShell::state() const {
   s.ai_key = keys[provider];
   s.ai_testing = testing;
   s.ai_test = test;
+  if (!keys.contains("anki")) keys["anki"] = !platform::secret("anki").empty();
+  s.anki_key = keys["anki"];
+  s.anki_app = anki_running();
+  s.anki_checking = anki_checking;
+  s.anki_checked = anki_check.has_value();
+  if (anki_check) s.anki_check = *anki_check;
+  s.anki = client.engine.anki_status();
   s.device = client.device;
   s.downloading = downloading;
   s.progress = progress;
@@ -148,6 +168,14 @@ SettingsWindow::SettingsWindow(CoreClient &client) : sh_(client) {
   });
   resize(860, 640);
   setMinimumSize(680, 480);
+  auto *anki = new QTimer(this);
+  connect(anki, &QTimer::timeout, this, [this] {
+    if (section_ != SettingsSection::sync || !isVisible()) return;
+    auto s = sh_.client.engine.anki_status();
+    auto &d = drawn_anki_;
+    if (s.on != d.on || s.waiting != d.waiting || s.sending != d.sending || s.text != d.text) drawn_anki_ = s, draw();
+  });
+  anki->start(1000);
   draw();
 }
 
@@ -439,10 +467,13 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       e->setEchoMode(QLineEdit::Password);
       e->setPlaceholderText(t("key_t"));
       auto *save = new QPushButton(t("save_key"));
-      auto store = [this, e, dir] {
-        auto typed = e->text().trimmed();  // a pasted key often brings a space or a line break
-        if (typed.isEmpty()) return;
-        if (!platform::set_secret(app::ai_provider(dir), typed.toStdString())) return after(platform::last_error());
+      // The AI provider's key, or AnkiConnect's ("anki"): the binding gets it at once.
+      auto name = r.key == "anki_key" ? std::string("anki") : app::ai_provider(dir);
+      auto store = [this, e, name] {
+        auto typed = e->text().trimmed().toStdString();  // a pasted key often brings a space or a line break
+        if (typed.empty()) return;
+        if (!platform::set_secret(name, typed)) return after(platform::last_error());
+        if (name == "anki") sh_.client.engine.anki_key(typed), sh_.anki_check.reset();
         sh_.keys.clear();
         e->clear();
         sh_.test.clear();
@@ -454,8 +485,9 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
       l->addWidget(save);
       if (r.on) {
         auto *remove = new QPushButton(t("remove"));
-        connect(remove, &QPushButton::clicked, this, [this, dir] {
-          platform::set_secret(app::ai_provider(dir), "");
+        connect(remove, &QPushButton::clicked, this, [this, name] {
+          platform::set_secret(name, "");
+          if (name == "anki") sh_.client.engine.anki_key("");
           sh_.keys.clear();
           draw();
         });
@@ -564,6 +596,18 @@ void SettingsWindow::press(const SettingRow &r) {
                                        }, this);
   }
   if (r.key == "ai_reset") return after(app::reset_prompts(dir));
+  if (r.key == "anki_send") return sh_.client.engine.anki_send_now(), draw();
+  if (r.key == "anki_check" && !sh_.anki_checking) {
+    sh_.anki_checking = true;
+    draw();
+    auto k = platform::secret("anki");
+    sh_.client.run<anki::Check>(sh_.client.worker, [dir, k] { return app::anki_check(dir, k); }, [this](anki::Check c) {
+      sh_.anki_check = c;
+      sh_.anki_checking = false;
+      draw();
+    }, this);
+    return;
+  }
   if (r.key == "updates" && !sh_.checking) {
     sh_.checking = true;
     draw();

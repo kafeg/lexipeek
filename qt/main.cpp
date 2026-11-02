@@ -154,6 +154,8 @@ int run(int argc, char **argv) {
   int code = 0;
   {
     Shell shell(client);
+    // The Anki binding sends on its own (never in a tool run); its key read off the main thread (the keyring may ask).
+    client.worker.start([e = client.engine] { e.anki_start(platform::secret("anki")); });
     platform::receive([&shell](const QStringList &a) {
       if (a.contains("--quit")) return QApplication::quit();  // a newer copy installed, or uninstalled
       shell.handle(a);

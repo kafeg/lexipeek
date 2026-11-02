@@ -3,6 +3,7 @@
 #pragma once
 #include <QWidget>
 #include <map>
+#include <optional>
 #include "core_client.hpp"
 
 class QListWidget;
@@ -20,7 +21,9 @@ struct SettingsShell {
   UpdateCheck update;
   std::string test, downloading, download_error, lookup_error, input_error;
   double progress = 0;
-  mutable std::map<std::string, bool> keys;  // per provider: a key is stored (the store read once, again after a change)
+  mutable std::map<std::string, bool> keys;  // per provider ("anki": AnkiConnect's): a key is stored (read once, again after a change)
+  bool anki_checking = false;
+  std::optional<anki::Check> anki_check;  // Sync → Anki's last Check
   std::string backup_said;  // what the last Export… / Import… said (Sync → Sync)
   SettingsState state() const;
 };
@@ -57,6 +60,7 @@ class SettingsWindow : public QWidget {
   std::map<SettingsSection, int> tabs_;
   std::string error_;
   bool pending_ = false;
+  anki::Status drawn_anki_;  // Sync → Anki drawn again when the binding's state moves
 };
 
 class AboutWindow : public QWidget {

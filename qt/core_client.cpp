@@ -1,4 +1,6 @@
 #include "core_client.hpp"
+#include <QSysInfo>
+#include <QTimer>
 
 namespace lexipeek::qt {
 
@@ -17,10 +19,22 @@ CoreClient::CoreClient(const std::string &data, const Device &d) : device(d), en
   indexing.setMaxThreadCount(1);
   ai.setMaxThreadCount(4);
   syncing.setMaxThreadCount(1);
-  syncing.start([e = engine] {
+  // A device never named takes this computer's name.
+  syncing.start([e = engine, computer = QSysInfo::machineHostName().toStdString()] {
+    e.name_device(computer);
     if (e.sync(true)) QMetaObject::invokeMethod(&notes_bus(), [] { emit notes_bus().changed(); }, Qt::QueuedConnection);
   });
   prepare();
+  // Every 30 s the folder is looked at; read only when its files changed.
+  auto *timer = new QTimer(this);
+  connect(timer, &QTimer::timeout, this, [this] { sync(false); });
+  timer->start(30000);
+}
+
+void CoreClient::sync(bool force) {
+  syncing.start([e = engine, force] {
+    if (e.sync(force)) QMetaObject::invokeMethod(&notes_bus(), [] { emit notes_bus().changed(); }, Qt::QueuedConnection);
+  });
 }
 
 void CoreClient::prepare() {

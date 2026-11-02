@@ -48,6 +48,8 @@ class CoreClient : public QObject {
 
   void configure();
   void reload();
+  // The sync folder read again on its pool (not forced: only when its files changed); Notes hear a change.
+  void sync(bool force);
   const std::string &data() const { return data_; }
 
  private:
