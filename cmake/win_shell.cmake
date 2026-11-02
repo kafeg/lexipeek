@@ -38,6 +38,6 @@ file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/win/lexipeek-core.props CONTENT "<?xml 
   </ItemGroup>
 </Project>
 ")
-# 0.1.<git commit count>, as the other shells' (cmake/version.cmake): for the code and the .rc's version.
+# <VERSION>.<git commit count>, as the other shells' (cmake/version.cmake): for the code and the .rc's version.
 add_custom_target(lexipeek-win-version ALL COMMAND ${CMAKE_COMMAND} -DSOURCE=${PROJECT_SOURCE_DIR} -DOUT=${CMAKE_BINARY_DIR}/win/version.h
                   -P ${PROJECT_SOURCE_DIR}/cmake/version.cmake BYPRODUCTS ${CMAKE_BINARY_DIR}/win/version.h)

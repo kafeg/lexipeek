@@ -307,7 +307,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
 (macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
-`cmake/version.cmake` and `qt/lexipeek.rc.in`, a new CHANGELOG section.
+(`cmake/version.cmake` reads it) and `qt/lexipeek.rc.in`, a new CHANGELOG section.
 
 ## Rules
 - Branch model: `main` only, commit and push to `main`.
