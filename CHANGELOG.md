@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### 0.2.384 — 2026-11-02
+### 0.2.385 — 2026-11-02
 - Linux x64: `LexiPeek-Linux-x64.tar.gz` (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland
   through XWayland). Unpack and run `LexiPeek/lexipeek`: Ctrl+Alt+D looks up the primary selection — the text you
   selected, never the clipboard —, Ctrl+Alt+A opens a card to type in; the tray, the app menu and `lexipeek://`,
@@ -14,6 +14,9 @@
 - Windows: when another app has taken Win+Shift+D (or Win+Shift+A), LexiPeek takes Win+Shift+E (Win+Shift+Q); when
   that one is taken too, a notification says so and opens Settings → Hotkeys.
 - Windows: the card opened for the first time after the start is whole again (its bottom cut through the text field).
+- Windows: About and Settings opened from the LexiPeek window come to the front (they opened behind it).
+- Windows: the icon at a new selection shows LexiPeek's glyph, as the tray and the Mac's icon do (it showed the app's
+  icon). It stays off by default, as on the Mac (Card → Opening).
 - As InkPeek: a dictionary whose entries end in a sound or a picture shows their text; a word written with a separate
   umlaut mark (a + ¨, as some readers copy it) is found; a long text's AI answer is not cut short any more (its limit
   grows with the text) and says so when it is cut; AI answers about a language you learn open in InkPeek and back through sync.

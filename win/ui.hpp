@@ -35,6 +35,7 @@ void fit_height(const xaml::Window &w);
 void retheme(const xaml::Window &w, xaml::ElementTheme theme, const winrt::hstring &title);
 // The app's icon at px × px (premultiplied BGRA, as XAML's bitmaps take it).
 xaml::Media::Imaging::WriteableBitmap app_icon(int px);
+xaml::Media::Imaging::WriteableBitmap icon_image(int px, int resource);  // an icon of the exe (resource.h) at px × px
 
 // A question as Windows 11's dialogs ask it: title, detail, the accent button (yes) and the other (no; "" none).
 // done(true) for yes; closing it is no.

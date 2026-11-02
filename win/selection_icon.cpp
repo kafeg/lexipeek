@@ -84,7 +84,7 @@ void SelectionIcon::input(os::Input i) {
   read_.Start();
 }
 
-// A small button with the app's icon by the cursor, above it; it takes no focus.
+// A small button with the app's glyph by the cursor, above it; it takes no focus.
 void SelectionIcon::show_at(const os::Selected &s, POINT at) {
   found_ = s;
   if (!window) {
@@ -106,7 +106,6 @@ void SelectionIcon::show_at(const os::Selected &s, POINT at) {
     <Image x:Name="Icon" Width="20" Height="20"/>
   </Button>
 </Grid>)");
-    part<controls::Image>(root, L"Icon").Source(app_icon(static_cast<int>(std::lround(20 * scale))));
     auto open_button = part<controls::Button>(root, L"Open");
     controls::ToolTipService::SetToolTip(open_button, winrt::box_value(tr("lookup_service")));
     open_button.Click([this](auto &&, auto &&) {
@@ -117,6 +116,10 @@ void SelectionIcon::show_at(const os::Selected &s, POINT at) {
     aw.ResizeClient({static_cast<int32_t>(std::lround(size * scale)), static_cast<int32_t>(std::lround(size * scale))});
     window.Closed([this](auto &&, auto &&) { window = nullptr; });
   }
+  // The tray's glyph (the Mac's button shows its menu-bar one) in the theme's colour.
+  auto root = window.Content().as<xaml::FrameworkElement>();
+  int px = static_cast<int>(std::lround(20 * GetDpiForWindow(hwnd(window)) / 96.0));
+  part<controls::Image>(root, L"Icon").Source(icon_image(px, root.ActualTheme() == xaml::ElementTheme::Dark ? IDI_TRAY_WHITE : IDI_TRAY_BLACK));
   auto aw = window.AppWindow();
   MONITORINFO mi{};
   mi.cbSize = sizeof mi;

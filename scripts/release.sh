@@ -58,9 +58,10 @@ for f in LexiPeek.exe LexiPeek.pri qwen.dll Microsoft.WindowsAppRuntime.dll Micr
   grep -qix "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
 done
 [ "$(unzip -p "$dir/LexiPeek-Windows.zip" LexiPeek/LexiPeek.exe | head -c 2)" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
-# The installer: a Windows program whose version resource (UTF-16) names this version.
+# The installer: a Windows program whose version resource (UTF-16, padded with spaces) names this version.
 [ "$(head -c 2 "$dir/LexiPeek-Windows-Setup.exe")" = "MZ" ] || die "LexiPeek-Windows-Setup.exe is not a Windows program"
-V="${TAG#v}" perl -0777 -ne 'exit(index($_, "\0\0" . join("", map { "$_\0" } split //, $ENV{V}) . "\0\0") < 0)' "$dir/LexiPeek-Windows-Setup.exe" ||
+V="${TAG#v}" perl -0777 -ne 'my ($k, $v) = map { join "", map { "$_\0" } split // } "ProductVersion", $ENV{V};
+  exit(/\Q$k\E\0\0(?:\0\0)?\Q$v\E[ \0]\0/ ? 0 : 1)' "$dir/LexiPeek-Windows-Setup.exe" ||
   die "LexiPeek-Windows-Setup.exe is not ${TAG#v}"
 # The Linux tar.gz: the LexiPeek folder with the program (an x86-64 ELF; its version checked by linux.yml) and lib/.
 names=$(tar -tzf "$dir/LexiPeek-Linux-x64.tar.gz")

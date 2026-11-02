@@ -37,5 +37,7 @@ The device cases assume a device's whole pack set: every job with dictionaries h
   merges it (~5 s).
 - Hy-MT2 tests (`LEXIPEEK_MODELS` with `llm/llm-hy-mt2-1.8b-q4.gguf`); without a model a test says "skipped".
 - The shells: `make snapshots`, `scripts/selection-test.sh`, `scripts/qt-snapshots.sh`, on Windows `LexiPeek.exe
-  --self-test` / `--snapshots`, `scripts/win-e2e.ps1` (with the first card's height, a taken hotkey's fallback),
-  `scripts/win-read-e2e.ps1`.
+  --self-test` / `--snapshots`, `scripts/win-e2e.ps1` (with the first card's height, About and Settings in front of the
+  window, a taken hotkey's fallback), `scripts/win-read-e2e.ps1`, `scripts/win-install-e2e.ps1` (the installer — CI's
+  `LexiPeek-Windows-Setup` artifact — on a machine without LexiPeek: install, first run, again over the running app,
+  uninstall).

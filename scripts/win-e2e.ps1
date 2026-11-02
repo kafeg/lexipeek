@@ -50,6 +50,8 @@ public static class Win {
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);
   [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr h, int id);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
 }
 '@
 # A real click in the middle of a window: the focus is there (a notification may hold it otherwise).
@@ -147,7 +149,7 @@ Check ($second.HasExited) 'a second launch hands over and quits'
 Shot '6-window'
 Check ((AppTexts $app) -match 'Help') 'the second launch opens the LexiPeek window'
 
-# The LexiPeek window (UI Automation): a look-up, History, F1 → Help, closed (the app stays in the tray).
+# The LexiPeek window (UI Automation): a look-up, History, F1 -> Help, closed (the app stays in the tray).
 $ae = [System.Windows.Automation.AutomationElement]
 function MainWin($proc) {
   $cond = New-Object System.Windows.Automation.PropertyCondition $ae::ProcessIdProperty, $proc.Id
@@ -172,6 +174,25 @@ if ($main) {
   Shot '6b-history'
   $rows = Find $main $ae::AutomationIdProperty 'Rows'
   Check ($rows -ne $null -and (Find $rows $ae::NameProperty 'Haus') -ne $null) 'History lists the look-up'
+  # About and Settings from the window's foot (a real click): in front of it, with the focus.
+  foreach ($id in 'AboutItem', 'SettingsItem') {
+    $item = Find $main $ae::AutomationIdProperty $id
+    if (-not $item) { Check $false "the window's $id is found"; continue }
+    $r = $item.Current.BoundingRectangle
+    [void][Win]::SetCursorPos([int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2))
+    [Win]::mouse_event(2, 0, 0, 0, 0); [Win]::mouse_event(4, 0, 0, 0, 0)
+    Start-Sleep 2
+    Shot "6d-$id"
+    $front = [Win]::GetForegroundWindow()
+    $t = New-Object System.Text.StringBuilder 256
+    [void][Win]::GetWindowText($front, $t, 256)
+    Check ($front -ne [IntPtr]$main.Current.NativeWindowHandle -and $t.ToString() -ne 'LexiPeek') "$id opens in front of the window (in front: $t)"
+    $ae::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,
+      (New-Object System.Windows.Automation.PropertyCondition $ae::ProcessIdProperty, $app.Id)) |
+      Where-Object { $_.Current.Name -ne 'LexiPeek' -and $_.Current.Name -ne '' } |
+      ForEach-Object { try { $_.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close() } catch {} }
+    Start-Sleep 1
+  }
   try { $main.SetFocus() } catch { ClickIn $app }
   Keys '{F1}'
   Start-Sleep 2
@@ -182,7 +203,7 @@ if ($main) {
   Check ((-not $app.HasExited) -and (MainWin $app) -eq $null) 'the window closes, the app stays'
 }
 
-# The icon at a new selection (Card → Opening): on for this run, a drag over a word with the mouse, the icon by the
+# The icon at a new selection (Card -> Opening): on for this run, a drag over a word with the mouse, the icon by the
 # cursor, a click on it opens the card.
 Get-Process LexiPeek -ErrorAction SilentlyContinue | Stop-Process -Force
 $settings = Join-Path $Data 'settings.json'

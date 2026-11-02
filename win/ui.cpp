@@ -77,6 +77,12 @@ void present(const xaml::Window &w) {
   }
   w.Activate();
   os::activate(hwnd(w));
+  // Opened by a click in another window of ours (the LexiPeek window's foot): that one takes the focus back once the
+  // click is handled, so this one comes to the front again after it.
+  winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().TryEnqueue(
+      winrt::Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, [h = hwnd(w)] {
+        if (IsWindowVisible(h)) os::activate(h);
+      });
 }
 
 void fit_height(const xaml::Window &w) {
@@ -101,8 +107,10 @@ void retheme(const xaml::Window &w, xaml::ElementTheme t, const winrt::hstring &
   part<controls::TextBlock>(w.Content().as<xaml::FrameworkElement>(), L"Title").Text(title);
 }
 
-// The app's icon at px × px (premultiplied BGRA, as XAML's bitmaps take it).
-xaml::Media::Imaging::WriteableBitmap app_icon(int px) {
+xaml::Media::Imaging::WriteableBitmap app_icon(int px) { return icon_image(px, IDI_APP); }
+
+// premultiplied BGRA, as XAML's bitmaps take it.
+xaml::Media::Imaging::WriteableBitmap icon_image(int px, int resource) {
   xaml::Media::Imaging::WriteableBitmap bitmap(px, px);
   BITMAPINFO bi{};
   bi.bmiHeader.biSize = sizeof bi.bmiHeader;
@@ -110,7 +118,7 @@ xaml::Media::Imaging::WriteableBitmap app_icon(int px) {
   void *bits = nullptr;
   HDC dc = CreateCompatibleDC(nullptr);
   HBITMAP dib = CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
-  auto icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP), IMAGE_ICON, px, px, 0));
+  auto icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(resource), IMAGE_ICON, px, px, 0));
   if (dib && icon) {
     auto old = SelectObject(dc, dib);
     DrawIconEx(dc, 0, 0, icon, px, px, 0, nullptr, DI_NORMAL);

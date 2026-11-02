@@ -20,7 +20,6 @@ VersionInfoVersion={#Version}
 DefaultDirName={localappdata}\Programs\LexiPeek
 DisableDirPage=yes
 DisableProgramGroupPage=yes
-DisableReadyPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
