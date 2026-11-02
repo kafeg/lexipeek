@@ -35,6 +35,8 @@ class CardPopup : public QWidget {
   QTimer outside_;
   bool was_down_ = false, keys_ = false;
   QPoint drag_, start_;
+  // Where it was put: geometry() may still hold a window manager's stale (0, 0) after a show (X11).
+  QPoint at_;
 };
 
 }  // namespace lexipeek::qt

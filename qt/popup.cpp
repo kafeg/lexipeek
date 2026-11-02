@@ -60,7 +60,7 @@ CardPopup::CardPopup(CoreClient &client) : QWidget(nullptr, Qt::Tool | Qt::Frame
   outside_.setInterval(15);
   connect(&outside_, &QTimer::timeout, this, [this, shadow] {
     bool down = platform::mouse_down();
-    auto card_rect = frameGeometry().adjusted(shadow, shadow, -shadow, -shadow);
+    auto card_rect = QRect(at_, size()).adjusted(shadow, shadow, -shadow, -shadow);
     bool outside = down && !was_down_ && !model.pinned && !card_rect.contains(QCursor::pos());
     was_down_ = down;
     if (outside) return close_card();  // not keys() after it: Esc would stay taken
@@ -82,7 +82,7 @@ void CardPopup::show_card(const std::optional<std::string> &text, Source source,
   adjustSize();
   // The frame at the anchor; the window around it is larger by the shadow.
   auto inner = size() - QSize(2 * shadow, 2 * shadow);
-  move(place(inner, anchor, screen_) - QPoint(shadow, shadow - lift));
+  move(at_ = place(inner, anchor, screen_) - QPoint(shadow, shadow - lift));
   model.source = source;
   if (text) model.lookup(*text);
   show();
@@ -127,10 +127,10 @@ void CardPopup::fit() {
   int was = height();
   adjustSize();
   if (model.busy() && height() < was) resize(width(), was);
-  auto g = geometry();
+  QRect g(at_, size());
   if (g.bottom() > screen_.bottom()) g.moveBottom(screen_.bottom());
   if (g.right() > screen_.right()) g.moveRight(screen_.right());
-  move(g.topLeft());
+  move(at_ = g.topLeft());
 }
 
 // With the focus (typing): ←/→ tabs, Ctrl+S ☆, Backspace back.
@@ -149,16 +149,16 @@ void CardPopup::keyPressEvent(QKeyEvent *e) {
 
 // A drag on the card's background moves it.
 void CardPopup::mousePressEvent(QMouseEvent *e) {
-  drag_ = e->globalPosition().toPoint() - pos();
-  start_ = pos();
+  drag_ = e->globalPosition().toPoint() - at_;
+  start_ = at_;
 }
 
 void CardPopup::mouseMoveEvent(QMouseEvent *e) {
-  if (e->buttons() & Qt::LeftButton) move(e->globalPosition().toPoint() - drag_);
+  if (e->buttons() & Qt::LeftButton) move(at_ = e->globalPosition().toPoint() - drag_);
 }
 
 void CardPopup::mouseReleaseEvent(QMouseEvent *) {
-  if ((pos() - start_).manhattanLength() > 4 && pin_moved && !model.pinned) model.toggle_pin();
+  if ((at_ - start_).manhattanLength() > 4 && pin_moved && !model.pinned) model.toggle_pin();
 }
 
 }  // namespace lexipeek::qt
