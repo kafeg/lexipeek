@@ -33,6 +33,14 @@ void common(CURL *h, const std::string &url) {
   curl_easy_setopt(h, CURLOPT_USERAGENT, "LexiPeek");
 #if defined(__APPLE__) || defined(_WIN32)
   curl_easy_setopt(h, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA));
+#else
+  // The distribution's CA bundle: the build machine's path may not be there (Debian / Ubuntu, Fedora, openSUSE, Arch).
+  static const std::string ca = [] {
+    for (auto *p : {"/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem"})
+      if (std::error_code e; std::filesystem::exists(p, e)) return std::string(p);
+    return std::string();
+  }();
+  if (!ca.empty()) curl_easy_setopt(h, CURLOPT_CAINFO, ca.c_str());
 #endif
 }
 

@@ -195,10 +195,12 @@ std::vector<SettingRow> opening(const Settings &s) {
   auto o = opens(s);
   std::vector<std::string> titles;
   for (auto &x : o) titles.push_back(tr(x.second) + (x.first == "analysis" || x.first == "context" ? " " + tr("tab_ai") : ""));
-  return {choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open)),
+  std::vector<SettingRow> rows{choice("phrase_open", tr("phrase_open"), tr("phrase_open_about"), titles, index_of(o, s.card.phrase_open)),
           toggle("history", tr("look_history"), tr("look_history_d"), s.card.history),
           toggle("selection_icon", tr("icon_t"), tr("icon_d"), s.selection_icon),
           toggle("pin_moved", tr("pin_moved_t"), tr("pin_moved_d"), s.pin_moved)};
+  if (ui_platform() == "linux") rows.erase(rows.begin() + 2);  // no icon at the selection there (spec M10)
+  return rows;
 }
 
 std::string mark(bool edited, const std::string &about) { return edited ? tr("prompt_edited") + " · " + about : about; }

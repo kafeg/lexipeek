@@ -52,7 +52,7 @@ const std::vector<std::map<std::string, std::string, std::less<>>> &maps() {
 }
 
 std::atomic<int> current{0};
-std::atomic<bool> windows{false};
+std::atomic<int> platform{0};  // 0 mac, 1 windows, 2 linux
 std::mutex missing_mu;
 std::set<std::string> missing;
 
@@ -98,13 +98,15 @@ std::string ui_language(const std::string &setting, const std::string &system) {
 void set_ui_language(const std::string &code) { current = std::max(0, index_of(code)); }
 std::string ui_language() { return ui_languages()[static_cast<size_t>(current.load())]; }
 
-void set_ui_platform(const std::string &platform) { windows = platform == "windows"; }
-std::string ui_platform() { return windows ? "windows" : "mac"; }
+void set_ui_platform(const std::string &name) { platform = name == "windows" ? 1 : name == "linux" ? 2 : 0; }
+std::string ui_platform() { return platform == 1 ? "windows" : platform == 2 ? "linux" : "mac"; }
 
 std::string tr(std::string_view key, const std::vector<std::string> &args) {
   const std::string *t = nullptr;
-  if (windows) {
-    auto w = std::string(key) + "@win";
+  // Linux: its own text, else Windows' (Ctrl, "this computer").
+  static const char *const marks[] = {"@linux", "@win"};
+  for (int i = platform == 2 ? 0 : 1; platform != 0 && !t && i < 2; ++i) {
+    auto w = std::string(key) + marks[i];
     t = find(current, w);
     if (!t) t = find(0, w);
   }

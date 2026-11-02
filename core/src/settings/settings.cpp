@@ -99,6 +99,9 @@ Settings load_settings(const fs::path &data) {
   // AltGr+letter (Polish ą), Win+Alt+D the clock's.
   if (ui_platform() == "windows")
     for (auto *h : {&s.lookup, &s.input}) h->option = false, h->command = h->shift = true;
+  // Linux: Ctrl+Alt+D and Ctrl+Alt+A (AltGr is a key of its own there; Super+letter is the desktop's).
+  if (ui_platform() == "linux")
+    for (auto *h : {&s.lookup, &s.input}) h->control = true;
   try {
     s.answer = get(j, "answer", s.answer);
     if (j.contains("method") && j["method"].is_string()) {

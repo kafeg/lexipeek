@@ -82,12 +82,12 @@ TEST_CASE("l10n: every key in every language, its placeholders, its plural forms
   }
 }
 
-TEST_CASE("l10n: a Windows text replaces its key there, with no placeholder the key lacks") {
+TEST_CASE("l10n: a Windows or Linux text replaces its key there, with no placeholder the key lacks") {
   auto all = texts("en");
   std::map<std::string, std::string> en(all.begin(), all.end());
   int n = 0;
   for (auto &[k, t] : en) {
-    auto at = k.find("@win");
+    auto at = k.find('@');
     if (at == std::string::npos) continue;
     ++n;
     auto b = k.substr(0, at);
@@ -103,6 +103,17 @@ TEST_CASE("l10n: a Windows text replaces its key there, with no placeholder the 
   {
     Lang de("de");
     CHECK(tr("show_finder") == "Im Explorer zeigen");
+  }
+  // Linux: its own text, else Windows' one.
+  set_ui_platform("linux");
+  CHECK(ui_platform() == "linux");
+  CHECK(tr("show_finder") == "Open the Folder");
+  CHECK(tr("card_pin") == "Keep the card open (Ctrl+P)");
+  CHECK(tr("tab_dictionary") == "Dictionary");
+  {
+    Lang ru("ru");
+    CHECK(tr("key_win") == "Super");
+    CHECK(tr("card_pin") == tr("card_pin@win"));
   }
   set_ui_platform("mac");
 }

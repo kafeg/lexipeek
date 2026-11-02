@@ -498,10 +498,10 @@ HotkeyStep hotkey_step(bool card_open, bool read, const std::string &text, const
 }
 
 std::string hotkey_label(const Hotkey &h) {
-  if (ui_platform() != "windows")
+  if (ui_platform() == "mac")
     return std::string(h.control ? "⌃" : "") + (h.option ? "⌥" : "") + (h.shift ? "⇧" : "") + (h.command ? "⌘" : "") + h.key;
   std::string s;
-  // Windows' own order: Win+Ctrl+Alt+Shift+D.
+  // Windows' own order: Win+Ctrl+Alt+Shift+D (Linux: Super+…).
   for (auto [on, key] : {std::pair{h.command, "key_win"}, {h.control, "key_ctrl"}, {h.option, "key_alt"}, {h.shift, "key_shift"}})
     if (on) s += tr(key) + "+";
   return s + h.key;
