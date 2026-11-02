@@ -1,4 +1,4 @@
-// Not Windows: nothing yet (Linux later; on macOS the Qt shell is only built to work on it).
+// Neither Windows nor Linux: nothing (on macOS the Qt shell is only built to work on it).
 #include <unistd.h>
 #include "lexipeek/os.hpp"
 
@@ -6,6 +6,7 @@ namespace lexipeek::os {
 
 bool register_hotkey(int, const Hotkey &, std::function<void()>) { return false; }
 void unregister_hotkey(int) {}
+std::string desktop_shortcuts() { return ""; }
 std::optional<Selected> selection() { return std::nullopt; }
 std::string probe_selection() { return ""; }
 std::string front_app() { return ""; }
@@ -34,6 +35,7 @@ std::function<ai::CliRan(const ai::CliCall &)> cli_runner() { return nullptr; }
 std::string last_error() { return ""; }
 void activate(void *) {}
 void round(void *) {}
+bool compositing() { return true; }
 std::vector<unsigned char> glyph_mask(const std::string &, char16_t, int) { return {}; }
 std::string icon_font() { return ""; }
 bool taskbar_light() { return false; }

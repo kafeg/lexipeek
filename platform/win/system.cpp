@@ -67,6 +67,8 @@ void activate(void *hwnd) {
   if (theirs != mine) AttachThreadInput(mine, theirs, FALSE);
 }
 
+bool compositing() { return true; }
+
 void round(void *hwnd) {
   auto pref = DWMWCP_ROUND;
   DwmSetWindowAttribute(static_cast<HWND>(hwnd), DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof pref);

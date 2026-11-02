@@ -156,6 +156,8 @@ void unregister_hotkey(int id) {
   if (fired().erase(id)) UnregisterHotKey(hidden(), id);
 }
 
+std::string desktop_shortcuts() { return ""; }
+
 std::string probe_selection() {
   std::string out;
   auto hr = [&](const char *what, HRESULT h) { out += std::string(what) + " hr=0x" + hex(h) + "\n"; };

@@ -60,7 +60,7 @@
   ],
   "features": {
     "qt": {
-      "description": "The Qt shell (Windows, Linux): qtbase only",
+      "description": "The Qt shell (Windows, Linux): qtbase only (Linux: X11 and D-Bus for the tray, portals and the color scheme)",
       "dependencies": [
         {
           "name": "qtbase",
@@ -80,6 +80,14 @@
             },
             {
               "name": "fontconfig",
+              "platform": "linux"
+            },
+            {
+              "name": "xcb",
+              "platform": "linux"
+            },
+            {
+              "name": "dbus",
               "platform": "linux"
             }
           ]

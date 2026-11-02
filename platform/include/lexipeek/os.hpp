@@ -1,4 +1,5 @@
-// What the OS does for a shell, shared by win/ and qt/ (Windows: platform/win/*.cpp; elsewhere platform/none.cpp).
+// What the OS does for a shell, shared by win/ and qt/ (Windows: platform/win/*.cpp, Linux: platform/linux/*.cpp; elsewhere
+// platform/none.cpp).
 // No UI toolkit here: UTF-8 strings, physical pixels, window handles as void *. Callbacks run on the thread that
 // registered them (its message loop: WinUI's or Qt's).
 #pragma once
@@ -12,10 +13,14 @@
 
 namespace lexipeek::os {
 
-// A system-wide hotkey (the core's Hotkey: option = Alt, control = Ctrl, command = Win); false when another app has it.
-// A key code (key "Esc") for the card's own keys while it is open.
+// A system-wide hotkey (the core's Hotkey: option = Alt, control = Ctrl, command = Win / Super); false when another app
+// has it. A key code (key "Esc") for the card's own keys while it is open: ids from 100 (Linux: on X11 only; ids below
+// 100 go through the GlobalShortcuts portal on Wayland).
 bool register_hotkey(int id, const Hotkey &h, std::function<void()> fire);
 void unregister_hotkey(int id);
+// The program a desktop's own shortcut runs instead (with --lookup-selection or --input) when apps get no global
+// hotkeys here (Wayland without the GlobalShortcuts portal); "" when they do.
+std::string desktop_shortcuts();
 
 struct Rect {
   int x = 0, y = 0, w = 0, h = 0;
@@ -85,6 +90,8 @@ std::string last_error();
 void activate(void *hwnd);
 // A borderless window's rounded corners and shadow (Windows 11's own).
 void round(void *hwnd);
+// Windows can be see-through (Linux: X11 with a compositor running).
+bool compositing();
 
 // One glyph of an icon font (Segoe Fluent Icons / Segoe MDL2 Assets) drawn by the system: px × px alpha bytes, row by
 // row; empty where there is none.

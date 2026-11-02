@@ -1,6 +1,9 @@
-# What the OS does for the shells (win/ and qt/): Windows' parts in win/, nothing yet elsewhere.
+# What the OS does for the shells (win/ and qt/): Windows' parts in win/, Linux's in linux/ (Qt's event loop, D-Bus, X11),
+# nothing elsewhere.
 if(WIN32)
   file(GLOB LEXIPEEK_PLATFORM_SOURCES CONFIGURE_DEPENDS win/*.cpp)
+elseif(LINUX AND LEXIPEEK_QT)
+  file(GLOB LEXIPEEK_PLATFORM_SOURCES CONFIGURE_DEPENDS linux/*.cpp)
 else()
   set(LEXIPEEK_PLATFORM_SOURCES none.cpp)
 endif()
@@ -10,5 +13,10 @@ target_link_libraries(lexipeek_platform PUBLIC lexipeek_core)
 if(WIN32)
   target_compile_definitions(lexipeek_platform PRIVATE NOMINMAX UNICODE _UNICODE)
   target_link_libraries(lexipeek_platform PUBLIC user32 gdi32 advapi32 shell32 ole32 oleaut32 uuid dwmapi)
+elseif(LINUX AND LEXIPEEK_QT)
+  find_package(Qt6 REQUIRED COMPONENTS Core DBus)
+  find_package(X11 REQUIRED)
+  target_link_libraries(lexipeek_platform PUBLIC Qt6::Core Qt6::DBus X11::X11 ${CMAKE_DL_LIBS})
+  set_target_properties(lexipeek_platform PROPERTIES AUTOMOC ON)  # the portal's slots
 endif()
 lexipeek_flags(lexipeek_platform)
