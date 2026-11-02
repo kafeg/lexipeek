@@ -1,6 +1,11 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.376 — 2026-11-02
+- Windows: LexiPeek names its version right (0.2.366 said 0.1.366 in About and its install, and Check now offered
+  0.2.366 to itself).
+
+### 0.2.366 — 2026-11-02
 The first release: macOS 14+ (Apple Silicon) and Windows 10 (version 1903 or later) or 11, x64. Linux is not in this
 release. 0.1.351 was a pre-release of it.
 - Select text in any app and press ⌥D (Win+Shift+D on Windows): a card at the selection with the dictionary entry,
