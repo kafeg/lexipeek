@@ -127,10 +127,13 @@ TEST_CASE("packs: install puts every kind in InkPeek's layout, flat") {
   CHECK(have.size() == 5);
   CHECK(have["langid"] == sha("fasttext"));
 
-  // Reinstalling replaces the folder: stale files go.
+  // Reinstalling replaces the folder: stale files go; the move runs with the app's files closed (Windows).
+  int closed = 0;
+  p.closing([&](const std::function<void()> &f) { closed++, f(); });
   spit(r.data / "models" / "deen" / "old.bin", "x");
   CHECK(p.install("model-de-en").ok());
   CHECK(!fs::exists(r.data / "models" / "deen" / "old.bin"));
+  CHECK(closed == 1);
 
   CHECK(p.remove("model-de-en").ok());
   CHECK(!fs::exists(r.data / "models" / "deen"));

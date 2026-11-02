@@ -130,8 +130,12 @@ class Packs {
   Status install(const std::string &id, const Progress &progress = {}, const Cancel &cancel = {}) const;
   // Removes the files and the mark; an id no longer in the list is removed by its name.
   Status remove(const std::string &id) const;
+  // Runs a pack's replacement in place (f) with the app's files of the packs closed: Windows cannot move a folder with
+  // an open file.
+  void closing(std::function<void(const std::function<void()> &f)> c) { closing_ = std::move(c); }
 
  private:
+  std::function<void(const std::function<void()> &)> closing_;
   std::filesystem::path data_;
   std::string base_;
 };

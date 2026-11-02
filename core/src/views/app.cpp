@@ -7,6 +7,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <vector>
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/speech.hpp"
 #include "ai/ai.hpp"
@@ -17,6 +21,23 @@ namespace lexipeek::app {
 
 namespace {
 std::filesystem::path dir(const std::string &data) { return data.empty() ? default_data_dir() : text::path_of(data); }
+
+// Every engine made: an install closes their files of the packs for the moment it replaces one.
+std::mutex engines_mu;
+std::vector<std::weak_ptr<Core>> engines;
+
+// f with the files of every engine on data closed (each core's without_files around the next).
+void without_files(const std::filesystem::path &data, const std::function<void()> &f) {
+  std::vector<std::shared_ptr<Core>> on;
+  {
+    std::lock_guard g(engines_mu);
+    std::error_code ec;
+    for (auto &w : engines)
+      if (auto c = w.lock(); c && std::filesystem::equivalent(c->data(), data, ec)) on.push_back(c);
+  }
+  std::function<void(size_t)> in = [&](size_t i) { i == on.size() ? f() : on[i]->without_files([&] { in(i + 1); }); };
+  in(0);
+}
 }  // namespace
 
 std::string data_dir() { return text::utf8_of(default_data_dir()); }
@@ -119,6 +140,11 @@ Engine Engine::make(const std::string &data, const Device &d) {
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   o.card.read = s.speech.on;
   auto core = std::make_shared<Core>(std::move(o));
+  {
+    std::lock_guard g(engines_mu);
+    std::erase_if(engines, [](auto &w) { return w.expired(); });
+    engines.push_back(core);
+  }
   core->speaker().configure(s.speech);
   core->anki().configure(s.anki);  // on at launch, not only after a change in Settings
   return {core};
@@ -359,6 +385,7 @@ std::vector<std::string> speech_languages() { return speech::languages(); }
 
 Status install(const std::string &data, const std::vector<std::string> &ids, const Download &dl) {
   Packs p(dir(data));
+  p.closing([d = dir(data)](const std::function<void()> &f) { without_files(d, f); });
   auto m = p.cached();
   auto size = [&](const std::string &id) {
     for (auto &c : m.components)

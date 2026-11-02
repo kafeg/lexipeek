@@ -138,7 +138,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Views: Settings → Sync → Anki rows (`anki_rows`, picked by the tab's key; a text row's `choices` are Anki's decks to
   pick), `NotesRow::key` / `anki`. Tests: `anki_test`'s fake AnkiConnect on 127.0.0.1 and a fake `Reader`. AnkiConnect's
   key: Keychain account `anki` (Mac), Credential Manager's `anki` (Windows); `SettingsState::anki_app` (Anki runs) by the shell.
-- `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons), `http` (libcurl: Range resume,
+- `core/src/packs/`: `packs` (list, install, remove, levels, needs, `cannot` reasons; an update's folder replaced with every
+  engine's files of the data dir closed — `Packs::closing`, `Core::without_files` — and its move tried for 2 s), `http` (libcurl: Range resume,
   progress, cancel; native CA store on macOS / Windows). Tests serve a fixture release by `file://` (no network).
 - `core/src/mt/`: `text` (steps, Marian options, sentences, chunks — pure, tested), `model_host` (one model, idle
   thread), `bergamot`/`llm`/`langid` (the engines, as InkPeek's `*_jni.cpp`), `translator` (the methods).

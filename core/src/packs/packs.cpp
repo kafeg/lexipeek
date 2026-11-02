@@ -3,6 +3,7 @@
 #include <sha256.h>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <format>
 #include <map>
@@ -11,6 +12,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <sstream>
+#include <thread>
 #include "lexipeek/l10n.hpp"
 #include "lexipeek/packs.hpp"
 #include "mt/text.hpp"
@@ -112,8 +114,16 @@ std::string swap(const fs::path &from, const fs::path &dest, const fs::path &tmp
   fs::create_directories(dest.parent_path(), ec);
   auto old = tmp / ("old-" + dest.filename().string());
   fs::remove_all(old, ec);
-  if (fs::exists(dest) && (fs::rename(dest, old, ec), ec)) return "Cannot move " + dest.filename().string();
-  if (fs::rename(from, dest, ec); ec) {
+  // Windows: a file another program holds a moment (an antivirus reading the new one) keeps its folder from moving.
+  auto move = [&](const fs::path &a, const fs::path &b) {
+    for (int i = 0;; i++) {
+      fs::rename(a, b, ec);
+      if (!ec || i == 10) return !ec;
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+  };
+  if (fs::exists(dest) && !move(dest, old)) return "Cannot move " + dest.filename().string();
+  if (!move(from, dest)) {
     fs::rename(old, dest, ec);
     return "Cannot move " + dest.filename().string();
   }
@@ -356,6 +366,12 @@ std::string mark(const Layout &l, const std::map<std::string, std::string> &now)
 }  // namespace
 
 Status Packs::install(const Component &c, const Progress &progress, const Cancel &cancel) const {
+  auto replace = [&](const std::function<std::string()> &f) {
+    std::string e;
+    if (closing_) closing_([&] { e = f(); });
+    else e = f();
+    return e;
+  };
   if (auto e = check(c, true); !e.empty()) return {e};
   auto l = layout();
   auto dest = target(l, c);
@@ -406,9 +422,9 @@ Status Packs::install(const Component &c, const Progress &progress, const Cancel
     auto staging = tmp / dest.filename();
     fs::create_directories(staging, ec);
     err = unpack(part, staging);
-    if (err.empty()) err = swap(staging, dest, tmp);
+    if (err.empty()) err = replace([&] { return swap(staging, dest, tmp); });
   } else {
-    err = swap(part, dest, tmp);
+    err = replace([&] { return swap(part, dest, tmp); });
   }
   fs::remove(part, ec);
   fs::remove_all(tmp, ec);
