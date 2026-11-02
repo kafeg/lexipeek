@@ -123,7 +123,7 @@ Answer claude(const Query &q, const AiSettings &s, const std::string &model, con
               std::map<std::string, int> &recall, const Transport &t) {
   // A long passage's translation needs more than a word's answer: about a token per character of the prompt, at most 4096.
   auto chars = std::count_if(prompt.begin(), prompt.end(), [](char c) { return (c & 0xC0) != 0x80; });
-  auto max = std::max<long>(def(q.ask).max_tokens, std::min<long>(chars, 4096));
+  auto max = std::max<long>(def(q.ask).max_tokens, std::min<long>(static_cast<long>(chars), 4096));
   auto body = [&](bool extras) {
     json b{{"model", model}, {"max_tokens", max}, {"system", sys}, {"messages", {{{"role", "user"}, {"content", prompt}}}}};
     if (!extras) return b;
