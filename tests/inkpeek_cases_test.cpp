@@ -6,6 +6,7 @@
 #include <fstream>
 #include <set>
 #include <sstream>
+#include "temp.hpp"
 #include "dict/library.hpp"
 #include "lexipeek/core.hpp"
 #include "text/text.hpp"
@@ -50,9 +51,9 @@ TEST_CASE("InkPeek's device cases") {
     return;
   }
   CoreOptions o;
-  o.data = data;
+  o.data = packs_of(data);
   Core core(o);
-  dict::Library lib(data / "dicts", data / "index");
+  dict::Library lib(o.data / "dicts", o.data / "index");
   std::ifstream f(LEXIPEEK_INKPEEK "/app/src/androidTest/assets/cases.tsv");
   REQUIRE(f);
   int run = 0, skipped = 0, gaps = 0, failed = 0;
@@ -123,7 +124,7 @@ TEST_CASE("the card on the packs: the text's language first, one entry per dicti
     return;
   }
   CoreOptions o;
-  o.data = v;
+  o.data = packs_of(v);
   Core core(o);
   auto c = core.lookup({"Haus", Source::cli, "ru"});
   CHECK(c.lang == "de");
@@ -168,7 +169,7 @@ TEST_CASE("the gloss says how many words it left out") {
     return;
   }
   CoreOptions o;
-  o.data = v;
+  o.data = packs_of(v);
   Core core(o);
   std::string text = "Der Hund";
   for (int i = 0; i < 70; i++) text += " wort" + std::string{static_cast<char>('a' + i / 26), static_cast<char>('a' + i % 26)};

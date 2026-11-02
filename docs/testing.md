@@ -17,7 +17,8 @@ cases from `tests/inkpeek` (the pinned submodule), never edited to make LexiPeek
 The rest of the core (`tests/*_test.cpp`, doctest): lookup and views, nav and `CardSession`, settings, Notes, packs,
 dictionaries, first run, l10n, Read aloud's logic, the app facade, Anki (`anki_test`: a fake AnkiConnect on 127.0.0.1 — decks,
 note types, notes, media in memory — reached through libcurl). A wait in a test is `until()` (`tests/temp.hpp`), never a
-fixed sleep.
+fixed sleep. A test never writes `LEXIPEEK_MODELS`: it runs on a data dir of its own with links to the packs only
+(`packs_of`, `tests/temp.hpp`; the index in the temp folder), and `LEXIPEEK_DATA` is a temp dir for the whole run.
 
 ## CI (`.github/workflows/ci.yml`, every push to `main`)
 | job | runs | packs in `LEXIPEEK_MODELS` |

@@ -397,7 +397,7 @@ TEST_CASE("app: settings by data dir, method ids") {
   wipe(d);
 }
 
-TEST_CASE("app: a snapshot run's data dir is its own — not the person's, no links but the packs, not their sync folder") {
+TEST_CASE("app: a snapshot run's data dir is its own — not the person's, no links but the packs, no index of theirs, not their sync folder") {
   auto root = fs::temp_directory_path() / "lexipeek-isolated";
   wipe(root);
   auto person = root / "person", run = root / "run";
@@ -413,6 +413,13 @@ TEST_CASE("app: a snapshot run's data dir is its own — not the person's, no li
   fs::create_symlink(person / "device.json", run / "device.json");
   CHECK(app::isolated(r, p) == "device.json links outside the run's data dir");
   fs::remove(run / "device.json");
+  fs::create_directories(person / "index");
+  fs::create_directory_symlink(person / "index", run / "index");
+  CHECK(app::isolated(r, p) == "index links outside the run's data dir");
+  fs::remove(run / "index");
+  fs::create_directories(root / "cache");
+  fs::create_directory_symlink(root / "cache", run / "index");
+  CHECK(app::isolated(r, p).empty());
   std::ofstream(run / "settings.json") << R"({"sync": "/Volumes/share/sync"})";
   CHECK(app::isolated(r, p).starts_with("the sync folder is the person's own"));
   std::ofstream(run / "settings.json") << R"({"sync": "/tmp/fixture"})";

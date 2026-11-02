@@ -169,7 +169,7 @@ TEST_CASE("llm: a newer request cancels a running translation") {
 
 TEST_CASE("card session: the last method picked wins, a closed card's translation stops, ← keeps the card's own") {
   if (!has("models/deen/set") || !has("opus/opus-deu_eng_fra_por_spa-sla") || !has("llm/llm-hy-mt2-1.8b-q4.gguf")) return;
-  auto e = app::Engine::make(models().string(), app::device(16384, {"asimddp"}, "arm64"));
+  auto e = app::Engine::make(packs_of(models()).string(), app::device(16384, {"asimddp"}, "arm64"));
   auto s = app::CardSession::make(e);
   auto settle = [&](int ms) {
     for (int i = 0; i < ms / 10 && s.busy(); i++) s.poll(), std::this_thread::sleep_for(std::chrono::milliseconds(10));

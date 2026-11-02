@@ -30,11 +30,20 @@ std::string isolated(const std::string &data, const std::string &person) {
   };
   auto d = dir(data), p = person.empty() ? person_data_dir() : text::path_of(person);
   if (same(d, p)) return "the data dir is the person's own: " + text::utf8_of(d);
-  // Only the packs, read as they are; the store, logs, device, settings and the rest are the run's own.
-  static const std::vector<std::string> packs{"dicts", "dicts-own", "index", "installed.json", "langid.ftz", "llm", "models", "opus", "packs.json", "tts", "voices"};
+  // Only the packs, read as they are; the store, logs, device, settings, index and the rest are the run's own.
+  static const std::vector<std::string> packs{"dicts", "installed.json", "langid.ftz", "llm", "models", "opus", "packs.json", "tts"};
+  auto pc = fs::weakly_canonical(p, ec);
+  auto under = [&](const fs::path &f) {
+    auto c = fs::weakly_canonical(f, ec);
+    auto [a, b] = std::mismatch(pc.begin(), pc.end(), c.begin(), c.end());
+    return !pc.empty() && a == pc.end();
+  };
   for (auto it = fs::directory_iterator(d, ec); !ec && it != fs::directory_iterator(); it.increment(ec)) {
     auto name = text::utf8_of(it->path().filename());
-    if (it->is_symlink(ec) && std::find(packs.begin(), packs.end(), name) == packs.end()) return name + " links outside the run's data dir";
+    if (!it->is_symlink(ec)) continue;
+    // The index is written: a link of the run's own (a cache kept between runs), never into the person's.
+    if (name == "index" ? under(it->path()) : std::find(packs.begin(), packs.end(), name) == packs.end())
+      return name + " links outside the run's data dir";
   }
   auto s = load_settings(d);
   if (!s.sync.empty() && fs::exists(p / "settings.json") && load_settings(p).sync == s.sync) return "the sync folder is the person's own: " + s.sync;

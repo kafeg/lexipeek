@@ -2,6 +2,7 @@
 #pragma once
 #include <chrono>
 #include <filesystem>
+#include <string>
 #include <system_error>
 #include <thread>
 
@@ -20,4 +21,20 @@ bool until(F done, int seconds = 30) {
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
   return true;
+}
+
+// A data dir of the test's own over $LEXIPEEK_MODELS: links to its read-only packs only, so the store, settings and the
+// index (kept between runs in the temp folder) are the test's — LEXIPEEK_MODELS may name the person's data dir.
+inline std::filesystem::path packs_of(const std::filesystem::path &src) {
+  namespace fs = std::filesystem;
+  static int n = 0;
+  auto d = fs::temp_directory_path() / ("lexipeek-packs-" + std::to_string(++n)), index = fs::temp_directory_path() / "lexipeek-packs-index";
+  wipe(d);
+  fs::create_directories(d);
+  fs::create_directories(index);
+  for (auto f : {"dicts", "installed.json", "langid.ftz", "llm", "models", "opus", "packs.json", "tts"})
+    if (fs::is_directory(src / f)) fs::create_directory_symlink(src / f, d / f);
+    else if (fs::exists(src / f)) fs::create_symlink(src / f, d / f);
+  fs::create_directory_symlink(index, d / "index");
+  return d;
 }
