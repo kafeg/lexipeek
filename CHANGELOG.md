@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1 — unreleased
+## 0.1 — 2026-11-02
 The first release: macOS 14+ (Apple Silicon) and Windows 10/11 (x64).
 - Select text in any app and press ⌥D (Win+Shift+D on Windows): a card at the selection with the dictionary entry,
   its grammar and the base form of an inflected word, a phrase word by word, and an offline translation. ⌥A
