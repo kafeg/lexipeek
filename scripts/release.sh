@@ -52,9 +52,9 @@ ditto -x -k "$dir/LexiPeek-macOS.zip" "$dir/mac"
 got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVersionString)
 [ "v$got" = "$TAG" ] || die "the Mac app says $got, not ${TAG#v}"
 codesign --verify --deep --strict "$dir/mac/LexiPeek.app" || die "the Mac app's signature does not verify"
-# The Windows zip: the LexiPeek folder with the program and the Windows App SDK's runtime beside it.
+# The Windows zip: the LexiPeek folder with the program, Read aloud's qwen.dll and the Windows App SDK's runtime beside it.
 names=$(unzip -Z1 "$dir/LexiPeek-Windows.zip")
-for f in LexiPeek.exe LexiPeek.pri Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll; do
+for f in LexiPeek.exe LexiPeek.pri qwen.dll Microsoft.WindowsAppRuntime.dll Microsoft.UI.Xaml.dll; do
   grep -qix "LexiPeek/$f" <<<"$names" || die "LexiPeek-Windows.zip has no LexiPeek/$f"
 done
 [ "$(unzip -p "$dir/LexiPeek-Windows.zip" LexiPeek/LexiPeek.exe | head -c 2)" = "MZ" ] || die "LexiPeek.exe is not a Windows program"
