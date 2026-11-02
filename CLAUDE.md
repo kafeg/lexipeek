@@ -27,7 +27,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `langid.ftz`, `installed.json`). CI fetches packs with `scripts/fetch-models.sh` (cache key, runs before the build;
   it marks `installed.json` too), on Windows by `lexipeek-cli packs install` after the build.
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
-- App (macOS): `make app` (core + `mac/` by XcodeGen, Release; version `0.1.<git commit count>` as
+- App (macOS): `make app` (core + `mac/` by XcodeGen, Release; version `<VERSION>.<git commit count>` as
   InkPeek's, the build number the count — Makefile's `VERSION`; signed with the local certificate when it exists — `scripts/create-dev-certificate.sh` once, then the
   Accessibility grant and Keychain keys survive rebuilds; `SIGN=<identity>` picks another), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:
@@ -56,6 +56,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   main instance's sync folder is a fixture made for each look (`sync_fixture` in `snapshot-cases.sh`: an InkPeek reader,
   LexiPeek on Windows, an earlier Mac): Notes show their words, `settings-sync-sync` the folder's status line.
   Another `make install` (`pkill -x LexiPeek`) stops the run: it says so.
+- **README images: `scripts/readme-images.sh`** (after `make app`, as invisible) — `docs/img/*.png`: English, de → en,
+  Kafka's "Die Verwandlung", settings and a sync fixture of the run's own (only the packs linked), halved to 1×.
 - **Selection check: `scripts/selection-test.sh`** (after `make app`, ~10 s, as invisible) — `tests/selection/<name>.html` selected in an off-screen
   WKWebView, read by `Selection.read(element:)` (`LEXIPEEK_SELECTION_TEST`, `SelectionTest.swift`; the range: `data-sel`, `<body data-from/data-to>`, `data-end-next`), compared with `<name>.expected`; PASS/FAIL table, way read, diffs.
 - Own dictionaries: `lexipeek-cli dicts list | import <file>… | add-folder <dir> | remove-folder <dir> | on|off|remove <id> |
@@ -293,7 +295,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 
 ## Release
-`scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## 0.1` section
+`scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## <VERSION>` section
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
 (macOS zip ad-hoc signed, `LexiPeek-Windows.zip` — the WinUI shell's folder —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile

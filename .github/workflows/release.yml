@@ -8,10 +8,10 @@ run-name: Release ${{ inputs.tag || github.ref_name }}
 on:
   push:
     tags: ["v*"]
-  # By hand when a tag's push event is lost: gh workflow run release.yml -f tag=v0.1.N
+  # By hand when a tag's push event is lost: gh workflow run release.yml -f tag=v0.2.N
   workflow_dispatch:
     inputs:
-      tag: { description: "Tag to release, e.g. v0.1.230", required: true }
+      tag: { description: "Tag to release, e.g. v0.2.360", required: true }
 
 permissions:
   contents: write

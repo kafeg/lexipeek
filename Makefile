@@ -12,7 +12,7 @@ SIGN ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q "
 APP := mac/build/Build/Products/Release/LexiPeek.app
 LSREGISTER := /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 # The version as InkPeek's: <major.minor>.<commits>, the build number the commits.
-VERSION := 0.1
+VERSION := 0.2
 COMMITS := $(shell git rev-list --count HEAD 2>/dev/null || echo 0)
 XCODE := xcodebuild -project mac/LexiPeek.xcodeproj -scheme LexiPeek -derivedDataPath mac/build CODE_SIGN_IDENTITY="$(SIGN)" \
 	MARKETING_VERSION=$(VERSION).$(COMMITS) CURRENT_PROJECT_VERSION=$(COMMITS) \

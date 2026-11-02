@@ -1,4 +1,4 @@
-# Writes OUT (a header with LEXIPEEK_VERSION "0.1.<git commit count>", InkPeek's numbering) when the count changed:
+# Writes OUT (a header with LEXIPEEK_VERSION "0.2.<git commit count>", InkPeek's numbering) when the count changed:
 # run at every build, so the number follows the commits without a new configure.
 execute_process(COMMAND git rev-list --count HEAD WORKING_DIRECTORY ${SOURCE} OUTPUT_VARIABLE COMMITS
                 OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)

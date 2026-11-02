@@ -97,7 +97,7 @@ class AboutWindow {
   int tab_ = 0;
 };
 
-// This build's version, 0.1.<git commit count> (InkPeek's).
+// This build's version, 0.2.<git commit count> (InkPeek's).
 std::string version();
 
 }  // namespace lexipeek::win

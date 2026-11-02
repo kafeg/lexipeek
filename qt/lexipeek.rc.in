@@ -2,17 +2,17 @@
 #include <winver.h>
 IDI_ICON1 ICON "@LEXIPEEK_ICO@"
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION 0,1,@LEXIPEEK_COMMITS@,0
-PRODUCTVERSION 0,1,@LEXIPEEK_COMMITS@,0
+FILEVERSION 0,2,@LEXIPEEK_COMMITS@,0
+PRODUCTVERSION 0,2,@LEXIPEEK_COMMITS@,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
     BLOCK "040904b0"
     BEGIN
       VALUE "FileDescription", "LexiPeek"
-      VALUE "FileVersion", "0.1.@LEXIPEEK_COMMITS@"
+      VALUE "FileVersion", "0.2.@LEXIPEEK_COMMITS@"
       VALUE "ProductName", "LexiPeek"
-      VALUE "ProductVersion", "0.1.@LEXIPEEK_COMMITS@"
+      VALUE "ProductVersion", "0.2.@LEXIPEEK_COMMITS@"
       VALUE "OriginalFilename", "LexiPeek.exe"
       VALUE "LegalCopyright", "MIT License"
     END
