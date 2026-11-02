@@ -202,6 +202,15 @@ struct Store::Impl {
   std::vector<Line> written;
   std::atomic<std::uint64_t> changes{0};
   mutable std::mutex m;
+  // Opened on a thread of its own (the app's launch goes on): every call waits for it.
+  bool opened = false;
+  mutable std::condition_variable was_opened;
+  std::thread opener;
+  std::unique_lock<std::mutex> lock() const {
+    std::unique_lock g(m);
+    was_opened.wait(g, [this] { return opened; });
+    return g;
+  }
   // One sync at a time; taken before m. The folder's files are read and written without m: a share that stalls keeps
   // no look-up, ☆ or Notes waiting.
   std::mutex sync_m;
@@ -212,6 +221,7 @@ struct Store::Impl {
   bool kick = false, stop = false;
 
   ~Impl() {
+    if (opener.joinable()) opener.join();
     {
       std::lock_guard k(kick_m);
       stop = true;
@@ -348,7 +358,7 @@ struct Store::Impl {
   // The folder (sync_m held, m not): the two-installs check, own lines written there, other devices' kept in the cache,
   // the view again.
   bool sync(bool force) {
-    std::unique_lock g(m);
+    auto g = lock();
     if (!db) return false;
     auto folder = o.sync;
     bool was_checked = checked, waits = pending;
@@ -425,7 +435,7 @@ struct Store::Impl {
 
   // Own lines and device.json into the folder (sync_m held, m not), once it was checked; a failure waits for the next.
   void push_files(bool waiting_only = false) {
-    std::unique_lock g(m);
+    auto g = lock();
     if (o.sync.empty() || !checked || (waiting_only && !pending)) return;
     pending = false;  // lines written from now on go with the next push
     auto folder = o.sync;
@@ -557,14 +567,22 @@ struct Store::Impl {
 
 Store::Store(StoreOptions o) : impl_(std::make_unique<Impl>()) {
   impl_->o = std::move(o);
-  impl_->error = impl_->open();
+  impl_->opener = std::thread([i = impl_.get()] {
+    auto e = i->open();
+    std::lock_guard g(i->m);
+    i->error = e, i->opened = true;
+    i->was_opened.notify_all();
+  });
 }
 
 Store::~Store() = default;
 
-std::string Store::error() const { return impl_->error; }
+std::string Store::error() const {
+  auto g = impl_->lock();
+  return impl_->error;
+}
 std::string Store::device() const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   return impl_->self.device;
 }
 
@@ -579,7 +597,7 @@ std::string Store::set_folder(const std::filesystem::path &folder) {
   std::lock_guard s(impl_->sync_m);
   auto &im = *impl_;
   {
-    std::lock_guard g(im.m);
+    auto g = im.lock();
     if (!im.db) return im.error;
     im.o.sync = folder;
     im.checked = false, im.sig.clear(), im.wrote_ms = 0;
@@ -590,7 +608,7 @@ std::string Store::set_folder(const std::filesystem::path &folder) {
 }
 
 std::string Store::set_name(const std::string &name) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   impl_->self.name = text::trim(name);
   auto e = impl_->save_self();
   impl_->push();
@@ -598,12 +616,12 @@ std::string Store::set_name(const std::string &name) {
 }
 
 std::string Store::own_name() const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   return impl_->self.name;
 }
 
 SyncInfo Store::sync_info() const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   auto &im = *impl_;
   return {text::utf8_of(im.o.sync), im.reachable, im.read_ms, im.wrote_ms, im.sync_error == "unreachable" ? "" : im.sync_error,
           im.self.device, im.self_name()};
@@ -612,7 +630,7 @@ SyncInfo Store::sync_info() const {
 
 std::string Store::seen(const std::string &text, const std::string &kind, const std::string &lang, const std::string &meaning,
                         const std::string &base) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Line l;
   l.op = Op::history_seen, l.text = text, l.kind = kind, l.lang = lang, l.meaning = meaning;
   l.base = base == text ? "" : base;
@@ -622,7 +640,7 @@ std::string Store::seen(const std::string &text, const std::string &kind, const 
 
 std::string Store::save(const std::string &text, const std::string &kind, const std::string &lang, const std::string &meaning,
                         const std::string &from) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Line l;
   l.op = Op::saved_put, l.text = text, l.kind = kind, l.lang = lang, l.meaning = meaning;
   std::vector<Line> ls{l};
@@ -635,7 +653,7 @@ std::string Store::save(const std::string &text, const std::string &kind, const 
 }
 
 std::string Store::unsave(const std::string &text) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Line l;
   l.op = Op::saved_del, l.text = text;
   return impl_->write({l});
@@ -643,7 +661,7 @@ std::string Store::unsave(const std::string &text) {
 
 std::string Store::put_answer(const std::string &text, const std::string &lang, const std::string &section, std::int64_t ver,
                               const std::string &model, const std::string &answer) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Answer a{text, lang, section, ver, model, answer, 0};
   std::vector<Line> ls{Impl::answer_line(a)};
   if (impl_->db) {
@@ -658,14 +676,14 @@ std::string Store::put_answer(const std::string &text, const std::string &lang, 
 }
 
 std::string Store::forget(const std::string &text) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Line l;
   l.op = Op::history_del, l.text = text;
   return impl_->write({l});
 }
 
 std::string Store::clear_history() {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   std::vector<Line> ls;
   for (auto &[text, lines] : impl_->lines)
     if (!store::merge(lines).history.empty()) {
@@ -679,7 +697,7 @@ std::string Store::clear_history() {
 
 std::optional<std::string> Store::answer(const std::string &text, const std::string &lang, const std::string &section,
                                          std::int64_t ver) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   if (!impl_->db) return std::nullopt;
   Stmt q(impl_->db, "SELECT answer FROM ai WHERE text=? AND lang=? AND section=? AND ver=?");
   if (q.bind(text).bind(lang).bind(section).bind(ver).row()) return q.text(0);
@@ -687,19 +705,19 @@ std::optional<std::string> Store::answer(const std::string &text, const std::str
 }
 
 std::string Store::newest_answer(const std::string &text, const std::string &lang, const std::string &section) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   if (!impl_->db) return "";
   Stmt q(impl_->db, "SELECT answer FROM ai WHERE text=? AND lang=? AND (?='' OR section=?) ORDER BY created DESC, rowid DESC LIMIT 1");
   return q.bind(text).bind(lang).bind(section).bind(section).row() ? q.text(0) : "";
 }
 
 bool Store::is_saved(const std::string &text) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   return impl_->db && Stmt(impl_->db, "SELECT 1 FROM saved WHERE text=?").bind(text).row();
 }
 
 std::vector<Seen> Store::history(int limit) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   std::vector<Seen> out;
   if (!impl_->db) return out;
   Stmt q(impl_->db, (std::string(SEEN_COLUMNS) + " ORDER BY seen DESC, rowid DESC LIMIT ?").c_str());
@@ -709,7 +727,7 @@ std::vector<Seen> Store::history(int limit) const {
 }
 
 std::vector<Saved> Store::saved() const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   std::vector<Saved> out;
   if (!impl_->db) return out;
   Stmt q(impl_->db, (std::string(SAVED_COLUMNS) + " ORDER BY created DESC, text").c_str());
@@ -718,7 +736,7 @@ std::vector<Saved> Store::saved() const {
 }
 
 std::vector<Seen> Store::recents(int n) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   std::vector<Seen> out;
   if (!impl_->db) return out;
   // Ties of seen (the same ms): the row written last.
@@ -732,14 +750,14 @@ std::vector<Seen> Store::recents(int n) const {
 }
 
 std::int64_t Store::looks(const std::string &word) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   if (!impl_->db) return 0;
   Stmt q(impl_->db, "SELECT COALESCE(SUM(count), 0) FROM history WHERE COALESCE(base, text)=?");
   return q.bind(word).row() ? q.num(0) : 0;
 }
 
 Records Store::records() const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Records r;
   if (!impl_->db) return r;
   Stmt s(impl_->db, (std::string(SAVED_COLUMNS) + " ORDER BY text").c_str());
@@ -752,7 +770,7 @@ Records Store::records() const {
 }
 
 std::string Store::backup(const std::filesystem::path &file) const {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   if (!impl_->db) return impl_->error;
   auto tmp = file;
   tmp += ".tmp";
@@ -764,7 +782,7 @@ std::string Store::backup(const std::filesystem::path &file) const {
 }
 
 Store::Restored Store::restore(const std::filesystem::path &file) {
-  std::lock_guard g(impl_->m);
+  auto g = impl_->lock();
   Restored r;
   if (!impl_->db) return r.error = impl_->error, r;
   sqlite3 *src = nullptr;
@@ -837,7 +855,7 @@ Store::Restored Store::restore(const std::filesystem::path &file) {
 
 std::string Store::daily_backup(const std::filesystem::path &dir, int keep) const {
   {
-    std::lock_guard g(impl_->m);
+    auto g = impl_->lock();
     if (!impl_->db) return impl_->error;
     Stmt q(impl_->db, "SELECT (SELECT COUNT(*) FROM saved) + (SELECT COUNT(*) FROM history)");
     if (!q.row() || q.num(0) == 0) return "";

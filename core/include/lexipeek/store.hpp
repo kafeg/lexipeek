@@ -64,7 +64,9 @@ class Store {
  public:
   static constexpr int history_limit = 1000;
 
-  explicit Store(StoreOptions o);  // reads the logs, rebuilds the view; failures go to error()
+  // Reads the logs and rebuilds the view on a thread of its own (a launch goes on); every call waits for it. Failures:
+  // error().
+  explicit Store(StoreOptions o);
   ~Store();
   Store(const Store &) = delete;
   Store &operator=(const Store &) = delete;

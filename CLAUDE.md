@@ -100,7 +100,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `hashCode` of the installed models' sha256, as InkPeek's `OfflineTranslation`), model field `bergamot`/`opus`/`llm`.
 - `core/src/dict/` (InkPeek's `stardict/`): `stardict` (own sorted index in `<data>/index/<id>/`, `.dict.dz` by dictzip
   chunks), `library` (lookup across packs — the text's language's packs into the answer first, as InkPeek's ticked
-  pairs —, heads, gloss, separable verbs, rank, a pack article's senses; the own dictionaries (`Own`: dicts-own and
+  pairs —, heads, gloss (60 words, then a note), separable verbs (the clauses in the first 1,000 words), rank, a pack article's senses; the own dictionaries (`Own`: dicts-own and
   folders, off, order) after the packs, `found()` all on disk in order, `all()` those in use; `StarDict::pack()` by
   its root, not its folder name), `short` (InkPeek's `shortMeaning`, `head(hit)`: a pack's line or "word — meaning"),
   `importer` (libarchive: zip, tar + gzip/bzip2/xz/zstd; names leaving the folder skipped; `.ifo` copied last),
@@ -160,7 +160,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - `core/src/store/`: InkPeek's one sync log format (`docs/formats.md` "Sync log", cases `tests/sync/{reader,identity,writer}`).
   `log` — pure: lines (canonical bytes, `raw` kept), HLC, device folders, read, append, `device.json`, `keep_id` (two
   installs with one id), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
-  `store` (`Store`): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created; none: a new id); own
+  `store` (`Store`, opened on a thread of its own — the launch goes on, every call waits for it): this device in `<data>/device.json` (id `mac|win|linux-<8 base32>`, name, created; none: a new id); own
   lines always to `<data>/inkpeek-log/<id>/<YYYY-MM>.jsonl` first (the whole own log stays local), then to
   `<sync>/inkpeek-log/<id>/` (settings.json `sync`) at once by the store's own thread once the folder was checked
   (`push_files`): month files made equal (append, or whole after compaction), `device.json`. The folder's files are read
