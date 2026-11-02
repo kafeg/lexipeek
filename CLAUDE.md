@@ -254,7 +254,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   UI toolkit in its interface (UTF-8 strings, physical pixels, `void *` window handles): hotkeys (RegisterHotKey to a hidden
   window: WM_HOTKEY and WM_COPYDATA come through any message loop), the selection (UI Automation, else EM_GETSEL), Credential
   Manager, the Run key, one instance per user (`hand_over` / `receive`: the hidden window titled "LexiPeek receiver", the same
-  wire as before), the per-user install (`install(version, folder)`: the WinUI build copies its folder, Qt its exe),
+  wire as before; the sender's window in wParam: refused unless this session, this user, medium integrity or more; dwData 1,
+  ≤ 1 MB, strict UTF-8; the message filter opened only when running elevated), the per-user install (`install(version, folder)`: the WinUI build copies its folder, Qt its exe),
   `lexipeek://`, CLI providers, low memory, glyph masks, `self_test` (the OS checks of both shells' `--self-test`). `none.cpp`
   elsewhere.
 - `win/` (M8): WinUI 3, unpackaged and self-contained, `/MT` like the core; `scripts\build-win.cmd [dir]` (CMake core and

@@ -31,10 +31,13 @@ std::string join(const std::vector<std::string> &args) {
   return out;
 }
 
+// The arguments with a window of this process as the sender (wParam): the receiver checks whose it is.
 void send(HWND w, const std::string &bytes) {
+  HWND from = CreateWindowExW(0, L"STATIC", L"", 0, 0, 0, 0, 0, HWND_MESSAGE, nullptr, GetModuleHandleW(nullptr), nullptr);
   COPYDATASTRUCT cd{1, static_cast<DWORD>(bytes.size()), const_cast<char *>(bytes.data())};
   DWORD_PTR r = 0;
-  SendMessageTimeoutW(w, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cd), SMTO_ABORTIFHUNG, 3000, &r);
+  SendMessageTimeoutW(w, WM_COPYDATA, reinterpret_cast<WPARAM>(from), reinterpret_cast<LPARAM>(&cd), SMTO_ABORTIFHUNG, 3000, &r);
+  if (from) DestroyWindow(from);
 }
 
 // A file in use cannot be replaced, but it can be renamed: a running copy goes on from the old name.
@@ -87,10 +90,10 @@ void receive(std::function<void(const std::vector<std::string> &)> got) {
     }
     got(args);
   });
-  // Found by its title from now on; a launch at a lower integrity level (a link from the browser or Explorer) may still
-  // send its arguments.
+  // Found by its title from now on; running elevated, a launch at medium integrity (a link from the browser or Explorer)
+  // may still send its arguments — never one from a sandbox (low): the hidden window checks the sender too.
   SetWindowTextW(hidden(), receiver);
-  ChangeWindowMessageFilterEx(hidden(), WM_COPYDATA, MSGFLT_ALLOW, nullptr);
+  if (own_integrity() > SECURITY_MANDATORY_MEDIUM_RID) ChangeWindowMessageFilterEx(hidden(), WM_COPYDATA, MSGFLT_ALLOW, nullptr);
 }
 
 bool installed_here() {

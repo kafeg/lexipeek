@@ -10,11 +10,50 @@ namespace lexipeek::os::win {
 
 namespace {
 DWORD failed_with = 0;
+constexpr ULONG_PTR copydata_args = 1;     // the launch's arguments, \n between them
+constexpr DWORD copydata_max = 1u << 20;  // a link with a long selection fits
 std::function<void(int)> hotkey_handler;
 std::function<void(const std::string &)> copydata_handler;
 std::mutex posted_mutex;
 std::deque<std::function<void()>> posted;
 constexpr UINT run_posted = WM_APP + 1;
+
+std::vector<BYTE> token_info(HANDLE t, TOKEN_INFORMATION_CLASS c) {
+  DWORD size = 0;
+  GetTokenInformation(t, c, nullptr, 0, &size);
+  std::vector<BYTE> out(size);
+  if (!size || !GetTokenInformation(t, c, out.data(), size, &size)) return {};
+  return out;
+}
+
+bool same_user(HANDLE a, HANDLE b) {
+  auto x = token_info(a, TokenUser), y = token_info(b, TokenUser);
+  return !x.empty() && !y.empty() && EqualSid(reinterpret_cast<TOKEN_USER *>(x.data())->User.Sid, reinterpret_cast<TOKEN_USER *>(y.data())->User.Sid);
+}
+
+// Text as the sender wrote it: UTF-8 that converts to UTF-16 strictly, no NUL.
+bool valid_utf8(const std::string &s) {
+  return s.find('\0') == std::string::npos &&
+         (s.empty() || MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.data(), static_cast<int>(s.size()), nullptr, 0) > 0);
+}
+
+// The sender's window (wParam): a process in this session, of this user and not below medium integrity when its token can
+// be read (one that cannot runs higher: the user's own, elevated).
+bool trusted(HWND from) {
+  DWORD pid = 0, mine = 0, its = 0;
+  if (!from || !GetWindowThreadProcessId(from, &pid) || !pid) return false;
+  if (!ProcessIdToSessionId(GetCurrentProcessId(), &mine) || !ProcessIdToSessionId(pid, &its) || mine != its) return false;
+  HANDLE p = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid), t = nullptr;
+  if (!p) return false;
+  bool readable = OpenProcessToken(p, TOKEN_QUERY, &t);
+  CloseHandle(p);
+  if (!readable) return true;
+  HANDLE own = nullptr;
+  bool ok = OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &own) && same_user(t, own) && integrity(t) >= SECURITY_MANDATORY_MEDIUM_RID;
+  CloseHandle(t);
+  if (own) CloseHandle(own);
+  return ok;
+}
 
 LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l) {
   if (m == WM_HOTKEY) {
@@ -22,9 +61,13 @@ LRESULT CALLBACK proc(HWND h, UINT m, WPARAM w, LPARAM l) {
     return 0;
   }
   if (m == WM_COPYDATA) {
-    // Handled after the sender's call returns: it waits for this one.
+    // Only a launch's arguments from this user's session: anything else is refused unread.
     auto *cd = reinterpret_cast<COPYDATASTRUCT *>(l);
-    std::string args(static_cast<const char *>(cd->lpData), cd->cbData);
+    if (!cd || cd->dwData != copydata_args || cd->cbData > copydata_max || (cd->cbData && !cd->lpData) || !trusted(reinterpret_cast<HWND>(w)))
+      return 0;
+    std::string args = cd->cbData ? std::string(static_cast<const char *>(cd->lpData), cd->cbData) : std::string();
+    if (!valid_utf8(args)) return 0;
+    // Handled after the sender's call returns: it waits for this one.
     post([args] {
       if (copydata_handler) copydata_handler(args);
     });
@@ -95,6 +138,21 @@ std::wstring env(const wchar_t *name) {
   std::wstring v(n, L'\0');
   v.resize(GetEnvironmentVariableW(name, v.data(), n));
   return v;
+}
+
+DWORD integrity(HANDLE token) {
+  auto x = token_info(token, TokenIntegrityLevel);
+  if (x.empty()) return 0;
+  auto *sid = reinterpret_cast<TOKEN_MANDATORY_LABEL *>(x.data())->Label.Sid;
+  return *GetSidSubAuthority(sid, *GetSidSubAuthorityCount(sid) - 1);
+}
+
+DWORD own_integrity() {
+  HANDLE t = nullptr;
+  if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &t)) return 0;
+  auto level = integrity(t);
+  CloseHandle(t);
+  return level;
 }
 
 HWND hidden() {

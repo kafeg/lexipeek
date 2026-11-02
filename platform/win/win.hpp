@@ -22,6 +22,10 @@ std::wstring program_file();
 std::wstring program_dir();
 std::wstring env(const wchar_t *name);
 
+// A token's integrity level (SECURITY_MANDATORY_*_RID; 0 unknown), this process's.
+DWORD integrity(HANDLE token);
+DWORD own_integrity();
+
 // A hidden top-level window on the thread that first asks for it (the UI thread): WM_HOTKEY, WM_COPYDATA, posted work.
 HWND hidden();
 // Runs f on the hidden window's thread after the current message (any thread).
