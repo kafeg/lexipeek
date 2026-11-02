@@ -284,7 +284,7 @@
 {"theme_system", "Come il sistema"},
 {"theme_light", "Chiaro"},
 {"theme_dark", "Scuro"},
-{"keep_t", "Tieni un modello in memoria"},
+{"keep_t", "Tieni il modello in memoria"},
 {"keep_d", "Dopo una traduzione il modello resta caricato per questo tempo: la successiva parte subito. Più a lungo occupa memoria."},
 {"keep_min", "{1} min"},
 {"keep_hour", "1 ora"},

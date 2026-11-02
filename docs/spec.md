@@ -100,7 +100,7 @@ cli/       lexipeek-cli: lookup, translate, langid, packs, bench, merge
 ```
 - **Offline core, optional AI** (as in InkPeek): `lookup` never depends on `ai`. A card is complete without it; AI
   is a marked tab that asks only when opened, answers go to the store (`ai.put`) and come back offline.
-- **Models in memory** (`ModelHost`): one heavy model at a time; idle unload after Settings → General's time (5 min
+- **Models in memory** (`ModelHost`): one heavy model at a time; idle unload after Languages → Translation's "Keep the model in memory" (5 min
   by default, for every method; InkPeek's 2 min for Hy-MT2 is not kept: one setting is simpler) and at once on the
   platform's memory-pressure signal. A request
   that needs an unloaded model shows the card at once (dictionary), the translation comes when the model is back.
@@ -254,8 +254,8 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",
   every prompt back to the original) · **General** (InkPeek's ⚙ page in desktop form) — System
-  (Accessibility, open at login, the app's language, how long a model stays in memory after a use: 1, 5, 15 min, 1 h,
-  until quit; 5 min by default) · Hotkeys (the two hotkeys, per-app rules). The icon at the selection and "a moved card
+  (Accessibility, open at login, the app's language; how long a model stays in memory sits beside its model: Languages →
+  Translation under the methods — 1, 5, 15 min, 1 h, until quit, 5 min by default —, Read aloud for the voice model) · Hotkeys (the two hotkeys, per-app rules). The icon at the selection and "a moved card
   stays" are on Card → Opening. **About LexiPeek** is a window of its own (menu bar under Settings…, the app menu, the
   window's sidebar), two tabs: About (version, "Check now", links) · Licenses (the packs'). Every pane's rows come from the core's `views`; "Set Up…" while no pair is installed.
 - **The app's language** (General): the UI in the packs' answer languages (en, ru, de, fr, es, it, pt, pl), as

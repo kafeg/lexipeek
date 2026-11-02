@@ -124,6 +124,13 @@ SettingRow study_row(const Settings &s, const SettingsState &st) {
   return choice("study", tr("study_t", {language_name(s.answer)}), about, names, selected);
 }
 
+// "Keep the model in memory", beside the model it keeps (the translation's methods, Read aloud's voice model).
+SettingRow keep_row(const std::string &key, const std::string &about, const std::vector<int> &mins, int value) {
+  std::vector<std::string> keeps;
+  for (auto m : mins) keeps.push_back(m == 0 ? tr("keep_forever") : m == 60 ? tr("keep_hour") : tr("keep_min", {digits(m)}));
+  return choice(key, tr("keep_t"), about, keeps, index_of(mins, value));
+}
+
 std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) {
   std::vector<SettingRow> rows;
   if (!st.has_pair)
@@ -166,6 +173,7 @@ std::vector<SettingRow> translation(const Settings &s, const SettingsState &st) 
     if (st.downloading == id) r.progress = st.progress;
     rows.push_back(r);
   }
+  rows.push_back(keep_row("keep_model", tr("keep_d"), keeps_min, s.keep_model));
   if (!st.download_error.empty()) rows.push_back(valued(Kind::status, "download_error", tr("failed", {st.download_error}), "", ""));
   return rows;
 }
@@ -328,7 +336,7 @@ std::vector<SettingRow> sync_rows(const SettingsState &st) {
   return rows;
 }
 
-// General (InkPeek's ⚙ page in desktop form): System (Accessibility, login, the app's language, the model in memory)
+// General (InkPeek's ⚙ page in desktop form): System (Accessibility, login, the app's language)
 // · Hotkeys (the keys, per-app rules).
 std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int tab) {
   if (tab == 1)
@@ -351,9 +359,6 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int 
   std::vector<std::string> langs{tr("ui_lang_system")};
   for (size_t i = 1; i < ui_langs.size(); i++) langs.push_back(ui_langs[i].second);
   rows.push_back(choice("ui_lang", tr("ui_lang"), tr("ui_lang_about"), langs, index_of(ui_langs, s.ui_lang)));
-  std::vector<std::string> keeps;
-  for (auto m : keeps_min) keeps.push_back(m == 0 ? tr("keep_forever") : m == 60 ? tr("keep_hour") : tr("keep_min", {digits(m)}));
-  rows.push_back(choice("keep_model", tr("keep_t"), tr("keep_d"), keeps, index_of(keeps_min, s.keep_model)));
   return rows;
 }
 
@@ -373,9 +378,7 @@ std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) 
   if (st.speech_installed)
     rows.push_back(valued(Kind::button, "speech_remove", tr("read_remove_t"), tr("read_remove_d", {size_text(speech::model_bytes())}), tr("remove")));
   rows.push_back(toggle("speech_gpu", tr("read_gpu_t"), tr("read_gpu_d"), sp.gpu));
-  std::vector<std::string> keeps;
-  for (auto k : speech_keeps) keeps.push_back(k == 0 ? tr("keep_forever") : k == 60 ? tr("keep_hour") : tr("keep_min", {digits(k)}));
-  rows.push_back(choice("speech_keep", tr("keep_t"), tr("read_keep_d"), keeps, index_of(speech_keeps, sp.keep)));
+  rows.push_back(keep_row("speech_keep", tr("read_keep_d"), speech_keeps, sp.keep));
   rows.push_back(choice("speech_voice", tr("read_voice_t"), tr("read_voice_d"), names({"read_female", "read_male"}), sp.male ? 1 : 0));
   rows.push_back(heading(tr("read_own_t"), tr("read_own_d")));
   for (auto &v : st.voices) {

@@ -284,7 +284,7 @@
 {"theme_system", "Same as System"},
 {"theme_light", "Light"},
 {"theme_dark", "Dark"},
-{"keep_t", "Keep a model in memory"},
+{"keep_t", "Keep the model in memory"},
 {"keep_d", "After a translation the model stays loaded this long: the next one starts at once. Longer keeps more memory in use."},
 {"keep_min", "{1} min"},
 {"keep_hour", "1 hour"},
