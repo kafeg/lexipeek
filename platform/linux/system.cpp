@@ -383,6 +383,8 @@ void quit_running() {
   }
 }
 
+bool too_old() { return false; }  // glibc's own check refuses an older system
+
 // Nothing to install: the folder runs where it was unpacked (spec M10).
 bool installed_here() { return true; }
 std::string install(const std::string &, bool) { return ""; }

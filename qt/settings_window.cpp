@@ -358,7 +358,11 @@ QWidget *SettingsWindow::row(const SettingRow &r) {
         l->addLayout(row);
       }
       auto *add = new QLineEdit;
+#ifdef __linux__
+      add->setPlaceholderText("firefox");  // the program's name (/proc/<pid>/comm)
+#else
       add->setPlaceholderText("app.exe");
+#endif
       connect(add, &QLineEdit::returnPressed, this, [this, add, dir] {
         auto id = add->text().trimmed().toLower().toStdString();
         if (id.empty()) return;
