@@ -78,7 +78,7 @@ struct Settings {
   bool mt_off = false;           // no offline translation: dictionaries only, Translate is AI only (InkPeek's "off")
   Hotkey lookup{"D"}, input{"A"};
   bool open_at_login = false;
-  bool selection_icon = false;  // a small icon next to a new selection opens the card
+  bool selection_icon = true;  // a small icon next to a new selection opens the card
   bool pin_moved = false;       // a dragged card stays open, as pinned
   bool mt_english = false;      // Mozilla's English in between, under a translation through English
   bool first_run = false;       // the first-run window was finished once

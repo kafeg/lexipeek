@@ -1,6 +1,10 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.386 — 2026-11-03
+- The icon at a selection is on for a new install (Mac and Windows): select text with the mouse, click the icon, the
+  card opens. Settings → Card → Opening turns it off.
+
 ### 0.2.385 — 2026-11-02
 - Linux x64: `LexiPeek-Linux-x64.tar.gz` (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland
   through XWayland). Unpack and run `LexiPeek/lexipeek`: Ctrl+Alt+D looks up the primary selection — the text you

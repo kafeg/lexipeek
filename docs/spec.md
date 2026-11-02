@@ -214,7 +214,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
 - **Other ways in** (all go to `lookup`): a macOS Service "Look up in LexiPeek" (context menu of any Cocoa app; the
   system hands over the text — no Accessibility, no clipboard) and a URL scheme `lexipeek://lookup?text=…` (a
   one-line PopClip extension uses it); `lexipeek://input` opens the card with its input field.
-- **Icon at the selection** (an option, off by default): after a drag or a double / triple click in another app, the
+- **Icon at the selection** (an option, on by default): after a drag or a double / triple click in another app, the
   selection is read by Accessibility (never by Cmd+C: the clipboard is not touched) and a small icon appears next to
   the cursor; a click on it opens the card; it goes after a few seconds, a click elsewhere or a key.
 - **Per-app rules:** apps where the hotkey and the icon do nothing. An app that does not show its selection to
