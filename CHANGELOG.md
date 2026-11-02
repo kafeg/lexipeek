@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### 0.2.379 — 2026-11-02
+### 0.2.382 — 2026-11-02
 - Linux x64: `LexiPeek-Linux-x64.tar.gz` (glibc 2.35+: Ubuntu 22.04, Debian 12, Fedora 36 or later; X11, or Wayland
   through XWayland). Unpack and run `LexiPeek/lexipeek`: Ctrl+Alt+D looks up the primary selection — the text you
   selected, never the clipboard —, Ctrl+Alt+A opens a card to type in; the tray, the app menu and `lexipeek://`,

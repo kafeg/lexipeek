@@ -9,7 +9,7 @@ C++/WinRT's code compiled in (MIT).
 LexiPeek-Linux-x64.tar.gz: the LexiPeek folder — lexipeek (the same core and engines, statically linked, with
 OpenBLAS, CLAPACK, the C++ runtime and Qt 6: qtbase and what it uses, LGPL-3.0 — LexiPeek's source and build scripts
 are public, so it can be relinked with another Qt; the system's X11, xcb and D-Bus libraries) and lib/ with xcb's
-helper libraries (libxcb, xcb-util: MIT/X11).
+helper libraries and xkbcommon's X11 part (libxcb, xcb-util, libxkbcommon-x11: MIT/X11).
 A component marked [macOS], [Windows], [Linux] or a list of them is only in those builds; the rest in all three.
 The language packs (dictionaries, translation models) are downloaded separately; their licenses are in the app's
 About → Licenses. The sentence breaking table is generated from Unicode's data (Unicode License v3). Read aloud's
@@ -41,6 +41,7 @@ Components:
   - libpng [Linux]
   - libuuid [Linux]
   - libxcb [Linux]
+  - libxkbcommon-x11 [Linux]
   - llama.cpp
   - marian
   - md4c [Linux]
@@ -2823,6 +2824,79 @@ or their institutions shall not be used in advertising or
 otherwise to promote the sale, use or other dealings in this
 Software without prior written authorization from the
 authors.
+
+================================================================================
+libxkbcommon-x11
+================================================================================
+Source: http://xkbcommon.org/
+
+Copyright 1985, 1987, 1988, 1990, 1998  The Open Group
+Copyright 2008, 2009  Dan Nicholson
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Except as contained in this notice, the names of the authors or their
+institutions shall not be used in advertising or otherwise to promote the
+sale, use or other dealings in this Software without prior written
+authorization from the authors.
+
+Copyright (c) 1993, 1994, 1995, 1996 by Silicon Graphics Computer Systems, Inc.
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies and that both that copyright
+notice and this permission notice appear in supporting
+documentation, and that the name of Silicon Graphics not be
+used in advertising or publicity pertaining to distribution
+of the software without specific prior written permission.
+Silicon Graphics makes no representation about the suitability
+of this software for any purpose. It is provided "as is"
+without any express or implied warranty.
+
+SILICON GRAPHICS DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
+SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL SILICON
+GRAPHICS BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL
+DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION  WITH
+THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Copyright 1987, 1988 by Digital Equipment Corporation, Maynard, Massachusetts.
+
+                        All Rights Reserved
+
+Permission to use, copy, modify, and distribute this software and its
+documentation for any purpose and without fee is hereby granted,
+provided that the above copyright notice appear in all copies and that
+both that copyright notice and this permission notice appear in
+supporting documentation, and that the name of Digital not be
+used in advertising or publicity pertaining to distribution of the
+software without specific, written prior permission.
+
+DIGITAL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
+ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO EVENT SHALL
+DIGITAL BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR
+ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
+SOFTWARE.
 
 ================================================================================
 llama.cpp

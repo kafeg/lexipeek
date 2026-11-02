@@ -1,8 +1,12 @@
 name: linux
 # The Linux app (spec M10: scripts/build-linux.sh, the Qt shell's folder on Ubuntu 22.04's glibc) and its self-test on a
 # virtual X server (hotkeys, keys, autostart, lexipeek://); the tar.gz as an artifact. release.yml's Linux job (with the
-# tag); by hand it is that job's dry run on a branch (gh workflow run linux.yml).
+# tag); by hand it is that job's dry run on a branch (gh workflow run linux.yml). On a push to main that touches the
+# shell, the platform layer, the core's API or the build (beside ci.yml, which builds no Qt): a release finds it built.
 on:
+  push:
+    branches: [main]
+    paths: [qt/**, platform/**, core/include/**, cmake/**, CMakeLists.txt, vcpkg.json, scripts/build-linux.sh, .github/workflows/linux.yml]
   workflow_dispatch:
   workflow_call:
     inputs:

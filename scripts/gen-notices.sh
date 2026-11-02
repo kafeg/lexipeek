@@ -34,7 +34,8 @@ while [ $# -gt 0 ]; do
     --linux) share "$2" Linux; builds="$builds Linux"; shift 2 ;;
     --xcb)
       for x in libxcb:libxcb1 xcb-util:libxcb-util1 xcb-util-cursor:libxcb-cursor0 xcb-util-image:libxcb-image0 \
-        xcb-util-keysyms:libxcb-keysyms1 xcb-util-renderutil:libxcb-render-util0 xcb-util-wm:libxcb-icccm4; do
+        xcb-util-keysyms:libxcb-keysyms1 xcb-util-renderutil:libxcb-render-util0 xcb-util-wm:libxcb-icccm4 \
+        libxkbcommon-x11:libxkbcommon-x11-0; do
         [ -f "$2/${x#*:}/copyright" ] || { echo "no $2/${x#*:}/copyright" >&2; exit 2; }
         add "${x%%:*}" "$2/${x#*:}/copyright"; only "${x%%:*}" Linux
       done
@@ -85,7 +86,7 @@ else only intgemm Windows; fi
   echo "LexiPeek-Linux-x64.tar.gz: the LexiPeek folder — lexipeek (the same core and engines, statically linked, with"
   echo "OpenBLAS, CLAPACK, the C++ runtime and Qt 6: qtbase and what it uses, LGPL-3.0 — LexiPeek's source and build scripts"
   echo "are public, so it can be relinked with another Qt; the system's X11, xcb and D-Bus libraries) and lib/ with xcb's"
-  echo "helper libraries (libxcb, xcb-util: MIT/X11)."
+  echo "helper libraries and xkbcommon's X11 part (libxcb, xcb-util, libxkbcommon-x11: MIT/X11)."
   echo "A component marked [macOS], [Windows], [Linux] or a list of them is only in those builds; the rest in all three."
   echo "The language packs (dictionaries, translation models) are downloaded separately; their licenses are in the app's"
   echo "About → Licenses. The sentence breaking table is generated from Unicode's data (Unicode License v3). Read aloud's"

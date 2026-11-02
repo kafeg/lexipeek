@@ -28,7 +28,7 @@ fixed sleep. A test never writes `LEXIPEEK_MODELS`: it runs on a data dir of its
 | `linux-asan` | ctest under ASan + UBSan, only in a run by hand (`gh workflow run ci.yml`; locally `make asan`) | langid, Mozilla de-en, the six dictionaries |
 | `core windows-x64` | ctest, the WinUI shell's build (artifact) | langid and the six dictionaries (`lexipeek-cli packs install`) |
 | `windows-qt` | the Qt shell's build, only in a run by hand (`gh workflow run ci.yml`) | — |
-| `linux-app` (`linux.yml`) | the Linux app (`scripts/build-linux.sh` on Ubuntu 22.04) and its `--self-test` under Xvfb (X11 hotkeys, keys, autostart, `lexipeek://`), release.yml's Linux job; by hand (`gh workflow run linux.yml`) its dry run; the tar.gz as an artifact | — |
+| `linux-app` (`linux.yml`) | the Linux app (`scripts/build-linux.sh` on Ubuntu 22.04) and its `--self-test` under Xvfb (X11 hotkeys, keys, autostart, `lexipeek://`), release.yml's Linux job, and on a push to `main` that touches `qt/`, `platform/`, `core/include/` or the build; by hand (`gh workflow run linux.yml`) its dry run; the tar.gz as an artifact | — |
 
 The device cases assume a device's whole pack set: every job with dictionaries has all six.
 
