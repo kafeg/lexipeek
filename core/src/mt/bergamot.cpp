@@ -31,7 +31,7 @@ struct BergamotModel::Impl {
 
 BergamotModel::BergamotModel(const std::string &config) : impl_(std::make_unique<Impl>()) {
   service();
-  impl_->model = std::make_shared<TranslationModel>(parseOptionsFromString(config, /*validate=*/true, /*pathsDir=*/""));
+  impl_->model = std::make_shared<TranslationModel>(parseOptionsFromString(config, /*validate=*/true, /*pathsDir=*/""), MemoryBundle{}); // by path: no second copy of the file
 }
 
 BergamotModel::~BergamotModel() = default;
