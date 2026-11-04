@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### Next
+### 0.2.390 — 2026-11-04
 - Offline translation uses less memory: each loaded model by about its file size (≈ 30 MB for a language pair).
 ### 0.2.388 — 2026-11-04
 - Words joined by a dash with no spaces ("you—resentful", "Haus—Garten") open word by word when no dictionary knows the
