@@ -10,6 +10,8 @@ cases from `tests/inkpeek` (the pinned submodule), never edited to make LexiPeek
   rule for duplicates (`note_of`, `dedupe_plan`);
 - **device cases** — `inkpeek_cases_test`: InkPeek's `cases.tsv` (headers, meanings, the text's language, separable verbs,
   translations) on real packs: 211 run on macOS and Linux, 200 on Windows (no translation model there);
+- **selection** — `lookup_cases_test`: InkPeek's `tests/lookup` cases (a card's kind, title, text looked up and its
+  words: edge quotes, dashed words) on a small dictionary made per case;
 - **sentences** — `sentences_test`: InkPeek's sentence cases and Unicode's `SentenceBreakTest.txt`;
 - **AI prompts and versions** — `ai_test`, `study_test`: InkPeek's prompts word for word, Java `hashCode` versions;
 - **engines** — ctest `engine-pins`: the engine submodules at InkPeek's commits.

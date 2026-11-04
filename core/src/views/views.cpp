@@ -402,7 +402,7 @@ std::vector<CardRow> translate_rows(const Card &c, const CardState &s) {
 
 CardView card_view(const Card &c, const CardState &s) {
   CardView v;
-  v.tooltip = c.text;
+  v.tooltip = c.title.empty() ? c.text : c.title;
   if (c.kind == Card::Kind::word) {
     v.style = HeaderStyle::word;
     v.title = c.header.empty() ? c.text : c.prefs.grammar ? c.header : c.base.empty() ? c.text : c.base;
@@ -416,7 +416,7 @@ CardView card_view(const Card &c, const CardState &s) {
     if (!fl.empty()) v.subtitle += (v.subtitle.empty() ? "" : " · ") + fl;
   } else {
     v.style = c.kind == Card::Kind::phrase ? HeaderStyle::phrase : HeaderStyle::passage;
-    v.title = c.text;
+    v.title = c.title.empty() ? c.text : c.title;
   }
   // Codes only: "de → ru"; "ru" when the text is in the answer language; "fr → ru" for a language without a pack.
   if (!c.lang.empty()) v.badge = c.lang == c.answer ? c.lang : c.lang + " → " + c.answer;

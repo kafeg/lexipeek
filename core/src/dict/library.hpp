@@ -88,6 +88,9 @@ class Library {
   std::vector<std::pair<StarDict *, std::vector<Hit>>> pack_lookup(const std::string &query, const std::string &book, const std::string &answer);
   // The word's header, one per book language, book's first.
   std::vector<Head> heads(const std::string &query, const std::string &answer, const std::string &book = "");
+  // A word with a dash or hyphen between letters no dictionary knows ("you—resentful"): its dashes as spaces when a
+  // dictionary has that headword ("half asleep"), else "" (word by word); nullopt when it is known or has no such dash.
+  std::optional<std::string> dashed(const std::string &word, const std::string &answer, const std::string &book = "");
   std::vector<GlossLine> gloss(const std::string &text, const std::string &answer, size_t limit = 60, const std::string &book = "");
   std::vector<std::pair<SeparableFind, std::optional<Head>>> separable(const std::string &text, const std::string &answer);
   int rank(const std::string &word, const std::string &book);

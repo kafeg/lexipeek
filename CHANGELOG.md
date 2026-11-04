@@ -1,6 +1,13 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### Next
+- Words joined by a dash with no spaces ("you—resentful", "Haus—Garten") open word by word when no dictionary knows the
+  whole; a real entry ("well-known", "E-Mail") still opens as a word, and a hyphenated word no dictionary knows shows
+  its parts in the word list.
+- A phrase's title, translation and AI keep it as selected, quotes included ("привет" - сказала она); a word loses a
+  pair of quotes or brackets together.
+
 ### 0.2.386 — 2026-11-03
 - The icon at a selection is on for a new install (Mac and Windows): select text with the mouse, click the icon, the
   card opens. Settings → Card → Opening turns it off.

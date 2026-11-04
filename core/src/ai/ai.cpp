@@ -463,11 +463,12 @@ Answer ask(const Query &q, const AiSettings &s, std::map<std::string, int> &reca
 Answer answer(Store &store, const Query &q, const AiSettings &s, std::map<std::string, int> &recall, const Transport &t, bool keep,
               const std::function<bool()> &wanted) {
   auto ver = version(q.ask, s, q.study);
-  if (auto saved = store.answer(q.text, q.lang, section(q.ask), ver)) return {Code::ok, *saved, "", true};
+  auto &key = q.stored.empty() ? q.text : q.stored;
+  if (auto saved = store.answer(key, q.lang, section(q.ask), ver)) return {Code::ok, *saved, "", true};
   auto a = ask(q, s, recall, t);
   if (!a.ok() || (wanted && !wanted())) return a;
-  if (keep || store.is_saved(q.text)) store.put_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
-  else store.hold_answer(q.text, q.lang, section(q.ask), ver, model(s), a.json);
+  if (keep || store.is_saved(key)) store.put_answer(key, q.lang, section(q.ask), ver, model(s), a.json);
+  else store.hold_answer(key, q.lang, section(q.ask), ver, model(s), a.json);
   return a;
 }
 

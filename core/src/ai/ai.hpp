@@ -42,6 +42,7 @@ struct Query {
   std::string lang;    // the answer language's English name ("Russian")
   std::string source;  // the text's language as the packs tell it ("German"), "" = none
   std::vector<std::string> study = {};  // languages you learn (English names): the text is in lang, explained in them
+  std::string stored = {};              // the text the answer is kept under ("": text)
 };
 
 // Blocking. recall: the least-reasoning variants that worked (written back).

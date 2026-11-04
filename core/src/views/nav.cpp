@@ -29,7 +29,7 @@ CardStep CardNav::open(const std::string &word) {
 
 CardStep CardNav::relookup(const std::string &lang, const std::string &answer) {
   if (!has_) return {};
-  return look(card_.text, card_.source, true, lang.empty() ? card_.lang : lang, answer.empty() ? card_.answer : answer);
+  return look(card_.title.empty() ? card_.text : card_.title, card_.source, true, lang.empty() ? card_.lang : lang, answer.empty() ? card_.answer : answer);
 }
 
 CardStep CardNav::back() {

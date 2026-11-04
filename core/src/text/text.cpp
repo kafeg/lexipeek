@@ -222,9 +222,56 @@ std::string plain_spaces(std::string_view s) {
   return out;
 }
 
+namespace {
+
+// Opening quotes and brackets → the closing ones that pair with them (InkPeek's PAIRS).
+std::u32string_view closers(utf8proc_int32_t c) {
+  static const std::vector<std::pair<char32_t, std::u32string_view>> pairs = {
+      {U'(', U")"}, {U'[', U"]"}, {U'{', U"}"}, {U'（', U"）"}, {U'［', U"］"}, {U'«', U"»"}, {U'»', U"«"}, {U'‹', U"›"}, {U'›', U"‹"},
+      {U'“', U"”"}, {U'„', U"“”"}, {U'‚', U"‘’"}, {U'‘', U"’"}, {U'"', U"\""}, {U'\'', U"'"}, {U'「', U"」"}, {U'『', U"』"}, {U'《', U"》"},
+      {U'〈', U"〉"}};
+  for (auto &[o, cl] : pairs)
+    if (static_cast<utf8proc_int32_t>(o) == c) return cl;
+  return {};
+}
+
+bool closes(utf8proc_int32_t o, utf8proc_int32_t c) { return closers(o).find(static_cast<char32_t>(c)) != std::u32string_view::npos; }
+
+bool edge(utf8proc_int32_t c) {
+  auto k = utf8proc_category(c);
+  return c == ' ' || (c >= 9 && c <= 13) || (k >= UTF8PROC_CATEGORY_PC && k <= UTF8PROC_CATEGORY_SO);
+}
+
+}  // namespace
+
 std::string clean_query(std::string_view s) {
-  static const Regex edge("^[\\p{P}\\p{S}\\s]+|[\\p{P}\\p{S}\\s]+$");
-  return edge.replace(spaces().replace(no_soft_hyphens(nfc(s)), " "), "");
+  auto t = spaces().replace(no_soft_hyphens(nfc(s)), " ");
+  std::vector<utf8proc_int32_t> c;
+  std::vector<size_t> at;  // each code point's byte offset, then the end
+  size_t pos = 0;
+  each(t, [&](utf8proc_int32_t x) {
+    at.push_back(pos);
+    utf8proc_uint8_t buf[4];
+    pos += static_cast<size_t>(utf8proc_encode_char(x, buf));
+    c.push_back(x);
+  });
+  at.push_back(t.size());
+  auto any = [&](size_t from, size_t to, auto f) { return std::any_of(c.begin() + static_cast<long>(from), c.begin() + static_cast<long>(to), f); };
+  // A pair around the word goes together; a quote or bracket paired inside stays ("(s)he").
+  size_t a = 0, b = c.size();
+  while (a < b) {
+    auto f = c[a], l = c[b - 1];
+    if (b - a >= 2 && closes(f, l)) a++, b--;
+    else if (edge(f) && !any(a + 1, b, [&](auto x) { return closes(f, x); })) a++;
+    else if (edge(l) && !any(a, b - 1, [&](auto x) { return closes(x, l); })) b--;
+    else break;
+  }
+  return a < b ? t.substr(at[a], at[b] - at[a]) : std::string();
+}
+
+std::string spaced(std::string_view s) {
+  static const Regex breaks("[^\\S\\n]*\\n\\s*"), blanks("[^\\S\\n]+"), ends("^\\s+|\\s+$");
+  return ends.replace(blanks.replace(breaks.replace(no_soft_hyphens(nfc(s)), "\n"), " "), "");
 }
 
 std::string clean_phrase(std::string_view s) {

@@ -47,6 +47,8 @@ gloss-open-full|lookup?text=Am nächsten Morgen stand Anna früh auf&tab=diction
 word-ru|lookup?text=дом
 phrase-translate|lookup?text=Ich mache die Tür zu
 phrase-dictionary|lookup?text=Ich mache die Tür zu&tab=dictionary
+phrase-quotes|lookup?text="привет" - сказала она
+dashed-words|lookup?text=you—resentful&tab=dictionary
 passage-translate|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.
 passage-dictionary|lookup?text=Der Hund schläft im Garten. Die Kinder spielen draußen, bis es dunkel wird.&tab=dictionary
 long-translate|lookup?text=$LONG

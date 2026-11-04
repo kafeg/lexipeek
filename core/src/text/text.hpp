@@ -49,8 +49,12 @@ bool blank(std::string_view s);
 // Unicode spaces (no-break, thin, ideographic…) as plain spaces, line and paragraph separators as line breaks: web
 // pages' &nbsp; would join words.
 std::string plain_spaces(std::string_view s);
-// InkPeek's cleanQuery: soft hyphens out, spaces collapsed, punctuation, symbols and spaces at the edges out.
+// InkPeek's cleanQuery: soft hyphens out, spaces collapsed, punctuation, symbols and spaces at the edges out (a pair of
+// quotes or brackets around it together, one paired inside kept).
 std::string clean_query(std::string_view s);
+// InkPeek's spaced: a phrase as the card shows it and translation gets it — NFC, no soft hyphen, spaces collapsed (lines
+// kept, as clean_phrase), trimmed.
+std::string spaced(std::string_view s);
 // InkPeek's cleanPhrase: like clean_query, but ¿¡ at the start and .!?… at the end stay.
 std::string clean_phrase(std::string_view s);
 // Tags out, the five entities back.

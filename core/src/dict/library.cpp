@@ -55,8 +55,32 @@ std::vector<Sense> senses(const std::string &html) {
   return out;
 }
 
+namespace {
+
+// A word of a text: letters and apostrophes, dashes (Pd) only between letters (InkPeek's Library.WORD).
+const text::Regex &word_re() {
+  static const text::Regex r("\\p{L}[\\p{L}'’]*(?:\\p{Pd}+\\p{L}[\\p{L}'’]*)*");
+  return r;
+}
+
+// Runs of dashes and hyphens (Pd) between letters.
+const text::Regex &dashes() {
+  static const text::Regex r("(?<=\\p{L})\\p{Pd}+(?=\\p{L})");
+  return r;
+}
+
+// The word with every run of dashes as "-", then "–", then "—" (not the word itself).
+std::vector<std::string> dash_variants(const std::string &w) {
+  std::vector<std::string> out;
+  for (auto d : {"-", "–", "—"})
+    if (auto v = dashes().replace(w, d); v != w && std::find(out.begin(), out.end(), v) == out.end()) out.push_back(v);
+  return out;
+}
+
+}  // namespace
+
 size_t gloss_words(const std::string &txt) {
-  static const text::Regex word("\\p{L}[\\p{L}'’-]*");
+  auto &word = word_re();
   std::set<std::string> seen;
   for (auto &m : word.all(txt)) seen.insert(text::lower(m.groups[0]));
   return seen.size();
@@ -213,6 +237,15 @@ std::vector<std::pair<StarDict *, std::vector<Hit>>> Library::pack_lookup(const 
   return lookup(query, answer, among, book);
 }
 
+std::optional<std::string> Library::dashed(const std::string &word, const std::string &answer, const std::string &book) {
+  if (dashes().all(word).empty() || !lookup(word, answer, book).empty()) return std::nullopt;
+  auto tries = dash_variants(word);
+  tries.push_back(dashes().replace(word, " "));
+  for (auto &t : tries)
+    if (!lookup(t, answer, book).empty()) return t;
+  return "";
+}
+
 std::vector<Head> Library::heads(const std::string &query, const std::string &answer, const std::string &book) {
   std::vector<Head> out;
   std::set<std::string> books;
@@ -230,13 +263,12 @@ std::vector<Head> Library::heads(const std::string &query, const std::string &an
 }
 
 std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string &answer, size_t limit, const std::string &book) {
-  static const text::Regex word("\\p{L}[\\p{L}'’-]*");
   auto dicts = all();
-  auto matches = word.all(txt);
-  std::vector<std::string> words;
+  auto matches = word_re().all(txt);
+  std::vector<std::string> tokens, words;
   std::set<std::string> seen, starts;
   for (auto &m : matches) {
-    if (seen.insert(text::lower(m.groups[0])).second && words.size() < limit) words.push_back(m.groups[0]);
+    if (seen.insert(text::lower(m.groups[0])).second) tokens.push_back(m.groups[0]);
     // A sentence's first word is capitalised by spelling, not by meaning: "Er" is "er". Back over the spaces before it
     // (PCRE2's \s: ASCII), not the whole text before it again for every word.
     auto e = m.begin;
@@ -244,18 +276,42 @@ std::vector<GlossLine> Library::gloss(const std::string &txt, const std::string 
     auto before = std::string_view(txt).substr(0, e);
     if (before.empty() || std::string_view(".!?:").find(before.back()) != std::string_view::npos || before.ends_with("…")) starts.insert(m.groups[0]);
   }
-  std::map<std::string, std::vector<std::pair<StarDict *, std::vector<Hit>>>> found;
-  std::map<std::string, int> known;
-  for (auto &w : words) {
-    std::vector<std::pair<StarDict *, std::vector<Hit>>> r;
+  using Found = std::vector<std::pair<StarDict *, std::vector<Hit>>>;
+  auto look = [&](const std::string &w) {
+    Found r;
     auto lw = text::lower(w);
     if (starts.contains(w) && w != lw)
       for (auto &x : lookup(lw, answer, dicts, book))
         if (x.second.front().word == lw) r.push_back(x);
     if (r.empty()) r = lookup(w, answer, dicts, book);
-    for (auto &x : r) known[x.first->id()]++;
-    found[w] = r;
+    return r;
+  };
+  // A dashed word no dictionary knows: its dash variants ("well—known" → well-known), else its parts (half, asleep).
+  std::map<std::string, Found> found;
+  std::set<std::string> listed;
+  auto add = [&](const std::string &w, const std::function<Found()> &r) {
+    if (words.size() < limit && listed.insert(text::lower(w)).second) words.push_back(w), found[w] = r();
+  };
+  for (auto &w : tokens) {
+    if (words.size() >= limit) break;
+    if (listed.contains(text::lower(w))) continue;
+    auto r = look(w);
+    for (auto &v : r.empty() ? dash_variants(w) : std::vector<std::string>{})
+      if (r.empty()) r = look(v);
+    if (!r.empty() || dashes().all(w).empty()) {
+      add(w, [&] { return r; });
+      continue;
+    }
+    size_t at = 0;
+    for (auto &m : dashes().all(w)) {
+      add(w.substr(at, m.begin - at), [&] { return look(w.substr(at, m.begin - at)); });
+      at = m.end;
+    }
+    add(w.substr(at), [&] { return look(w.substr(at)); });
   }
+  std::map<std::string, int> known;
+  for (auto &w : words)
+    for (auto &x : found[w]) known[x.first->id()]++;
   int top = 0;
   for (auto &[id, n] : known) top = std::max(top, n);
   std::vector<GlossLine> out;

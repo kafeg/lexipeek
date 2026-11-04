@@ -114,7 +114,8 @@ struct Card {
   enum class Kind { empty, word, phrase, passage };
   Kind kind = Kind::empty;
   Source source = Source::input;
-  std::string text;    // as asked, trimmed
+  std::string text;    // looked up and stored: a word without edge punctuation, a phrase without stray edge quotes
+  std::string title;   // shown, translated and asked: a phrase as selected ("" in an older card: the text)
   std::string lang;    // the text's language, "" = unknown
   std::string other;   // a language named by language id that has no pack
   std::string answer;  // the answer language

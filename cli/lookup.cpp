@@ -32,7 +32,7 @@ const Register lookup{{"lookup", "[--to ru] [--translate] [--full] [--time] [--r
                          }
                          if (c.kind == Card::Kind::empty) return std::cerr << "nothing to look up\n", 1;
                          static const char *kinds[] = {"empty", "word", "phrase", "passage"};
-                         std::cout << "text: " << c.text << "\nkind: " << kinds[static_cast<int>(c.kind)] << "\nlang: " << (c.lang.empty() ? "?" : c.lang)
+                         std::cout << (c.title != c.text ? "title: " + c.title + "\n" : "") << "text: " << c.text << "\nkind: " << kinds[static_cast<int>(c.kind)] << "\nlang: " << (c.lang.empty() ? "?" : c.lang)
                                    << (c.other.empty() ? "" : " (no pack: " + c.other + ")") << " → " << c.answer << "\n";
                          if (!c.header.empty()) std::cout << "header: " << c.header << "\n";
                          if (!c.base.empty()) std::cout << "base: " << c.base << "\n";

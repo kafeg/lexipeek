@@ -113,6 +113,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Windows) — never `fs::path(std::string)` or `.string().c_str()`. `core/src/lookup/`: `Core` — request → `Card` (one `Entry` per
   dictionary: line, articles parsed into senses and examples, `.rel` sections), `section()` (a section's page of words with
   meanings, 20 per page), language by the dictionaries (InkPeek's `LangId.source`). Cross-test: `tests/inkpeek_cases_test.cpp` runs InkPeek's `cases.tsv` (on the packs' entries only: `LEXIPEEK_MODELS` may hold own dictionaries).
+  `Card::text` is looked up and stored (history, ☆, answers' key); `Card::title` is shown, translated and asked (a phrase as
+  selected); a dashed word no dictionary knows is a phrase (`Library::dashed`). Cases: `lookup_cases_test` (InkPeek's `tests/lookup`).
 - `core/src/ai/` (InkPeek's `ai/`; facade `lexipeek/ai.hpp`): providers (`providers()`: Anthropic Messages API,
   OpenAI-compatible `/chat/completions` + `/models`, CLI `claude -p` / `codex exec` as one shell command line),
   `prompts.inc` (InkPeek's `Ask` word for word, generated once from its `Ai.kt`: the answers' `version` is Java's

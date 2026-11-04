@@ -132,6 +132,7 @@ struct Core::Impl {
   // an updated model translates again.
   Translation run(const Card &card, const std::string &from, const std::string &to, Method method, int tag) {
     auto section = "offline-" + from;
+    auto &src = card.title.empty() ? card.text : card.title;  // kept under the text
     Packs packs(o.data, "");
     auto manifest = packs.cached();
     auto installed = packs.installed();
@@ -147,25 +148,25 @@ struct Core::Impl {
     auto en_ver = pivot ? answer_version(manifest, installed, from, "en", Method::fast) : 0;
     std::string en;
     if (pivot)
-      if (auto a = store->answer(card.text, "en", section, en_ver)) en = mt::unlead_lines(card.text, *a);
+      if (auto a = store->answer(card.text, "en", section, en_ver)) en = mt::unlead_lines(src, *a);
     auto keep_english = [&](const std::string &e) {
       en = e;
       if (keep) store->put_answer(card.text, "en", section, en_ver, answer_model(Method::fast), e);
     };
     Translation t;
     if (auto a = store->answer(card.text, to, section, ver)) {
-      t = {mt::unlead_lines(card.text, *a), "", method_title(method), ""};  // kept by an older build: its ", " too
+      t = {mt::unlead_lines(src, *a), "", method_title(method), ""};  // kept by an older build: its ", " too
       t.kept = true;
     } else {
       auto start = std::chrono::steady_clock::now();
-      t = tr->translate(from, to, card.text, method, tag);
+      t = tr->translate(from, to, src, method, tag);
       t.ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
       if (t.ok() && keep) store->put_answer(card.text, to, section, ver, answer_model(method), t.text);
       if (t.ok() && pivot && !t.english.empty()) keep_english(t.english);
     }
     // Kept before the setting was on: only the English step now.
     if (pivot && show && en.empty() && t.ok())
-      if (auto e = tr->translate(from, "en", card.text, Method::fast, tag); e.ok()) keep_english(e.text);
+      if (auto e = tr->translate(from, "en", src, Method::fast, tag); e.ok()) keep_english(e.text);
     t.english = pivot && show ? en : "";
     return t;
   }
@@ -230,8 +231,9 @@ Card Core::lookup(const Request &r) {
   c.answer = r.answer.empty() ? impl_->o.answer : r.answer;
   auto raw = mt::trim_space(text::plain_spaces(text::valid_utf8(r.text)));
   if (raw.empty()) return c;
-  c.kind = kind_of(raw);
-  c.text = c.kind == Card::Kind::word ? text::clean_query(raw) : text::clean_phrase(raw);
+  // A word loses its edge punctuation; a phrase is shown and translated as selected, looked up without stray quotes.
+  if (auto word = text::clean_query(raw); word_count(word) == 1) c.kind = Card::Kind::word, c.text = c.title = word;
+  else c.text = text::clean_phrase(raw), c.kind = kind_of(c.text), c.title = text::spaced(raw);
   if (c.text.empty()) return c.kind = Card::Kind::empty, c;
   auto &lib = *impl_->lib;
   auto all = lib.all();
@@ -258,8 +260,14 @@ Card Core::lookup(const Request &r) {
       auto noun = text::clean_query(words[1].groups[0]);
       auto heads = lib.heads(noun, c.answer, c.lang);
       if (!heads.empty() && text::lower(heads.front().header()).starts_with(text::lower(text::clean_query(words[0].groups[0]) + " " + noun)))
-        c.kind = Card::Kind::word, c.text = noun;
+        c.kind = Card::Kind::word, c.text = c.title = noun;
     }
+    // "you—resentful", no entry for the whole: the headword with spaces ("half asleep"), else word by word.
+    if (c.kind == Card::Kind::word)
+      if (auto d = lib.dashed(c.text, c.answer, c.lang)) {
+        if (d->empty()) c.kind = Card::Kind::phrase, c.title = text::spaced(raw);
+        else c.text = c.title = *d;
+      }
     // One entry per dictionary (InkPeek's DictionaryPage): its first line, its articles, its first headword's sections.
     auto add_entry = [&](dict::StarDict *d, const std::vector<dict::Hit> &hits) {
       Entry e;
@@ -313,7 +321,7 @@ Card Core::lookup(const Request &r) {
       const size_t limit = 60;
       for (auto &l : c.study)
         for (auto &gl : lib.gloss(c.text, l.lang, limit, c.answer)) l.gloss.push_back(gloss_of(gl));
-      c.more = static_cast<int>(dict::gloss_words(c.text) - c.study.front().gloss.size());
+      c.more = std::max(0, static_cast<int>(dict::gloss_words(c.text)) - static_cast<int>(c.study.front().gloss.size()));
     } else if (c.kind == Card::Kind::word) {
       auto heads = lib.heads(c.text, c.answer, c.lang);
       if (!heads.empty()) {
@@ -327,7 +335,7 @@ Card Core::lookup(const Request &r) {
     } else if (!c.lang.empty()) {
       const size_t limit = 60;
       for (auto &gl : lib.gloss(c.text, c.answer, limit, c.lang)) c.gloss.push_back(gloss_of(gl));
-      c.more = static_cast<int>(dict::gloss_words(c.text) - c.gloss.size());
+      c.more = std::max(0, static_cast<int>(dict::gloss_words(c.text)) - static_cast<int>(c.gloss.size()));  // parts of a hyphenated word add rows
       for (auto &[f, h] : lib.separable(c.text, c.answer))
         c.separable.push_back({f.form + " … " + f.particle, f.verb, h ? h->meaning() : "", h ? h->header() : ""});
     }
@@ -378,7 +386,7 @@ Card Core::lookup(const Request &r) {
 
 Translation Core::translate(const Card &card, std::optional<Method> m, int tag) {
   auto method = m ? m : card.method;
-  if (card.lang == card.answer && !card.lang.empty()) return {card.text, "", "", ""};
+  if (card.lang == card.answer && !card.lang.empty()) return {card.title.empty() ? card.text : card.title, "", "", ""};
   if (!method || card.lang.empty()) return {"", "", "", tr("mt_none")};
   return impl_->run(card, card.lang, card.answer, *method, tag);
 }
@@ -398,9 +406,11 @@ ai::Answer Core::ask(const Card &card, ai::Ask a, const std::string &key, const 
     s = impl_->o.ai;
   }
   static const text::Regex words("\\S+");
-  ai::Query q{a, key, card.text, static_cast<int>(words.all(card.text).size()), card.kind == Card::Kind::passage,
+  auto &asked = card.title.empty() ? card.text : card.title;
+  ai::Query q{a, key, asked, static_cast<int>(words.all(asked).size()), card.kind == Card::Kind::passage,
               catalog_language(card.answer), card.lang.empty() ? "" : catalog_language(card.lang)};
   for (auto &l : card.study) q.study.push_back(catalog_language(l.lang));
+  q.stored = card.text;
   auto recall = s.recall;
   auto r = ai::answer(*impl_->store, q, s, recall, impl_->transport, card.prefs.history, wanted);
   // What worked is kept for the next requests (InkPeek's remember), in the settings and here.
