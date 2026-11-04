@@ -1,10 +1,10 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### Next
+### 0.2.388 — 2026-11-04
 - Words joined by a dash with no spaces ("you—resentful", "Haus—Garten") open word by word when no dictionary knows the
-  whole; a real entry ("well-known", "E-Mail") still opens as a word, and a hyphenated word no dictionary knows shows
-  its parts in the word list.
+  whole; a real entry ("well-known", "E-Mail") still opens as a word, also with another dash ("well—known"), and a
+  hyphenated word no dictionary knows shows its parts in the word list.
 - A phrase's title, translation and AI keep it as selected, quotes included ("привет" - сказала она); a word loses a
   pair of quotes or brackets together.
 
