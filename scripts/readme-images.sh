@@ -5,7 +5,7 @@
 # or LEXIPEEK_DATA: only the packs are linked, settings, notes and the sync folder are the run's own)
 set -eu
 cd "$(dirname "$0")/.."
-APP=${APP:-$PWD/mac/build/Build/Products/Release/LexiPeek.app}
+APP=${APP:-$PWD/mac/build.noindex/Build/Products/Release/LexiPeek.app}
 OUT=${1:-docs/img}
 DATA=${LEXIPEEK_DATA:-$HOME/Library/Application Support/LexiPeek}
 [ -x "$APP/Contents/MacOS/LexiPeek" ] || { echo "no $APP: make app" >&2; exit 1; }

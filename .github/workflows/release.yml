@@ -97,7 +97,7 @@ jobs:
           API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
           API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
         run: |
-          APP=mac/build/Build/Products/Release/LexiPeek.app
+          APP=mac/build.noindex/Build/Products/Release/LexiPeek.app
           codesign --verify --strict --verbose=2 "$APP"
           echo "$API_KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
           ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/notarise.zip"
@@ -108,7 +108,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent mac/build/Build/Products/Release/LexiPeek.app dist/LexiPeek-macOS.zip
+          ditto -c -k --sequesterRsrc --keepParent mac/build.noindex/Build/Products/Release/LexiPeek.app dist/LexiPeek-macOS.zip
 
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'

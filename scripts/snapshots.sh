@@ -4,7 +4,7 @@
 # UI_LANG: the app's language for the run, one of en ru de fr es it pt pl; out-dir then build/snapshots-<lang>)
 set -eu
 cd "$(dirname "$0")/.."
-APP=${APP:-$PWD/mac/build/Build/Products/Release/LexiPeek.app}
+APP=${APP:-$PWD/mac/build.noindex/Build/Products/Release/LexiPeek.app}
 UI_LANG=${UI_LANG:-}
 OUT=${1:-build/snapshots${UI_LANG:+-$UI_LANG}}
 DATA=${LEXIPEEK_DATA:-$HOME/Library/Application Support/LexiPeek}

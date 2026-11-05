@@ -27,7 +27,7 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `langid.ftz`, `installed.json`). CI fetches packs with `scripts/fetch-models.sh` (cache key, runs before the build;
   it marks `installed.json` too), on Windows by `lexipeek-cli packs install` after the build.
   Default data dir: `~/Library/Application Support/LexiPeek` (or `LEXIPEEK_DATA`, `--data`).
-- App (macOS): `make app` (core + `mac/` by XcodeGen, Release; version `<VERSION>.<git commit count>` as
+- App (macOS): `make app` (core + `mac/` by XcodeGen, Release, into `mac/build.noindex/`: Spotlight skips it, one LexiPeek in Apps; version `<VERSION>.<git commit count>` as
   InkPeek's, the build number the count — Makefile's `VERSION`; signed with the local certificate when it exists — `scripts/create-dev-certificate.sh` once, then the
   Accessibility grant and Keychain keys survive rebuilds; `SIGN=<identity>` picks another), `make app-test` (Swift unit tests of `LexiPeekKit`), `make install`
   (into `/Applications` in place, refreshes Services, starts it). Check without Accessibility:

@@ -5,7 +5,7 @@
 # invisible as the snapshots: nothing on the screen, never activated). Exit 1 on a failed case.
 set -eu
 cd "$(dirname "$0")/.."
-APP=${APP:-$PWD/mac/build/Build/Products/Release/LexiPeek.app}
+APP=${APP:-$PWD/mac/build.noindex/Build/Products/Release/LexiPeek.app}
 OUT=${1:-build/selection-test}
 [ -x "$APP/Contents/MacOS/LexiPeek" ] || { echo "no $APP: make app" >&2; exit 1; }
 rm -rf "$OUT" && mkdir -p "$OUT/cases" "$OUT/data"
