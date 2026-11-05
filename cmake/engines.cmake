@@ -45,6 +45,16 @@ if(NOT APPLE)
   set(cblas_openblas_WORKS ON CACHE BOOL "" FORCE) # its link check misses -pthread for the static library
 endif()
 add_subdirectory(${E}/bergamot ${CMAKE_BINARY_DIR}/engines/bergamot EXCLUDE_FROM_ALL SYSTEM)
+# Clang 21 (Xcode 27) rejects SentencePiece's constexpr enum of -1 (-Wno-enum-constexpr-conversion is gone):
+# its trainer builds from a copy with that line const.
+set(SPM_SRC ${E}/bergamot/3rd_party/marian-dev/src/3rd_party/sentencepiece/src)
+file(READ ${SPM_SRC}/trainer_interface.cc SPM_TRAINER)
+string(REPLACE "constexpr unicode_script::ScriptType kAnyType" "const unicode_script::ScriptType kAnyType" SPM_TRAINER "${SPM_TRAINER}")
+file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/spm/trainer_interface.cc CONTENT "${SPM_TRAINER}" @ONLY)
+get_target_property(SPM_TRAIN_SOURCES sentencepiece_train-static SOURCES)
+list(TRANSFORM SPM_TRAIN_SOURCES REPLACE "^(.*/)?trainer_interface\\.cc$" ${CMAKE_BINARY_DIR}/spm/trainer_interface.cc)
+set_target_properties(sentencepiece_train-static PROPERTIES SOURCES "${SPM_TRAIN_SOURCES}")
+target_include_directories(sentencepiece_train-static PRIVATE ${SPM_SRC})
 # Marian builds with -Werror; newer clang warns on its variable-length arrays.
 target_compile_options(marian PRIVATE $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unknown-warning-option -Wno-vla-cxx-extension>)
 if(NOT APPLE)
