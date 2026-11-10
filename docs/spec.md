@@ -194,7 +194,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   **Analysis** (Grammar, Words; extra: related words, synonyms) and **Context** (Explanation, Examples; extra: idioms,
   origin). The card's tabs **Analysis · AI** and **Context · AI** (only the modules that are on) ask only when opened,
   the open one first and, with "ask the others at once" on, the others with it; **AI translation** is a Translate method
-  ("AI · <model>" in its menu: this card only), or what a phrase opens on (Card → Opening: AI translation, Analysis,
+  ("AI · <model>" in its menu: kept for the next cards as Card → Opening's AI translation, as an offline method picked there brings Opening back to the offline translation), or what a phrase opens on (Card → Opening: AI translation, Analysis,
   Context — an AI choice asks on every opening). "Thinking…", then the answer as light Markdown (**bold**, *italic*,
   lists) under the app's headings, or a short actionable error (InkPeek's AiErrors: no network, server unreachable, the
   service refused — network, VPN or key —, key rejected, limit, credits, no key, no model, the server of one's own does

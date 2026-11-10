@@ -64,6 +64,12 @@ TEST_CASE("app: one setting each — the method picked in a card, the first run 
   CHECK(app::method_id(app::settings(ds)) == "off");
   CHECK(app::pick_method(ds, Method::fast).empty());
   CHECK(app::method_id(app::settings(ds)) == "fast");  // picked: no longer off
+  CHECK(app::pick_ai(ds).empty());
+  CHECK(app::settings(ds).card.phrase_open == "ai");  // AI picked in a card: phrases open on it
+  CHECK(app::method_id(app::settings(ds)) == "fast");
+  CHECK(app::pick_method(ds, Method::direct).empty());
+  CHECK(app::settings(ds).card.phrase_open == "offline");  // an offline method again
+  CHECK(app::method_id(app::settings(ds)) == "direct");
   CHECK(!app::settings(ds).first_run);
   CHECK(app::finish_first_run(ds).empty());
   CHECK(app::settings(ds).first_run);

@@ -153,6 +153,12 @@ void CardModel::choose(Method m) {
 
 void CardModel::use(Method m) { session_.set_key(key()), session_.use(m), acted(); }
 void CardModel::choose_ai() { session_.set_key(key()), session_.choose_ai(), acted(); }
+
+void CardModel::pick_ai() {
+  app::pick_ai(c_.data());
+  c_.configure();
+  choose_ai();
+}
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
 void CardModel::cancel() { session_.cancel(), session_.stop_reading(), acted(); }
 void CardModel::read(int row) { session_.read(row), acted(); }
@@ -641,7 +647,7 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
     for (auto &m : v.methods) {
       auto method = m.method;
       bool ai = m.ai;
-      menu.Items().Append(menu_item(m.title, [this, method, ai] { ai ? m_.choose_ai() : m_.choose(method); }, m.enabled));
+      menu.Items().Append(menu_item(m.title, [this, method, ai] { ai ? m_.pick_ai() : m_.choose(method); }, m.enabled));
     }
     auto b = menu_button(v.menu_title, menu, size);
     tip(b, v.menu_help);

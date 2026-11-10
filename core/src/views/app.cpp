@@ -262,7 +262,15 @@ std::string toggle(const std::string &data, const std::string &key, bool on) {
 }
 
 std::string pick_method(const std::string &data, Method m) {
-  return update_settings(dir(data), [&](Settings &s) { s.mt_off = false, s.method = m; });
+  return update_settings(dir(data), [&](Settings &s) {
+    s.mt_off = false, s.method = m;
+    if (s.card.phrase_open == "ai") s.card.phrase_open = "offline";
+  });
+}
+std::string pick_ai(const std::string &data) {
+  return update_settings(dir(data), [](Settings &s) {
+    if (s.card.phrase_open == "offline") s.card.phrase_open = "ai";
+  });
 }
 std::string finish_first_run(const std::string &data) { return update_settings(dir(data), [](Settings &s) { s.first_run = true; }); }
 std::string set_answer(const std::string &data, const std::string &code) {

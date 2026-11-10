@@ -127,7 +127,7 @@ enum Snapshot {
             guard final else { return }
             // &method=: this card with that method (or AI), once its own translation is done.
             if let m = r.method, model.card != nil, model.state.has_method { request?.method = nil; model.use(m); return }
-            if r.ai, let card = model.card, card.ai.translate { request?.ai = false; model.chooseAI(); return }
+            if r.ai, let card = model.card, card.ai.translate { request?.ai = false; model.useAI(); return }
             if let card = model.card, lexipeek.card_view(card, model.state).tabs {
                 if let t = r.tab, model.state.tab != t { model.select(t); return }
                 if let w = r.open { request?.open = nil; model.open(w); return }

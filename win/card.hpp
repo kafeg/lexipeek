@@ -60,7 +60,8 @@ class CardModel {
   void full_entries();    // as Card → Article's full entries (snapshots)
   void choose(Method m);  // picked in the card: also Settings → Translation's
   void use(Method m);     // only this card (snapshots)
-  void choose_ai();
+  void choose_ai();  // this card only
+  void pick_ai();    // and the next cards (Card → Opening)
   void toggle_saved();
   void toggle_pin();
   void cancel();  // the card closed: its translation and its reading stop

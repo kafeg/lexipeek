@@ -224,8 +224,14 @@ final class CardModel: ObservableObject {
 
     func switchTab(_ by: Int = 1) { act { $0.next_tab(Int32(by)) } }
 
-    // AI translation picked in the card's menu: this card only (Card → Opening makes it the default).
-    func chooseAI() { act { $0.choose_ai() } }
+    // AI translation picked in the card's menu: this card, and the next ones too (Card → Opening).
+    func chooseAI() {
+        Prefs.shared.reload(String(lexipeek.app.pick_ai(std.string())))
+        useAI()
+    }
+
+    // This card only (snapshots).
+    func useAI() { act { $0.choose_ai() } }
 
     // This card only (snapshots' &method=).
     func use(_ m: lexipeek.Method) { act { $0.use(m) } }

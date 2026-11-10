@@ -78,6 +78,12 @@ void CardModel::choose(Method m) {
 
 void CardModel::use(Method m) { session_.set_key(key()), session_.use(m), acted(); }
 void CardModel::choose_ai() { session_.set_key(key()), session_.choose_ai(), acted(); }
+
+void CardModel::pick_ai() {
+  app::pick_ai(c_.data());
+  c_.configure();
+  choose_ai();
+}
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
 
 void CardModel::cancel() { session_.cancel(), acted(); }
@@ -450,7 +456,7 @@ QWidget *CardWidget::bar(const CardView &v) {
       a->setEnabled(m.enabled);
       auto method = m.method;
       bool ai = m.ai;
-      connect(a, &QAction::triggered, this, [this, method, ai] { ai ? m_.choose_ai() : m_.choose(method); });
+      connect(a, &QAction::triggered, this, [this, method, ai] { ai ? m_.pick_ai() : m_.choose(method); });
     }
     b->setMenu(menu);
     l->addWidget(b);

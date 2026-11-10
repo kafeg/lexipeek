@@ -109,9 +109,10 @@ struct Engine {
 // Settings: a pane's rows by the data dir's settings; a row's change written there at once ("" or the error).
 SettingsPage settings_page(const std::string &data, SettingsSection section, int tab, const SettingsState &state);
 std::string toggle(const std::string &data, const std::string &key, bool on);
-// One setting each, written under settings.json's lock: the method picked in a card, the first run done, the first
-// pair's answer language; "" or the error.
+// One setting each, written under settings.json's lock: the method picked in a card (an offline one, or AI translation
+// as what a phrase opens on), the first run done, the first pair's answer language; "" or the error.
 std::string pick_method(const std::string &data, Method m);
+std::string pick_ai(const std::string &data);
 std::string finish_first_run(const std::string &data);
 std::string set_answer(const std::string &data, const std::string &code);
 std::string choose(const std::string &data, const std::string &key, int index, const SettingsState &state);
