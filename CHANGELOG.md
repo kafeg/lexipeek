@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### Next
+### 0.2.395 — 2026-11-10
 - AI translation picked in the card's method menu is kept for the next cards (Settings → Card → Opening), as an offline method picked there already was; picking an offline method brings it back.
 - Windows: packs download behind a firewall or proxy that blocks certificate revocation servers (the error "CRYPT_E_REVOCATION_OFFLINE"); revocation is still checked where those servers answer.
 ### 0.2.390 — 2026-11-04
