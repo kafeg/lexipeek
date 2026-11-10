@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### Next
+- Windows: packs download behind a firewall or proxy that blocks certificate revocation servers (the error "CRYPT_E_REVOCATION_OFFLINE"); revocation is still checked where those servers answer.
 ### 0.2.390 — 2026-11-04
 - Offline translation uses less memory: each loaded model by about its file size (≈ 30 MB for a language pair).
 ### 0.2.388 — 2026-11-04

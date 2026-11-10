@@ -31,7 +31,11 @@ void common(CURL *h, const std::string &url) {
   curl_easy_setopt(h, CURLOPT_LOW_SPEED_LIMIT, 1L);
   curl_easy_setopt(h, CURLOPT_LOW_SPEED_TIME, 60L);
   curl_easy_setopt(h, CURLOPT_USERAGENT, "LexiPeek");
-#if defined(__APPLE__) || defined(_WIN32)
+#if defined(_WIN32)
+  // Schannel fails when a firewall or proxy blocks the CA's revocation servers (CRYPT_E_REVOCATION_OFFLINE): check
+  // revocation where they answer, go on where they do not — as browsers do.
+  curl_easy_setopt(h, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA | CURLSSLOPT_REVOKE_BEST_EFFORT));
+#elif defined(__APPLE__)
   curl_easy_setopt(h, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA));
 #else
   // The distribution's CA bundle: the build machine's path may not be there (Debian / Ubuntu, Fedora, openSUSE, Arch).
