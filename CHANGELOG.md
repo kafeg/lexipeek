@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.397 — 2026-11-11
+- The card's font can be any font installed on the computer (Settings → Card → Appearance → Font), besides System, Serif, Rounded and Monospaced; a font synced from another computer that lacks it here shows in the system font.
 ### 0.2.395 — 2026-11-10
 - AI translation picked in the card's method menu is kept for the next cards (Settings → Card → Opening), as an offline method picked there already was; picking an offline method brings it back.
 - Windows: packs download behind a firewall or proxy that blocks certificate revocation servers (the error "CRYPT_E_REVOCATION_OFFLINE"); revocation is still checked where those servers answer.
