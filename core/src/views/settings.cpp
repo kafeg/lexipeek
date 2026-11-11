@@ -299,7 +299,7 @@ std::vector<SettingRow> article(const Settings &s) {
   return rows;
 }
 
-// The font's values: the 4 kinds, the installed families, the one kept when this machine lacks it (synced from another).
+// The font's values: the 4 kinds, the installed families, the one kept after it was uninstalled.
 std::vector<std::string> font_values(const Settings &s, const SettingsState &st) {
   std::vector<std::string> v;
   for (auto &f : fonts) v.push_back(f.first);

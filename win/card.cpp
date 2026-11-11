@@ -338,7 +338,7 @@ void CardWidget::rebuild() {
   if (auto place = m_.nav.place(); place != place_) place_ = place, whole_ = false, cut_ = false;
   bool dark = root_.ActualTheme() == xaml::ElementTheme::Dark;
   limit_ = screen * (v_.height > 0 ? v_.height : 45) / 100;
-  // The 4 kinds, or an installed family with the system's after it (a family synced from another machine may be missing here).
+  // The 4 kinds, or an installed family with the system's after it (the system's when that one was uninstalled).
   std::wstring family = L"Segoe UI Variable Text, Segoe UI";
   if (v_.font == "serif") family = L"Georgia, Cambria";
   else if (v_.font == "mono") family = L"Cascadia Mono, Consolas";
