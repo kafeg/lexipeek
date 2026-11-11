@@ -338,7 +338,12 @@ void CardWidget::rebuild() {
   if (auto place = m_.nav.place(); place != place_) place_ = place, whole_ = false, cut_ = false;
   bool dark = root_.ActualTheme() == xaml::ElementTheme::Dark;
   limit_ = screen * (v_.height > 0 ? v_.height : 45) / 100;
-  root_.FontFamily(xaml::Media::FontFamily(v_.font == "serif" ? L"Georgia, Cambria" : v_.font == "mono" ? L"Cascadia Mono, Consolas" : L"Segoe UI Variable Text, Segoe UI"));
+  // The 4 kinds, or an installed family with the system's after it (a family synced from another machine may be missing here).
+  std::wstring family = L"Segoe UI Variable Text, Segoe UI";
+  if (v_.font == "serif") family = L"Georgia, Cambria";
+  else if (v_.font == "mono") family = L"Cascadia Mono, Consolas";
+  else if (!v_.font.empty() && v_.font != "rounded") family = std::wstring(winrt::to_hstring(v_.font)) + L", " + family;
+  root_.FontFamily(xaml::Media::FontFamily(family));
   controls::Grid grid;
   for (auto height : {xaml::GridLengthHelper::Auto(), xaml::GridLengthHelper::FromValueAndType(1, xaml::GridUnitType::Star), xaml::GridLengthHelper::Auto()}) {
     controls::RowDefinition r;

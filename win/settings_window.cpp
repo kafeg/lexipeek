@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 #include <optional>
+#include <set>
 #include <tlhelp32.h>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include "lexipeek/os.hpp"
@@ -30,6 +31,30 @@ static bool anki_running() {
   return found;
 }
 
+// Card → Appearance's font: the families installed (no vertical "@" ones), sorted as people read them.
+static std::vector<std::string> font_families() {
+  static const auto all = [] {
+    std::set<std::wstring> names;
+    LOGFONTW lf{};
+    lf.lfCharSet = DEFAULT_CHARSET;
+    HDC dc = GetDC(nullptr);
+    EnumFontFamiliesExW(
+        dc, &lf,
+        [](const LOGFONTW *f, const TEXTMETRICW *, DWORD, LPARAM p) -> int {
+          if (f->lfFaceName[0] != L'@') reinterpret_cast<std::set<std::wstring> *>(p)->insert(f->lfFaceName);
+          return 1;
+        },
+        reinterpret_cast<LPARAM>(&names), 0);
+    ReleaseDC(nullptr, dc);
+    std::vector<std::wstring> sorted(names.begin(), names.end());
+    std::sort(sorted.begin(), sorted.end(), [](auto &a, auto &b) { return _wcsicmp(a.c_str(), b.c_str()) < 0; });
+    std::vector<std::string> out;
+    for (auto &n : sorted) out.push_back(winrt::to_string(n));
+    return out;
+  }();
+  return all;
+}
+
 SettingsState SettingsShell::state() const {
   SettingsState s;
   auto dir = client.data();
@@ -38,6 +63,7 @@ SettingsState SettingsShell::state() const {
   s.login = os::login();
   s.version = version();
   s.answers = app::answers(dir);
+  s.fonts = font_families();
   s.input = app::hotkey_label(app::settings(dir).input);
   s.checking = checking;
   s.update = update.text, s.update_version = update.version, s.update_url = update.url;

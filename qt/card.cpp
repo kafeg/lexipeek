@@ -195,6 +195,9 @@ QFont CardWidget::font(int delta, bool bold) const {
   QFont f = QApplication::font();
   if (v_.font == "serif") f.setFamilies({"Georgia", "Times New Roman", "serif"});
   if (v_.font == "mono") f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+  // An installed family; the system's when this machine lacks it (synced from another).
+  if (!v_.font.empty() && v_.font != "serif" && v_.font != "mono" && v_.font != "rounded")
+    f.setFamilies({QString::fromStdString(v_.font), f.family()});
   f.setPointSizeF((v_.text > 0 ? v_.text : 13) + delta);
   f.setBold(bold);
   return f;

@@ -34,7 +34,7 @@ struct CardPrefs {
   std::vector<std::string> sections{"rel", "syn", "expr", "forms"};  // .rel sections shown (InkPeek: origin off)
   int width = 400;      // points (a passage: 60 more)
   int text = 13;        // points
-  std::string font;     // "" the system's, "serif", "rounded", "mono"
+  std::string font;     // "" the system's, "serif", "rounded", "mono", or an installed family
   int height = 45;      // % of the screen at most
   bool history = true;  // what is opened goes to History (InkPeek's Card → Opening → History); off: nothing is written
   bool read = false;    // Read aloud is on (Settings → Read aloud, not kept here): the card's ▶

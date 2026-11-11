@@ -6,6 +6,7 @@
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
+#include <QFontDatabase>
 #include <QStandardPaths>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
@@ -47,6 +48,17 @@ static bool anki_running() {
   return false;
 }
 
+// Card → Appearance's font: the families installed.
+static std::vector<std::string> font_families() {
+  static const auto all = [] {
+    std::vector<std::string> out;
+    for (auto &f : QFontDatabase::families())
+      if (!QFontDatabase::isPrivateFamily(f)) out.push_back(f.toStdString());
+    return out;
+  }();
+  return all;
+}
+
 SettingsState SettingsShell::state() const {
   SettingsState s;
   auto dir = client.data();
@@ -55,6 +67,7 @@ SettingsState SettingsShell::state() const {
   s.login = platform::login();
   s.version = version();
   s.answers = app::answers(dir);
+  s.fonts = font_families();
   s.input = app::hotkey_label(app::settings(dir).input);
   s.checking = checking;
   s.update = update.text, s.update_version = update.version, s.update_url = update.url;

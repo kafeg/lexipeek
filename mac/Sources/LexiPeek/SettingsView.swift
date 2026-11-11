@@ -140,6 +140,9 @@ final class SettingsModel: ObservableObject {
         }
     }
 
+    // Card → Appearance's font: the families installed.
+    private static let fonts = NSFontManager.shared.availableFontFamilies.filter { !$0.hasPrefix(".") }.cxx
+
     func state() -> lexipeek.SettingsState {
         var s = lexipeek.SettingsState()
         s.trusted = trusted
@@ -147,6 +150,7 @@ final class SettingsModel: ObservableObject {
         s.login = login
         s.version = std.string(version)
         s.answers = answers
+        s.fonts = Self.fonts
         s.input = std.string(Prefs.shared.inputKey.label)
         s.checking = checking
         s.update = update.text

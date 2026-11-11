@@ -252,7 +252,7 @@ a window on the wrong screen, and a clipboard overwritten by Cmd+C.
   of what is opened is written, no look, no kept translation or AI answer, as InkPeek's; the icon at the selection; a
   moved card stays) · Article (the dictionary view: short line or full entry, the header's grammar, the sections shown,
   dictionary order) · Appearance (the theme of the card and every window: as the system, light, dark; desktop: width,
-  text size, font, height limit) · **AI** — Connection (provider, the server's address
+  text size, font: the 4 kinds or any installed family, height limit) · **AI** — Connection (provider, the server's address
   or the program, the key, the model — typed or "Choose…" from the provider's list with a filter and "free only" —,
   the answer language (a link to Translation), the general style ✎, "Check": one short request) · Modules (AI
   translation, Analysis' and Context's parts each on / off with ✎ to edit what it asks for, "ask the others at once",

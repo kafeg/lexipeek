@@ -24,13 +24,16 @@ struct CardView: View {
     // The settings' size and font; delta: the header a little larger, secondary lines a little smaller.
     private func font(_ delta: CGFloat = 0, _ weight: Font.Weight = .regular) -> Font {
         let look = model.look
-        let design: Font.Design = switch look?.font ?? "" {
-        case "serif": .serif
-        case "rounded": .rounded
-        case "mono": .monospaced
-        default: .default
+        let size = CGFloat(look?.text ?? 13) + delta
+        let design: Font.Design
+        switch look?.font ?? "" {
+        case "": design = .default
+        case "serif": design = .serif
+        case "rounded": design = .rounded
+        case "mono": design = .monospaced
+        case let family: return .custom(family, size: size).weight(weight)  // an installed family; the system's when missing
         }
-        return .system(size: CGFloat(look?.text ?? 13) + delta, weight: weight, design: design)
+        return .system(size: size, weight: weight, design: design)
     }
 
     var body: some View {
@@ -461,7 +464,8 @@ struct CardView: View {
         case "serif": "ui-serif, 'New York', serif"
         case "rounded": "ui-rounded, -apple-system"
         case "mono": "ui-monospace, Menlo, monospace"
-        default: "-apple-system"
+        case "": "-apple-system"
+        default: "'\(font.replacingOccurrences(of: "'", with: ""))', -apple-system"
         }
         let doc = "<style>body{font-family:\(family);font-size:\(size)px}</style>" + html
         guard let ns = try? NSMutableAttributedString(data: Data(doc.utf8), options: [

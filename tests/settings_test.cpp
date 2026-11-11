@@ -226,6 +226,17 @@ TEST_CASE("settings: Card — opening, article, sections, appearance") {
   CHECK(s.card.text == 16);
   CHECK(s.card.font == "rounded");
   CHECK(s.card.height == 75);
+  // The installed families after the 4 kinds; one kept from another machine stays listed.
+  st.fonts = {"Avenir", "serif", "Iowan"};
+  p = settings_view(SettingsSection::card, 2, s, st);
+  CHECK(row(p, "font")->choices.size() == 6);
+  CHECK(row(p, "font")->choices[4] == "Avenir");
+  settings_choose(s, "font", 5, st);
+  CHECK(s.card.font == "Iowan");
+  st.fonts.clear();
+  p = settings_view(SettingsSection::card, 2, s, st);
+  CHECK(row(p, "font")->choices.back() == "Iowan");
+  CHECK(row(p, "font")->selected == 4);
 }
 
 TEST_CASE("settings: General — System and Hotkeys tabs; the icon on Card → Opening; About its own rows") {

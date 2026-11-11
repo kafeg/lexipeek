@@ -299,16 +299,29 @@ std::vector<SettingRow> article(const Settings &s) {
   return rows;
 }
 
-std::vector<SettingRow> appearance(const Settings &s) {
+// The font's values: the 4 kinds, the installed families, the one kept when this machine lacks it (synced from another).
+std::vector<std::string> font_values(const Settings &s, const SettingsState &st) {
+  std::vector<std::string> v;
+  for (auto &f : fonts) v.push_back(f.first);
+  for (auto &f : st.fonts)
+    if (!f.empty() && std::find(v.begin(), v.end(), f) == v.end()) v.push_back(f);
+  if (std::find(v.begin(), v.end(), s.card.font) == v.end()) v.push_back(s.card.font);
+  return v;
+}
+
+std::vector<SettingRow> appearance(const Settings &s, const SettingsState &st) {
   std::vector<std::string> size_names, height_names;
   for (auto n : sizes) size_names.push_back(tr("unit_pt", {std::to_string(n)}));
   for (auto n : heights) height_names.push_back(std::to_string(n) + " %");
   std::vector<std::string> themes;
   for (auto &t : theme_names) themes.push_back(tr(t.second));
+  auto values = font_values(s, st);
+  auto font_names = names(fonts);
+  font_names.insert(font_names.end(), values.begin() + static_cast<long>(fonts.size()), values.end());
   return {choice("theme", tr("look_theme"), tr("look_theme_d"), themes, index_of(theme_names, s.theme)),
           choice("width", tr("look_width"), tr("width_d"), names(width_names), index_of(widths, s.card.width)),
           choice("text", tr("look_text"), tr("look_text_d"), size_names, index_of(sizes, s.card.text)),
-          choice("font", tr("look_font"), tr("font_d"), names(fonts), index_of(fonts, s.card.font)),
+          choice("font", tr("look_font"), tr("font_d"), font_names, index_of(values, s.card.font)),
           choice("height", tr("height_t"), tr("height_d"), height_names, index_of(heights, s.card.height))};
 }
 
@@ -533,7 +546,7 @@ SettingsPage settings_view(SettingsSection section, int tab, const Settings &s, 
       else p.pane = "other";
       break;
     case SettingsSection::card:
-      p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s);
+      p.rows = p.tab == 0 ? opening(s) : p.tab == 1 ? article(s) : appearance(s, st);
       break;
     case SettingsSection::ai: p.rows = p.tab == 0 ? connection(s, st) : modules(s); break;
     case SettingsSection::general: p.rows = general(s, st, p.tab); break;
@@ -615,7 +628,7 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "full") s.card.full = i == 1;
   else if (key == "width") s.card.width = at(widths);
   else if (key == "text") s.card.text = at(sizes);
-  else if (key == "font") s.card.font = at(fonts).first;
+  else if (key == "font") s.card.font = at(font_values(s, st));
   else if (key == "height") s.card.height = at(heights);
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
   else if (key == "theme") s.theme = at(theme_names).first;

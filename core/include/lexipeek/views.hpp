@@ -186,7 +186,7 @@ struct CardView {
   std::string star_help;  // "Save to Notes", "Remove from Notes"
   int width = 400;        // the card's look (Settings → Card → Appearance): points
   int text = 13;          // the body's text size, points; the header a little larger
-  std::string font;       // "" the system's, "serif", "rounded", "mono"
+  std::string font;       // "" the system's, "serif", "rounded", "mono", or an installed family
   int height = 45;        // % of the screen at most
   speech::Read read;      // ▶ in the bottom row reads this (text "": no ▶)
   bool reading = false;   // it is being read, a press stops it; read_phase: loading the model, making, ready (playing: ■)
@@ -408,6 +408,7 @@ struct SettingsState {
   anki::Check anki_check;
   bool anki_checked = false;
   anki::Status anki;
+  std::vector<std::string> fonts;  // the font families installed (the shell asks the OS): Appearance's font after the 4 kinds
 };
 
 // One row, InkPeek's Rows: a title, a one-line description, a control.
