@@ -6,7 +6,7 @@ Public repo (MIT): no secrets, keys, personal paths or IPs in commits.
 
 ## Stack
 C++20 core with all the logic + a thin native shell per OS. `core/` — no UI, no OS headers; vcpkg: sqlite3,
-nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
+nlohmann/json, libcurl, libarchive (zstd), hash-library, utf8proc, zlib, doctest (from M1: the spec's Stack); facade `core/include/lexipeek/` (plain types, Swift-importable).
 `mac/` — Swift, SwiftUI + AppKit, XcodeGen, C++ interop (as panerail). `win/` (M8) — the Windows shell, WinUI 3 (C++/WinRT);
 `qt/` (M6) — Qt 6 Widgets, the Linux app (M10) and Windows' fallback build (`LEXIPEEK_QT` off by default everywhere).
 `platform/` — the OS parts both Windows shells share, and Linux's.

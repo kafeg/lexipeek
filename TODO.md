@@ -3,6 +3,64 @@
 Done on macOS: M0–M5 (engines, core, the app, card parity, dictionaries and settings, AI), the LexiPeek window, Notes,
 sync with InkPeek and Anki (Settings → Sync, with Export / Import); Windows (M8); Linux x64 (M10, released). Milestones: `docs/spec.md` → Milestones.
 
+## From the architecture review (2026-11-20)
+Critical:
+- `index.ipk` is read without bounds: `load()` takes `count_` from the file and `key_at`/`entry_at` `memcpy` by its
+  offsets (`core/src/dict/stardict.cpp:49, 311, 318`); `build()` renames `index.tmp` without checking the `ofstream`
+  (:302). Check `size >= 8 + 4*count_` and the offsets, and the write.
+- `StarDict::stamp()` (:224) has no index format version: the next `MAGIC` bump leaves installed copies with a matching
+  stamp, so `load()` throws forever and `Library::lookup` turns it into "nothing found" (`dict/library.cpp:200`). Put
+  `MAGIC` in the stamp; rebuild once on a magic mismatch.
+- The packs release is a live dependency with no format or minimum-app field (`packs.hpp:14`, `:57`): a component for a
+  newer engine would be downloaded and fail to load. Needs a field in InkPeek's `packs.json` and a `cannot()` reason.
+
+Important:
+- No log: ~half of the core's 38 catches are silent, and a look-up that throws just restores the card instead of
+  showing `Card::error` (`views/session.cpp:123, 159`). One ring log `<data>/lexipeek.log` + "Show log" in General.
+- Into the core, once for three shells: the launch (`name_device` → `sync(true)` → `prepare` → the 30 s timer →
+  `anki_start`, `configure`/`reload`: `qt/core_client.cpp`, `win/core_client.cpp`, `mac/CoreClient.swift`,
+  `qt/main.cpp` ≈ `win/App.xaml.cpp`) as an `app::AppSession` like `CardSession`; the download job
+  (busy/progress/error/finished in `qt/packs_pane.cpp:127`, `win/packs_pane.cpp:93`, `mac/PacksView.swift:31`, and the
+  same in `dicts_pane` and `first_run`) as an `app::Job`.
+- The shown settings sections are hardcoded per shell (`qt/settings_window.hpp:78`, `win/settings_window.hpp:31`,
+  `mac/SettingsView.swift:14`) and already differ: Qt has no `speech`, while Windows' Qt build links the TTS dll and the
+  core's card offers "Open Settings → Read aloud" (`views/read.cpp:64`). The list belongs in the core, gated by
+  `speech::built()`.
+- A setting row's button is dispatched by `if (r.key == "…")` with no default in each shell, so a new key is a dead
+  control nothing catches (`speech_add`/`speech_remove` are missing in Qt today). An action enum in the core, or a test
+  that matches the keys the core emits against the shells.
+- CI never compiles the Mac app: the macOS job runs `make app-test` and the scheme builds only `LexiPeekKitTests`
+  (`ci.yml:130`, `mac/project.yml:103`). Add `make app SIGN=-`.
+- `linux-asan` and `windows-qt` only run on `workflow_dispatch` (`ci.yml:178, 208`): give ASan a nightly schedule.
+- The first `notes()` blocks the UI thread until the store's opener finishes (`store/store.cpp:210`, called from
+  `qt/main_window.cpp:191`, `win/MainWindow.xaml.cpp:197`, `mac/NotesPane.swift:64`): a `Store::ready()` state, or a
+  queue.
+- One detached `std::thread` per AI ask, up to three a card, no pool (`views/session.cpp:222`); `set_cli_runner` is an
+  unsynchronised process global (`ai/transport.cpp:22, 67`).
+- The core cannot be built without the MT engines (`core/CMakeLists.txt:6`): no `LEXIPEEK_MT` next to `LEXIPEEK_TTS`
+  with its `built()` stub. Needed for a core without models (iOS).
+- `CardSession` — the staleness counters all three shells depend on — has three linear tests
+  (`tests/session_test.cpp:74, 150, 205`): add races (a new look-up while translating, "←" while a section arrives,
+  `cancel()` during AI).
+- `installed.json` is a read-modify-write with no lock (`packs/packs.cpp:352, 433`), so two installs at once lose a
+  mark; `Packs` only claims one at a time (`packs.hpp:115`).
+
+Small:
+- Raw English in the UI, around `tr()`: `c.error = e.what()` (`lookup/lookup.cpp:343`, shown by `views.cpp:387`) and
+  the packs errors (`packs.cpp:363, 378`). `l10n_test` greps Swift for English literals, not the core.
+- `lexipeek-cli` sets no `cli_runner` (the shells do: `qt/main.cpp:103`, `win/App.xaml.cpp:113`), so a CLI AI provider
+  on Windows gets the core's POSIX line through `_popen` (`ai/transport.cpp:37`).
+- The snapshot error fixtures are duplicated as literals (`qt/snapshots.cpp:145`, `win/snapshots.cpp:152`) while the
+  cases come from `scripts/snapshot-cases.sh`.
+- `vcpkg.json`'s `builtin-baseline` and the `vcpkg` submodule commit are not checked against each other: put it in
+  `tests/pins.cmake`.
+- `settings.json` is written tmp+rename without fsync (`settings/settings.cpp:210`): a power loss can leave it empty
+  and the settings back at the defaults.
+- `Data::read` allocates by the uint32 size from a `.idx` (`dict/stardict.cpp:170`): cap it by the `.dict`'s size.
+- `docs/spec.md:61` promises clang-tidy; it is configured nowhere.
+- `views.hpp:227`'s comment on `markdown_spans` ("as the Qt and Mac cards draw it") makes three parsers the norm; see
+  the light Markdown line under M6.
+
 ## M10 Linux (spec M10)
 Done: the OS parts, the Qt shell on Linux, `LexiPeek-Linux-x64.tar.gz` in the release (release.yml calls linux.yml;
 release.sh checks it), notices, docs; run on an Ubuntu 24.04 X11 desktop (hotkeys, PRIMARY in an editor and Chromium,
