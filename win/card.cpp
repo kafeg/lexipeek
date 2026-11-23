@@ -247,15 +247,30 @@ void tip(const xaml::DependencyObject &o, const std::string &s) {
   if (!s.empty()) controls::ToolTipService::SetToolTip(o, winrt::box_value(h(s)));
 }
 
-// A command of the bottom row: the system's icon (16 px, as Windows 11's command bars), its tooltip.
-controls::Button command(wchar_t glyph, const std::string &tooltip, std::function<void()> click, xaml::Media::Brush color = nullptr, double size = 16) {
+// A command of the bottom row: the system's icon (16 px, as Windows 11's command bars), its tooltip. Marked (▶ reading
+// a word with its forms): a small + above the icon's right corner.
+controls::Button command(wchar_t glyph, const std::string &tooltip, std::function<void()> click, xaml::Media::Brush color = nullptr, double size = 16,
+                         bool marked = false) {
   controls::FontIcon f;
   f.FontFamily(symbols());
   f.Glyph(winrt::hstring(std::wstring(1, glyph)));
   f.FontSize(size);
   if (color) f.Foreground(color);
   controls::Button b;
-  b.Content(f);
+  if (!marked) {
+    b.Content(f);
+  } else {
+    controls::FontIcon plus;
+    plus.FontFamily(symbols());
+    plus.Glyph(L"\uE710");  // Add
+    plus.FontSize(size * 0.5);
+    if (color) plus.Foreground(color);
+    plus.VerticalAlignment(xaml::VerticalAlignment::Top), plus.HorizontalAlignment(xaml::HorizontalAlignment::Right);
+    plus.Margin({0, 1, -1, 0});
+    controls::Grid g;
+    g.Children().Append(f), g.Children().Append(plus);
+    b.Content(g);
+  }
   b.Width(32), b.Height(32), b.Padding({0, 0, 0, 0});
   b.Background(clear()), b.BorderThickness({0, 0, 0, 0});
   tip(b, tooltip);
@@ -679,7 +694,8 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
     left.Children().Append(next);
   }
   if (!v.read.text.empty()) {
-    right.Children().Append(command(read_glyph(v.reading, v.read_phase), v.read_help, [this] { m_.read(); }));
+    right.Children().Append(command(read_glyph(v.reading, v.read_phase), v.read_help, [this] { m_.read(); }, nullptr, 16,
+                                    v.read_marked && v.read_phase == speech::Phase::idle));
     // A word whose headword has forms in brackets: ▶'s own menu, the word alone or with them.
     if (!v.read_menu.empty()) {
       controls::MenuFlyout menu;
@@ -692,7 +708,7 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
         i.Click([this, forms](auto &&, auto &&) { m_.choose_read(forms); });
         menu.Items().Append(i);
       }
-      auto b = menu_button(v.read_mark, menu, size);  // off its default, the button says so: "+forms"
+      auto b = menu_button("", menu, size);
       tip(b, app::text("read_forms_help"));
       right.Children().Append(b);
     }

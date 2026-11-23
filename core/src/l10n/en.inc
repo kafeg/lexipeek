@@ -171,7 +171,6 @@
 {"read_male", "Male"},
 {"read_forms_word", "Word only"},
 {"read_forms_all", "Word with its forms"},
-{"read_forms_mark", "+forms"},
 {"read_forms_help", "What ▶ reads"},
 {"read_own_t", "Voices from a recording"},
 {"read_own_d", "Used for their language instead of the app's while on; kept only on this computer."},

@@ -89,7 +89,8 @@ void read_view(const Card &c, const CardState &s, CardView &v) {
     word.read_forms = false, forms.read_forms = true;
     if (card_read(c, word, v.tab).text != card_read(c, forms, v.tab).text) {
       v.read_menu = {{tr("read_forms_word"), false, !s.read_forms}, {tr("read_forms_all"), true, s.read_forms}};
-      if (s.read_forms) v.read_mark = tr("read_forms_mark");  // off the default: said by ▶ itself, not only in the menu
+      // Off the default ▶ itself says so: a small + by it, and its tooltip names what it reads.
+      if (s.read_forms) v.read_marked = true, v.read_help += " · " + tr("read_forms_all");
     }
   }
   // A language you learn: each translated word of a word's card has its own ▶.

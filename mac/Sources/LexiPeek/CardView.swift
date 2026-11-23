@@ -201,10 +201,10 @@ struct CardView: View {
         } else {
             Menu {
                 Section(L.t("card_text_in")) {
-                    ForEach(look.books) { l in Button { model.relookup(lang: l.id) } label: { check(l) } }
+                    ForEach(look.books) { l in Button { model.relookup(lang: l.id) } label: { check(l.title, l.on) } }
                 }
                 Section(L.t("card_into")) {
-                    ForEach(look.answers) { l in Button { model.relookup(answer: l.id) } label: { check(l) } }
+                    ForEach(look.answers) { l in Button { model.relookup(answer: l.id) } label: { check(l.title, l.on) } }
                 }
             } label: {
                 Text(look.badge.isEmpty ? "…" : look.badge).font(font(-2))
@@ -214,8 +214,9 @@ struct CardView: View {
         }
     }
 
-    private func check(_ l: CardLook.Lang) -> some View {
-        l.on ? AnyView(Label(l.title, systemImage: "checkmark")) : AnyView(Text(l.title))
+    // A menu's items: the one in use with a check mark (the badge's languages, ▶'s menu).
+    private func check(_ title: String, _ on: Bool) -> some View {
+        on ? AnyView(Label(title, systemImage: "checkmark")) : AnyView(Text(title))
     }
 
     // Copied: a check mark for a moment, so the click is seen.
@@ -328,7 +329,7 @@ struct CardView: View {
             Spacer(minLength: 4)
             if look.read {
                 HStack(spacing: 2) {
-                    Button { model.read() } label: { ReadIcon(phase: look.readPhase) }
+                    Button { model.read() } label: { ReadIcon(phase: look.readPhase, marked: look.readMarked) }
                         .buttonStyle(.borderless)
                         .help(look.readHelp)
                     if !look.readMenu.isEmpty { readPicker(look) }
@@ -491,19 +492,12 @@ struct CardView: View {
     private func readPicker(_ look: CardLook) -> some View {
         Menu {
             ForEach(look.readMenu) { p in
-                Button { model.chooseRead(p.forms) } label: {
-                    p.on ? AnyView(Label(p.title, systemImage: "checkmark")) : AnyView(Text(p.title))
-                }
+                Button { model.chooseRead(p.forms) } label: { check(p.title, p.on) }
             }
         } label: {
-            HStack(spacing: 1) {
-                if !look.readMark.isEmpty { Text(look.readMark) }
-                Image(systemName: "chevron.down")
-            }
-            .font(font(-3))
+            Text("")  // what it reads is on ▶ itself: the menu is the bare chevron of the method's and the badge's
         }
         .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)  // the style draws one of its own: the label's chevron is the only one
         .fixedSize()
         .help(L.t("read_forms_help"))
     }
@@ -542,6 +536,7 @@ private struct HeightKey: PreferenceKey {
 // the reading being made (a sound wave, pulsing), ■ while it plays.
 private struct ReadIcon: View {
     var phase: lexipeek.speech.Phase
+    var marked = false  // ▶ reads the word with its forms: a small + above it, while it is ▶ and not a phase
 
     var body: some View {
         Group {
@@ -553,5 +548,10 @@ private struct ReadIcon: View {
             }
         }
         .frame(width: 16, height: 16)
+        .overlay(alignment: .topTrailing) {
+            if marked && phase == .idle {
+                Image(systemName: "plus").font(.system(size: 6, weight: .semibold)).offset(y: 1)
+            }
+        }
     }
 }

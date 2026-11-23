@@ -63,7 +63,7 @@ struct CardLook {
     var menuHelp = ""
     var methods: [Item] = []
     var readMenu: [ReadPick] = []
-    var readMark = ""  // by ▶ while its menu is off its default: "+forms"
+    var readMarked = false  // ▶ draws its small + : the menu is off its default
     var back = ""
     var pager = ""
     var prev = false
@@ -122,7 +122,7 @@ struct CardLook {
         reading = v.reading
         readPhase = v.read_phase
         readHelp = String(v.read_help)
-        readMark = String(v.read_mark)
+        readMarked = v.read_marked
     }
 }
 

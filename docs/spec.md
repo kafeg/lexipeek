@@ -412,8 +412,8 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   ("das Haus (Hauses, мн. Häuser)" → "das Haus, Hauses, Häuser"; a marker is the only word there ending in a dot, in
   every pair, so the reading is the same whichever language the pack reads into and the kept WAV is shared). A pick
   reads at once and stays for the next cards (`speech.forms`, which only this menu sets: `app::pick_read`, kept by
-  `app::save`); off the default the menu's button carries a short label by ▶ ("+forms", `read_mark`), so the choice is
-  seen without opening it; the note's own reading, and Anki's Audio with it, is always the word itself.
+  `app::save`); off the default ▶ itself carries a small + (`read_marked`, while it is ▶ and not a phase) and its
+  tooltip names what it reads, so the choice is seen without opening the menu; the note's own reading, and Anki's Audio with it, is always the word itself.
   **Card:** ▶ in the bottom row on the right (before copy); a press shows the reading's phase in ▶'s own place, one size
   (nothing in the card moves): the model loading (an hourglass; Windows a clock), the reading being made (a sound wave;
   Windows a speaker), ■ while it plays; a press on any of them stops. ⌘. (Windows Ctrl+.) the same, a key of the card
