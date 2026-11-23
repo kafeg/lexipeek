@@ -162,6 +162,13 @@ void CardModel::pick_ai() {
 void CardModel::toggle_saved() { session_.toggle_saved(), acted(); }
 void CardModel::cancel() { session_.cancel(), session_.stop_reading(), acted(); }
 void CardModel::read(int row) { session_.read(row), acted(); }
+
+void CardModel::choose_read(bool forms) {
+  app::pick_read(c_.data(), forms);
+  c_.configure();
+  session_.choose_read(forms), acted();
+}
+
 void CardModel::show_reading(speech::Phase p) { session_.show_reading(p), acted(); }
 
 void CardModel::toggle_pin() {
@@ -671,7 +678,25 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
     next.IsEnabled(v.next);
     left.Children().Append(next);
   }
-  if (!v.read.text.empty()) right.Children().Append(command(read_glyph(v.reading, v.read_phase), v.read_help, [this] { m_.read(); }));
+  if (!v.read.text.empty()) {
+    right.Children().Append(command(read_glyph(v.reading, v.read_phase), v.read_help, [this] { m_.read(); }));
+    // A word whose headword has forms in brackets: ▶'s own menu, the word alone or with them.
+    if (!v.read_menu.empty()) {
+      controls::MenuFlyout menu;
+      for (auto &p : v.read_menu) {
+        controls::RadioMenuFlyoutItem i;
+        i.Text(h(p.title));
+        i.GroupName(L"read");
+        i.IsChecked(p.on);
+        bool forms = p.forms;
+        i.Click([this, forms](auto &&, auto &&) { m_.choose_read(forms); });
+        menu.Items().Append(i);
+      }
+      auto b = menu_button("", menu, size);
+      tip(b, app::text("read_forms_help"));
+      right.Children().Append(b);
+    }
+  }
   // A pager's row has no room for copy (and a page of words has nothing to copy).
   if (!v.copy.empty() && v.pager.empty()) {
     auto copied = v.copy;

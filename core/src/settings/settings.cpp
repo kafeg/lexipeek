@@ -157,6 +157,7 @@ Settings load_settings(const fs::path &data) {
       s.speech.gpu = get(sp, "gpu", s.speech.gpu);
       s.speech.keep = get(sp, "keep", s.speech.keep);
       s.speech.off = get(sp, "off", s.speech.off);
+      s.speech.forms = get(sp, "forms", s.speech.forms);
     }
     if (auto a = get(j, "anki", json::object()); a.is_object()) {
       auto &k = s.anki;
@@ -203,7 +204,8 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["study"] = json::object();
   for (auto &[answer, langs] : s.study)
     if (!langs.empty()) j["study"][answer] = langs;
-  j["speech"] = {{"on", s.speech.on}, {"male", s.speech.male}, {"gpu", s.speech.gpu}, {"keep", s.speech.keep}, {"off", s.speech.off}};
+  j["speech"] = {{"on", s.speech.on},     {"male", s.speech.male}, {"gpu", s.speech.gpu},
+                 {"keep", s.speech.keep}, {"off", s.speech.off},   {"forms", s.speech.forms}};
   auto &k = s.anki;
   j["anki"] = {{"on", k.on},           {"url", k.url},           {"words", k.words},           {"phrases", k.phrases},
                {"history", k.history}, {"words_on", k.words_on}, {"phrases_on", k.phrases_on}, {"history_on", k.history_on},

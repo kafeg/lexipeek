@@ -34,6 +34,14 @@ struct CardLook {
         var ai: Bool
     }
 
+    // An item of ▶'s menu: the word alone or with the forms in its brackets.
+    struct ReadPick: Identifiable {
+        var id: Int
+        var title: String
+        var forms: Bool
+        var on: Bool
+    }
+
     struct Tab {
         var tab: lexipeek.CardTab
         var title: String
@@ -54,6 +62,7 @@ struct CardLook {
     var menuTitle = ""
     var menuHelp = ""
     var methods: [Item] = []
+    var readMenu: [ReadPick] = []
     var back = ""
     var pager = ""
     var prev = false
@@ -93,6 +102,7 @@ struct CardLook {
         menuTitle = String(v.menu_title)
         menuHelp = String(v.menu_help)
         methods = v.methods.enumerated().map { Item(id: $0.offset, method: $0.element.method, title: String($0.element.title), enabled: $0.element.enabled, ai: $0.element.ai) }
+        readMenu = v.read_menu.enumerated().map { ReadPick(id: $0.offset, title: String($0.element.title), forms: $0.element.forms, on: $0.element.on) }
         back = String(v.back)
         pager = String(v.pager)
         prev = v.prev
@@ -255,6 +265,12 @@ final class CardModel: ObservableObject {
 
     // ▶ / ■: the card's (row -1) or a row's; the core says what it reads.
     func read(_ row: Int = -1) { act { $0.read(Int32(row)) } }
+
+    // ▶'s menu: the word alone or with its forms, read at once, and the next cards read the same way.
+    func chooseRead(_ forms: Bool) {
+        Prefs.shared.reload(String(lexipeek.app.pick_read(std.string(), forms)))
+        act { $0.choose_read(forms) }
+    }
 
     // Snapshots: ▶ in a phase of a reading.
     func showReading(_ p: lexipeek.speech.Phase) { act { $0.show_reading(p) } }

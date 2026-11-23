@@ -82,6 +82,8 @@ void CardNav::pick_method(Method m) {
 
 void CardNav::pick_ai() { state.by_ai = true; }
 
+void CardNav::pick_read(bool forms) { state.read_forms = forms; }
+
 void CardNav::translating(Method m) {
   state.has_method = true, state.method = m, state.translating = true;
   state.learned.clear();

@@ -33,6 +33,9 @@ class CardSession {
   void cancel();         // the card closed: its translation stops, what is on its way is dropped (the card stays)
   // Read aloud (M9): the card's ▶ (row -1) or a row's; a press on the one being read stops it. One reading for the app.
   void read(int row = -1);
+  // ▶'s menu (CardView::read_menu): the word alone or with the forms in its brackets, read at once. The shell keeps
+  // the choice with app::pick_read, as it keeps the method with app::pick_method.
+  void choose_read(bool forms);
   void stop_reading();
   // The WAV to play now, once ("" none); played(): it ended. The shell plays while reading() and stops when it is not.
   std::string take_play();

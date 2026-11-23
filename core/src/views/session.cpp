@@ -345,6 +345,15 @@ void CardSession::read(int row) {
   i.nav.state.reading = r, i.nav.state.read_phase = speech::Phase::making;
 }
 
+void CardSession::choose_read(bool forms) {
+  auto &i = *impl_;
+  if (!i.nav.has_card()) return;
+  i.nav.pick_read(forms);
+  i.dirty = true;
+  i.stop_reading();  // a pick reads anew: it never stops what the same ▶ was reading
+  read();
+}
+
 void CardSession::stop_reading() { impl_->stop_reading(); }
 
 std::string CardSession::take_play() { return std::exchange(impl_->play, ""); }

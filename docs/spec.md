@@ -407,6 +407,12 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   Haus"), a phrase or a passage as itself; a text in the answer language with a language you learn — on Translate the
   translation into it (once there), on Dictionary the first translated word's headword, and each translated word's row
   has its own small ▶; else no ▶. Languages the model does not name (pl) are read with its "auto".
+  **▶'s menu** (`card_view`'s `read_menu`), only for a word whose headword has forms in brackets: *Word only* (the
+  default) or *Word with its forms* — the headword and what the brackets hold, without the pack's abbreviated markers
+  ("das Haus (Hauses, мн. Häuser)" → "das Haus, Hauses, Häuser"; a marker is the only word there ending in a dot, in
+  every pair, so the reading is the same whichever language the pack reads into and the kept WAV is shared). A pick
+  reads at once and stays for the next cards (`speech.forms`, which only this menu sets: `app::pick_read`, kept by
+  `app::save`); the note's own reading, and Anki's Audio with it, is always the word itself.
   **Card:** ▶ in the bottom row on the right (before copy); a press shows the reading's phase in ▶'s own place, one size
   (nothing in the card moves): the model loading (an hourglass; Windows a clock), the reading being made (a sound wave;
   Windows a speaker), ■ while it plays; a press on any of them stops. ⌘. (Windows Ctrl+.) the same, a key of the card

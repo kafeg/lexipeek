@@ -112,6 +112,8 @@ std::string toggle(const std::string &data, const std::string &key, bool on);
 // One setting each, written under settings.json's lock: the method picked in a card (an offline one, or AI translation
 // as what a phrase opens on), the first run done, the first pair's answer language; "" or the error.
 std::string pick_method(const std::string &data, Method m);
+// ▶'s menu in the card: the word alone or with the forms in its brackets, kept for the next card (speech.forms).
+std::string pick_read(const std::string &data, bool forms);
 std::string pick_ai(const std::string &data);
 std::string finish_first_run(const std::string &data);
 std::string set_answer(const std::string &data, const std::string &code);

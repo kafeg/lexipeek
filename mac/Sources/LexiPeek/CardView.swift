@@ -327,9 +327,12 @@ struct CardView: View {
             }
             Spacer(minLength: 4)
             if look.read {
-                Button { model.read() } label: { ReadIcon(phase: look.readPhase) }
-                    .buttonStyle(.borderless)
-                    .help(look.readHelp)
+                HStack(spacing: 2) {
+                    Button { model.read() } label: { ReadIcon(phase: look.readPhase) }
+                        .buttonStyle(.borderless)
+                        .help(look.readHelp)
+                    if !look.readMenu.isEmpty { readPicker(look) }
+                }
             }
             if !look.copy.isEmpty { copyButton(look.copy) }
             if !look.badge.isEmpty || !look.books.isEmpty || !look.answers.isEmpty { badge(look) }
@@ -482,6 +485,23 @@ struct CardView: View {
     // An AI answer's light Markdown (**bold**, *italic*), its lines kept.
     static func markdown(_ s: String) -> AttributedString {
         (try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(s)
+    }
+
+    // ▶'s own menu, for a word whose headword has forms: what a press reads, kept for the next cards too.
+    private func readPicker(_ look: CardLook) -> some View {
+        Menu {
+            ForEach(look.readMenu) { p in
+                Button { model.chooseRead(p.forms) } label: {
+                    p.on ? AnyView(Label(p.title, systemImage: "checkmark")) : AnyView(Text(p.title))
+                }
+            }
+        } label: {
+            Image(systemName: "chevron.down").font(font(-3))
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)  // the style draws one of its own: the label's chevron is the only one
+        .fixedSize()
+        .help(L.t("read_forms_help"))
     }
 
     // The current method by name; the others in its menu, unavailable ones dimmed with the reason.

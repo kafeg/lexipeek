@@ -38,6 +38,7 @@ struct CardPrefs {
   int height = 45;      // % of the screen at most
   bool history = true;  // what is opened goes to History (InkPeek's Card → Opening → History); off: nothing is written
   bool read = false;    // Read aloud is on (Settings → Read aloud, not kept here): the card's ▶
+  bool read_forms = false;  // ▶ reads a word with the forms in its brackets (speech.forms): a new card starts on it
 };
 
 // The optional AI layer (InkPeek's AI → Connection · Modules). The API key is never here: the shell keeps it (Keychain).
@@ -60,6 +61,9 @@ struct SpeechSettings {
   bool gpu = true;    // Metal / Vulkan; off: the CPU
   int keep = 3;       // minutes the model stays after a reading (its own: it holds ~3.5 GB and is used now and then), 0: until quit
   std::vector<std::string> off;  // voices from a recording not used (ids)
+  // ▶ reads a word's headword with the forms in its brackets ("das Haus, Hauses, Häuser"), not the headword alone:
+  // the last choice of the card's ▶ menu, which is the only place that sets it (app::save keeps it).
+  bool forms = false;
 };
 
 // Anki through its add-on AnkiConnect: saved words, phrases and (when on) the history go to their decks while Anki runs,

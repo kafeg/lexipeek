@@ -107,6 +107,9 @@ recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept read
   (`GGML_BACKEND` is read by qwen.dll's own C runtime, which does not see the exe's `_putenv`).
 - Measure on Windows (Vulkan, a real GPU and the CPU): load, a word, a sentence.
 - Polish: the model does not name it (read with "auto"); check its words by native speakers.
+- A pack that writes its marker without brackets keeps it in the reading ("идти irreg."): only the brackets are cut
+  (`spoken` in `core/src/views/read.cpp`). Dropping a trailing abbreviation needs care — a headword may be one itself
+  ("z. B.") — and it changes what ☆ keeps and the kept WAVs, so it is its own change.
 
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys

@@ -160,7 +160,9 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `voices.inc`; sources in `voices/SOURCES.md`), own (`<data>/voices/<id>.*`), kept readings
   (`<data>/readings/<sha256>.wav`, newest 2,000; a saved note's own in `saved/<sha256 of the note>/`: `note_read`, `Speaker::keep` / `forget`). `engine.cpp`: `Speaker` (in `Core`): one worker, the newest reading wins
   (qt's cancel callback), the model in its own `ModelHost` with Settings → Read aloud's time (3 min), `GGML_BACKEND=CPU` for
-  "On the GPU" off, seed 42. Views: `card_read` / `views/read.cpp` (▶ by context, rows' ▶, loading and error lines),
+  "On the GPU" off, seed 42. Views: `card_read` / `views/read.cpp` (▶ by context, ▶'s menu
+  (word / word with the forms in its brackets: `read_menu`, `CardSession::choose_read`, `app::pick_read`), rows' ▶,
+  loading and error lines),
   `CardState::reading`, `CardSession::read / take_play / played / reading` (the shell plays the WAV: `Player.swift`).
 - `core/src/store/`: InkPeek's one sync log format (`docs/formats.md` "Sync log", cases `tests/sync/{reader,identity,writer}`).
   `log` — pure: lines (canonical bytes, `raw` kept), HLC, device folders, read, append, `device.json`, `keep_id` (two

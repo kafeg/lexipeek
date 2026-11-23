@@ -166,6 +166,7 @@ CardState first_state(const Card &c) {
   for (auto &l : c.study)
     if (l.has_method && !s.has_method) s.has_method = true, s.method = l.method;
   s.saved = c.saved;
+  s.read_forms = c.prefs.read_forms;
   // Offline translation off (InkPeek's "off"): Translate is the AI translation, when AI is on.
   s.by_ai = c.ai.translate && (c.mt_off || (c.kind == Card::Kind::phrase && c.prefs.phrase_open == "ai" && !c.ai.no_key));
   return s;

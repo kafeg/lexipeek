@@ -211,6 +211,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->gen++;
   impl_->o.card = s.card;
   impl_->o.card.read = s.speech.on;
+  impl_->o.card.read_forms = s.speech.forms;
   impl_->speaker->configure(s.speech);
   impl_->anki->configure(s.anki);
   impl_->o.ai = s.ai;

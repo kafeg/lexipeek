@@ -107,6 +107,7 @@ struct CardState {
   speech::Phase read_phase = speech::Phase::idle;  // its ▶ shows it: loading the model, making, ready (playing: ■)
   std::string read_error;     // the last reading failed: a line, and Settings → Read aloud when read_fix
   bool read_fix = false;
+  bool read_forms = false;    // ▶ reads the word with the forms in its brackets: from speech.forms, the ▶ menu changes it
 };
 
 // One line of the card's body.
@@ -143,6 +144,13 @@ struct MethodItem {
   std::string title;  // "Direct · OPUS-MT" or "Direct · OPUS-MT — reason"
   bool enabled = false;
   bool ai = false;    // the AI translation ("AI · claude-sonnet-5-5"), not an offline method
+};
+
+// An item of ▶'s menu (a word whose headword has forms in brackets): what a press reads.
+struct ReadItem {
+  std::string title;   // "Word only", "Word with its forms"
+  bool forms = false;  // what it picks (CardState::read_forms)
+  bool on = false;     // the one ▶ reads now
 };
 
 struct TabItem {
@@ -192,6 +200,8 @@ struct CardView {
   bool reading = false;   // it is being read, a press stops it; read_phase: loading the model, making, ready (playing: ■)
   speech::Phase read_phase = speech::Phase::idle;
   std::string read_help;  // its tooltip: "Read aloud (⌘.)", "Loading the voice model…", "Making the reading…", "Stop (⌘.)"
+  // ▶'s own menu, when this word's headword has forms to add: "Word only" · "Word with its forms" (empty: no menu).
+  std::vector<ReadItem> read_menu;
 };
 
 // What ▶ reads (spec M9): a text in another language than the answer, itself (a word: its headword without the grammar
@@ -266,6 +276,8 @@ class CardNav {
   // Translate's method: picked (offline), its translation started and arrived (a stale one is dropped).
   void pick_method(Method m);
   void pick_ai();
+  // ▶'s menu: the word alone or with the forms in its brackets (this card; app::pick_read keeps the choice).
+  void pick_read(bool forms);
   void translating(Method m);
   void translated(Method m, const Translation &t);
   // The translation into the n-th language you learn (they come in order).

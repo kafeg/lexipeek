@@ -87,8 +87,10 @@ std::string save(const std::string &data, const Settings &s) {
     auto recall = now.ai.recall;
     auto got = now.dicts.got;
     auto sync = now.sync;  // set only by Engine::set_sync_folder
+    auto forms = now.speech.forms;  // set only by the card's ▶ menu (app::pick_read)
     now = s;
     now.sync = sync;
+    now.speech.forms = forms;
     for (auto &[k, v] : recall) now.ai.recall.try_emplace(k, v);
     for (auto &g : got)
       if (std::find(now.dicts.got.begin(), now.dicts.got.end(), g) == now.dicts.got.end()) now.dicts.got.push_back(g);
@@ -139,6 +141,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   o.translator.idle_bergamot = o.translator.idle_llm = std::chrono::minutes(s.keep_model);
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   o.card.read = s.speech.on;
+  o.card.read_forms = s.speech.forms;
   auto core = std::make_shared<Core>(std::move(o));
   {
     std::lock_guard g(engines_mu);
@@ -267,6 +270,10 @@ std::string pick_method(const std::string &data, Method m) {
     if (s.card.phrase_open == "ai") s.card.phrase_open = "offline";
   });
 }
+std::string pick_read(const std::string &data, bool forms) {
+  return update_settings(dir(data), [&](Settings &s) { s.speech.forms = forms; });
+}
+
 std::string pick_ai(const std::string &data) {
   return update_settings(dir(data), [](Settings &s) {
     if (s.card.phrase_open == "offline") s.card.phrase_open = "ai";

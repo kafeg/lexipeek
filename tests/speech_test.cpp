@@ -80,6 +80,54 @@ TEST_CASE("read aloud: a text in another language is read itself; the answer lan
   CHECK(card_read(c, s, CardTab::translate).text.empty());
 }
 
+TEST_CASE("read aloud: ▶'s menu — the word alone or with the forms in its brackets, every pack's markers dropped") {
+  auto c = german();
+  auto s = first_state(c);
+  CHECK(!s.read_forms);  // a new card reads the word alone (speech.forms, off by default)
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"das Haus", "de"});
+  // The menu stands where the choice means something, and says which of the two is read now.
+  auto v = card_view(c, s);
+  REQUIRE(v.read_menu.size() == 2);
+  CHECK(v.read_menu[0].title == "Word only");
+  CHECK(!v.read_menu[0].forms);
+  CHECK(v.read_menu[0].on);
+  CHECK(v.read_menu[1].title == "Word with its forms");
+  CHECK(v.read_menu[1].forms);
+  CHECK(!v.read_menu[1].on);
+  s.read_forms = true;
+  CHECK(card_read(c, s, CardTab::dictionary) == Read{"das Haus, Hauses, Häuser", "de"});
+  CHECK(card_view(c, s).read_menu[1].on);
+  // The note's reading, the one ☆ keeps and Anki's Audio takes, stays the word itself.
+  CHECK(note_read(c, s) == Read{"das Haus", "de"});
+  // Every pack writes the grammar inside the brackets as an abbreviation in its answer language, and a form never ends
+  // in a dot: the markers are never read, so the reading is the same whichever language the pack reads into.
+  auto says = [](const std::string &header, const std::string &text, const std::string &lang = "de", const std::string &answer = "ru") {
+    auto one = german();
+    one.header = header, one.text = text, one.lang = lang, one.answer = answer;
+    auto st = first_state(one);
+    st.read_forms = true;
+    return card_read(one, st, CardTab::dictionary).text;
+  };
+  CHECK(says("das Haus (Hauses, мн. Häuser)", "Häusern") == "das Haus, Hauses, Häuser");
+  CHECK(says("das Haus (Hauses, pl. Häuser)", "Häusern") == "das Haus, Hauses, Häuser");
+  CHECK(says("gehen (geht, ging, ist gegangen) сильн.", "ging") == "gehen, geht, ging, ist gegangen");
+  CHECK(says("gehen (geht, ging, ist gegangen) strong", "ging") == "gehen, geht, ging, ist gegangen");
+  CHECK(says("house (Pl. houses)", "houses", "en") == "house, houses");
+  CHECK(says("child (мн. children)", "children", "en") == "child, children");
+  CHECK(says("go (went, gone) unregelm.", "went", "en") == "go, went, gone");
+  CHECK(says("дом (m., pl. дома)", "дома", "ru", "de") == "дом, дома");
+  CHECK(says("das Go (Go)", "Go") == "das Go");  // the brackets only repeat the headword
+  // A headword with nothing in brackets reads itself and offers no menu.
+  auto plain = german();
+  plain.header = "sehr", plain.text = "sehr";
+  auto ps = first_state(plain);
+  ps.read_forms = true;
+  CHECK(card_read(plain, ps, CardTab::dictionary) == Read{"sehr", "de"});
+  CHECK(card_view(plain, ps).read_menu.empty());
+  // A pack that writes its marker without brackets keeps it in the reading: only the brackets are cut (in TODO.md).
+  CHECK(says("идти irreg.", "идти", "ru", "en") == "идти irreg.");
+}
+
 TEST_CASE("read aloud: a language you learn — the translation on Translate, the translated words on Dictionary, each with ▶") {
   auto c = learnt();
   auto s = first_state(c);

@@ -66,6 +66,7 @@ class CardModel {
   void toggle_pin();
   void cancel();  // the card closed: its translation and its reading stop
   void read(int row = -1);  // ▶ / ■: the card's (row -1) or a row's; the core says what it reads
+  void choose_read(bool forms);  // ▶'s menu: the word alone or with its forms, for this card and the next ones
   void show_reading(speech::Phase p);  // snapshots: ▶ in a phase of a reading
 
  private:
