@@ -113,9 +113,15 @@ recording, ▶ in the card by context (⌘.), Settings → Read aloud, kept read
 
 ## M6 Windows (Qt shell, `qt/`)
 Done and tried on Windows 10 in a signed-in session: every window in the Fluent look (light, dark), the hotkeys
-(Win+Shift+D / Win+Shift+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox), the icon at the selection, `lexipeek://`
+(Win+Shift+D / Win+Shift+A), the selection (Notepad, WordPad, Edge, Chrome, Firefox, Vivaldi, Explorer++, Notepad++), the icon at the selection, `lexipeek://`
 links, one instance, the Credential Manager, the Run key, CLI providers, the tray's glyph, the .ico and version, the
 per-user install and uninstall.
+- The selection, measured app by app: `docs/windows-selection.md`. Read: UI Automation's `TextPattern` (Chromium and
+  the browsers built on it, Firefox, Win32 Edit controls, WinUI, Qt 6) and the classic Edit messages at the focused
+  control (a Win32 Edit/RichEdit, and Scintilla — Notepad++). Not read, and no honest way to: SumatraPDF, Opera 12
+  (Presto) and the *page* of a Qt browser (Otter, Falkon) — none of them offers a text interface at all, not UI
+  Automation's, not MSAA's, not IAccessible2's; their card is the one with a field to type in. Notepad++ rests on
+  Scintilla's deprecated Edit messages, so a future Notepad++ can take it away again.
 - Office, Explorer, terminals; DPI scaling on two screens; Windows 11.
 - First release (the owner's): a release job (tag → the Mac app signed with Developer ID, notarized, zipped; the
   Windows exe, signed when there is a certificate; THIRD_PARTY_NOTICES.txt) and GitHub Releases.
