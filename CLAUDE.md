@@ -253,7 +253,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Texts: the core's, with `set_ui_platform("windows")` (a key's `@win` text replaces it; Linux: `"linux"`, its `@linux`
   text, else `@win`). Linux: `scripts/build-linux.sh [dir]` (vcpkg's static Qt with its xcb platform, `QT_QPA_PLATFORM=xcb`
   forced: XWayland on Wayland; libstdc++ static, `lib/` (xcb's helper libraries) by DT_RPATH `$ORIGIN/lib`) → `dist/LexiPeek-Linux-x64.tar.gz`;
-  `.github/workflows/linux.yml` (Ubuntu 22.04 + GCC 13: release.yml calls it with the tag; by hand, its dry run; a push to main touching qt/, platform/, core/include/ or the build) builds it and runs `--self-test` under Xvfb. **UI check:
+  `.github/workflows/linux.yml` (Ubuntu 22.04 + GCC 13: release.yml calls it with the tag; by hand, its dry run; a push to main touching qt/, platform/, core/include/ or the build) builds it and runs `--self-test` under Xvfb.
+  GCC 13 comes from ppa:ubuntu-toolchain-r/test, which answers 503 in bursts: ask apt for `'^g\+\+-13$'`, never `g++-13`
+  — a name apt cannot find and whose `+` makes a pattern is matched as one, so it installs llvm and rust headers in its
+  place and still exits 0 (`add-apt-repository` and `apt-get update` only warn on a 503, and `apt-cache policy` reads
+  the same pattern). The compilers answer for themselves after the install; a failed build prints vcpkg's own logs,
+  which the job's log otherwise only names. **UI check:
   `scripts/qt-snapshots.sh`** (`build-qt/snapshots/index.html`; `lexipeek-qt --snapshots <dir>` on Qt's `minimal`
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
   Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
