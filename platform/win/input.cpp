@@ -37,8 +37,9 @@ Rect unite(const Rect &a, const Rect &b) {
   return {l, t, r - l, btm - t};
 }
 
-// A classic Edit or RichEdit control with the focus (Notepad and many Win32 apps: UI Automation gives no text there):
-// its selection by EM_GETSEL and its text by WM_GETTEXT, never the clipboard.
+// A control with the focus that answers the classic Edit messages, where UI Automation gives no text: a Win32 Edit or
+// RichEdit (Notepad and many Win32 apps) and Scintilla (Notepad++ and the editors built on it, which answer EM_GETSEL
+// and WM_GETTEXT as well). The selection by EM_GETSEL, the text by WM_GETTEXT, never the clipboard.
 std::optional<Selected> read_edit() {
   GUITHREADINFO gui{};
   gui.cbSize = sizeof gui;
@@ -47,7 +48,10 @@ std::optional<Selected> read_edit() {
   GetClassNameW(gui.hwndFocus, cls, 64);
   auto name = lower(cls);
   bool rich = name.starts_with(L"richedit");
-  if (name != L"edit" && !rich) return std::nullopt;
+  // Scintilla's offsets count the document's own bytes (UTF-8 for a Unicode document), a classic Edit's count UTF-16
+  // units; both give WM_GETTEXT as UTF-16, so the text is cut by one or the other below.
+  bool sci = name.starts_with(L"scintilla");
+  if (name != L"edit" && !rich && !sci) return std::nullopt;
   DWORD_PTR start = 0, end = 0, length = 0;
   SendMessageTimeoutW(gui.hwndFocus, EM_GETSEL, reinterpret_cast<WPARAM>(&start), reinterpret_cast<LPARAM>(&end), SMTO_ABORTIFHUNG, 500, nullptr);
   if (end <= start) return std::nullopt;
@@ -60,9 +64,17 @@ std::optional<Selected> read_edit() {
   // RichEdit counts a paragraph break as one character, its WM_GETTEXT gives CRLF: one character per break here too.
   if (rich)
     for (size_t i = text.find(L"\r\n"); i != std::wstring::npos; i = text.find(L"\r\n", i)) text.erase(i, 1);
-  if (end > text.size()) return std::nullopt;
   Selected s;
-  s.text = utf8(text.c_str() + start, static_cast<int>(end - start));
+  if (sci) {
+    auto all = utf8(text.c_str(), static_cast<int>(text.size()));
+    // Half a character under an offset means they do not count this text's bytes (a document in an 8-bit code page).
+    auto splits = [&all](size_t i) { return i < all.size() && (static_cast<unsigned char>(all[i]) & 0xC0) == 0x80; };
+    if (end > all.size() || splits(start) || splits(end)) return std::nullopt;
+    s.text = all.substr(start, end - start);
+  } else {
+    if (end > text.size()) return std::nullopt;
+    s.text = utf8(text.c_str() + start, static_cast<int>(end - start));
+  }
   if (s.text.empty()) return std::nullopt;
   // The caret's line as the anchor (the selection's own rectangle is not asked for).
   RECT caret = gui.rcCaret;
@@ -208,6 +220,18 @@ std::string probe_selection() {
   if (el) el->Release();
   uia->Release();
   CoUninitialize();
+  // What the window messages give at the focus, whatever its class: why read_edit took it or did not.
+  GUITHREADINFO gui{};
+  gui.cbSize = sizeof gui;
+  if (GetGUIThreadInfo(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), &gui) && gui.hwndFocus) {
+    wchar_t cls[64] = L"";
+    GetClassNameW(gui.hwndFocus, cls, 64);
+    DWORD_PTR from = 0, to = 0, length = 0;
+    SendMessageTimeoutW(gui.hwndFocus, EM_GETSEL, reinterpret_cast<WPARAM>(&from), reinterpret_cast<LPARAM>(&to), SMTO_ABORTIFHUNG, 500, nullptr);
+    SendMessageTimeoutW(gui.hwndFocus, WM_GETTEXTLENGTH, 0, 0, SMTO_ABORTIFHUNG, 500, &length);
+    out += "focus class=" + utf8(cls) + " EM_GETSEL=" + std::to_string(from) + ".." + std::to_string(to) +
+           " WM_GETTEXTLENGTH=" + std::to_string(length) + "\n";
+  }
   auto e = read_edit();
   out += "edit fallback: " + (e ? e->text : std::string("none")) + "\n";
   return out;

@@ -257,8 +257,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   platform with fonts: nothing on the screen; the Mac app's cases from `scripts/snapshot-cases.sh`) — look at every image.
   Windows' real look and the OS parts need a signed-in desktop (over SSH: the classic theme, no hotkeys, no Credential
   Manager): `scripts/win-e2e.ps1` there (self-test, a selection in Notepad, hotkeys, Esc, typing, a link, a second
-  launch, screenshots), `scripts/win-apps.ps1` (the hotkey in other apps: browsers, editors); `LexiPeek.exe --probe-selection <file>` says what UI Automation sees at the focus. Selection:
-  UI Automation's TextPattern, else a classic Edit/RichEdit by EM_GETSEL (Notepad); never the clipboard.
+  launch, screenshots), `scripts/win-apps.ps1` (the hotkey in other apps: browsers, editors); `LexiPeek.exe --probe-selection <file>` says what UI Automation, and the window messages, see at the focus. Selection:
+  UI Automation's TextPattern, else the classic Edit messages at the focused control — a Win32 Edit/RichEdit (Notepad)
+  and Scintilla (Notepad++), whose offsets count the document's bytes, not UTF-16 units; never the clipboard. An app
+  that gives neither (SumatraPDF, Opera 12 Presto) has no honest way left: its card is the one with a field to type in
+  (`docs/windows-selection.md`).
   Mac: a web view's selection by its text markers, paragraph by paragraph (Chromium / Electron give none between
   blocks); `<data>/ax-probe` makes the lookup hotkey write what each AX way gives into `<data>/ax-probe.txt`.
 - `platform/` (`lexipeek_platform`, `lexipeek/os.hpp`, namespace `lexipeek::os`): the Windows OS parts for both shells, no
