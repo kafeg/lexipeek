@@ -1,6 +1,10 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.414 — 2026-11-23
+- Linux x64: `LexiPeek-Linux-x64.tar.gz` is back. The release before this one went out without it, its build having
+  stopped on a package mirror. The app itself is the one of 0.2.407, unchanged: on macOS and Windows there is nothing
+  new here.
 ### 0.2.407 — 2026-11-23
 - Read aloud: a word whose headword carries forms in brackets ("das Haus (Hauses, pl. Häuser)") can be read with them —
   "das Haus, Hauses, Häuser" —, not only as the word. A small menu by ▶ picks which of the two it reads; the choice is
