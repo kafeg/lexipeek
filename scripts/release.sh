@@ -48,10 +48,16 @@ if [ -z "$run" ]; then
 fi
 [ -n "$run" ] || die "no build found for $TAG: gh run list --workflow release.yml"
 echo "build: run $run (macOS, Windows and Linux, about an hour)"
-# Without Linux its job fails and the run with it, while publish went through: the checks below are the gate.
+# Without Linux its job fails and the run with it, while publish went through: the checks below are then the gate. The
+# watch also ends when the network drops, which is no answer about the build: ask the run itself what became of it.
 if ! gh run watch "$run" --exit-status --interval 60 >/dev/null; then
-  [ -n "$LINUX" ] && die "the build failed: gh run view $run --log-failed (fix, then run this again)"
-  echo "a job of the build failed; on to the checks (--no-linux)"
+  said=$(gh run view "$run" --json status,jobs -q '.status + "\t" + ([.jobs[] | select(.conclusion != "success" and .conclusion != "skipped") | .name] | join(", "))') ||
+    die "the build could not be read (the network?): run this again"
+  [ "${said%%$'\t'*}" = completed ] || die "the build is still running: run this again"
+  bad=${said#*$'\t'}
+  [ -z "$LINUX" ] && [ "$bad" = "linux / linux-app" ] ||
+    die "the build failed ($bad): gh run view $run --log-failed (fix, then run this again)"
+  echo "the Linux job failed; on to the checks of what was published (--no-linux)"
 fi
 
 [ -n "$PRE" ] && gh release edit "$TAG" --prerelease >/dev/null
