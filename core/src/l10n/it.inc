@@ -171,6 +171,7 @@
 {"read_male", "Maschile"},
 {"read_forms_word", "Solo la parola"},
 {"read_forms_all", "La parola con le sue forme"},
+{"read_forms_mark", "+forme"},
 {"read_forms_help", "Che cosa legge ▶"},
 {"read_own_t", "Voci da una registrazione"},
 {"read_own_d", "Leggono la loro lingua al posto della voce dell'app finché sono attive; tenute solo su questo computer."},

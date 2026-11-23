@@ -202,6 +202,7 @@ struct CardView {
   std::string read_help;  // its tooltip: "Read aloud (⌘.)", "Loading the voice model…", "Making the reading…", "Stop (⌘.)"
   // ▶'s own menu, when this word's headword has forms to add: "Word only" · "Word with its forms" (empty: no menu).
   std::vector<ReadItem> read_menu;
+  std::string read_mark;  // the label by ▶ while its menu is off its default ("+forms"): the choice is seen unopened
 };
 
 // What ▶ reads (spec M9): a text in another language than the answer, itself (a word: its headword without the grammar

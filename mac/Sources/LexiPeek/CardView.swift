@@ -496,7 +496,11 @@ struct CardView: View {
                 }
             }
         } label: {
-            Image(systemName: "chevron.down").font(font(-3))
+            HStack(spacing: 1) {
+                if !look.readMark.isEmpty { Text(look.readMark) }
+                Image(systemName: "chevron.down")
+            }
+            .font(font(-3))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)  // the style draws one of its own: the label's chevron is the only one

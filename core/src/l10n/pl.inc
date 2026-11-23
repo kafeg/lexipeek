@@ -173,6 +173,7 @@
 {"read_male", "Męski"},
 {"read_forms_word", "Tylko słowo"},
 {"read_forms_all", "Słowo z formami"},
+{"read_forms_mark", "+formy"},
 {"read_forms_help", "Co czyta ▶"},
 {"read_own_t", "Głosy z nagrania"},
 {"read_own_d", "Czytają swój język zamiast głosu aplikacji, gdy są włączone; przechowywane tylko na tym komputerze."},

@@ -171,6 +171,7 @@
 {"read_male", "Männlich"},
 {"read_forms_word", "Nur das Wort"},
 {"read_forms_all", "Wort mit seinen Formen"},
+{"read_forms_mark", "+Formen"},
 {"read_forms_help", "Was ▶ liest"},
 {"read_own_t", "Stimmen aus einer Aufnahme"},
 {"read_own_d", "Lesen ihre Sprache statt der Stimme der App, solange sie an sind; nur auf diesem Computer gespeichert."},

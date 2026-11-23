@@ -94,9 +94,11 @@ TEST_CASE("read aloud: ▶'s menu — the word alone or with the forms in its br
   CHECK(v.read_menu[1].title == "Word with its forms");
   CHECK(v.read_menu[1].forms);
   CHECK(!v.read_menu[1].on);
+  CHECK(v.read_mark.empty());  // on its default ▶ stands alone
   s.read_forms = true;
   CHECK(card_read(c, s, CardTab::dictionary) == Read{"das Haus, Hauses, Häuser", "de"});
   CHECK(card_view(c, s).read_menu[1].on);
+  CHECK(card_view(c, s).read_mark == "+forms");  // off it, ▶ says so without the menu being opened
   // The note's reading, the one ☆ keeps and Anki's Audio takes, stays the word itself.
   CHECK(note_read(c, s) == Read{"das Haus", "de"});
   // Every pack writes the grammar inside the brackets as an abbreviation in its answer language, and a form never ends
@@ -124,6 +126,7 @@ TEST_CASE("read aloud: ▶'s menu — the word alone or with the forms in its br
   ps.read_forms = true;
   CHECK(card_read(plain, ps, CardTab::dictionary) == Read{"sehr", "de"});
   CHECK(card_view(plain, ps).read_menu.empty());
+  CHECK(card_view(plain, ps).read_mark.empty());  // no menu, no mark: ▶ reads the word either way
   // A pack that writes its marker without brackets keeps it in the reading: only the brackets are cut (in TODO.md).
   CHECK(says("идти irreg.", "идти", "ru", "en") == "идти irreg.");
 }

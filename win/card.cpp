@@ -692,7 +692,7 @@ xaml::FrameworkElement CardWidget::bar(const CardView &v) {
         i.Click([this, forms](auto &&, auto &&) { m_.choose_read(forms); });
         menu.Items().Append(i);
       }
-      auto b = menu_button("", menu, size);
+      auto b = menu_button(v.read_mark, menu, size);  // off its default, the button says so: "+forms"
       tip(b, app::text("read_forms_help"));
       right.Children().Append(b);
     }

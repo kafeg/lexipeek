@@ -87,8 +87,10 @@ void read_view(const Card &c, const CardState &s, CardView &v) {
   if (!v.read.text.empty()) {
     auto word = s, forms = s;
     word.read_forms = false, forms.read_forms = true;
-    if (card_read(c, word, v.tab).text != card_read(c, forms, v.tab).text)
+    if (card_read(c, word, v.tab).text != card_read(c, forms, v.tab).text) {
       v.read_menu = {{tr("read_forms_word"), false, !s.read_forms}, {tr("read_forms_all"), true, s.read_forms}};
+      if (s.read_forms) v.read_mark = tr("read_forms_mark");  // off the default: said by ▶ itself, not only in the menu
+    }
   }
   // A language you learn: each translated word of a word's card has its own ▶.
   if (c.prefs.read && v.tab == CardTab::dictionary && c.kind == Card::Kind::word && !c.study.empty() && speech::speaks(c.study.front().lang))
