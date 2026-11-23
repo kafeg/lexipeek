@@ -48,22 +48,25 @@ jobs:
       # GCC 13 (std::format) on 22.04's glibc; X11's headers for Qt's xcb platform.
       - name: Tools
         run: |
-          # Launchpad answers 503 now and then, and neither add-apt-repository nor apt-get update fails on that: the
-          # entry is written, the index is not fetched. apt, finding no package of that name anywhere, then reads
-          # g++-13 as a pattern — the "+" makes it one — installs whatever it matches (llvm, rust headers) and exits
-          # 0, so the job goes on with no compiler and dies much later inside vcpkg, in an error naming none of this.
-          # Asked for anchored, the pattern is that one package: apt either has it or says it has not.
+          # Launchpad answers 503 in bursts, over the index and over the packages alike, and neither
+          # add-apt-repository nor apt-get update fails on that. apt, with no package of that name anywhere, then
+          # reads g++-13 as a pattern — the "+" makes it one —, installs whatever it matches (llvm, rust headers) and
+          # exits 0: the job builds with no compiler and dies much later inside vcpkg, in an error naming none of it.
+          # Anchored, the pattern is that package alone; apt retries its own fetches, and the whole step waits out a
+          # mirror that keeps dropping them.
+          APT="sudo apt-get -y -o Acquire::Retries=10"
           GPP='^g\+\+-13$'
           for i in 1 2 3 4 5 6 7 8; do
             sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
-            sudo apt-get update || true
-            apt-cache policy "$GPP" | grep -q '^ *Candidate:' && break
-            [ "$i" = 8 ] && { echo "::error::ppa:ubuntu-toolchain-r/test serves no g++-13 (Launchpad answering 503?)"; exit 1; }
+            $APT update || true
+            if apt-cache policy "$GPP" | grep -q '^ *Candidate:'; then
+              $APT install "$GPP" ninja-build zstd autoconf autoconf-archive automake libtool bison flex gperf \
+                '^libxcb.*-dev' libx11-xcb-dev libx11-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
+                libgl-dev libegl-dev libglu1-mesa-dev xvfb && break
+            fi
+            [ "$i" = 8 ] && { echo "::error::ppa:ubuntu-toolchain-r/test is not serving g++-13 (503s from Launchpad)"; exit 1; }
             sleep 30
           done
-          sudo apt-get install -y "$GPP" ninja-build zstd autoconf autoconf-archive automake libtool bison flex gperf \
-            '^libxcb.*-dev' libx11-xcb-dev libx11-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
-            libgl-dev libegl-dev libglu1-mesa-dev xvfb
           "$CXX" --version && "$CC" --version  # apt's patterns are why this is asked again after the install
       - run: scripts/build-linux.sh build
       # vcpkg writes the real error into its own files and the job's log names only those: say what they hold.
