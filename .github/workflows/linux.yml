@@ -55,6 +55,17 @@ jobs:
             '^libxcb.*-dev' libx11-xcb-dev libx11-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
             libgl-dev libegl-dev libglu1-mesa-dev xvfb
       - run: scripts/build-linux.sh build
+      # vcpkg writes the real error into its own files and the job's log names only those: say what they hold.
+      - name: What the build said
+        if: failure()
+        run: |
+          df -h /
+          command -v ninja cmake gcc-13 g++-13 || true
+          g++-13 --version || true
+          for f in vcpkg/buildtrees/detect_compiler/*.log build/vcpkg-manifest-install.log; do
+            [ -f "$f" ] || continue
+            echo "::group::$f"; cat "$f"; echo "::endgroup::"
+          done
       - name: Self-test
         run: |
           HOME=$RUNNER_TEMP/home xvfb-run -a build/LexiPeek/lexipeek --self-test self-test.txt --data "$RUNNER_TEMP/data" || true
