@@ -48,14 +48,24 @@ jobs:
       # GCC 13 (std::format) on 22.04's glibc; X11's headers for Qt's xcb platform.
       - name: Tools
         run: |
-          # Launchpad's API drops connections at times: a few tries.
-          for i in 1 2 3 4 5; do sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test && break; [ $i = 5 ] && exit 1; sleep 60; done
-          sudo apt-get update
+          # Launchpad answers 503 now and then, and neither add-apt-repository nor apt-get update fails on that: the
+          # entry is written, the index is not fetched. apt then reads "g++-13" as a pattern (a name of its own it has
+          # none), installs whatever that matches and still exits 0 — the job goes on with no compiler and dies much
+          # later inside vcpkg, where the error names none of this. The PPA is there when its g++-13 is: ask for that.
+          for i in 1 2 3 4 5 6 7 8; do
+            sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
+            sudo apt-get update || true
+            apt-cache policy g++-13 | sed -n 's/^ *Candidate: //p' | grep -qv '^(none)$' && break
+            [ "$i" = 8 ] && { echo "::error::ppa:ubuntu-toolchain-r/test serves no g++-13 (Launchpad is answering 503)"; exit 1; }
+            sleep 30
+          done
           sudo apt-get install -y g++-13 ninja-build zstd autoconf autoconf-archive automake libtool bison flex gperf \
             '^libxcb.*-dev' libx11-xcb-dev libx11-dev libxrender-dev libxi-dev libxkbcommon-dev libxkbcommon-x11-dev \
             libgl-dev libegl-dev libglu1-mesa-dev xvfb
+          "$CXX" --version && "$CC" --version  # apt's patterns are why this is asked again after the install
       - run: scripts/build-linux.sh build
       # vcpkg writes the real error into its own files and the job's log names only those: say what they hold.
+      # (This is how the missing compiler above was found at all.)
       - name: What the build said
         if: failure()
         run: |
