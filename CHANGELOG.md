@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
-### 0.2.406 — 2026-11-23
+### 0.2.407 — 2026-11-23
 - Read aloud: a word whose headword carries forms in brackets ("das Haus (Hauses, pl. Häuser)") can be read with them —
   "das Haus, Hauses, Häuser" —, not only as the word. A small menu by ▶ picks which of the two it reads; the choice is
   kept for the next cards, and ▶ carries a small + while it reads the forms. The grammar inside the brackets ("pl.") is

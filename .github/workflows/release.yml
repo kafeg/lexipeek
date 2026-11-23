@@ -140,16 +140,17 @@ jobs:
           name: ${{ matrix.name }}
           path: dist/*
 
-  # A Linux build that cannot run (its runner image, its toolchain) must not hold back macOS and Windows: publish goes
-  # on without the tar.gz, and release.sh refuses the release unless it was called with --no-linux.
   linux:
-    continue-on-error: true
     uses: ./.github/workflows/linux.yml
     with:
       tag: ${{ inputs.tag || github.ref_name }}
 
   publish:
+    # A Linux build that cannot run (its runner image, its toolchain) must not hold back macOS and Windows: publish waits
+    # for it, goes on without its tar.gz, and release.sh refuses the release unless it was called with --no-linux.
+    # (continue-on-error is not a key a job calling a reusable workflow may have: the wait is this if.)
     needs: [build, linux]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ inputs.tag || github.ref_name }}

@@ -48,7 +48,11 @@ if [ -z "$run" ]; then
 fi
 [ -n "$run" ] || die "no build found for $TAG: gh run list --workflow release.yml"
 echo "build: run $run (macOS, Windows and Linux, about an hour)"
-gh run watch "$run" --exit-status --interval 60 >/dev/null || die "the build failed: gh run view $run --log-failed (fix, then run this again)"
+# Without Linux its job fails and the run with it, while publish went through: the checks below are the gate.
+if ! gh run watch "$run" --exit-status --interval 60 >/dev/null; then
+  [ -n "$LINUX" ] && die "the build failed: gh run view $run --log-failed (fix, then run this again)"
+  echo "a job of the build failed; on to the checks (--no-linux)"
+fi
 
 [ -n "$PRE" ] && gh release edit "$TAG" --prerelease >/dev/null
 dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
