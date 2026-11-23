@@ -312,11 +312,11 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
 - Warnings as errors only for our targets (`lexipeek_flags`); engines are `SYSTEM` and keep their flags.
 
 ## Release
-`scripts/release.sh [--pre]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## <VERSION>` section
+`scripts/release.sh [--pre] [--no-linux]` (the owlproj skill project-release around it): `CHANGELOG.md` needs a `## <VERSION>` section
 (the Makefile's `VERSION`), the script dates it, tags `v<VERSION>.<commits>`, waits for `.github/workflows/release.yml`
 (macOS zip ad-hoc signed, `LexiPeek-Windows-Setup.exe` — that folder in an Inno Setup installer, `win/LexiPeek.iss`
 (per-user, into os::install's folder, LexiPeek started at the end; CI's Windows job builds it as 0.0.0) —,
-`LexiPeek-Windows.zip` — the WinUI shell's folder with the notices —, `LexiPeek-Linux-x64.tar.gz` — linux.yml's —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
+`LexiPeek-Windows.zip` — the WinUI shell's folder with the notices —, `LexiPeek-Linux-x64.tar.gz` — linux.yml's, the one job allowed to fail so a broken Linux runner holds back nothing: then the release has no tar.gz and the script wants `--no-linux` —, notices, SHA256SUMS; the workflow refuses a tag that is not the commit's
 version) and checks the published files; run it again after a failure. A new minor version: `VERSION` in the Makefile
 (`cmake/version.cmake` reads it) and `qt/lexipeek.rc.in`, a new CHANGELOG section. `THIRD_PARTY_NOTICES.txt` (in each
 download) again after a port or engine changes: `scripts/gen-notices.sh` with each build's vcpkg `share/` (`--mac`,

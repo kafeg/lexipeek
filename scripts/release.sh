@@ -1,13 +1,20 @@
 #!/bin/bash
-# A release, the same way every time: scripts/release.sh [--pre]
+# A release, the same way every time: scripts/release.sh [--pre] [--no-linux]
 #   checks (main, clean, pushed, tests, a CHANGELOG.md section for the version), dates that section if "unreleased",
 #   tags v<VERSION>.<commits>, waits for release.yml, checks the published files (checksums, the Mac app's version,
-#   the Windows installer and zip, the Linux tar.gz); --pre marks the release a pre-release. macOS (BSD sed, shasum).
+#   the Windows installer and zip, the Linux tar.gz); --pre marks the release a pre-release. --no-linux releases
+#   without the Linux tar.gz, for when its build cannot run at all (release.yml lets that one job fail): say it on
+#   purpose, or a release missing it is refused. macOS (BSD sed, shasum).
 #   Run again after a failure: a tag already on HEAD is kept and its build is found or started again.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO=kafeg/lexipeek
 die() { echo "release: $*" >&2; exit 1; }
+
+PRE=""; LINUX=1
+for a in "$@"; do
+  case $a in --pre) PRE=1;; --no-linux) LINUX="";; *) die "unknown option $a";; esac
+done
 
 [ "$(git branch --show-current)" = main ] || die "not on main"
 [ -z "$(git status --porcelain)" ] || die "uncommitted changes"
@@ -43,10 +50,12 @@ fi
 echo "build: run $run (macOS, Windows and Linux, about an hour)"
 gh run watch "$run" --exit-status --interval 60 >/dev/null || die "the build failed: gh run view $run --log-failed (fix, then run this again)"
 
-[ "${1:-}" = "--pre" ] && gh release edit "$TAG" --prerelease >/dev/null
+[ -n "$PRE" ] && gh release edit "$TAG" --prerelease >/dev/null
 dir=$(mktemp -d); trap 'rm -rf "$dir"' EXIT
 gh release download "$TAG" -D "$dir"
-for f in LexiPeek-macOS.zip LexiPeek-Windows-Setup.exe LexiPeek-Windows.zip LexiPeek-Linux-x64.tar.gz THIRD_PARTY_NOTICES.txt SHA256SUMS.txt; do [ -s "$dir/$f" ] || die "$f missing"; done
+files="LexiPeek-macOS.zip LexiPeek-Windows-Setup.exe LexiPeek-Windows.zip THIRD_PARTY_NOTICES.txt SHA256SUMS.txt"
+[ -n "$LINUX" ] && files="$files LexiPeek-Linux-x64.tar.gz"
+for f in $files; do [ -s "$dir/$f" ] || die "$f missing"; done
 (cd "$dir" && shasum -a 256 -c SHA256SUMS.txt >/dev/null) || die "checksum mismatch"
 ditto -x -k "$dir/LexiPeek-macOS.zip" "$dir/mac"
 got=$(defaults read "$dir/mac/LexiPeek.app/Contents/Info.plist" CFBundleShortVersionString)
@@ -64,11 +73,15 @@ V="${TAG#v}" perl -0777 -ne 'my ($k, $v) = map { join "", map { "$_\0" } split /
   exit(/\Q$k\E\0\0(?:\0\0)?\Q$v\E[ \0]\0/ ? 0 : 1)' "$dir/LexiPeek-Windows-Setup.exe" ||
   die "LexiPeek-Windows-Setup.exe is not ${TAG#v}"
 # The Linux tar.gz: the LexiPeek folder with the program (an x86-64 ELF; its version checked by linux.yml) and lib/.
-names=$(tar -tzf "$dir/LexiPeek-Linux-x64.tar.gz")
-for f in lexipeek lib/libxcb-cursor.so.0 lib/libxcb-util.so.1 THIRD_PARTY_NOTICES.txt; do
-  grep -qx "LexiPeek/$f" <<<"$names" || die "LexiPeek-Linux-x64.tar.gz has no LexiPeek/$f"
-done
-tar -xzf "$dir/LexiPeek-Linux-x64.tar.gz" -C "$dir" LexiPeek/lexipeek
-file -b "$dir/LexiPeek/lexipeek" | grep -q 'ELF 64-bit.*x86-64' || die "lexipeek is not an x86-64 Linux program"
-[ "${1:-}" = "--pre" ] || [ "$(gh api "repos/$REPO/releases/latest" -q .tag_name)" = "$TAG" ] || die "$TAG is not the latest release"
+if [ -n "$LINUX" ]; then
+  names=$(tar -tzf "$dir/LexiPeek-Linux-x64.tar.gz")
+  for f in lexipeek lib/libxcb-cursor.so.0 lib/libxcb-util.so.1 THIRD_PARTY_NOTICES.txt; do
+    grep -qx "LexiPeek/$f" <<<"$names" || die "LexiPeek-Linux-x64.tar.gz has no LexiPeek/$f"
+  done
+  tar -xzf "$dir/LexiPeek-Linux-x64.tar.gz" -C "$dir" LexiPeek/lexipeek
+  file -b "$dir/LexiPeek/lexipeek" | grep -q 'ELF 64-bit.*x86-64' || die "lexipeek is not an x86-64 Linux program"
+else
+  echo "released without the Linux tar.gz (--no-linux)"
+fi
+[ -n "$PRE" ] || [ "$(gh api "repos/$REPO/releases/latest" -q .tag_name)" = "$TAG" ] || die "$TAG is not the latest release"
 echo "released $TAG: https://github.com/$REPO/releases/tag/$TAG"

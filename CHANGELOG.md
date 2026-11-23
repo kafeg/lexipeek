@@ -1,6 +1,15 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.406 — 2026-11-23
+- Read aloud: a word whose headword carries forms in brackets ("das Haus (Hauses, pl. Häuser)") can be read with them —
+  "das Haus, Hauses, Häuser" —, not only as the word. A small menu by ▶ picks which of the two it reads; the choice is
+  kept for the next cards, and ▶ carries a small + while it reads the forms. The grammar inside the brackets ("pl.") is
+  never read. What a saved word keeps, and Anki's audio with it, is the word itself as before.
+- Windows: the selected text is read in Notepad++ and other editors built on Scintilla. SumatraPDF and Opera 12 give
+  no selection to any other program: there the card opens with a field to type in.
+- Settings → Card → Appearance no longer says that the card's font syncs between computers (no setting does), and a
+  font the computer does not have is named as one to install.
 ### 0.2.397 — 2026-11-11
 - The card's font can be any font installed on the computer (Settings → Card → Appearance → Font), besides System, Serif, Rounded and Monospaced.
 ### 0.2.395 — 2026-11-10
