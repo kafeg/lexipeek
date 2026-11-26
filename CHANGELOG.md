@@ -1,6 +1,13 @@
 # Changelog
 
 ## 0.2 — 2026-11-02
+### 0.2.417 — 2026-11-26
+- Read aloud: the computer's own voices, beside the natural one. Settings → Read aloud → Read with picks which of the
+  two ▶ uses. A system voice speaks the moment ▶ is pressed — no model to download, nothing kept on disk, every
+  language the computer has a voice for; the natural voice reads as a person would, as before. An install that already
+  downloaded the natural voice's model keeps it picked, so nothing changes until you pick the other one. What a saved
+  word keeps, and a note's audio for Anki, stay the natural voice's: a system voice is said and gone, not kept as a
+  file, so notes go without audio while the system voices read.
 ### 0.2.414 — 2026-11-23
 - Linux x64: `LexiPeek-Linux-x64.tar.gz` is back. The release before this one went out without it, its build having
   stopped on a package mirror. The app itself is the one of 0.2.407, unchanged: on macOS and Windows there is nothing
