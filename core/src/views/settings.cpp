@@ -377,10 +377,15 @@ std::vector<SettingRow> general(const Settings &s, const SettingsState &st, int 
   return rows;
 }
 
-// Read aloud (spec M9): on / off, the voice model (its download), the GPU, Female · Male, the voices from a recording.
+// Read aloud (spec M9, M11): on / off, the engine, and the natural voice's own rows (its model, the GPU, how long it
+// stays, Female · Male, the voices from a recording) — the system voices have none of them.
 std::vector<SettingRow> speech_rows(const Settings &s, const SettingsState &st) {
   auto &sp = s.speech;
   std::vector<SettingRow> rows{toggle("speech_on", tr("read_on_t"), tr("read_on_d"), sp.on)};
+  auto about = tr("read_engine_d");
+  if (!sp.natural) about += "\n" + tr("read_system_where");
+  rows.push_back(choice("speech_engine", tr("read_engine_t"), about, names({"read_engine_system", "read_engine_natural"}), sp.natural ? 1 : 0));
+  if (!sp.natural) return rows;
   SettingRow m{Kind::method, "speech_model", tr("read_model_t"), tr("read_model_d")};
   m.value = "speech", m.on = st.speech_installed, m.enabled = st.speech_built;
   m.detail = !st.speech_built ? tr("read_not_built")
@@ -434,7 +439,9 @@ std::vector<SettingRow> anki_rows(const Settings &s, const SettingsState &st) {
   // What waits: orange, red while Anki does not take it; green when nothing does.
   auto waits = [&](int waiting) { return waiting == 0 ? Tone::good : down || k.refused > 0 ? Tone::bad : Tone::warn; };
   if (a.on && !k.voice) {
-    auto voice = valued(Kind::button, "anki_voice", tr("anki_voice_t"), tr("anki_voice_d"), tr("open_btn"));
+    bool system = !s.speech.natural;  // the audio of a note is the natural voice's: a system one is said, not kept
+    auto voice = valued(Kind::button, "anki_voice", tr(system ? "anki_natural_t" : "anki_voice_t"),
+                        tr(system ? "anki_natural_d" : "anki_voice_d"), tr("open_btn"));
     voice.go_section = SettingsSection::speech, voice.go_tab = 0;
     rows.push_back(voice);
   }
@@ -633,6 +640,7 @@ void settings_choose(Settings &s, const std::string &key, int i, const SettingsS
   else if (key == "ui_lang") s.ui_lang = at(ui_langs).first;
   else if (key == "theme") s.theme = at(theme_names).first;
   else if (key == "keep_model") s.keep_model = at(keeps_min);
+  else if (key == "speech_engine") s.speech.natural = i == 1;
   else if (key == "speech_voice") s.speech.male = i == 1;
   else if (key == "speech_keep") s.speech.keep = at(speech_keeps);
 }

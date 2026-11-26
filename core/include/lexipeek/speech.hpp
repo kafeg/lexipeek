@@ -123,6 +123,7 @@ class Speaker {
   Made make_now(const Read &r);
   void release();
   bool held() const;
+  bool natural() const;  // the engine is the natural voice (Settings → Read aloud); off: the shells' system voices
   std::chrono::steady_clock::time_point until() const;
 
  private:

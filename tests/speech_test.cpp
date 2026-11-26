@@ -7,6 +7,7 @@
 #include "lexipeek/session.hpp"
 #include "lexipeek/speech.hpp"
 #include "lexipeek/views.hpp"
+#include "text/text.hpp"
 
 using namespace lexipeek;
 using namespace lexipeek::speech;
@@ -374,27 +375,40 @@ TEST_CASE("read aloud: Settings → Read aloud's rows and their changes, kept in
   CHECK(p.tabs.empty());
   std::vector<std::string> keys;
   for (auto &r : p.rows) keys.push_back(r.key);
-  CHECK(keys == std::vector<std::string>{"speech_on", "speech_model", "speech_gpu", "speech_keep", "speech_voice", "", "speech_add"});
+  // The system voices are the default: none of the natural voice's rows, and where the OS keeps its voices.
+  CHECK(keys == std::vector<std::string>{"speech_on", "speech_engine"});
+  CHECK(p.rows[1].selected == 0);
+  CHECK(p.rows[1].choices == std::vector<std::string>{"System voices", "Natural voice"});
+  CHECK(p.rows[1].about.find("System Settings") != std::string::npos);
+  s.speech.natural = true;
+  p = settings_view(SettingsSection::speech, 0, s, st);
+  keys.clear();
+  for (auto &r : p.rows) keys.push_back(r.key);
+  CHECK(keys == std::vector<std::string>{"speech_on", "speech_engine", "speech_model", "speech_gpu", "speech_keep", "speech_voice", "", "speech_add"});
+  CHECK(p.rows[1].selected == 1);
+  CHECK(p.rows[1].about.find("System Settings") == std::string::npos);
   CHECK(!p.rows[0].on);  // off by default
-  CHECK(p.rows[1].button == "Download");
-  CHECK(p.rows[1].detail.find("about 3.5 GB of memory") != std::string::npos);
+  CHECK(p.rows[2].button == "Download");
+  CHECK(p.rows[2].detail.find("about 3.5 GB of memory") != std::string::npos);
   st.speech_installed = true;
   st.voices = {{"beef", "de", "Wir stellen die Kisten.", "own"}, {"f00d", "en", "Mine.", "own"}};
   p = settings_view(SettingsSection::speech, 0, s, st);
   keys.clear();
   for (auto &r : p.rows) keys.push_back(r.key);
-  CHECK(keys == std::vector<std::string>{"speech_on", "speech_model", "speech_remove", "speech_gpu", "speech_keep", "speech_voice", "",
+  CHECK(keys == std::vector<std::string>{"speech_on", "speech_engine", "speech_model", "speech_remove", "speech_gpu", "speech_keep", "speech_voice", "",
                                          "voice.beef", "voice_remove.beef", "voice.f00d", "voice_remove.f00d", "speech_add"});
-  CHECK(p.rows[1].button.empty());
-  CHECK(p.rows[7].title == "German · “Wir stellen die Kisten.”");
+  CHECK(p.rows[2].button.empty());
+  CHECK(p.rows[8].title == "German · “Wir stellen die Kisten.”");
   st.downloading = "speech", st.progress = 0.5;
-  CHECK(settings_view(SettingsSection::speech, 0, s, st).rows[1].progress == 0.5);
+  CHECK(settings_view(SettingsSection::speech, 0, s, st).rows[2].progress == 0.5);
   settings_toggle(s, "speech_on", true);
   settings_toggle(s, "speech_gpu", false);
   settings_toggle(s, "voice.f00d", false);
   settings_choose(s, "speech_voice", 1, st);
   settings_choose(s, "speech_keep", 0, st);
+  settings_choose(s, "speech_engine", 1, st);
   CHECK(s.speech.on);
+  CHECK(s.speech.natural);
   CHECK(!s.speech.gpu);
   CHECK(s.speech.male);
   CHECK(s.speech.keep == 1);
@@ -403,11 +417,55 @@ TEST_CASE("read aloud: Settings → Read aloud's rows and their changes, kept in
   CHECK(save_settings(d, s).empty());
   auto l = load_settings(d);
   CHECK(l.speech.on);
+  CHECK(l.speech.natural);
   CHECK(!l.speech.gpu);
   CHECK(l.speech.male);
   CHECK(l.speech.keep == 1);
   CHECK(l.speech.off == s.speech.off);
   CHECK(load_settings(temp("lexipeek-speech-none")).speech.keep == 3);
+  wipe(d);
+}
+
+TEST_CASE("read aloud (M11): the engine — the system voices by default, the natural one where its model already is") {
+  // A settings file from before M11 with the model downloaded: the voice it chose by downloading stays.
+  auto d = temp("lexipeek-speech-engine");
+  Settings s;
+  s.speech.on = true;
+  CHECK(save_settings(d, s).empty());
+  {
+    auto j = text::read_file(d / "settings.json");
+    auto at = j.find("\"natural\":");
+    REQUIRE(at != std::string::npos);
+    std::ofstream(d / "settings.json") << j.substr(0, at) + j.substr(j.find(',', at) + 1);
+  }
+  CHECK(!load_settings(d).speech.natural);  // no model: the system voices
+  fs::create_directories(model_dir(d));
+  std::ofstream(model_dir(d) / model_files().front().name) << "being downloaded";
+  CHECK(load_settings(d).speech.natural);
+  // Written once it is read: from then on the choice is the person's, not the model's presence.
+  CHECK(save_settings(d, load_settings(d)).empty());
+  remove_model(d);
+  CHECK(load_settings(d).speech.natural);
+  wipe(d);
+}
+
+TEST_CASE("read aloud (M11): a note's audio is the natural voice's — a system voice is said, not kept") {
+  auto d = temp("lexipeek-speech-made");
+  Speaker sp(d);
+  SpeechSettings set;
+  set.on = true;
+  sp.configure(set);
+  CHECK(!sp.natural());
+  auto m = sp.make_now({"das Haus", "de"});
+  CHECK(m.file.empty());
+  CHECK(m.later);  // it waits for the natural voice, as it waits for its model
+  // A reading made earlier is still a file: Anki takes it whichever voice reads now.
+  auto v = voice_for({}, set, "de");
+  REQUIRE(!v.id.empty());
+  auto f = reading_file(d, v, {"das Haus", "de"});
+  fs::create_directories(f.parent_path());
+  std::ofstream(f) << wav_bytes({0.0F, 0.1F}, 24000);
+  CHECK(sp.make_now({"das Haus", "de"}).file == text::utf8_of(f));
   wipe(d);
 }
 

@@ -40,6 +40,9 @@ std::vector<unsigned char> glyph_mask(const std::string &, char16_t, int) { retu
 std::string icon_font() { return ""; }
 bool taskbar_light() { return false; }
 std::string ui_language() { return "en"; }
+bool speak(const std::string &, const std::string &) { return false; }
+bool speaking() { return false; }
+void stop_speaking() {}
 int self_test(std::ostream &) { return 0; }
 
 }  // namespace lexipeek::os

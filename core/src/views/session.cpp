@@ -1,5 +1,7 @@
 #include "lexipeek/session.hpp"
+#include "lexipeek/l10n.hpp"
 #include "lexipeek/speech.hpp"
+#include "lexipeek/views.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <deque>
@@ -73,6 +75,7 @@ struct CardSession::Impl {
   int read_ticket = 0;              // the Speaker's reading of this card (0: none)
   bool playing = false;             // handed to the shell to play
   std::string play;
+  speech::Read say;                 // the system voice: the text handed to the shell to say
   // From the workers: what to apply on the UI thread at the next poll.
   std::mutex mu;
   std::vector<std::function<void(Impl &)>> inbox;
@@ -85,7 +88,7 @@ struct CardSession::Impl {
 
   void stop_reading() {
     if (read_ticket && !playing && e.core->speaker().state().ticket == read_ticket) e.core->speaker().stop();
-    read_ticket = 0, playing = false, play.clear();
+    read_ticket = 0, playing = false, play.clear(), say = {};
     nav.state.reading = {}, nav.state.read_phase = speech::Phase::idle;
     dirty = true;
   }
@@ -341,6 +344,12 @@ void CardSession::read(int row) {
   i.stop_reading();
   i.nav.state.read_error.clear(), i.nav.state.read_fix = false;
   if (r.text.empty() || same) return;
+  // The system voice: the shell says it at once — no model, no file, none of the engine's phases.
+  if (!i.nav.card().prefs.read_natural) {
+    i.say = r, i.playing = true;
+    i.nav.state.reading = r, i.nav.state.read_phase = speech::Phase::ready;
+    return;
+  }
   i.read_ticket = i.e.core->speaker().read(r);
   i.nav.state.reading = r, i.nav.state.read_phase = speech::Phase::making;
 }
@@ -357,6 +366,16 @@ void CardSession::choose_read(bool forms) {
 void CardSession::stop_reading() { impl_->stop_reading(); }
 
 std::string CardSession::take_play() { return std::exchange(impl_->play, ""); }
+
+speech::Read CardSession::take_say() { return std::exchange(impl_->say, {}); }
+
+void CardSession::said_failed() {
+  auto &i = *impl_;
+  auto lang = i.nav.state.reading.lang;
+  i.stop_reading();
+  i.nav.state.read_error = tr("read_no_system_voice", {language_name(lang)}), i.nav.state.read_fix = true;
+  i.dirty = true;
+}
 
 void CardSession::played() {
   if (impl_->playing) impl_->stop_reading();

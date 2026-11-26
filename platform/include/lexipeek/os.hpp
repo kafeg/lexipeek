@@ -105,6 +105,14 @@ bool taskbar_light();
 // The system's UI language ("ru" of "ru-RU").
 std::string ui_language();
 
+// Read aloud's system voice (spec M11): the OS says text in its language — Windows SAPI 5; false, it has no voice for
+// that language and nothing was said (the card then says so). It is said on the OS's own thread: the shell polls
+// speaking() and tells the core the reading ended when it goes false. stop_speaking() ends it at once.
+// Called from the UI thread only (SAPI's voice belongs to the apartment that made it).
+bool speak(const std::string &text, const std::string &lang);
+bool speaking();
+void stop_speaking();
+
 // `--self-test`: the OS parts that need no window (Credential Manager, the Run key put back, hotkeys, memory, CLI
 // runs, lexipeek://), one line each "ok|FAIL what" into out; the failures' count.
 int self_test(std::ostream &out);

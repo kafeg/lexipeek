@@ -277,11 +277,56 @@ TEST_CASE("study: a language picked in the Translation pane is kept (the shell's
   wipe(d);
 }
 
+TEST_CASE("read aloud (M11): the system voice — the shell is handed the text to say, ▶ is ■ at once, no reading made") {
+  set_ui_language("en");
+  auto d = study_data("say");
+  Settings st;
+  st.speech.on = true;  // the system voices: what Read aloud is turned on with
+  st.study["ru"] = {"de"};
+  save_settings(d, st);
+  auto e = app::Engine::make(d.string(), app::device(16384, {}, "arm64"));
+  auto s = app::CardSession::make(e);
+  s.look("дом", Source::input);
+  until([&] { return s.poll(), !s.busy(); });
+  s.poll();
+  REQUIRE(s.has_card());
+  s.select(CardTab::dictionary);
+  speech::Read house{"das Haus", "de"};
+  REQUIRE(s.view().read == house);
+  s.read();
+  CHECK(s.reading());
+  CHECK(s.view().read_phase == speech::Phase::ready);  // ■ at once: no model to load, no reading to make
+  CHECK(!s.busy());                                   // and nothing to poll for
+  CHECK(s.take_play().empty());                       // no WAV: the OS says the text itself
+  CHECK(s.take_say() == house);
+  CHECK(s.take_say().text.empty());  // handed over once
+  auto v = speech::voice_for({}, st.speech, "de");
+  CHECK(!fs::exists(speech::reading_file(d, v, house)));
+  s.played();
+  CHECK(!s.reading());
+  // A press while it says stops it, as it stops a reading being made.
+  s.read();
+  CHECK(s.reading());
+  s.read();
+  CHECK(!s.reading());
+  CHECK(s.take_say().text.empty());
+  // An OS with no voice for that language: the card says so, with Settings → Read aloud.
+  s.read();
+  REQUIRE(!s.take_say().text.empty());
+  s.said_failed();
+  CHECK(!s.reading());
+  CHECK(s.view().rows.back().style == CardRow::Style::error);
+  CHECK(s.view().rows.back().text == "The system has no voice for German.");
+  CHECK(s.view().fix == "Open Settings → Read aloud");
+  wipe(d);
+}
+
 TEST_CASE("study: ☆ keeps the note's own reading in its folder; un-saving and removing the note delete only its copies") {
   set_ui_language("en");
   auto d = study_data("readings");
   Settings st;
   st.speech.on = true;
+  st.speech.natural = true;  // the readings kept as files are the natural voice's
   st.study["ru"] = {"de"};
   save_settings(d, st);
   auto v = speech::voice_for({}, st.speech, "de");

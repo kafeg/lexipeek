@@ -252,7 +252,10 @@ TEST_CASE("settings: General — System and Hotkeys tabs; the icon on Card → O
   CHECK(row(p, "access")->value == "Allowed");
   CHECK(row(p, "open_at_login"));
   CHECK(!row(p, "keep_model"));  // beside the translation's methods
-  CHECK(row(settings_view(SettingsSection::languages, 1, s, st), "keep_model")->title == row(settings_view(SettingsSection::speech, 0, s, st), "speech_keep")->title);
+  auto natural = s;
+  natural.speech.natural = true;  // how long a model stays: the same row in both places (only the natural voice has one)
+  CHECK(row(settings_view(SettingsSection::languages, 1, s, st), "keep_model")->title ==
+        row(settings_view(SettingsSection::speech, 0, natural, st), "speech_keep")->title);
   CHECK(row(p, "ui_lang")->choices.size() == 9);
   CHECK(row(p, "ui_lang")->choices[0] == "Same as System");
   CHECK(row(p, "ui_lang")->choices[2] == "Русский");

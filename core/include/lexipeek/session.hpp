@@ -40,6 +40,10 @@ class CardSession {
   // The WAV to play now, once ("" none); played(): it ended. The shell plays while reading() and stops when it is not.
   std::string take_play();
   void played();
+  // The system voice (M11): the text for the OS to say now, once (text "": none). The shell says it, calls played()
+  // when it ends, and said_failed() when that OS has no voice for its language (the card then says so).
+  speech::Read take_say();
+  void said_failed();
   bool reading() const;
   // Snapshots only: the card's ▶ drawn in a phase (loading, making, ready) with nothing read.
   void show_reading(speech::Phase p);

@@ -77,6 +77,7 @@ class CardModel {
   app::CardSession session_;
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer poll_{nullptr};
   winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer played_{nullptr};  // fires when the WAV has been played
+  bool saying_ = false;  // the system voice (M11): the timer then polls Windows until it is done saying it
   CardView look_;
   int notes_ = -1, next_ = 0;
   std::map<int, std::function<void()>> changed_;

@@ -142,6 +142,7 @@ Engine Engine::make(const std::string &data, const Device &d) {
   if (auto *r = std::getenv("LEXIPEEK_AI_REPLIES")) o.ai_replies = r;
   o.card.read = s.speech.on;
   o.card.read_forms = s.speech.forms;
+  o.card.read_natural = s.speech.natural;
   auto core = std::make_shared<Core>(std::move(o));
   {
     std::lock_guard g(engines_mu);

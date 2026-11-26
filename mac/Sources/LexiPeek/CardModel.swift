@@ -165,10 +165,21 @@ final class CardModel: ObservableObject {
     private func pull() {
         if session.poll() { nav = session.nav() }
         let wav = String(session.take_play())
+        let say = session.take_say()
         if !wav.isEmpty {
             Player.shared.play(wav, owner: self) { [weak self] in
                 self?.session.played()
                 self?.pull()
+            }
+        } else if !say.text.empty() {
+            // The system voice: no reading was made, the OS says the text (M11).
+            let ended = { [weak self] in
+                self?.session.played()
+                self?.pull()
+            }
+            if !Player.shared.say(String(say.text), lang: String(say.lang), owner: self, ended: ended) {
+                session.said_failed()  // no voice for its language: the card's line, drawn by the poll below
+                pull()
             }
         } else if !session.reading() {
             Player.shared.stop(owner: self)

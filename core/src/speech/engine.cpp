@@ -337,6 +337,8 @@ Made Speaker::make_now(const Read &r) {
   std::error_code ec;
   if (auto saved = find_saved(impl_->data, v, r); !saved.empty()) return {text::utf8_of(saved)};
   if (fs::exists(file, ec)) return {text::utf8_of(file)};
+  // The system voice is said and gone: a note's Audio waits for the natural one, as it waits for its model.
+  if (!st.natural) return {"", true};
   if (!built()) return {};
   if (!model_installed(impl_->data)) return {"", true};
   try {
@@ -357,6 +359,10 @@ void Speaker::forget(const std::string &note) {
 
 void Speaker::release() { impl_->host.release(); }
 bool Speaker::held() const { return !impl_->host.held().empty(); }
+bool Speaker::natural() const {
+  std::lock_guard g(impl_->mu);
+  return impl_->s.natural;
+}
 std::chrono::steady_clock::time_point Speaker::until() const { return impl_->host.until(); }
 
 }  // namespace lexipeek::speech

@@ -3,6 +3,7 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include "lexipeek/l10n.hpp"
+#include "lexipeek/speech.hpp"
 #include "lexipeek/study.hpp"
 #include "text/text.hpp"
 
@@ -153,6 +154,11 @@ Settings load_settings(const fs::path &data) {
           if (auto l = study_parse(langs.get<std::vector<std::string>>()); !l.empty()) s.study[answer] = l;
     if (auto sp = get(j, "speech", json::object()); sp.is_object()) {
       s.speech.on = get(sp, "on", s.speech.on);
+      // Before M11 there was only the natural voice: an install whose model is there, whole or being downloaded,
+      // asked for that voice by downloading it and keeps it.
+      std::error_code ec;
+      auto tts = speech::model_dir(data);
+      s.speech.natural = get(sp, "natural", fs::is_directory(tts, ec) && !fs::is_empty(tts, ec));
       s.speech.male = get(sp, "male", s.speech.male);
       s.speech.gpu = get(sp, "gpu", s.speech.gpu);
       s.speech.keep = get(sp, "keep", s.speech.keep);
@@ -204,8 +210,8 @@ std::string save_settings(const fs::path &data, const Settings &s) {
   j["study"] = json::object();
   for (auto &[answer, langs] : s.study)
     if (!langs.empty()) j["study"][answer] = langs;
-  j["speech"] = {{"on", s.speech.on},     {"male", s.speech.male}, {"gpu", s.speech.gpu},
-                 {"keep", s.speech.keep}, {"off", s.speech.off},   {"forms", s.speech.forms}};
+  j["speech"] = {{"on", s.speech.on},     {"natural", s.speech.natural}, {"male", s.speech.male}, {"gpu", s.speech.gpu},
+                 {"keep", s.speech.keep}, {"off", s.speech.off},         {"forms", s.speech.forms}};
   auto &k = s.anki;
   j["anki"] = {{"on", k.on},           {"url", k.url},           {"words", k.words},           {"phrases", k.phrases},
                {"history", k.history}, {"words_on", k.words_on}, {"phrases_on", k.phrases_on}, {"history_on", k.history_on},

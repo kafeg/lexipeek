@@ -377,9 +377,10 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   in a signed-in session (`--snapshots`, the same cases). Releases: an installer (Inno Setup, `win/LexiPeek.iss`: for
   this user, no admin, into the folder the exe's own install uses, the Start menu, an uninstaller; LexiPeek starts at
   the end, so the first run opens) and a zip of the folder (the exe offers to install itself). Done when every screen and step of the Qt shell works on Windows 11; then `qt/` is Linux only.
-- **M9 Read aloud** (the owner's decision: no system voices, no Piper; only Qwen3-TTS
+- **M9 Read aloud** (the owner's decision: no Piper; the natural voice is Qwen3-TTS
   Base 1.7B, which clones a native speaker's voice from a short clip and its exact text — single words come out right,
-  where the built-in speakers babble after them). Off by default; one ▶ in the card.
+  where the built-in speakers babble after them. The system voices M11 adds are the other engine, not its replacement).
+  Off by default; one ▶ in the card.
   **Engine:** qwentts.cpp (`engines/qwentts`, a pinned commit: it has no tags) on its own ggml fork, built as its own
   shared library (`libqwen.dylib` in the app's Frameworks, `qwen.dll` beside the exe) that exports only its C ABI
   (`qt_*`): its ggml stays inside it — llama.cpp's ggml is another copy, the two cannot be linked into one binary. Not a
@@ -430,7 +431,8 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   (twice the time to say it slowly, plus 2 s: a word that runs on stops after seconds), a fixed seed (the
   same text and voice give the same audio), and is kept as a WAV in `<data>/readings/` by the hash of model, voice,
   language and text: the same reading is never made twice (the newest 2,000 kept).
-  **Settings → Read aloud** (a toolbar section of its own): Read aloud on / off; the model (its size, the memory it
+  **Settings → Read aloud** (a toolbar section of its own; M11 puts the engine's choice under the switch and draws
+  the rows below it only for the natural voice): Read aloud on / off; the model (its size, the memory it
   needs, downloaded or Download with progress, Remove); On the GPU; how long it stays in memory; Voice: Female · Male; own voices (language, what it
   says; on / off, ✕) and "Voice from a recording…". Shells: macOS plays the WAV (AVAudioPlayer); Windows by PlaySound
   (built in CI, not yet run on a desktop); the Qt shell (Linux) none.
@@ -453,16 +455,40 @@ Parity with InkPeek first, then the other OS, then a release when the owner says
   through libsecret, loaded at run time; without it a file only the user can read (`$XDG_CONFIG_HOME/LexiPeek/keys.json`,
   0600), and Settings says so. **Data:** `$XDG_DATA_HOME/LexiPeek`. **`lexipeek://`** and the app menu entry:
   `~/.local/share/applications/dev.kafeg.lexipeek.desktop` (`MimeType=x-scheme-handler/lexipeek`), written at each launch with
-  where the program is. **Not in it:** Read aloud (no player in the Qt shell), the icon at the selection, the
-  selection's place, a GPU for the AI model. **Release:** `LexiPeek-Linux-x64.tar.gz`, the folder `LexiPeek/`:
+  where the program is. **Not in it:** Read aloud (no ▶ in the Qt card; the natural voice is not built for Linux
+  either, and M11's system voices wait for that ▶), the icon at the selection, the selection's place, a GPU for the AI model. **Release:** `LexiPeek-Linux-x64.tar.gz`, the folder `LexiPeek/`:
   `lexipeek` (Qt linked in, built on Ubuntu 22.04), `lib/` (what desktops may lack), `lexipeek.png`, the notices;
   release.yml's Linux job is `linux.yml` (by hand: its dry run).
   Nothing to install: unpack and run; `lexipeek --uninstall` removes the menu entry, autostart and the link handler
   (packs and notes stay). Texts: a key's `@linux` text, else its `@win` one (Ctrl, "this computer").
+- **M11 System voices** (the owner, after M9 shipped: waiting for the engine to load and then make the audio is far too
+  long for looking a word up — 15 s and 1.5 s against the system's none). Read aloud gets a **choice of engine** in
+  Settings → Read aloud, right under its switch: **System voices** (the OS speaks the text itself: at once, in every
+  language it has, nothing to download, no memory held) · **Natural voice** (M9's). The system ones are what Read aloud
+  is turned on with; an install that already has the model keeps the natural voice (`load_settings`: no engine in
+  settings.json and the model in `<data>/tts/` → natural). The rows below belong to the natural voice and are drawn only
+  for it (the model, On the GPU, how long it stays, Female · Male, own voices and "Voice from a recording…").
+  **The core decides, the shell speaks:** what ▶ reads, its menu and the eight languages are M9's, unchanged; with the
+  system engine `CardSession::read` makes no reading — no model, no file, none of the phases — and hands the shell the
+  text and its language (`take_say`), which the OS says. ▶ is ■ at once and comes back when the OS says it ended
+  (`played`); ⌘. and a press on ■ stop it. An OS with no voice for that language: the card's line says so, with
+  Settings → Read aloud (the shell calls `said_failed`, the core writes the line — where an OS installs its voices is
+  a `@win` / `@linux` text of that key).
+  **Shells:** macOS `AVSpeechSynthesizer` (`Player.swift` beside the WAV player: the language's voice, bettered by an
+  enhanced or premium one where the person installed it, never a novelty voice); Windows SAPI 5 in `platform/`
+  (`os::speak` / `speaking` / `stop_speaking`: the first voice token whose languages hold that primary language, said
+  with `SPF_ASYNC` and polled), so the WinUI and the Qt shell share it.
+  **The natural voice keeps the files to itself:** a reading kept in `<data>/readings/`, ☆'s own and Anki's Audio need a
+  WAV, and a system voice is said and gone — with the system engine a note's Audio waits exactly as it does without the
+  model (`make_now` → later), and the Anki tab says so.
+  **Not in it:** picking one of the OS's voices, or its rate — the language's default voice, said as that OS says it;
+  every OS has its own list and its own place to set it, and the text of the engine's row names that place. **Linux
+  reads nothing yet:** the Qt card has no ▶ at all (M10), and giving it one is its own step; `platform/linux` then says
+  the text with `spd-say -w` (speech-dispatcher), else `espeak-ng`, as a process like `wl-paste --primary` is.
 - Then: releases (a `v*` tag → `.github/workflows/release.yml`: the macOS zip — ad-hoc signed until there is a
   Developer ID, then signed and notarised —, the Windows zip and the Linux tar.gz, with THIRD_PARTY_NOTICES.txt, on GitHub Releases;
   the update check stays on "Check now" only, never automatic) · AI models on a GPU (llama.cpp's Vulkan on Windows) ·
-  sync in InkPeek (LexiPeek has it) · Linux: Read aloud, an AppImage or Flatpak.
+  sync in InkPeek (LexiPeek has it) · Linux: Read aloud (▶ in the Qt card, with M11's system voices), an AppImage or Flatpak.
 
 ## License
 MIT. Packs keep their own licenses (Wiktionary CC BY-SA, Mozilla MPL-2.0, OPUS-MT CC BY 4.0, Hy-MT2 Apache-2.0); the

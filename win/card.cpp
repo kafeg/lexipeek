@@ -11,6 +11,7 @@
 #include <cmath>
 #include <filesystem>
 #include "lexipeek/app.hpp"
+#include "lexipeek/os.hpp"
 
 #pragma comment(lib, "winmm.lib")  // PlaySound: read aloud
 
@@ -59,7 +60,10 @@ CardModel::CardModel(CoreClient &client) : c_(client), session_(app::CardSession
   played_ = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread().CreateTimer();
   played_.IsRepeating(false);
   played_.Tick([this](auto &&, auto &&) {
+    if (saying_ && os::speaking()) return;  // the system voice: Windows is still saying it
     played_.Stop();
+    played_.IsRepeating(false);
+    saying_ = false;
     if (playing == this) playing = nullptr;
     session_.played();
     acted();
@@ -81,6 +85,7 @@ CardModel::~CardModel() {
   poll_.Stop();
   played_.Stop();
   if (playing == this) PlaySoundW(nullptr, nullptr, 0), playing = nullptr;
+  if (saying_) os::stop_speaking(), saying_ = false;
   notes_bus().forget(notes_);
 }
 
@@ -100,19 +105,35 @@ void CardModel::forget(int id) { changed_.erase(id); }
 
 void CardModel::polled() {
   auto wav = session_.take_play();
+  auto say = session_.take_say();
   if (!wav.empty()) {
     playing = this;
     played_.Stop();
+    played_.IsRepeating(false);
     if (!PlaySoundW(winrt::to_hstring(wav).c_str(), nullptr, SND_FILENAME | SND_ASYNC | SND_NODEFAULT)) {
       session_.played();
       return;
     }
     played_.Interval(wav_length(wav) + std::chrono::milliseconds(100));
     played_.Start();
+  } else if (!say.text.empty()) {
+    // The system voice (M11): no reading was made, Windows says the text itself — the timer polls it to the end.
+    if (!os::speak(say.text, say.lang)) {
+      session_.said_failed();  // no voice for its language: the card's line, drawn at once (nothing polls for it)
+      if (session_.poll()) relook();
+      return;
+    }
+    playing = this, saying_ = true;
+    played_.Stop();
+    played_.Interval(std::chrono::milliseconds(120));
+    played_.IsRepeating(true);
+    played_.Start();
   } else if (!session_.reading() && playing == this) {
     PlaySoundW(nullptr, nullptr, 0);
+    if (saying_) os::stop_speaking(), saying_ = false;
     playing = nullptr;
     played_.Stop();
+    played_.IsRepeating(false);
   }
 }
 

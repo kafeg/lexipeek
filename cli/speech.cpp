@@ -20,6 +20,7 @@ using namespace speech;
 SpeechSettings settings(const Args &a) {
   SpeechSettings s;
   s.on = true;
+  s.natural = true;  // say, say-bench and voices are the natural voice's tools; the system ones are the shells'
   s.male = a.opt("--voice") == "male";
   s.gpu = !a.has("--cpu");
   return s;

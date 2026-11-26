@@ -189,7 +189,7 @@ Core::Core(CoreOptions o) : impl_(std::make_unique<Impl>()) {
                         }
                         return lang.empty() ? speech::Made{} : i->speaker->make_now({n.text, lang});
                       },
-                      [d = o.data] { return speech::built() && speech::model_installed(d); }};
+                      [i = impl_.get(), d = o.data] { return speech::built() && speech::model_installed(d) && i->speaker->natural(); }};
   impl_->anki = std::make_unique<anki::Sender>(*impl_->store, o.data, anki::default_transport(), reader);
   impl_->o = std::move(o);
 }
@@ -212,6 +212,7 @@ void Core::configure(const Settings &s, const std::optional<Device> &device) {
   impl_->o.card = s.card;
   impl_->o.card.read = s.speech.on;
   impl_->o.card.read_forms = s.speech.forms;
+  impl_->o.card.read_natural = s.speech.natural;
   impl_->speaker->configure(s.speech);
   impl_->anki->configure(s.anki);
   impl_->o.ai = s.ai;

@@ -39,6 +39,7 @@ struct CardPrefs {
   bool history = true;  // what is opened goes to History (InkPeek's Card → Opening → History); off: nothing is written
   bool read = false;    // Read aloud is on (Settings → Read aloud, not kept here): the card's ▶
   bool read_forms = false;  // ▶ reads a word with the forms in its brackets (speech.forms): a new card starts on it
+  bool read_natural = false;  // the engine (speech.natural): off, the shell has the OS say the text (no reading is made)
 };
 
 // The optional AI layer (InkPeek's AI → Connection · Modules). The API key is never here: the shell keeps it (Keychain).
@@ -57,6 +58,9 @@ struct AiSettings {
 // Read aloud (M9): Qwen3-TTS Base 1.7B in a native speaker's voice per language.
 struct SpeechSettings {
   bool on = false;
+  // The engine (M11): the natural voice, which makes a reading with the model; off, the OS says the text itself — at
+  // once, in every language it has, nothing downloaded and nothing kept.
+  bool natural = false;
   bool male = false;  // the voices in the app: female or male, for every language
   bool gpu = true;    // Metal / Vulkan; off: the CPU
   int keep = 3;       // minutes the model stays after a reading (its own: it holds ~3.5 GB and is used now and then), 0: until quit

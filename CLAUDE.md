@@ -165,6 +165,12 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   `CardSession::choose_read`, `app::pick_read`), rows' ▶,
   loading and error lines),
   `CardState::reading`, `CardSession::read / take_play / played / reading` (the shell plays the WAV: `Player.swift`).
+  **The engine** (spec M11, `speech.natural`): the natural voice above, or the OS's own — then `read` makes no reading
+  (no model, no file, no phases) and hands the shell the text, `take_say`, which that OS says; `said_failed` when it
+  has no voice for the language. The system voices are the default; an install whose `<data>/tts/` is there keeps the
+  natural one (`load_settings`). Files stay the natural voice's: a kept reading, ☆'s own, Anki's Audio (`make_now` →
+  later). Shells: `Player.swift` (`AVSpeechSynthesizer`, the language's best voice), `os::speak` on Windows; the Qt
+  shell has no ▶ at all.
 - `core/src/store/`: InkPeek's one sync log format (`docs/formats.md` "Sync log", cases `tests/sync/{reader,identity,writer}`).
   `log` — pure: lines (canonical bytes, `raw` kept), HLC, device folders, read, append, `device.json`, `keep_id` (two
   installs with one id), merge (`id`, `origin`, `updated_by`, `devices`), `compact_folder`.
@@ -276,7 +282,8 @@ fastText, llama.cpp, PCRE2 at InkPeek's commits), `tests/inkpeek` (InkPeek, test
   Manager, the Run key, one instance per user (`hand_over` / `receive`: the hidden window titled "LexiPeek receiver", the same
   wire as before; the sender's window in wParam: refused unless this session, this user, medium integrity or more; dwData 1,
   ≤ 1 MB, strict UTF-8; the message filter opened only when running elevated), the per-user install (`install(version, folder)`: the WinUI build copies its folder, Qt its exe),
-  `lexipeek://`, CLI providers, low memory, glyph masks, `self_test` (the OS checks of both shells' `--self-test`).
+  `lexipeek://`, CLI providers, low memory, glyph masks, the system voice (`speak` / `speaking` / `stop_speaking`:
+  SAPI 5 says it, the shell polls it to its end), `self_test` (the OS checks of both shells' `--self-test`).
   Linux (`linux/`, only with `LEXIPEEK_QT`: QtCore's loop, QtDBus, Xlib): hotkeys by `XGrabKey` on the root (ids from 100:
   the card's keys), on Wayland ids below 100 through the GlobalShortcuts portal (`Portal`, moc'd), none there →
   `desktop_shortcuts()` names the program for `--lookup-selection` / `--input`; the PRIMARY selection by its own X
