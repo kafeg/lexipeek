@@ -40,7 +40,7 @@ bool token_speaks(ISpObjectToken *t, LANGID want) {
 ISpObjectToken *voice_for(const std::string &lang) {
   auto id = LocaleNameToLCID(wide(lang).c_str(), 0);
   if (!id) return nullptr;
-  auto want = PRIMARYLANGID(LANGIDFROMLCID(id));
+  auto want = static_cast<LANGID>(PRIMARYLANGID(LANGIDFROMLCID(id)));  // PRIMARYLANGID's macro gives an int
   ISpObjectTokenCategory *cat = nullptr;
   if (FAILED(CoCreateInstance(CLSID_SpObjectTokenCategory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&cat))) || !cat) return nullptr;
   ISpObjectToken *found = nullptr;
